@@ -50,7 +50,7 @@ jobs:
         if: failure()
         run: |
           # Surface compiler errors as an annotation so they're readable without the raw log.
-          msg=$(grep -E "^e: |^\* What went wrong|^> |error:" -A2 build.log | head -80 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          msg=$( { grep -E "^e: " build.log; grep -E "^\* What went wrong" -A4 build.log; } | grep -v "^> Task" | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
           echo "::error title=Build errors::${msg}"
 
       - uses: actions/upload-artifact@v4
