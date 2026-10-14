@@ -26,6 +26,8 @@ import com.nerfherder.walkthor.data.CocoonLaunchLog
 import com.nerfherder.walkthor.data.GameGuides
 import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.ui.GuideIntro
+import com.nerfherder.walkthor.ui.BootScreen
+import com.nerfherder.walkthor.ui.BootStatus
 import com.nerfherder.walkthor.ui.ImportDialogs
 import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
@@ -86,6 +88,8 @@ class MainActivity : ComponentActivity() {
         SwipeLauncher.init(this)
         PageStyle.init(this)
         AutoDim.init(this)
+        // A fresh open always starts bright (the idle clock may have been running in the background).
+        AutoDim.wake()
         PlaySession.init(this)
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         AppState.activity = java.lang.ref.WeakReference(this)
@@ -93,6 +97,9 @@ class MainActivity : ComponentActivity() {
 
         if (savedInstanceState == null) handleIntent(intent)
         val initialBook = intent.getStringExtra(DisplayHelper.EXTRA_BOOK)
+        // The boot screen plays on a fresh open, but not when moving screens with a guide open
+        // or when opening a file handed over from another app.
+        val boot = savedInstanceState == null && initialBook == null && incoming.value == null
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -110,6 +117,7 @@ class MainActivity : ComponentActivity() {
                     Box(Modifier.fillMaxSize()) {
                         WalkThorApp(
                             initialBookId = initialBook,
+                            boot = boot,
                             host = this@MainActivity,
                         )
                         AutoDimOverlay()
@@ -129,6 +137,8 @@ class MainActivity : ComponentActivity() {
         hasOtherScreen.value = DisplayHelper.otherDisplay(this) != null
         AppState.activityDisplayId = DisplayHelper.currentDisplayId(this)
         AppState.resumedDisplayId = AppState.activityDisplayId
+        // Coming back to WalkThor counts as activity, so it never greets you already dimmed.
+        AutoDim.wake()
         // Picks up the swipe service being switched on after a trip to Settings.
         SwipeLauncher.refresh(this)
     }
@@ -226,7 +236,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
+private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivity) {
     val library: LibraryViewModel = viewModel()
     val context = LocalContext.current
     val books by library.books.collectAsState()
@@ -317,7 +327,42 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
             Toast.makeText(context, "Playing ${game.title} — open its guide and WalkThor will remember it", Toast.LENGTH_LONG).show()
         }
     }
-    LaunchedEffect(swipeTick) { if (swipeTick != 0L) checkGame(force = true) }
+    // ---- boot screen: plays while Cocoon's launch log is read on a fresh open ----
+    var booting by rememberSaveable { mutableStateOf(boot) }
+    var bootFinished by remember { mutableStateOf(false) }
+    var bootStatus by remember { mutableStateOf<BootStatus>(BootStatus.Idle) }
+    // A swipe that opened WalkThor is handled by the boot check, not the effect below.
+    val bootSwipeTick = remember { if (boot) swipeTick else 0L }
+    val openNow by rememberUpdatedState(openId)
+    LaunchedEffect(Unit) {
+        if (!booting) return@LaunchedEffect
+        val start = System.currentTimeMillis()
+        val tree = CocoonLaunchLog.linkedFolder(context)
+        if (tree != null && gameGuideNow) {
+            bootStatus = BootStatus.Checking
+            // Cocoon may start WalkThor (as a companion app) a moment before it finishes writing
+            // the launch to its log, so keep looking briefly for a launch we haven't seen yet.
+            var force = bootSwipeTick != 0L
+            while (true) {
+                checkGame(force)
+                force = false
+                if (swipeGameAt >= start || openNow != null) break
+                if (System.currentTimeMillis() - start >= BOOT_WAIT_MS) break
+                delay(250)
+            }
+            swipeGame?.takeIf { swipeGameAt >= start }?.let {
+                bootStatus = BootStatus.Playing(it.title)
+                delay(650)
+            }
+        } else {
+            checkGame(force = false) // just refreshes the play-time readout
+        }
+        val left = BOOT_MIN_MS - (System.currentTimeMillis() - start)
+        if (left > 0) delay(left)
+        bootFinished = true
+    }
+
+    LaunchedEffect(swipeTick) { if (swipeTick != 0L && swipeTick != bootSwipeTick) checkGame(force = true) }
     LaunchedEffect(Unit) { host.pollTickFlow.collect { checkGame(force = false) } }
 
     // Opening a different guide soon after swiping in teaches WalkThor which guide goes with the game.
@@ -354,6 +399,8 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                     book = introBook,
                     cover = remember(introBook.id, introBook.cover) { library.coverFile(introBook) },
                     onDone = { introFor = null },
+                    // Wait behind the boot screen, then play as it fades.
+                    start = !booting || bootFinished,
                 )
             }
         }
@@ -400,6 +447,15 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
         )
     }
 
+    if (booting) {
+        BootScreen(
+            status = bootStatus,
+            finished = bootFinished,
+            onSkip = { bootFinished = true },
+            onGone = { booting = false },
+        )
+    }
+
     ImportDialogs(
         state = importState,
         onCancel = library::cancelImport,
@@ -407,6 +463,10 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     )
 }
 
+/** Longest the boot screen waits for Cocoon to log a new launch. */
+private const val BOOT_WAIT_MS = 1_500L
+/** Shortest the boot screen shows, so it reads as an animation rather than a flicker. */
+private const val BOOT_MIN_MS = 1_100L
 /** A Cocoon launch this recent counts as the game being played. */
 private const val GAME_RECENT_MS = 6 * 60 * 60 * 1000L
 /** After swiping in, the next guide opened within this time is linked to the game. */

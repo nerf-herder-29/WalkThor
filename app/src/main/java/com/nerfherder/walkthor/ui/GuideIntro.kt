@@ -45,9 +45,10 @@ import java.io.File
 /**
  * Plays when a guide is opened: the guide's tile swings in from the right, its title fades in,
  * then the tile pushes toward you as everything fades into the guide underneath. Tap to skip.
+ * With [start] false it waits on black, covering the guide, until it's allowed to play.
  */
 @Composable
-fun GuideIntro(book: Book, cover: File?, onDone: () -> Unit) {
+fun GuideIntro(book: Book, cover: File?, onDone: () -> Unit, start: Boolean = true) {
     val done by rememberUpdatedState(onDone)
     val slide = remember { Animatable(1f) }      // 1 = off to the right, 0 = centred
     val tileAlpha = remember { Animatable(0f) }
@@ -55,7 +56,9 @@ fun GuideIntro(book: Book, cover: File?, onDone: () -> Unit) {
     val glow = remember { Animatable(0f) }
     val exit = remember { Animatable(0f) }       // 0 = showing, 1 = gone
 
-    LaunchedEffect(book.id) {
+    // Until [start], hold on a black screen (e.g. while the boot screen is still up on top).
+    LaunchedEffect(book.id, start) {
+        if (!start) return@LaunchedEffect
         coroutineScope {
             launch { tileAlpha.animateTo(1f, tween(260)) }
             launch { slide.animateTo(0f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)) }
