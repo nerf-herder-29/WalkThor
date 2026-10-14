@@ -1,6 +1,7 @@
 package com.nerfherder.walkthor.ui
 
 import android.net.Uri
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,6 +55,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -254,43 +257,13 @@ private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> 
     val cover = remember(book.cover) { actions.coverFile(book) }
 
     Column {
-        Box(
-            Modifier
+        GuideTile(
+            book = book,
+            cover = cover,
+            modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(0.7f)
-                .shadow(10.dp, RoundedCornerShape(8.dp))
-                .clip(RoundedCornerShape(8.dp))
-                .combinedClickable(onClick = { actions.onOpen(book) }, onLongClick = { menu = true })
-        ) {
-            if (cover != null) {
-                AsyncImage(
-                    model = cover,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                GeneratedCover(book)
-            }
-            // Reading progress along the bottom edge.
-            if (book.pageCount > 0) {
-                val frac = ((book.lastPage + 1).toFloat() / book.pageCount).coerceIn(0f, 1f)
-                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color.Black.copy(alpha = 0.45f)))
-                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(frac).height(3.dp).background(BookColors.Brass))
-            }
-            Text(
-                if (book.type == BookType.PDF) "PDF" else "TXT",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                color = BookColors.Text,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
-            )
-        }
+                .combinedClickable(onClick = { actions.onOpen(book) }, onLongClick = { menu = true }),
+        )
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -302,9 +275,10 @@ private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> 
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 16.sp,
                 )
-                if (book.pageCount > 0) {
+                run {
+                    val kind = if (book.type == BookType.PDF) "PDF" else "TXT"
                     Text(
-                        "p. ${book.lastPage + 1} of ${book.pageCount}",
+                        if (book.pageCount > 0) "$kind · p. ${book.lastPage + 1} of ${book.pageCount}" else kind,
                         color = BookColors.TextMuted,
                         fontSize = 11.sp,
                         fontFamily = SerifDisplay,
@@ -346,6 +320,104 @@ private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> 
     }
 }
 
+private val GuideRed = Color(0xFFB3261F)
+private val GuideRedDeep = Color(0xFF7A1410)
+private val BINDING = 16.dp
+private val BANNER = 22.dp
+
+/**
+ * A guide on the shelf: square artwork, a red "GUIDE" banner across the top, and a leather
+ * book binding down the left edge.
+ */
+@Composable
+private fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 8.dp, bottomEnd = 8.dp)
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .shadow(10.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
+            .clip(shape)
+            .background(BookColors.Surface)
+    ) {
+        // ---- artwork, right of the binding ----
+        Box(Modifier.fillMaxSize().padding(start = BINDING)) {
+            if (cover != null) {
+                AsyncImage(
+                    model = cover,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                GeneratedCover(book)
+            }
+            // Where the cover meets the binding it dips into a hinge.
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .width(10.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent)))
+            )
+            // Red banner.
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .height(BANNER)
+                    .background(Brush.verticalGradient(listOf(GuideRed, GuideRedDeep))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "GUIDE",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 3.sp,
+                    fontFamily = SerifDisplay,
+                )
+            }
+            Box(
+                Modifier
+                    .padding(top = BANNER)
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)))
+            )
+            // Reading progress along the bottom edge.
+            if (book.pageCount > 0) {
+                val frac = ((book.lastPage + 1).toFloat() / book.pageCount).coerceIn(0f, 1f)
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color.Black.copy(alpha = 0.5f)))
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(frac).height(3.dp).background(BookColors.Brass))
+            }
+        }
+        // ---- the binding ----
+        Canvas(Modifier.fillMaxHeight().width(BINDING)) {
+            drawRect(
+                Brush.horizontalGradient(
+                    0f to Color(0xFF160807),
+                    0.35f to Color(0xFF52201A),
+                    0.6f to Color(0xFF3A1511),
+                    1f to Color(0xFF120605),
+                )
+            )
+            // Raised bands, like the ridges on an old leather spine.
+            val band = 2.dp.toPx()
+            for (y in floatArrayOf(0.14f, 0.20f, 0.80f, 0.86f)) {
+                val top = size.height * y
+                drawRect(Color.Black.copy(alpha = 0.45f), Offset(0f, top + band / 2), Size(size.width, band))
+                drawRect(BookColors.Brass.copy(alpha = 0.6f), Offset(0f, top - band / 2), Size(size.width, band / 2))
+            }
+            // Stitching down the middle.
+            val dash = 3.dp.toPx()
+            var y = size.height * 0.26f
+            while (y < size.height * 0.74f) {
+                drawRect(BookColors.Brass.copy(alpha = 0.35f), Offset(size.width * 0.45f, y), Size(1.dp.toPx(), dash))
+                y += dash * 2
+            }
+        }
+    }
+}
+
 /** A cloth-bound cover with a brass double rule, for guides without artwork. */
 @Composable
 private fun GeneratedCover(book: Book) {
@@ -354,7 +426,7 @@ private fun GeneratedCover(book: Book) {
         Modifier
             .fillMaxSize()
             .background(Brush.linearGradient(listOf(ink.copy(alpha = 0.85f), ink, Color.Black.copy(alpha = 0.6f).compositeOn(ink))))
-            .padding(8.dp)
+            .padding(start = 8.dp, end = 8.dp, top = 30.dp, bottom = 8.dp)
             .border(1.dp, BookColors.Brass.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
             .padding(3.dp)
             .border(0.5.dp, BookColors.Brass.copy(alpha = 0.35f), RoundedCornerShape(2.dp)),
@@ -365,10 +437,10 @@ private fun GeneratedCover(book: Book) {
             color = BookColors.BrassSoft,
             fontFamily = SerifDisplay,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            lineHeight = 17.sp,
+            fontSize = 13.sp,
+            lineHeight = 16.sp,
             textAlign = TextAlign.Center,
-            maxLines = 5,
+            maxLines = 4,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
@@ -469,7 +541,7 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
                                         contentScale = ContentScale.Fit,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .aspectRatio(0.8f)
+                                            .aspectRatio(1f)
                                             .background(BookColors.Ink, RoundedCornerShape(6.dp)),
                                     )
                                     Text(

@@ -138,7 +138,7 @@ class ArtworkRepository private constructor(private val context: Context) {
             .toList()
     }
 
-    /** The match to use automatically, only if it's convincing. */
+    /** The closest artwork for a title (anything that shares a real resemblance with it). */
     suspend fun autoMatch(title: String): ArtImage? =
         suggestions(title, 1).firstOrNull()?.takeIf { it.score >= AUTO_THRESHOLD }?.image
 
@@ -191,7 +191,7 @@ class ArtworkRepository private constructor(private val context: Context) {
         private const val MAX_DEPTH = 8
         private const val MAX_IMAGES = 60_000
         private const val COVER_MAX = 720
-        const val AUTO_THRESHOLD = 0.8f
+        const val AUTO_THRESHOLD = 0.3f
         private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
         private val SKIP_DIRS = setOf("videos", "manuals", "sounds", "music", "backup", "backups")
 
@@ -303,6 +303,8 @@ object Matcher {
         s += when {
             "theme" in where -> -0.4f
             "backcover" in where -> -0.05f
+            // Square icon art suits WalkThor's square guide tiles best.
+            "icon" in where -> 0.12f
             "cover" in where || "box" in where || "front" in where || "grid" in where -> 0.06f
             "miximage" in where -> 0.04f
             "hero" in where || "fanart" in where -> 0.02f

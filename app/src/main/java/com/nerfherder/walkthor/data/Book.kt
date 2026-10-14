@@ -27,6 +27,8 @@ data class Book(
     val cover: String? = null,
     /** True when the user picked the cover, so automatic matching leaves it alone. */
     val coverManual: Boolean = false,
+    /** URI of the artwork the cover was made from, so a rescan only replaces it with a better match. */
+    val coverSource: String? = null,
 ) {
     val effectiveLayout: PageLayout
         get() = layout ?: if (type == BookType.PDF) PageLayout.SPREAD else PageLayout.SINGLE
@@ -43,6 +45,7 @@ data class Book(
         layout?.let { put("layout", it.name) }
         cover?.let { put("cover", it) }
         put("coverManual", coverManual)
+        coverSource?.let { put("coverSource", it) }
     }
 
     companion object {
@@ -58,6 +61,7 @@ data class Book(
             layout = o.optString("layout").takeIf { it.isNotEmpty() }?.let { PageLayout.valueOf(it) },
             cover = o.optString("cover").takeIf { it.isNotEmpty() },
             coverManual = o.optBoolean("coverManual"),
+            coverSource = o.optString("coverSource").takeIf { it.isNotEmpty() },
         )
     }
 }

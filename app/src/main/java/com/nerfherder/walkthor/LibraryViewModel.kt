@@ -87,6 +87,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             val fresh = repo.find(book.id) ?: return@launch
             repo.update(fresh.copy(title = title.trim()))
+            // A clearer title can find better artwork.
+            autoCover(fresh)
         }
     }
 
@@ -108,7 +110,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             art.rescan()
             val n = autoCoverAll()
-            _message.tryEmit("Artwork refreshed · matched $n new cover${if (n == 1) "" else "s"}")
+            _message.tryEmit("Artwork refreshed · updated $n cover${if (n == 1) "" else "s"}")
         }
     }
 
@@ -123,7 +125,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 _message.tryEmit("Couldn't read that image")
                 return@launch
             }
-            replaceCover(book.id, name, manual = true)
+            replaceCover(book.id, name, manual = true, source = source.toString())
         }
     }
 
@@ -132,22 +134,27 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             val fresh = repo.find(book.id) ?: return@launch
             repo.coverFile(fresh)?.delete()
             // Manual, so automatic matching doesn't put one straight back.
-            repo.update(fresh.copy(cover = null, coverManual = true))
+            repo.update(fresh.copy(cover = null, coverManual = true, coverSource = null))
         }
     }
 
-    private suspend fun replaceCover(bookId: String, name: String, manual: Boolean) = withContext(Dispatchers.IO) {
+    private suspend fun replaceCover(bookId: String, name: String, manual: Boolean, source: String?) = withContext(Dispatchers.IO) {
         val fresh = repo.find(bookId) ?: return@withContext
         repo.coverFile(fresh)?.delete()
-        repo.update(fresh.copy(cover = name, coverManual = manual))
+        repo.update(fresh.copy(cover = name, coverManual = manual, coverSource = source))
     }
 
-    /** Gives a cover to a guide that has none, if the artwork folder has a convincing match. */
+    /**
+     * Gives a guide the closest-matching artwork. Covers the user chose by hand are left alone;
+     * automatic ones are replaced when a rescan finds a closer image.
+     */
     private suspend fun autoCover(book: Book): Boolean {
-        if (book.cover != null || book.coverManual) return false
-        val match = art.autoMatch(book.title) ?: return false
-        val name = art.saveCover(Uri.parse(match.uri), repo.coversDir, book.id) ?: return false
-        replaceCover(book.id, name, manual = false)
+        val fresh = repo.find(book.id) ?: return false
+        if (fresh.coverManual) return false
+        val match = art.autoMatch(fresh.title) ?: return false
+        if (match.uri == fresh.coverSource && repo.coverFile(fresh) != null) return false
+        val name = art.saveCover(Uri.parse(match.uri), repo.coversDir, fresh.id) ?: return false
+        replaceCover(fresh.id, name, manual = false, source = match.uri)
         return true
     }
 
