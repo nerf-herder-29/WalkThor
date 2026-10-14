@@ -7,6 +7,9 @@ on:
     branches: ["screenshots/**"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
@@ -32,3 +35,13 @@ jobs:
         with:
           name: WalkThor-screenshots
           path: app/build/screenshots/*.png
+      - name: Commit screenshots to the branch
+        if: success()
+        run: |
+          mkdir -p docs/screenshots
+          cp app/build/screenshots/*.png docs/screenshots/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          git commit -m "Rendered screenshots [skip ci]" || echo "No changes"
+          git push
