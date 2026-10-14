@@ -1,5 +1,8 @@
 package com.nerfherder.walkthor.ui
 
+import kotlin.math.roundToInt
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Slider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.RadioButtonDefaults
@@ -304,6 +307,7 @@ private fun SettingsMenu(
     var pickDim by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
+    val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
@@ -400,7 +404,7 @@ private fun SettingsMenu(
     }
     if (pickDim) {
         AlertDialog(
-            onDismissRequest = { pickDim = false },
+            onDismissRequest = { pickDim = false; AutoDim.previewing.value = false },
             containerColor = BookColors.Surface,
             title = { Text("Auto-dim", fontFamily = SerifDisplay) },
             text = {
@@ -416,18 +420,46 @@ private fun SettingsMenu(
                             Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { AutoDim.setDelay(context, ms); pickDim = false }
+                                .clickable { AutoDim.setDelay(context, ms) }
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(
                                 selected = dimDelay == ms,
-                                onClick = { AutoDim.setDelay(context, ms); pickDim = false },
+                                onClick = { AutoDim.setDelay(context, ms) },
                                 colors = RadioButtonDefaults.colors(selectedColor = BookColors.Brass),
                             )
                             Text(if (ms == 0L) "Off" else "After ${AutoDim.label(ms)}", color = BookColors.Text)
                         }
                     }
+                    Spacer(Modifier.height(14.dp))
+                    Text("HOW DARK", style = EyebrowStyle)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Slider(
+                            value = dimLevel,
+                            onValueChange = { AutoDim.previewing.value = true; AutoDim.setLevel(context, it) },
+                            onValueChangeFinished = { AutoDim.previewing.value = false },
+                            valueRange = AutoDim.MIN_LEVEL..1f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = BookColors.Brass,
+                                activeTrackColor = BookColors.Brass,
+                                inactiveTrackColor = BookColors.Hairline,
+                            ),
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            "${(dimLevel * 100).roundToInt()}%",
+                            color = BookColors.Text,
+                            fontSize = 13.sp,
+                            modifier = Modifier.width(44.dp).padding(start = 8.dp),
+                        )
+                    }
+                    Text(
+                        if (dimLevel >= 0.995f) "Fully black — only the time, play time and battery stay lit."
+                        else "The time, play time and battery always stay at full brightness.",
+                        color = BookColors.TextMuted,
+                        fontSize = 12.sp,
+                    )
                 }
             },
             confirmButton = { TextButton(onClick = { pickDim = false }) { Text("Close") } },

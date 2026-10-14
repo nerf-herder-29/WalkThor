@@ -39,6 +39,12 @@ object AutoDim {
     val OPTIONS = listOf(0L, 30_000L, 60_000L, 120_000L, 300_000L)
 
     val delayMs = MutableStateFlow(0L)
+    /** How dark the dimming gets: 0.5 = half, 1.0 = fully black (the status readout always stays bright). */
+    val level = MutableStateFlow(DEFAULT_LEVEL)
+    /** True while the user is adjusting [level], to show it live. */
+    val previewing = MutableStateFlow(false)
+    const val MIN_LEVEL = 0.5f
+    const val DEFAULT_LEVEL = 0.95f
     /** Where the time/play-time/battery readout is on screen (kept bright while dimmed). */
     val statusBounds = MutableStateFlow<Rect?>(null)
     @Volatile internal var statusOwner: Any? = null
@@ -53,7 +59,14 @@ object AutoDim {
     }
 
     fun init(context: Context) {
-        delayMs.value = context.getSharedPreferences("dim", Context.MODE_PRIVATE).getLong("delay", 0L)
+        val p = context.getSharedPreferences("dim", Context.MODE_PRIVATE)
+        delayMs.value = p.getLong("delay", 0L)
+        level.value = p.getFloat("level", DEFAULT_LEVEL).coerceIn(MIN_LEVEL, 1f)
+    }
+
+    fun setLevel(context: Context, value: Float) {
+        level.value = value.coerceIn(MIN_LEVEL, 1f)
+        context.getSharedPreferences("dim", Context.MODE_PRIVATE).edit().putFloat("level", level.value).apply()
     }
 
     fun setDelay(context: Context, ms: Long) {
@@ -97,7 +110,14 @@ fun AutoDimOverlay() {
         }
     }
 
-    val alpha by animateFloatAsState(if (dimmed) 0.9f else 0f, tween(if (dimmed) 1_200 else 180), label = "dim")
+    val level by AutoDim.level.collectAsState()
+    val previewing by AutoDim.previewing.collectAsState()
+    val target = when {
+        previewing -> level
+        dimmed -> level
+        else -> 0f
+    }
+    val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 1_200 else 180), label = "dim")
     val status by AutoDim.statusBounds.collectAsState()
     if (alpha <= 0.001f) return
     Box(
