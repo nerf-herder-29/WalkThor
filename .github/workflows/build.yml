@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -25,8 +25,16 @@ jobs:
 
       - name: Build debug and release APKs
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug assembleRelease
+          ./gradlew --no-daemon assembleDebug assembleRelease 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          # Surface compiler errors as an annotation so they're readable without the raw log.
+          msg=$(grep -E "^e: |^\* What went wrong|^> |error:" -A2 build.log | head -80 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          echo "::error title=Build errors::${msg}"
 
       - uses: actions/upload-artifact@v4
         with:

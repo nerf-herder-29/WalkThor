@@ -1,7 +1,11 @@
 package com.nerfherder.walkthor.ui
 
+import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,163 +18,308 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import com.nerfherder.walkthor.ImportState
+import com.nerfherder.walkthor.data.ArtMatch
 import com.nerfherder.walkthor.data.Book
 import com.nerfherder.walkthor.data.BookType
+import kotlinx.coroutines.delay
+import java.io.File
 
-private val coverColors = listOf(
-    Color(0xFF7A2E2E), Color(0xFF2E4A7A), Color(0xFF2E6A4A), Color(0xFF6A4A2E),
-    Color(0xFF5A2E6A), Color(0xFF2E5E6A), Color(0xFF7A5A1E), Color(0xFF4A4A4A),
+private val coverInks = listOf(
+    Color(0xFF5B2328), Color(0xFF1F3550), Color(0xFF214234), Color(0xFF4A3420),
+    Color(0xFF3D2547), Color(0xFF1E4146), Color(0xFF51401A), Color(0xFF34302E),
+)
+
+/** Everything the library needs from the outside world. */
+class LibraryActions(
+    val onOpen: (Book) -> Unit,
+    val onImport: () -> Unit,
+    val onDelete: (Book) -> Unit,
+    val onRename: (Book, String) -> Unit,
+    val coverFile: (Book) -> File?,
+    val onPickCoverFile: (Book) -> Unit,
+    val onSetCover: (Book, Uri) -> Unit,
+    val onClearCover: (Book) -> Unit,
+    val suggestions: suspend (String) -> List<ArtMatch>,
+    val onLinkArtFolder: () -> Unit,
+    val onRescanArt: () -> Unit,
+    val onUnlinkArt: () -> Unit,
+    val onToggleAlwaysBottom: (Boolean) -> Unit,
+    val onSwapScreen: (() -> Unit)?,
 )
 
 @Composable
 fun LibraryScreen(
     books: List<Book>,
-    onOpen: (Book) -> Unit,
-    onImport: () -> Unit,
-    onDelete: (Book) -> Unit,
-    onRename: (Book, String) -> Unit,
-    onSwapScreen: (() -> Unit)?,
+    artLinked: Boolean,
+    artCount: Int,
+    artScanning: String?,
+    alwaysBottom: Boolean,
+    actions: LibraryActions,
 ) {
-    Column(Modifier.fillMaxSize().background(BookColors.Leather)) {
+    var coverFor by remember { mutableStateOf<Book?>(null) }
+
+    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+        // ---- header -----------------------------------------------------------------------
         Row(
-            Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 14.dp),
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                "WalkThor",
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = BookColors.Gold,
-            )
-            Spacer(Modifier.weight(1f))
-            if (onSwapScreen != null) {
-                TextButton(onClick = onSwapScreen) { Text("Other screen") }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (books.isEmpty()) "YOUR SHELF" else "YOUR SHELF · ${books.size} GUIDE${if (books.size == 1) "" else "S"}",
+                    style = EyebrowStyle,
+                )
+                Text(
+                    "WalkThor",
+                    fontFamily = SerifDisplay,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 26.sp,
+                    color = BookColors.Text,
+                )
             }
-            Button(onClick = onImport) {
-                Icon(Icons.Filled.Add, contentDescription = null)
+            Button(
+                onClick = actions.onImport,
+                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Import guide")
+                Text("Add guide", fontWeight = FontWeight.SemiBold)
+            }
+            SettingsMenu(artLinked, artCount, alwaysBottom, actions)
+        }
+        if (artScanning != null) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = BookColors.Brass, trackColor = BookColors.Hairline)
+                Text(artScanning, fontSize = 11.sp, color = BookColors.TextMuted, modifier = Modifier.padding(top = 4.dp))
             }
         }
+        HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
         if (books.isEmpty()) {
-            Column(
-                Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    "Your shelf is empty",
-                    fontFamily = FontFamily.Serif,
-                    fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Import a PDF or TXT walkthrough and it becomes a searchable book.",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = onImport) { Text("Import guide") }
-            }
+            EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder)
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 128.dp),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                columns = GridCells.Adaptive(minSize = 118.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(books, key = { it.id }) { book ->
-                    BookCover(book, onOpen = { onOpen(book) }, onDelete = { onDelete(book) }, onRename = { onRename(book, it) })
+                    ShelfItem(book, actions, onChooseCover = { coverFor = book })
                 }
+            }
+        }
+    }
+
+    coverFor?.let { book ->
+        // Show the live copy so the picker reflects a cover that was just set.
+        val live = books.firstOrNull { it.id == book.id } ?: book
+        CoverPicker(
+            book = live,
+            artLinked = artLinked,
+            actions = actions,
+            onDismiss = { coverFor = null },
+        )
+    }
+}
+
+@Composable
+private fun SettingsMenu(artLinked: Boolean, artCount: Int, alwaysBottom: Boolean, actions: LibraryActions) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Always open on bottom screen") },
+                trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                onClick = { actions.onToggleAlwaysBottom(!alwaysBottom) },
+            )
+            actions.onSwapScreen?.let { swap ->
+                DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
+            }
+            HorizontalDivider(color = BookColors.Hairline)
+            if (!artLinked) {
+                DropdownMenuItem(
+                    text = { Text("Link Cocoon artwork folder…") },
+                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null) },
+                    onClick = { open = false; actions.onLinkArtFolder() },
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text("Artwork: $artCount images", color = BookColors.TextMuted) },
+                    leadingIcon = { Icon(AppIcons.Image, contentDescription = null, tint = BookColors.TextMuted) },
+                    onClick = {},
+                    enabled = false,
+                )
+                DropdownMenuItem(text = { Text("Rescan artwork") }, onClick = { open = false; actions.onRescanArt() })
+                DropdownMenuItem(text = { Text("Change artwork folder…") }, onClick = { open = false; actions.onLinkArtFolder() })
+                DropdownMenuItem(text = { Text("Unlink artwork folder") }, onClick = { open = false; actions.onUnlinkArt() })
             }
         }
     }
 }
 
 @Composable
-private fun BookCover(book: Book, onOpen: () -> Unit, onDelete: () -> Unit, onRename: (String) -> Unit) {
+private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("❦", fontSize = 28.sp, color = BookColors.Brass)
+        Spacer(Modifier.height(6.dp))
+        Text("An empty shelf", fontFamily = SerifDisplay, fontSize = 22.sp, color = BookColors.Text)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Add a PDF or TXT walkthrough and it becomes a book you can flip through and search.",
+            textAlign = TextAlign.Center,
+            color = BookColors.TextMuted,
+            modifier = Modifier.width(360.dp),
+        )
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = onImport,
+                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+            ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
+            if (!artLinked) {
+                OutlinedButton(onClick = onLinkArt) { Text("Link Cocoon artwork", color = BookColors.Text) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    val color = coverColors[(book.title.hashCode() and Int.MAX_VALUE) % coverColors.size]
+    val cover = remember(book.cover) { actions.coverFile(book) }
 
-    Box(
-        Modifier
-            .aspectRatio(0.72f)
-            .clip(RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp, topStart = 3.dp, bottomStart = 3.dp))
-            .background(Brush.horizontalGradient(listOf(color.copy(alpha = 0.75f), color, color.copy(alpha = 0.9f))))
-            .clickable(onClick = onOpen)
-    ) {
-        // spine
-        Box(Modifier.fillMaxHeight().width(10.dp).background(Color.Black.copy(alpha = 0.25f)))
-        Column(Modifier.fillMaxSize().padding(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 10.dp)) {
+    Column {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.7f)
+                .shadow(10.dp, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .combinedClickable(onClick = { actions.onOpen(book) }, onLongClick = { menu = true })
+        ) {
+            if (cover != null) {
+                AsyncImage(
+                    model = cover,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                GeneratedCover(book)
+            }
+            // Reading progress along the bottom edge.
+            if (book.pageCount > 0) {
+                val frac = ((book.lastPage + 1).toFloat() / book.pageCount).coerceIn(0f, 1f)
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color.Black.copy(alpha = 0.45f)))
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(frac).height(3.dp).background(BookColors.Brass))
+            }
             Text(
-                book.title,
-                color = Color(0xFFF6E7C1),
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-                maxLines = 5,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = 18.dp),
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                buildString {
-                    append(if (book.type == BookType.PDF) "PDF" else "TXT")
-                    if (book.pageCount > 0) append(" · p. ${book.lastPage + 1}/${book.pageCount}")
-                },
-                color = Color(0xFFF6E7C1).copy(alpha = 0.75f),
-                fontSize = 11.sp,
+                if (book.type == BookType.PDF) "PDF" else "TXT",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = BookColors.Text,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(6.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
             )
         }
-        Box(Modifier.align(Alignment.TopEnd)) {
-            IconButton(onClick = { menu = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = Color(0xFFF6E7C1))
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    book.title,
+                    color = BookColors.Text,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp,
+                )
+                if (book.pageCount > 0) {
+                    Text(
+                        "p. ${book.lastPage + 1} of ${book.pageCount}",
+                        color = BookColors.TextMuted,
+                        fontSize = 11.sp,
+                        fontFamily = SerifDisplay,
+                        fontStyle = FontStyle.Italic,
+                    )
+                }
             }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
-                DropdownMenuItem(text = { Text("Remove from shelf") }, onClick = { menu = false; confirmDelete = true })
+            Box {
+                IconButton(onClick = { menu = true }, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = BookColors.TextMuted, modifier = Modifier.size(18.dp))
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text("Choose cover…") }, onClick = { menu = false; onChooseCover() })
+                    DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
+                    DropdownMenuItem(text = { Text("Remove from shelf") }, onClick = { menu = false; confirmDelete = true })
+                }
             }
         }
     }
@@ -181,7 +330,7 @@ private fun BookCover(book: Book, onOpen: () -> Unit, onDelete: () -> Unit, onRe
             onDismissRequest = { renaming = false },
             title = { Text("Rename guide") },
             text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true) },
-            confirmButton = { TextButton(onClick = { renaming = false; onRename(text) }) { Text("Save") } },
+            confirmButton = { TextButton(onClick = { renaming = false; actions.onRename(book, text) }) { Text("Save") } },
             dismissButton = { TextButton(onClick = { renaming = false }) { Text("Cancel") } },
         )
     }
@@ -190,9 +339,169 @@ private fun BookCover(book: Book, onOpen: () -> Unit, onDelete: () -> Unit, onRe
             onDismissRequest = { confirmDelete = false },
             title = { Text("Remove “${book.title}”?") },
             text = { Text("WalkThor's copy of this guide will be deleted. Your original file isn't touched.") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Remove") } },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; actions.onDelete(book) }) { Text("Remove") } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
+    }
+}
+
+/** A cloth-bound cover with a brass double rule, for guides without artwork. */
+@Composable
+private fun GeneratedCover(book: Book) {
+    val ink = coverInks[(book.title.hashCode() and Int.MAX_VALUE) % coverInks.size]
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.linearGradient(listOf(ink.copy(alpha = 0.85f), ink, Color.Black.copy(alpha = 0.6f).compositeOn(ink))))
+            .padding(8.dp)
+            .border(1.dp, BookColors.Brass.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+            .padding(3.dp)
+            .border(0.5.dp, BookColors.Brass.copy(alpha = 0.35f), RoundedCornerShape(2.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            book.title,
+            color = BookColors.BrassSoft,
+            fontFamily = SerifDisplay,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            lineHeight = 17.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 5,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+    }
+}
+
+private fun Color.compositeOn(bg: Color): Color {
+    val a = alpha
+    return Color(red * a + bg.red * (1 - a), green * a + bg.green * (1 - a), blue * a + bg.blue * (1 - a))
+}
+
+@Composable
+private fun CoverPicker(book: Book, artLinked: Boolean, actions: LibraryActions, onDismiss: () -> Unit) {
+    var query by remember(book.id) { mutableStateOf(book.title) }
+    val matches by produceState<List<ArtMatch>?>(null, query, artLinked) {
+        value = null
+        delay(200) // let typing settle
+        value = if (artLinked) actions.suggestions(query) else emptyList()
+    }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.92f)
+                .background(BookColors.Surface, RoundedCornerShape(16.dp))
+                .border(1.dp, BookColors.Hairline, RoundedCornerShape(16.dp))
+                .padding(16.dp)
+        ) {
+            Text("COVER", style = EyebrowStyle)
+            Text(
+                book.title,
+                fontFamily = SerifDisplay,
+                fontSize = 18.sp,
+                color = BookColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(10.dp))
+            if (artLinked) {
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = BookColors.Text, fontSize = 14.sp),
+                    cursorBrush = SolidColor(BookColors.Brass),
+                    decorationBox = { inner ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                                .background(BookColors.Ink, RoundedCornerShape(18.dp))
+                                .border(1.dp, BookColors.Hairline, RoundedCornerShape(18.dp))
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.Search, contentDescription = null, tint = BookColors.TextMuted, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Box(Modifier.weight(1f)) { inner() }
+                        }
+                    },
+                )
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    val list = matches
+                    when {
+                        list == null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = BookColors.Brass, strokeWidth = 2.dp)
+                        list.isEmpty() -> Text(
+                            "No artwork matches “$query”. Try the game's name, or pick an image file.",
+                            color = BookColors.TextMuted,
+                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                        else -> LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 96.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(list, key = { it.image.uri }) { m ->
+                                Column(
+                                    Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { actions.onSetCover(book, Uri.parse(m.image.uri)); onDismiss() }
+                                ) {
+                                    AsyncImage(
+                                        model = Uri.parse(m.image.uri),
+                                        contentDescription = m.image.name,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(0.8f)
+                                            .background(BookColors.Ink, RoundedCornerShape(6.dp)),
+                                    )
+                                    Text(
+                                        m.image.folder.substringAfterLast('/').ifEmpty { m.image.name },
+                                        fontSize = 10.sp,
+                                        color = BookColors.TextMuted,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 3.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "Link your Cocoon artwork folder to pick from the box art you've already scraped.",
+                        color = BookColors.TextMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(360.dp),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { onDismiss(); actions.onLinkArtFolder() }) {
+                        Text("Link Cocoon artwork folder", color = BookColors.Text)
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { onDismiss(); actions.onPickCoverFile(book) }) { Text("Pick image file…") }
+                if (book.cover != null) {
+                    TextButton(onClick = { actions.onClearCover(book); onDismiss() }) { Text("Remove cover") }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
+            }
+        }
     }
 }
 
@@ -201,12 +510,13 @@ fun ImportDialogs(state: ImportState?, onCancel: () -> Unit, onDismissError: () 
     when (state) {
         is ImportState.Working -> AlertDialog(
             onDismissRequest = {},
-            title = { Text("Adding guide") },
+            containerColor = BookColors.Surface,
+            title = { Text("Adding guide", fontFamily = SerifDisplay) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(color = BookColors.Gold)
+                    CircularProgressIndicator(color = BookColors.Brass, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
                     Spacer(Modifier.width(16.dp))
-                    Text(state.message)
+                    Text(state.message, color = BookColors.TextMuted)
                 }
             },
             confirmButton = {},
@@ -214,8 +524,9 @@ fun ImportDialogs(state: ImportState?, onCancel: () -> Unit, onDismissError: () 
         )
         is ImportState.Failed -> AlertDialog(
             onDismissRequest = onDismissError,
-            title = { Text("Couldn't add guide") },
-            text = { Text(state.message) },
+            containerColor = BookColors.Surface,
+            title = { Text("Couldn't add guide", fontFamily = SerifDisplay) },
+            text = { Text(state.message, color = BookColors.TextMuted) },
             confirmButton = { TextButton(onClick = onDismissError) { Text("OK") } },
         )
         null -> Unit

@@ -39,7 +39,10 @@ class BookRepository private constructor(private val context: Context) {
     private val _books = MutableStateFlow(loadCatalogue())
     val books: StateFlow<List<Book>> = _books.asStateFlow()
 
+    val coversDir = File(context.filesDir, "covers").apply { mkdirs() }
+
     fun bookFile(book: Book) = File(dir, book.fileName)
+    fun coverFile(book: Book): File? = book.cover?.let { File(coversDir, it) }?.takeIf { it.exists() }
     fun indexFile(book: Book) = File(dir, "${book.id}.idx")
 
     fun find(id: String): Book? = _books.value.firstOrNull { it.id == id }
@@ -52,6 +55,7 @@ class BookRepository private constructor(private val context: Context) {
     fun delete(book: Book) = synchronized(lock) {
         bookFile(book).delete()
         indexFile(book).delete()
+        coverFile(book)?.delete()
         _books.value = _books.value.filterNot { it.id == book.id }
         saveCatalogue(_books.value)
     }

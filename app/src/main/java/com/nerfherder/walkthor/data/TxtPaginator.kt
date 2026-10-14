@@ -48,7 +48,7 @@ object TxtPaginator {
     /** Characters per chunk handed to StaticLayout; chunks always end at a newline. */
     private const val CHUNK = 40_000
 
-    fun paint(textSizePx: Float, color: Int = 0xFF2B2118.toInt()) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+    fun paint(textSizePx: Float, color: Int = 0xFF2A241D.toInt()) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.MONOSPACE
         textSize = textSizePx
         this.color = color

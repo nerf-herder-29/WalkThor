@@ -4,6 +4,8 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.nerfherder.walkthor.data.ArtMatch
+import com.nerfherder.walkthor.data.ArtworkRepository
 import com.nerfherder.walkthor.data.Book
 import com.nerfherder.walkthor.data.BookRepository
 import com.nerfherder.walkthor.data.ImportException
@@ -16,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 sealed interface ImportState {
     data class Working(val message: String) : ImportState
@@ -24,7 +28,13 @@ sealed interface ImportState {
 
 class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = BookRepository.get(app)
+    private val art = ArtworkRepository.get(app)
+
     val books: StateFlow<List<Book>> = repo.books
+
+    val artFolder: StateFlow<Uri?> = art.folder
+    val artImages = art.images
+    val artScanning: StateFlow<String?> = art.scanning
 
     private val _import = MutableStateFlow<ImportState?>(null)
     val importState: StateFlow<ImportState?> = _import.asStateFlow()
@@ -33,7 +43,13 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val _opened = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val opened: SharedFlow<String> = _opened.asSharedFlow()
 
+    private val _message = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** Short notices for a snackbar/toast. */
+    val messages: SharedFlow<String> = _message.asSharedFlow()
+
     private var importJob: Job? = null
+
+    fun coverFile(book: Book): File? = repo.coverFile(book)
 
     fun importGuide(uri: Uri) {
         if (importJob?.isActive == true) return
@@ -41,6 +57,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             _import.value = ImportState.Working("Opening…")
             try {
                 val book = repo.importGuide(uri) { msg -> _import.value = ImportState.Working(msg) }
+                autoCover(book)
                 _import.value = null
                 _opened.tryEmit(book.id)
             } catch (e: ImportException) {
@@ -67,6 +84,76 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun rename(book: Book, title: String) {
         if (title.isBlank()) return
-        viewModelScope.launch(Dispatchers.IO) { repo.update(book.copy(title = title.trim())) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val fresh = repo.find(book.id) ?: return@launch
+            repo.update(fresh.copy(title = title.trim()))
+        }
+    }
+
+    // ---- artwork -------------------------------------------------------------------------
+
+    fun linkArtFolder(tree: Uri) {
+        viewModelScope.launch {
+            art.linkFolder(tree)
+            val n = autoCoverAll()
+            val total = art.images.value.size
+            _message.tryEmit(
+                if (total == 0) "No images found in that folder"
+                else "Found $total images · matched $n cover${if (n == 1) "" else "s"}"
+            )
+        }
+    }
+
+    fun rescanArt() {
+        viewModelScope.launch {
+            art.rescan()
+            val n = autoCoverAll()
+            _message.tryEmit("Artwork refreshed · matched $n new cover${if (n == 1) "" else "s"}")
+        }
+    }
+
+    fun unlinkArt() = art.unlinkFolder()
+
+    suspend fun suggestions(query: String): List<ArtMatch> = art.suggestions(query)
+
+    fun setCover(book: Book, source: Uri) {
+        viewModelScope.launch {
+            val name = art.saveCover(source, repo.coversDir, book.id)
+            if (name == null) {
+                _message.tryEmit("Couldn't read that image")
+                return@launch
+            }
+            replaceCover(book.id, name, manual = true)
+        }
+    }
+
+    fun clearCover(book: Book) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val fresh = repo.find(book.id) ?: return@launch
+            repo.coverFile(fresh)?.delete()
+            // Manual, so automatic matching doesn't put one straight back.
+            repo.update(fresh.copy(cover = null, coverManual = true))
+        }
+    }
+
+    private suspend fun replaceCover(bookId: String, name: String, manual: Boolean) = withContext(Dispatchers.IO) {
+        val fresh = repo.find(bookId) ?: return@withContext
+        repo.coverFile(fresh)?.delete()
+        repo.update(fresh.copy(cover = name, coverManual = manual))
+    }
+
+    /** Gives a cover to a guide that has none, if the artwork folder has a convincing match. */
+    private suspend fun autoCover(book: Book): Boolean {
+        if (book.cover != null || book.coverManual) return false
+        val match = art.autoMatch(book.title) ?: return false
+        val name = art.saveCover(Uri.parse(match.uri), repo.coversDir, book.id) ?: return false
+        replaceCover(book.id, name, manual = false)
+        return true
+    }
+
+    private suspend fun autoCoverAll(): Int {
+        var n = 0
+        for (b in repo.books.value) if (autoCover(b)) n++
+        return n
     }
 }

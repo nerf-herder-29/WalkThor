@@ -13,8 +13,8 @@ android {
         // AYN Thor ships with Android 13 (API 33); 26 keeps it usable on other handhelds too.
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     buildTypes {
@@ -58,4 +58,7 @@ dependencies {
 
     // PDF text extraction (for search + match highlighting). Rendering uses the platform PdfRenderer.
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // Cover artwork thumbnails (content:// URIs from the Cocoon folder, and local files).
+    implementation("io.coil-kt:coil-compose:2.7.0")
 }

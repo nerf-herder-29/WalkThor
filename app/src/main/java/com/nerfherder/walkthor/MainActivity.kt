@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,8 +16,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nerfherder.walkthor.ui.ImportDialogs
+import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
@@ -27,14 +30,27 @@ class MainActivity : ComponentActivity() {
     /** A document handed to us by "Open with" / "Share", waiting to be imported. */
     private val incoming = MutableStateFlow<Uri?>(null)
     private val hasOtherScreen = MutableStateFlow(false)
+    /** Results from the system pickers, consumed by the UI. */
+    private val pickedArtFolder = MutableStateFlow<Uri?>(null)
+    private val pickedCover = MutableStateFlow<Pair<String, Uri>?>(null)
+    private var coverForBookId: String? = null
 
-    private val picker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    private val guidePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) incoming.value = uri
+    }
+    private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) pickedArtFolder.value = uri
+    }
+    private val imagePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val id = coverForBookId
+        if (uri != null && id != null) pickedCover.value = id to uri
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (DisplayHelper.maybeRelaunchOnPreferredScreen(this, savedInstanceState)) return
+        DisplayHelper.init(this)
+        if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
+        coverForBookId = savedInstanceState?.getString("coverFor")
 
         if (savedInstanceState == null) handleIntent(intent)
         val initialBook = intent.getStringExtra(DisplayHelper.EXTRA_BOOK)
@@ -43,17 +59,15 @@ class MainActivity : ComponentActivity() {
             WalkThorTheme {
                 WalkThorApp(
                     initialBookId = initialBook,
-                    incoming = incoming,
-                    hasOtherScreen = hasOtherScreen,
-                    onPickFile = {
-                        // Some file managers label .txt guides as octet-stream, so allow that too;
-                        // the repository checks the actual content.
-                        picker.launch(arrayOf("application/pdf", "text/plain", "text/*", "application/octet-stream"))
-                    },
-                    onSwapScreen = { bookId -> DisplayHelper.moveToOtherScreen(this, bookId) },
+                    host = this,
                 )
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("coverFor", coverForBookId)
     }
 
     override fun onResume() {
@@ -77,6 +91,27 @@ class MainActivity : ComponentActivity() {
         if (uri != null) incoming.value = uri
     }
 
+    // ---- used by the UI ----------------------------------------------------------------------
+
+    internal val incomingFlow get() = incoming
+    internal val hasOtherScreenFlow get() = hasOtherScreen
+    internal val pickedArtFolderFlow get() = pickedArtFolder
+    internal val pickedCoverFlow get() = pickedCover
+
+    internal fun pickGuide() {
+        // Some file managers label .txt guides as octet-stream; the repository checks the content.
+        guidePicker.launch(arrayOf("application/pdf", "text/plain", "text/*", "application/octet-stream"))
+    }
+
+    internal fun pickArtFolder() = folderPicker.launch(null)
+
+    internal fun pickCoverImage(bookId: String) {
+        coverForBookId = bookId
+        imagePicker.launch(arrayOf("image/*"))
+    }
+
+    internal fun swapScreen(bookId: String?) = DisplayHelper.moveToOtherScreen(this, bookId)
+
     // Shoulder buttons (L1/R1), page keys and the D-pad turn pages while a guide is open.
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (KeyBus.readerActive) {
@@ -97,28 +132,42 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun WalkThorApp(
-    initialBookId: String?,
-    incoming: MutableStateFlow<Uri?>,
-    hasOtherScreen: MutableStateFlow<Boolean>,
-    onPickFile: () -> Unit,
-    onSwapScreen: (String?) -> Unit,
-) {
+private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     val library: LibraryViewModel = viewModel()
+    val context = LocalContext.current
     val books by library.books.collectAsState()
     val importState by library.importState.collectAsState()
-    val pending by incoming.collectAsState()
-    val canSwap by hasOtherScreen.collectAsState()
+    val artFolder by library.artFolder.collectAsState()
+    val artImages by library.artImages.collectAsState()
+    val artScanning by library.artScanning.collectAsState()
+    val alwaysBottom by DisplayHelper.alwaysBottom.collectAsState()
+    val pending by host.incomingFlow.collectAsState()
+    val pickedFolder by host.pickedArtFolderFlow.collectAsState()
+    val pickedCover by host.pickedCoverFlow.collectAsState()
+    val canSwap by host.hasOtherScreenFlow.collectAsState()
     var openId by rememberSaveable { mutableStateOf(initialBookId) }
 
     LaunchedEffect(pending) {
         pending?.let {
-            incoming.value = null
+            host.incomingFlow.value = null
             library.importGuide(it)
         }
     }
+    LaunchedEffect(pickedFolder) {
+        pickedFolder?.let {
+            host.pickedArtFolderFlow.value = null
+            library.linkArtFolder(it)
+        }
+    }
+    LaunchedEffect(pickedCover) {
+        pickedCover?.let { (bookId, uri) ->
+            host.pickedCoverFlow.value = null
+            books.firstOrNull { it.id == bookId }?.let { library.setCover(it, uri) }
+        }
+    }
+    LaunchedEffect(Unit) { library.opened.collect { openId = it } }
     LaunchedEffect(Unit) {
-        library.opened.collect { openId = it }
+        library.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
 
     val current = openId
@@ -126,16 +175,31 @@ private fun WalkThorApp(
         ReaderScreen(
             bookId = current,
             onBack = { openId = null },
-            onSwapScreen = if (canSwap) ({ onSwapScreen(current) }) else null,
+            onSwapScreen = if (canSwap) ({ host.swapScreen(current) }) else null,
         )
     } else {
         LibraryScreen(
             books = books,
-            onOpen = { openId = it.id },
-            onImport = onPickFile,
-            onDelete = library::delete,
-            onRename = library::rename,
-            onSwapScreen = if (canSwap) ({ onSwapScreen(null) }) else null,
+            artLinked = artFolder != null,
+            artCount = artImages.size,
+            artScanning = artScanning,
+            alwaysBottom = alwaysBottom,
+            actions = LibraryActions(
+                onOpen = { openId = it.id },
+                onImport = host::pickGuide,
+                onDelete = library::delete,
+                onRename = library::rename,
+                coverFile = library::coverFile,
+                onPickCoverFile = { host.pickCoverImage(it.id) },
+                onSetCover = library::setCover,
+                onClearCover = library::clearCover,
+                suggestions = { library.suggestions(it) },
+                onLinkArtFolder = host::pickArtFolder,
+                onRescanArt = library::rescanArt,
+                onUnlinkArt = library::unlinkArt,
+                onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
+                onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
+            ),
         )
     }
 

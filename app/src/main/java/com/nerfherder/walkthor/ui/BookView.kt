@@ -5,7 +5,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.magnifier
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -32,6 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -81,6 +87,7 @@ private enum class Spine { Left, Right }
  * Drag horizontally to turn (the page follows your finger), tap the outer edges to turn, tap
  * the middle of a page to call [onPageTapped].
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BookView(
     state: BookState,
@@ -121,11 +128,15 @@ fun BookView(
         for (target in state.requests) turn(target)
     }
 
+    var loupeAt by remember { mutableStateOf<Offset?>(null) }
+
     BoxWithConstraints(
         modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Brush.verticalGradient(listOf(BookColors.LeatherLight, BookColors.Leather)))
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .shadow(14.dp, RoundedCornerShape(6.dp), ambientColor = Color.Black, spotColor = Color.Black)
+            .clip(RoundedCornerShape(6.dp))
+            // A sliver of page edges around the paper, like the side of a closed stack.
+            .background(BookColors.PaperEdge)
+            .padding(horizontal = 3.dp, vertical = 2.dp)
             .clipToBounds()
     ) {
         val density = LocalDensity.current
@@ -174,7 +185,7 @@ fun BookView(
                     onDragEnd = { settle() },
                     onDragCancel = { settle() },
                     onHorizontalDrag = { change, dx ->
-                        if (state.animating) return@detectHorizontalDragGestures
+                        if (state.animating || loupeAt != null) return@detectHorizontalDragGestures
                         change.consume()
                         tracker.addPosition(change.uptimeMillis, change.position)
                         total += dx
@@ -191,9 +202,25 @@ fun BookView(
                     },
                 )
             }
+            .pointerInput(Unit) {
+                // Press and hold, then slide: a magnifying glass follows your finger.
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { loupeAt = it },
+                    onDrag = { change, _ -> change.consume(); loupeAt = change.position },
+                    onDragEnd = { loupeAt = null },
+                    onDragCancel = { loupeAt = null },
+                )
+            }
+            .magnifier(
+                sourceCenter = { loupeAt ?: Offset.Unspecified },
+                magnifierCenter = { loupeAt?.let { it - Offset(0f, 110.dp.toPx()) } ?: Offset.Unspecified },
+                zoom = 2.4f,
+                size = DpSize(300.dp, 150.dp),
+                cornerRadius = 18.dp,
+            )
             .pointerInput(spread, pageCount, lastStart) {
                 detectTapGestures { pos ->
-                    if (state.isTurning) return@detectTapGestures
+                    if (state.isTurning || loupeAt != null) return@detectTapGestures
                     val frac = pos.x / size.width
                     when {
                         frac < 0.16f -> scope.launch { turn(state.current - step) }
@@ -318,11 +345,11 @@ private fun PageSurface(spine: Spine, content: @Composable BoxScope.() -> Unit) 
             Modifier
                 .align(if (spine == Spine.Left) Alignment.CenterStart else Alignment.CenterEnd)
                 .fillMaxHeight()
-                .width(20.dp)
+                .width(16.dp)
                 .background(
                     Brush.horizontalGradient(
-                        if (spine == Spine.Left) listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent)
-                        else listOf(Color.Transparent, Color.Black.copy(alpha = 0.22f))
+                        if (spine == Spine.Left) listOf(Color.Black.copy(alpha = 0.16f), Color.Transparent)
+                        else listOf(Color.Transparent, Color.Black.copy(alpha = 0.16f))
                     )
                 )
         )
@@ -333,9 +360,9 @@ private fun PageSurface(spine: Spine, content: @Composable BoxScope.() -> Unit) 
 private fun BoxScope.BlankPage(isEnd: Boolean) {
     if (isEnd) {
         Text(
-            "~ fin ~",
+            "❦  fin  ❦",
             modifier = Modifier.align(Alignment.Center),
-            color = BookColors.InkFaint,
+            color = BookColors.PageInkFaint,
             fontFamily = FontFamily.Serif,
             fontStyle = FontStyle.Italic,
             fontSize = 16.sp,

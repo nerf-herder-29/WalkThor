@@ -3,13 +3,10 @@ package com.nerfherder.walkthor.ui
 import android.app.Application
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -52,26 +50,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelStore
@@ -87,7 +85,7 @@ import kotlin.math.roundToInt
 private val TXT_PAD_H = 14.dp
 private val TXT_PAD_V = 10.dp
 private val PDF_PAD = 4.dp
-private val FOOTER = 14.dp
+private val FOOTER = 16.dp
 
 @Composable
 fun ReaderScreen(
@@ -128,40 +126,92 @@ fun ReaderScreen(
     val step = if (spread) 2 else 1
     val isTxt = book?.type == BookType.TXT
     var showResults by remember { mutableStateOf(false) }
-    var zoomPage by remember { mutableStateOf<Int?>(null) }
+    /** Page shown in the reading lens, or null when the lens is closed. */
+    var lensPage by rememberSaveable { mutableStateOf<Int?>(null) }
+    var lensZoom by rememberSaveable { mutableFloatStateOf(1.5f) }
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
+
+    // Read through State so callbacks captured by long-lived effects always see the latest value.
+    val pageCountNow by rememberUpdatedState(pageCount)
+
+    fun openLens(page: Int) {
+        lensPage = page.coerceIn(0, (pageCountNow - 1).coerceAtLeast(0))
+    }
+
+    fun lensTo(page: Int) {
+        if (pageCountNow == 0) return
+        val p = page.coerceIn(0, pageCountNow - 1)
+        lensPage = p
+        vm.onPageChanged(vm.align(p))
+    }
 
     fun goTo(page: Int) {
         showResults = false
         focusManager.clearFocus()
-        bookState.turnTo(vm.align(page))
+        if (lensPage != null) lensTo(page) else bookState.turnTo(vm.align(page))
     }
 
-    // Controller shoulder buttons / D-pad turn pages.
+    // Controller shoulder buttons / D-pad turn pages (or move the lens).
     DisposableEffect(Unit) {
         KeyBus.readerActive = true
         onDispose { KeyBus.readerActive = false; KeyBus.textFieldFocused = false }
     }
+    val lensPageNow by rememberUpdatedState(lensPage)
     LaunchedEffect(step) {
         KeyBus.commands.collect { cmd ->
-            if (zoomPage != null) return@collect
-            bookState.turnTo(bookState.current + if (cmd == KeyBus.Command.NEXT) step else -step)
+            val forward = cmd == KeyBus.Command.NEXT
+            val lp = lensPageNow
+            if (lp != null) lensTo(lp + if (forward) 1 else -1)
+            else bookState.turnTo(bookState.current + if (forward) step else -step)
         }
     }
 
-    BackHandler(enabled = zoomPage == null) {
-        if (showResults) showResults = false else onBack()
+    BackHandler {
+        when {
+            showResults -> showResults = false
+            lensPage != null -> lensPage = null
+            else -> onBack()
+        }
     }
 
-    Column(Modifier.fillMaxSize().background(BookColors.Leather)) {
-        // ---- top bar: back, search, match navigation, menu --------------------------------
+    // One page's content, used by both the book and the lens.
+    @Composable
+    fun PageBody(index: Int, renderScale: Float) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = if (isTxt) TXT_PAD_H else PDF_PAD,
+                    vertical = if (isTxt) TXT_PAD_V else PDF_PAD,
+                )
+        ) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                val p = pagination
+                val src = pdf
+                if (isTxt && p != null && index < p.pageCount) TxtPage(p, index, applied)
+                else if (!isTxt && src != null) PdfPage(src, index, applied, renderScale = renderScale)
+            }
+            Text(
+                "— ${index + 1} —",
+                modifier = Modifier.fillMaxWidth().height(FOOTER),
+                textAlign = TextAlign.Center,
+                fontSize = 10.sp,
+                fontFamily = SerifDisplay,
+                fontStyle = FontStyle.Italic,
+                color = BookColors.PageInkFaint,
+            )
+        }
+    }
+
+    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+        // ---- top bar ----------------------------------------------------------------------
         Row(
-            Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
+            Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = BookColors.TextMuted)
             }
             SearchField(
                 value = query,
@@ -174,12 +224,13 @@ fun ReaderScreen(
                 modifier = Modifier.weight(1f),
             )
             if (applied.isNotEmpty()) {
-                val pos = vm.hitPosition(hits, bookState.current, layout)
+                val shownFrom = lensPage ?: bookState.current
+                val pos = vm.hitPosition(hits, shownFrom, if (lensPage != null) PageLayout.SINGLE else layout)
                 Text(
-                    if (hits.isEmpty()) "0" else "${if (pos == 0) "–" else pos}/${hits.size}",
+                    if (hits.isEmpty()) "0" else "${if (pos == 0) "–" else pos} / ${hits.size}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 6.dp),
+                    color = BookColors.TextMuted,
+                    modifier = Modifier.padding(start = 8.dp, end = 2.dp),
                 )
                 IconButton(onClick = { vm.prevHitPage()?.let(::goTo) }, enabled = hits.isNotEmpty()) {
                     Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Previous match")
@@ -188,54 +239,81 @@ fun ReaderScreen(
                     Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Next match")
                 }
             }
+            // The reading lens — the big readability control, so it gets its own button.
+            val lensOn = lensPage != null
+            IconButton(
+                onClick = { if (lensOn) lensPage = null else openLens(bookState.current) },
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (lensOn) BookColors.Brass else androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = if (lensOn) MaterialTheme.colorScheme.onPrimary else BookColors.Text,
+                ),
+            ) {
+                Icon(AppIcons.ZoomIn, contentDescription = if (lensOn) "Close reading lens" else "Reading lens")
+            }
+            if (!lensOn) {
+                IconButton(onClick = vm::toggleLayout) {
+                    Icon(
+                        if (spread) AppIcons.Page else AppIcons.Spread,
+                        contentDescription = if (spread) "Single page" else "Two-page spread",
+                        tint = BookColors.TextMuted,
+                    )
+                }
+            }
             ReaderMenu(
-                spread = spread,
                 isTxt = isTxt,
-                onToggleLayout = vm::toggleLayout,
                 onSmaller = { vm.changeFontSize(bigger = false) },
                 onBigger = { vm.changeFontSize(bigger = true) },
                 onSwapScreen = onSwapScreen,
             )
         }
 
-        // ---- the book ---------------------------------------------------------------------
-        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 6.dp)) {
-            BookView(
-                state = bookState,
-                pageCount = pageCount,
-                spread = spread,
-                onPageChanged = vm::onPageChanged,
-                onPageTapped = { zoomPage = it },
-                onPageSize = { size ->
-                    with(density) {
-                        val w = size.width - (TXT_PAD_H * 2).roundToPx()
-                        val h = size.height - (TXT_PAD_V * 2).roundToPx() - FOOTER.roundToPx()
-                        vm.onPageGeometry(w, h)
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-            ) { index ->
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(
-                            horizontal = if (isTxt) TXT_PAD_H else PDF_PAD,
-                            vertical = if (isTxt) TXT_PAD_V else PDF_PAD,
-                        )
-                ) {
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
+        // ---- the book, or the lens ------------------------------------------------------------
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            Box(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                BookView(
+                    state = bookState,
+                    pageCount = pageCount,
+                    spread = spread,
+                    onPageChanged = vm::onPageChanged,
+                    onPageTapped = { openLens(it) },
+                    onPageSize = { size ->
+                        with(density) {
+                            val w = size.width - (TXT_PAD_H * 2).roundToPx()
+                            val h = size.height - (TXT_PAD_V * 2).roundToPx() - FOOTER.roundToPx()
+                            vm.onPageGeometry(w, h)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) { index -> PageBody(index, 1f) }
+            }
+
+            val lp = lensPage
+            if (lp != null && pageCount > 0) {
+                LensView(
+                    page = lp.coerceIn(0, pageCount - 1),
+                    pageCount = pageCount,
+                    zoom = lensZoom,
+                    onZoomChange = { lensZoom = it },
+                    onPageChange = { lensTo(it) },
+                    onClose = { lensPage = null },
+                    naturalSize = { index, viewportW ->
                         val p = pagination
                         val src = pdf
-                        if (isTxt && p != null && index < p.pageCount) TxtPage(p, index, applied)
-                        else if (!isTxt && src != null) PdfPage(src, index, applied)
-                    }
-                    Text(
-                        "${index + 1}",
-                        modifier = Modifier.fillMaxWidth().height(FOOTER),
-                        textAlign = TextAlign.Center,
-                        fontSize = 10.sp,
-                        color = BookColors.InkFaint,
-                    )
+                        with(density) {
+                            if (isTxt && p != null) {
+                                IntSize(
+                                    p.widthPx + (TXT_PAD_H * 2).roundToPx(),
+                                    p.heightPx + (TXT_PAD_V * 2).roundToPx() + FOOTER.roundToPx(),
+                                )
+                            } else if (src != null && index in src.pageSizes.indices) {
+                                val (pw, ph) = src.pageSizes[index]
+                                IntSize(viewportW, (viewportW * ph.toFloat() / pw).roundToInt() + FOOTER.roundToPx())
+                            } else IntSize(viewportW, viewportW)
+                        }
+                    },
+                ) { index, scale ->
+                    // Render PDFs with more detail as you zoom in.
+                    PageBody(index, renderScale = if (scale <= 1.2f) 1.2f else if (scale <= 2.2f) 2.2f else 3.2f)
                 }
             }
 
@@ -251,9 +329,9 @@ fun ReaderScreen(
                     Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    CircularProgressIndicator(color = BookColors.Gold)
-                    Spacer(Modifier.height(8.dp))
-                    Text(if (isTxt) "Laying out pages…" else "Opening…", color = BookColors.InkFaint)
+                    CircularProgressIndicator(color = BookColors.Brass, strokeWidth = 2.dp)
+                    Spacer(Modifier.height(10.dp))
+                    Text(if (isTxt) "Setting the pages…" else "Opening…", color = BookColors.PageInkFaint)
                 }
             }
 
@@ -267,25 +345,13 @@ fun ReaderScreen(
         }
 
         // ---- page position ----------------------------------------------------------------
-        PageScrubber(
-            current = bookState.current,
-            pageCount = pageCount,
-            spread = spread,
-            onScrubbed = { goTo(it) },
-        )
-    }
-
-    zoomPage?.let { index ->
-        ZoomOverlay(onClose = { zoomPage = null }) {
-            Box(Modifier.fillMaxSize().background(BookColors.Paper).padding(8.dp)) {
-                val p = pagination
-                val src = pdf
-                if (isTxt && p != null && index < p.pageCount) {
-                    TxtPage(p, index, applied, Modifier.align(Alignment.Center))
-                } else if (!isTxt && src != null) {
-                    PdfPage(src, index, applied, renderScale = 2.5f)
-                }
-            }
+        if (lensPage == null) {
+            PageScrubber(
+                current = bookState.current,
+                pageCount = pageCount,
+                spread = spread,
+                onScrubbed = { goTo(it) },
+            )
         }
     }
 }
@@ -299,27 +365,29 @@ private fun SearchField(
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
-        cursorBrush = SolidColor(BookColors.Gold),
+        textStyle = TextStyle(color = BookColors.Text, fontSize = 15.sp),
+        cursorBrush = SolidColor(BookColors.Brass),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch(); focusManager.clearFocus() }),
-        modifier = modifier.onFocusChanged { onFocusChanged(it.isFocused) },
+        modifier = modifier.onFocusChanged { focused = it.isFocused; onFocusChanged(it.isFocused) },
         decorationBox = { inner ->
             Row(
                 Modifier
-                    .height(36.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(18.dp))
-                    .padding(start = 10.dp, end = 2.dp),
+                    .height(38.dp)
+                    .background(BookColors.Surface, RoundedCornerShape(19.dp))
+                    .border(1.dp, if (focused) BookColors.Brass.copy(alpha = 0.7f) else BookColors.Hairline, RoundedCornerShape(19.dp))
+                    .padding(start = 12.dp, end = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     Icons.Filled.Search,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (focused) BookColors.Brass else BookColors.TextMuted,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -327,8 +395,10 @@ private fun SearchField(
                     if (value.isEmpty()) {
                         Text(
                             "Search this guide",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            color = BookColors.TextMuted.copy(alpha = 0.8f),
                             fontSize = 15.sp,
+                            fontFamily = SerifDisplay,
+                            fontStyle = FontStyle.Italic,
                         )
                     }
                     inner()
@@ -346,21 +416,30 @@ private fun SearchField(
 @Composable
 private fun SearchResults(hits: List<SearchHit>, onPick: (SearchHit) -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp).heightIn(max = 280.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 8.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .heightIn(max = 300.dp)
+            .border(1.dp, BookColors.Hairline, RoundedCornerShape(14.dp)),
+        shape = RoundedCornerShape(14.dp),
+        color = BookColors.Surface,
+        shadowElevation = 12.dp,
     ) {
         if (hits.isEmpty()) {
-            Text("No matches", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "No matches",
+                modifier = Modifier.padding(16.dp),
+                color = BookColors.TextMuted,
+                fontFamily = SerifDisplay,
+                fontStyle = FontStyle.Italic,
+            )
         } else LazyColumn {
             item {
                 val total = hits.sumOf { it.count }
                 Text(
-                    "$total match${if (total == 1) "" else "es"} on ${hits.size} page${if (hits.size == 1) "" else "s"}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    "$total MATCH${if (total == 1) "" else "ES"} · ${hits.size} PAGE${if (hits.size == 1) "" else "S"}",
+                    style = EyebrowStyle,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 )
             }
             items(hits, key = { it.page }) { hit ->
@@ -368,20 +447,21 @@ private fun SearchResults(hits: List<SearchHit>, onPick: (SearchHit) -> Unit, mo
                     Modifier
                         .fillMaxWidth()
                         .clickable { onPick(hit) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Text(
                         "p. ${hit.page + 1}",
-                        color = BookColors.Gold,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.width(64.dp),
+                        color = BookColors.Brass,
+                        fontFamily = SerifDisplay,
+                        fontSize = 14.sp,
+                        modifier = Modifier.width(60.dp),
                     )
                     Column(Modifier.weight(1f)) {
                         Text(
                             buildAnnotatedString {
                                 append(hit.snippet.substring(0, hit.matchStart))
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = BookColors.Highlight)) {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = BookColors.BrassSoft)) {
                                     append(hit.snippet.substring(hit.matchStart, hit.matchStart + hit.matchLength))
                                 }
                                 append(hit.snippet.substring(hit.matchStart + hit.matchLength))
@@ -389,17 +469,18 @@ private fun SearchResults(hits: List<SearchHit>, onPick: (SearchHit) -> Unit, mo
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyMedium,
+                            color = BookColors.Text,
                         )
                         if (hit.count > 1) {
                             Text(
                                 "${hit.count} matches on this page",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = BookColors.TextMuted,
                             )
                         }
                     }
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
     }
@@ -407,24 +488,21 @@ private fun SearchResults(hits: List<SearchHit>, onPick: (SearchHit) -> Unit, mo
 
 @Composable
 private fun ReaderMenu(
-    spread: Boolean,
     isTxt: Boolean,
-    onToggleLayout: () -> Unit,
     onSmaller: () -> Unit,
     onBigger: () -> Unit,
     onSwapScreen: (() -> Unit)?,
 ) {
+    if (!isTxt && onSwapScreen == null) return
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "Options") }
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = BookColors.TextMuted)
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(if (spread) "Single page" else "Two-page spread") },
-                onClick = { open = false; onToggleLayout() },
-            )
             if (isTxt) {
-                DropdownMenuItem(text = { Text("Text bigger") }, onClick = { onBigger() })
-                DropdownMenuItem(text = { Text("Text smaller") }, onClick = { onSmaller() })
+                DropdownMenuItem(text = { Text("Larger text") }, onClick = { onBigger() })
+                DropdownMenuItem(text = { Text("Smaller text") }, onClick = { onSmaller() })
             }
             if (onSwapScreen != null) {
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; onSwapScreen() })
@@ -440,19 +518,21 @@ private fun PageScrubber(current: Int, pageCount: Int, spread: Boolean, onScrubb
     val shown = if (dragging) value.roundToInt() else current
     val label = when {
         pageCount == 0 -> ""
-        spread && shown + 1 < pageCount -> "${shown + 1}–${shown + 2} of $pageCount"
-        else -> "${shown + 1} of $pageCount"
+        spread && shown + 1 < pageCount -> "pp. ${shown + 1}–${shown + 2} of $pageCount"
+        else -> "p. ${shown + 1} of $pageCount"
     }
     Row(
-        Modifier.fillMaxWidth().height(34.dp).padding(horizontal = 12.dp),
+        Modifier.fillMaxWidth().height(34.dp).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(110.dp),
+            fontFamily = SerifDisplay,
+            fontStyle = FontStyle.Italic,
+            fontSize = 13.sp,
+            color = BookColors.TextMuted,
+            modifier = Modifier.width(130.dp),
         )
         if (pageCount > 1) {
             Slider(
@@ -461,66 +541,12 @@ private fun PageScrubber(current: Int, pageCount: Int, spread: Boolean, onScrubb
                 onValueChangeFinished = { dragging = false; onScrubbed(value.roundToInt()) },
                 valueRange = 0f..(pageCount - 1).toFloat(),
                 colors = SliderDefaults.colors(
-                    thumbColor = BookColors.Gold,
-                    activeTrackColor = BookColors.Gold,
-                    inactiveTrackColor = BookColors.LeatherLight,
+                    thumbColor = BookColors.Brass,
+                    activeTrackColor = BookColors.Brass,
+                    inactiveTrackColor = BookColors.Hairline,
                 ),
                 modifier = Modifier.weight(1f),
             )
-        }
-    }
-}
-
-/** Full-screen view of one page with pinch-to-zoom, pan, and double-tap zoom. */
-@Composable
-private fun ZoomOverlay(onClose: () -> Unit, content: @Composable () -> Unit) {
-    BackHandler(onBack = onClose)
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.94f))
-    ) {
-        val w = constraints.maxWidth.toFloat()
-        val h = constraints.maxHeight.toFloat()
-        fun clamp(o: Offset, s: Float): Offset {
-            val mx = (s - 1f) * w / 2f
-            val my = (s - 1f) * h / 2f
-            return Offset(o.x.coerceIn(-mx, mx), o.y.coerceIn(-my, my))
-        }
-        val transform = rememberTransformableState { zoom, pan, _ ->
-            scale = (scale * zoom).coerceIn(1f, 6f)
-            offset = clamp(offset + pan, scale)
-        }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            if (scale > 1.05f) { scale = 1f; offset = Offset.Zero } else scale = 2.5f
-                        },
-                    )
-                }
-                .transformable(transform)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
-                }
-        ) {
-            content()
-        }
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-        ) {
-            Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
         }
     }
 }

@@ -23,6 +23,10 @@ data class Book(
     val lastOffset: Int = 0,
     val pageCount: Int = 0,
     val layout: PageLayout? = null,
+    /** Cover image file name inside the covers folder, if any. */
+    val cover: String? = null,
+    /** True when the user picked the cover, so automatic matching leaves it alone. */
+    val coverManual: Boolean = false,
 ) {
     val effectiveLayout: PageLayout
         get() = layout ?: if (type == BookType.PDF) PageLayout.SPREAD else PageLayout.SINGLE
@@ -37,6 +41,8 @@ data class Book(
         put("lastOffset", lastOffset)
         put("pageCount", pageCount)
         layout?.let { put("layout", it.name) }
+        cover?.let { put("cover", it) }
+        put("coverManual", coverManual)
     }
 
     companion object {
@@ -50,6 +56,8 @@ data class Book(
             lastOffset = o.optInt("lastOffset"),
             pageCount = o.optInt("pageCount"),
             layout = o.optString("layout").takeIf { it.isNotEmpty() }?.let { PageLayout.valueOf(it) },
+            cover = o.optString("cover").takeIf { it.isNotEmpty() },
+            coverManual = o.optBoolean("coverManual"),
         )
     }
 }

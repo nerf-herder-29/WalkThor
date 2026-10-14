@@ -10,19 +10,33 @@ import android.os.Bundle
 import android.view.Display
 import android.widget.Toast
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * Moving WalkThor between the AYN Thor's two screens.
+ * Keeping WalkThor on the AYN Thor's bottom screen.
  *
- * The Thor exposes its second (bottom) panel as an extra Android display. We relaunch the activity
- * on the chosen display with [ActivityOptions.setLaunchDisplayId] and remember the choice, so the
- * next cold start goes straight to the same screen.
+ * The Thor exposes its second panel as an extra Android display. The bottom panel (1240×1080)
+ * is the smaller of the two, so "bottom" = the switched-on, non-private display with the fewest
+ * pixels. Android launches apps on the top screen, so on start we relaunch ourselves on the
+ * bottom one with [ActivityOptions.setLaunchDisplayId].
  */
 object DisplayHelper {
     const val EXTRA_RELAUNCHED = "walkthor.relaunched"
     const val EXTRA_BOOK = "walkthor.book"
     private const val PREFS = "display"
-    private const val KEY_PREFERRED = "preferredDisplay"
+    private const val KEY_ALWAYS_BOTTOM = "alwaysBottom"
+
+    /** "Always open on the bottom screen" setting (on by default). */
+    val alwaysBottom = MutableStateFlow(true)
+
+    fun init(context: Context) {
+        alwaysBottom.value = prefs(context).getBoolean(KEY_ALWAYS_BOTTOM, true)
+    }
+
+    fun setAlwaysBottom(context: Context, on: Boolean) {
+        alwaysBottom.value = on
+        prefs(context).edit().putBoolean(KEY_ALWAYS_BOTTOM, on).apply()
+    }
 
     fun currentDisplayId(activity: Activity): Int =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -32,11 +46,39 @@ object DisplayHelper {
             activity.windowManager.defaultDisplay.displayId
         }
 
-    /** Another switched-on display (on the Thor: the other screen), if there is one. */
+    private fun usableDisplays(context: Context): List<Display> {
+        val dm = context.getSystemService(DisplayManager::class.java) ?: return emptyList()
+        return dm.displays.filter { it.state != Display.STATE_OFF && (it.flags and Display.FLAG_PRIVATE) == 0 }
+    }
+
+    /** The bottom screen, or null on single-screen devices. */
+    fun bottomDisplay(context: Context): Display? {
+        val displays = usableDisplays(context)
+        if (displays.size < 2) return null
+        return displays.minByOrNull { d -> d.mode.physicalWidth.toLong() * d.mode.physicalHeight }
+    }
+
     fun otherDisplay(activity: Activity): Display? {
-        val dm = activity.getSystemService(DisplayManager::class.java) ?: return null
         val current = currentDisplayId(activity)
-        return dm.displays.firstOrNull { it.displayId != current && it.state != Display.STATE_OFF }
+        return usableDisplays(activity).firstOrNull { it.displayId != current }
+    }
+
+    fun isOnBottom(activity: Activity): Boolean {
+        val bottom = bottomDisplay(activity) ?: return true
+        return bottom.displayId == currentDisplayId(activity)
+    }
+
+    /**
+     * Called first thing in onCreate. If we should be on the bottom screen and aren't, relaunch
+     * there (carrying along any "Open with"/"Share" document) and return true.
+     */
+    fun ensureOnBottomScreen(activity: Activity, savedInstanceState: Bundle?): Boolean {
+        if (savedInstanceState != null || !alwaysBottom.value) return false
+        // Already relaunched once: never bounce again, even if the system put us elsewhere.
+        if (activity.intent.getBooleanExtra(EXTRA_RELAUNCHED, false)) return false
+        val bottom = bottomDisplay(activity) ?: return false
+        if (bottom.displayId == currentDisplayId(activity)) return false
+        return relaunch(activity, bottom.displayId, Intent(activity.intent), quiet = true)
     }
 
     fun moveToOtherScreen(activity: Activity, openBookId: String?) {
@@ -45,39 +87,32 @@ object DisplayHelper {
             Toast.makeText(activity, "No other screen found", Toast.LENGTH_SHORT).show()
             return
         }
-        prefs(activity).edit().putInt(KEY_PREFERRED, target.displayId).apply()
-        relaunch(activity, target.displayId, openBookId)
-    }
-
-    /**
-     * On a cold start from the launcher, hop to the screen the user last moved WalkThor to.
-     * Returns true if the activity is being relaunched (caller should stop setting up).
-     */
-    fun maybeRelaunchOnPreferredScreen(activity: Activity, savedInstanceState: Bundle?): Boolean {
-        val intent = activity.intent
-        if (savedInstanceState != null || intent.getBooleanExtra(EXTRA_RELAUNCHED, false)) return false
-        // Don't relaunch for "open with"/share intents: the URI permission belongs to this instance.
-        if (intent.action != null && intent.action != Intent.ACTION_MAIN) return false
-        val preferred = prefs(activity).getInt(KEY_PREFERRED, -1)
-        if (preferred < 0 || preferred == currentDisplayId(activity)) return false
-        val dm = activity.getSystemService(DisplayManager::class.java) ?: return false
-        val display = dm.getDisplay(preferred) ?: return false
-        if (display.state == Display.STATE_OFF) return false
-        return relaunch(activity, preferred, null)
-    }
-
-    private fun relaunch(activity: Activity, displayId: Int, openBookId: String?): Boolean {
         val intent = Intent(activity, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-            .putExtra(EXTRA_RELAUNCHED, true)
+            .setAction(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
             .putExtra(EXTRA_BOOK, openBookId)
+        relaunch(activity, target.displayId, intent, quiet = false)
+    }
+
+    private fun relaunch(activity: Activity, displayId: Int, base: Intent, quiet: Boolean): Boolean {
+        val intent = base
+            .setClass(activity, MainActivity::class.java)
+            // Pass on read access to an "Open with" document, if there is one.
+            .addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            .putExtra(EXTRA_RELAUNCHED, true)
         val options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
         return try {
             activity.startActivity(intent, options.toBundle())
             activity.finishAndRemoveTask()
+            // No slide animation between screens.
+            @Suppress("DEPRECATION")
+            activity.overridePendingTransition(0, 0)
             true
         } catch (e: Exception) {
-            Toast.makeText(activity, "Couldn't move to that screen", Toast.LENGTH_SHORT).show()
+            if (!quiet) Toast.makeText(activity, "Couldn't move to that screen", Toast.LENGTH_SHORT).show()
             false
         }
     }

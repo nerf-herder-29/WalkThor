@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="leather">#FF2A1A10</color>
-    <color name="icon_bg">#FF5A2E1B</color>
+    <color name="leather">#FF121013</color>
+    <color name="icon_bg">#FF1B181C</color>
 
     <style name="Theme.WalkThor" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/leather</item>
