@@ -18,23 +18,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.nerfherder.walkthor.data.GameMatch
 import com.nerfherder.walkthor.ui.ImportDialogs
 import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
     /** A document handed to us by "Open with" / "Share", waiting to be imported. */
     private val incoming = MutableStateFlow<Uri?>(null)
     private val hasOtherScreen = MutableStateFlow(false)
-    /** On-screen game names handed over by the swipe gesture ("weight|text"), waiting to be matched. */
-    private val gameHints = MutableStateFlow<List<String>?>(null)
     /** Results from the system pickers, consumed by the UI. */
     private val pickedArtFolder = MutableStateFlow<Uri?>(null)
     private val pickedCover = MutableStateFlow<Pair<String, Uri>?>(null)
@@ -42,7 +37,6 @@ class MainActivity : ComponentActivity() {
 
     private val guidePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) incoming.value = uri
-        intent?.getStringArrayListExtra(EXTRA_GAME_HINTS)?.takeIf { it.isNotEmpty() }?.let { gameHints.value = it }
     }
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedArtFolder.value = uri
@@ -120,7 +114,6 @@ class MainActivity : ComponentActivity() {
     internal val hasOtherScreenFlow get() = hasOtherScreen
     internal val pickedArtFolderFlow get() = pickedArtFolder
     internal val pickedCoverFlow get() = pickedCover
-    internal val gameHintsFlow get() = gameHints
 
     /** Closes WalkThor (removing it from the screen it's on). */
     internal fun closeApp() = finishAndRemoveTask()
@@ -174,8 +167,6 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     val pickedFolder by host.pickedArtFolderFlow.collectAsState()
     val pickedCover by host.pickedCoverFlow.collectAsState()
     val canSwap by host.hasOtherScreenFlow.collectAsState()
-    val hints by host.gameHintsFlow.collectAsState()
-    val gameGuideOn by SwipeLauncher.gameGuide.collectAsState()
     var openId by rememberSaveable { mutableStateOf(initialBookId) }
 
     LaunchedEffect(pending) {
@@ -198,20 +189,6 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     }
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }
     LaunchedEffect(openId) { AppState.openBookId = openId }
-    // Swiped in while a game was playing: open that game's guide if one clearly matches.
-    LaunchedEffect(hints) {
-        val h = hints ?: return@LaunchedEffect
-        host.gameHintsFlow.value = null
-        val match = withContext(Dispatchers.Default) { GameMatch.best(books, h) }
-        if (match != null && match.id != openId) {
-            openId = match.id
-            Toast.makeText(context, "Opened ${match.title}", Toast.LENGTH_SHORT).show()
-        }
-    }
-    LaunchedEffect(Unit) {
-        library.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
-    }
-
     val current = openId
     if (current != null) {
         ReaderScreen(
@@ -228,7 +205,6 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
             artScanning = artScanning,
             alwaysBottom = alwaysBottom,
             swipeToOpen = swipeOn,
-            gameGuide = gameGuideOn,
             swipeNeedsPermission = swipeNeedsPermission,
             actions = LibraryActions(
                 onOpen = { openId = it.id },
@@ -245,7 +221,6 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onUnlinkArt = library::unlinkArt,
                 onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
                 onToggleSwipeToOpen = { SwipeLauncher.setEnabled(context, it) },
-                onToggleGameGuide = { SwipeLauncher.setGameGuide(context, it) },
                 onClose = host::closeApp,
                 onGrantSwipePermission = { SwipeLauncher.requestPermission(context) },
                 isSwipeServiceOn = { SwipeLauncher.isServiceOn(context) },

@@ -299,16 +299,6 @@ object Matcher {
         return maxOf(wordScore, squashed)
     }
 
-    /** How well a game name seen on screen fits a guide title (symmetric enough for both ways round). */
-    fun gameScore(guideTitle: String, gameName: String): Float {
-        val guide = words(guideTitle, guide = true).toSet()
-        val game = words(gameName).toSet()
-        if (game.isEmpty() || guide.isEmpty()) return 0f
-        // Both directions: the guide may carry extra words, or the on-screen name may.
-        return minOf(similarity(guide, game), similarity(game, guide)) * 0.4f +
-            maxOf(similarity(guide, game), similarity(game, guide)) * 0.6f
-    }
-
     /** How well an image fits a guide title, roughly 0..1 (plus a small artwork-type preference). */
     fun score(want: Set<String>, img: ArtImage): Float {
         var s = similarity(want, img.titleTokens)

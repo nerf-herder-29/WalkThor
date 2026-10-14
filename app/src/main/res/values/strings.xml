@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">WalkThor</string>
     <string name="swipe_service_label">WalkThor swipe to open</string>
-    <string name="swipe_service_description">Swipe down from the top edge of the bottom screen to open WalkThor, and swipe again to put it away. If \"Open the playing game\'s guide\" is on, WalkThor also reads the game name your launcher (Cocoon) shows, so it can open that game\'s guide. It doesn\'t read other apps or store anything it sees.</string>
+    <string name="swipe_service_description">Swipe down from the top edge of the bottom screen to open WalkThor, and swipe again to put it away. WalkThor only watches for that swipe in a thin strip along the top edge; it doesn\'t read or change anything on your screen.</string>
 </resources>

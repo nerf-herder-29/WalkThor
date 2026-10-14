@@ -129,7 +129,7 @@ fun ReaderScreen(
     var showResults by remember { mutableStateOf(false) }
     /** Page shown in the reading lens, or null when the lens is closed. */
     var lensPage by rememberSaveable { mutableStateOf<Int?>(null) }
-    var lensZoom by rememberSaveable { mutableFloatStateOf(1.5f) }
+    var lensZoom by rememberSaveable { mutableFloatStateOf(1f) }
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
 

@@ -100,7 +100,6 @@ class LibraryActions(
     val onUnlinkArt: () -> Unit,
     val onToggleAlwaysBottom: (Boolean) -> Unit,
     val onToggleSwipeToOpen: (Boolean) -> Unit,
-    val onToggleGameGuide: (Boolean) -> Unit,
     val onClose: () -> Unit,
     val onGrantSwipePermission: () -> Unit,
     val isSwipeServiceOn: () -> Boolean,
@@ -116,7 +115,6 @@ fun LibraryScreen(
     artScanning: String?,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
-    gameGuide: Boolean,
     swipeNeedsPermission: Boolean,
     actions: LibraryActions,
 ) {
@@ -155,7 +153,7 @@ fun LibraryScreen(
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
             }
             SettingsMenu(
-                artLinked, artCount, alwaysBottom, swipeToOpen, gameGuide, actions,
+                artLinked, artCount, alwaysBottom, swipeToOpen, actions,
                 onToggleSwipe = { on ->
                     actions.onToggleSwipeToOpen(on)
                     if (on && !actions.isSwipeServiceOn()) explainSwipe = true
@@ -263,7 +261,6 @@ private fun SettingsMenu(
     artCount: Int,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
-    gameGuide: Boolean,
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
 ) {
@@ -288,18 +285,6 @@ private fun SettingsMenu(
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
-            if (swipeToOpen) {
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text("Open the playing game's guide")
-                            Text("Reads the game name Cocoon shows", fontSize = 11.sp, color = BookColors.TextMuted)
-                        }
-                    },
-                    trailingIcon = { if (gameGuide) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                    onClick = { actions.onToggleGameGuide(!gameGuide) },
-                )
-            }
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
             }
