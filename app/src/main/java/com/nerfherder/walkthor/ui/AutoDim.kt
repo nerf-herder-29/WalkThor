@@ -1,5 +1,9 @@
 package com.nerfherder.walkthor.ui
 
+import kotlin.math.roundToInt
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.geometry.Rect
 import android.content.Context
 import android.os.SystemClock
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,6 +39,9 @@ object AutoDim {
     val OPTIONS = listOf(0L, 30_000L, 60_000L, 120_000L, 300_000L)
 
     val delayMs = MutableStateFlow(0L)
+    /** Where the time/play-time/battery readout is on screen (kept bright while dimmed). */
+    val statusBounds = MutableStateFlow<Rect?>(null)
+    @Volatile internal var statusOwner: Any? = null
     val dimmed = MutableStateFlow(false)
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
@@ -91,12 +98,11 @@ fun AutoDimOverlay() {
     }
 
     val alpha by animateFloatAsState(if (dimmed) 0.9f else 0f, tween(if (dimmed) 1_200 else 180), label = "dim")
+    val status by AutoDim.statusBounds.collectAsState()
     if (alpha <= 0.001f) return
     Box(
         Modifier
             .fillMaxSize()
-            .graphicsLayer { this.alpha = alpha }
-            .background(Color.Black)
             // While dimmed, swallow the waking touch so it doesn't also turn a page.
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -109,9 +115,14 @@ fun AutoDimOverlay() {
                 }
             }
     ) {
+        Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.background(Color.Black))
+        // The time, play time and battery stay at full brightness, drawn exactly over the originals.
+        status?.let { b ->
+            StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
+        }
         Text(
             "Tap to wake",
-            color = BookColors.TextMuted.copy(alpha = 0.35f),
+            color = BookColors.TextMuted.copy(alpha = 0.35f * alpha),
             fontSize = 12.sp,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp),
         )

@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
@@ -47,7 +49,7 @@ private val LowBattery = Color(0xFFE0675A)
  * Follows the system 12/24-hour setting; shows a bolt while charging and turns red at 15% or less.
  */
 @Composable
-fun StatusClock(modifier: Modifier = Modifier) {
+fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     var level by remember { mutableIntStateOf(-1) }
@@ -89,7 +91,19 @@ fun StatusClock(modifier: Modifier = Modifier) {
     val game by PlaySession.current.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
 
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+    // Report where the readout sits, so auto-dim can keep a full-brightness copy on top of the dimming.
+    val token = remember { Any() }
+    if (anchor) {
+        DisposableEffect(token) {
+            onDispose { if (AutoDim.statusOwner == token) AutoDim.statusBounds.value = null }
+        }
+    }
+    val placed = if (anchor) Modifier.onGloballyPositioned {
+        AutoDim.statusOwner = token
+        AutoDim.statusBounds.value = it.boundsInRoot()
+    } else Modifier
+
+    Row(modifier.then(placed), verticalAlignment = Alignment.CenterVertically) {
         val g = game
         if (showTimer && g != null && g.at > 0) {
             val played = playTime(now.time - g.at)
