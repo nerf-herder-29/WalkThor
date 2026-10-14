@@ -49,6 +49,17 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Screenshot tests (StoreScreenshots) render real resources and write PNGs.
+            isIncludeAndroidResources = true
+            all {
+                it.systemProperty("roborazzi.test.record", "true")
+                it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                it.maxHeapSize = "2g"
+            }
+        }
+    }
     packaging {
         resources.excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*")
     }
@@ -74,4 +85,14 @@ dependencies {
 
     // Cover artwork thumbnails (content:// URIs from the Cocoon folder, and local files).
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Screenshot rendering on the JVM (no device needed); not part of the app.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

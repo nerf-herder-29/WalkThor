@@ -1,0 +1,110 @@
+================================================================================
+                    LANTERNS OF EMBERFALL - COMPLETE WALKTHROUGH
+                 (sample guide for WalkThor screenshots - fictional)
+================================================================================
+
+TABLE OF CONTENTS
+  1. Controls ............................................... [CTRL]
+  2. Chapter 1: The Ashen Docks ............................. [CH01]
+  3. Chapter 2: Lanternkeeper's Hollow ...................... [CH02]
+  4. Chapter 3: The Clockwork Bridge ........................ [CH03]
+  5. Lantern Shard Locations ................................ [SHRD]
+
+--------------------------------------------------------------------------------
+1. CONTROLS                                                              [CTRL]
+--------------------------------------------------------------------------------
+
+  Left Stick ........ Move Wren
+  A ................. Jump / Confirm
+  B ................. Roll / Cancel
+  X ................. Swing lantern
+  Y ................. Light or snuff the lantern
+  L / R ............. Cycle lantern colours (once unlocked)
+  Start ............. Journal and map
+
+  TIP: Holding Y for a second makes the lantern pulse, which reveals hidden
+  ledges nearby. Get in the habit of pulsing whenever a room looks empty.
+
+--------------------------------------------------------------------------------
+2. CHAPTER 1: THE ASHEN DOCKS                                            [CH01]
+--------------------------------------------------------------------------------
+
+You start on the deck of the ferry. Talk to the ferryman twice; the second time
+he hands you the RUSTED LANTERN. Light it with Y and step onto the gangplank.
+
+The docks are dark, and the moths swarm anything unlit. Keep the lantern burning
+and they will scatter. Head north past the stacked crates until you reach the
+fish market.
+
+  * Lantern Shard #1: Behind the eel stall, pulse the lantern to reveal a
+    loose plank. Roll through it to find the shard in a barrel.
+
+Climb the rope net on the east wall of the market. At the top, a gull keeps
+knocking you back - wait until it lands, then cross while it preens. The
+harbourmaster's office is at the end of the walkway.
+
+Inside, read the ledger on the desk. It mentions a "lantern that remembers".
+Leave through the back door and drop down to the lower pier.
+
+BOSS: THE TIDE WARDEN
+  The Warden only takes damage while its shell is lit. Swing the lantern (X)
+  at the braziers on either side of the pier; when both are burning, the
+  Warden's shell glows and it slumps forward. Hit the glowing patch three
+  times, then relight the braziers when the tide puts them out.
+
+  Phase 2: The Warden starts throwing waves. Roll THROUGH the wave rather
+  than away from it - the roll has invincibility frames on the first half.
+
+  Reward: Heart Ember, EMBER LANTERN upgrade (lantern burns longer)
+
+--------------------------------------------------------------------------------
+3. CHAPTER 2: LANTERNKEEPER'S HOLLOW                                     [CH02]
+--------------------------------------------------------------------------------
+
+Follow the river path out of town. The Hollow's entrance is sealed by a door
+with three empty lantern hooks. You need three coloured flames to open it:
+
+  RED flame ........ from the forge in the smithy (north-west hut)
+  BLUE flame ....... from the will-o'-wisp in the reeds (only at dusk)
+  GOLD flame ....... from the shrine at the top of the waterfall
+
+Carry each flame back to the door one at a time - your lantern can only hold a
+single colour for now. If you get hit, the flame goes out and you must return
+to its source.
+
+  * Lantern Shard #2: On the waterfall climb, the third ledge has a cracked
+    wall. Swing the gold-lit lantern at it.
+
+  * Lantern Shard #3: In the reeds at night, follow the wisp all the way to
+    the old boat. Don't light the lantern or it flees.
+
+Once all three hooks are lit, the door opens onto the Hollow proper. Inside,
+the old Lanternkeeper asks you to restore the lamps of the village. There are
+six lamps; the order does not matter, but the one above the well needs a long
+jump from the bell tower roof.
+
+--------------------------------------------------------------------------------
+4. CHAPTER 3: THE CLOCKWORK BRIDGE                                       [CH03]
+--------------------------------------------------------------------------------
+
+The bridge is made of rotating segments that turn every few seconds. Watch the
+gears on the railing: when the small gear stops, the segment is about to turn.
+Stand on the wide segments only.
+
+Halfway across there is a control booth. Light the lantern inside to freeze
+the segments for twenty seconds - more than enough to cross if you don't stop.
+
+  * Lantern Shard #4: Under the bridge. When the segments freeze, drop off the
+    left edge onto the maintenance ledge.
+
+--------------------------------------------------------------------------------
+5. LANTERN SHARD LOCATIONS                                               [SHRD]
+--------------------------------------------------------------------------------
+
+  #1  Ashen Docks ........ eel stall, loose plank, barrel
+  #2  River Path ......... waterfall, third ledge, cracked wall (gold flame)
+  #3  Reeds .............. follow the wisp at night to the old boat
+  #4  Clockwork Bridge ... maintenance ledge under the frozen segments
+
+Collect all shards and bring them to the Lanternkeeper for the PRISM LANTERN.
+================================================================================
