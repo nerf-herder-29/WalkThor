@@ -423,7 +423,7 @@ private val BANNER = 22.dp
  * book binding down the left edge.
  */
 @Composable
-private fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) {
+internal fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 8.dp, bottomEnd = 8.dp)
     Box(
         modifier

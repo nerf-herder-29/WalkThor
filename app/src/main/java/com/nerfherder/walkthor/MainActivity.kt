@@ -18,6 +18,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import com.nerfherder.walkthor.ui.GuideIntro
 import com.nerfherder.walkthor.ui.ImportDialogs
 import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
@@ -189,14 +194,32 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     }
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }
     LaunchedEffect(openId) { AppState.openBookId = openId }
+    // Each time a guide is opened, play its intro.
+    var introFor by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openId) {
+        if (openId != null && openId != lastOpened) introFor = openId
+        lastOpened = openId
+    }
     val current = openId
     if (current != null) {
-        ReaderScreen(
-            bookId = current,
-            onBack = { openId = null },
-            onClose = host::closeApp,
-            onSwapScreen = if (canSwap) ({ host.swapScreen(current) }) else null,
-        )
+        Box(Modifier.fillMaxSize()) {
+            ReaderScreen(
+                bookId = current,
+                onBack = { openId = null },
+                onClose = host::closeApp,
+                onSwapScreen = if (canSwap) ({ host.swapScreen(current) }) else null,
+            )
+            // The opening flourish; the guide loads underneath while it plays.
+            val introBook = books.firstOrNull { it.id == introFor }
+            if (introBook != null) {
+                GuideIntro(
+                    book = introBook,
+                    cover = remember(introBook.id, introBook.cover) { library.coverFile(introBook) },
+                    onDone = { introFor = null },
+                )
+            }
+        }
     } else {
         LibraryScreen(
             books = books,
