@@ -105,6 +105,8 @@ class LibraryActions(
     val onToggleSwipeToOpen: (Boolean) -> Unit,
     val onClose: () -> Unit,
     val onGrantSwipePermission: () -> Unit,
+    val hasSwipeConsent: () -> Boolean,
+    val onSwipeConsent: (Boolean) -> Unit,
     val isSwipeServiceOn: () -> Boolean,
     val onOpenAppInfo: () -> Unit,
     val onSwapScreen: (() -> Unit)?,
@@ -125,6 +127,14 @@ fun LibraryScreen(
 ) {
     var coverFor by remember { mutableStateOf<Book?>(null) }
     var explainSwipe by remember { mutableStateOf(false) }
+    var showDisclosure by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
+    // Turning swipe-to-open on always goes through the disclosure first.
+    fun startSwipeSetup() {
+        if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
+        actions.onToggleSwipeToOpen(true)
+        if (!actions.isSwipeServiceOn()) explainSwipe = true
+    }
 
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
@@ -160,10 +170,8 @@ fun LibraryScreen(
             }
             SettingsMenu(
                 artLinked, artCount, alwaysBottom, swipeToOpen, gameGuide, cocoonLinked, actions,
-                onToggleSwipe = { on ->
-                    actions.onToggleSwipeToOpen(on)
-                    if (on && !actions.isSwipeServiceOn()) explainSwipe = true
-                },
+                onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
+                onAbout = { showAbout = true },
             )
         }
         if (swipeToOpen && swipeNeedsPermission) {
@@ -177,12 +185,13 @@ fun LibraryScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Swipe-to-open: switch on “WalkThor swipe to open” in Accessibility.",
+                    if (actions.hasSwipeConsent()) "Swipe-to-open: switch on “WalkThor swipe to open” in Accessibility."
+                    else "Swipe-to-open needs your OK before it can run.",
                     color = BookColors.Text,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { explainSwipe = true }) { Text("Set up") }
+                TextButton(onClick = { startSwipeSetup() }) { Text("Set up") }
             }
         }
         if (artScanning != null) {
@@ -209,6 +218,20 @@ fun LibraryScreen(
             }
         }
     }
+
+    if (showDisclosure) {
+        SwipeDisclosureDialog(
+            onAgree = {
+                showDisclosure = false
+                actions.onSwipeConsent(true)
+                actions.onToggleSwipeToOpen(true)
+                if (!actions.isSwipeServiceOn()) explainSwipe = true
+            },
+            onDecline = { showDisclosure = false; actions.onSwipeConsent(false) },
+            onDismiss = { showDisclosure = false },
+        )
+    }
+    if (showAbout) AboutDialog(onDismiss = { showAbout = false })
 
     if (explainSwipe) {
         AlertDialog(
@@ -271,6 +294,7 @@ private fun SettingsMenu(
     cocoonLinked: Boolean,
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
+    onAbout: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -341,6 +365,8 @@ private fun SettingsMenu(
                 DropdownMenuItem(text = { Text("Change artwork folder…") }, onClick = { open = false; actions.onLinkArtFolder() })
                 DropdownMenuItem(text = { Text("Unlink artwork folder") }, onClick = { open = false; actions.onUnlinkArt() })
             }
+            HorizontalDivider(color = BookColors.Hairline)
+            DropdownMenuItem(text = { Text("About & licences") }, onClick = { open = false; onAbout() })
         }
     }
 }

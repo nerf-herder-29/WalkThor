@@ -69,3 +69,24 @@ app/src/main/java/com/nerfherder/walkthor/
 - Scanned PDFs without a text layer display fine but can't be searched (no OCR).
 - Password-protected PDFs aren't supported.
 - Matches that span a page break in TXT guides aren't found.
+
+## Privacy
+
+WalkThor doesn't collect, send or share any data and has **no internet permission** (every CI
+build checks this). See [PRIVACY.md](PRIVACY.md) — it doubles as the privacy-policy link for a
+store listing.
+
+## Publishing notes
+
+- **License:** MIT — see [LICENSE](LICENSE). Open-source components and their licenses are listed in
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in the app under ⋮ → *About & licences*.
+- **No content is bundled.** Users import their own guides; covers come from their own folders.
+  Keep it that way — guides and box art belong to their authors and publishers.
+- **Cocoon:** WalkThor reads Cocoon's `launch_debug.log` from a folder the user links. It's not an
+  official API, so a Cocoon update could change it. Describe this as "works with Cocoon" without
+  using Cocoon's logo or implying endorsement.
+- **Google Play:** swipe-to-open uses an accessibility service without being an accessibility tool.
+  The app shows the required in-app disclosure with Agree / No thanks before the service can run.
+  You'd also need to fill in Play Console's accessibility declaration (including a short screen
+  recording of that disclosure and the swipe feature) and link PRIVACY.md as the privacy policy.
+  None of this applies to GitHub or F-Droid distribution.

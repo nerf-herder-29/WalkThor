@@ -1,0 +1,30 @@
+# WalkThor privacy policy
+
+_Last updated: October 14, 2026_
+
+**WalkThor does not collect, send or share any data.** It has no internet permission, no
+accounts, no analytics and no ads. Everything below stays on your device.
+
+## What WalkThor reads, and why
+
+- **Guides you import** (PDF/TXT) are copied into WalkThor's private storage so you can read and
+  search them. The original file is left untouched.
+- **An artwork folder you link** (for example Cocoon's `downloaded_media`) is read to find cover
+  images for your guides. Chosen covers are copied into WalkThor's private storage.
+- **The Cocoon folder you link** is read only for Cocoon's `launch_debug.log`, to learn which game
+  you launched most recently (its name, file name and emulator) so WalkThor can open that game's
+  guide. Nothing in the folder is changed.
+- **"WalkThor swipe to open" (an Android accessibility service), if you turn it on,** places a thin
+  invisible strip along the top edge of the bottom screen and responds only to swipes that start
+  there, to open or close WalkThor. It does **not** read the content of your screen or of other
+  apps, does not record what you type, and does not perform actions in other apps.
+
+## What WalkThor stores (on your device only)
+
+Your library of guides, cover images, reading positions, settings, and which guide you linked to
+which game. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
+swipe-to-open at any time from the library's ⋮ menu or Android's Accessibility settings.
+
+## Contact
+
+Questions or concerns: open an issue at https://github.com/nerf-herder-29/WalkThor/issues

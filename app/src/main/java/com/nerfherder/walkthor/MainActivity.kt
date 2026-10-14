@@ -360,6 +360,8 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onToggleSwipeToOpen = { SwipeLauncher.setEnabled(context, it) },
                 onClose = host::closeApp,
                 onGrantSwipePermission = { SwipeLauncher.requestPermission(context) },
+                hasSwipeConsent = { SwipeLauncher.hasConsent(context) },
+                onSwipeConsent = { SwipeLauncher.setConsent(context, it) },
                 isSwipeServiceOn = { SwipeLauncher.isServiceOn(context) },
                 onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,

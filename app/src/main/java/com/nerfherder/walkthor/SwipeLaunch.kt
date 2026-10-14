@@ -34,6 +34,8 @@ import java.lang.ref.WeakReference
 object SwipeLauncher {
     const val PREFS = "swipe"
     const val KEY_ENABLED = "enabled"
+    /** The user agreed to the in-app disclosure of what the accessibility service does. */
+    const val KEY_CONSENT = "consent"
     const val KEY_GAME_GUIDE = "gameGuide"
 
     /** The user's choice (the toggle). */
@@ -53,6 +55,13 @@ object SwipeLauncher {
 
     fun init(context: Context) = refresh(context)
 
+    fun hasConsent(context: Context) = prefs(context).getBoolean(KEY_CONSENT, false)
+
+    fun setConsent(context: Context, agreed: Boolean) {
+        prefs(context).edit().putBoolean(KEY_CONSENT, agreed).apply()
+        if (!agreed) setEnabled(context, false) else refresh(context)
+    }
+
     fun setEnabled(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean(KEY_ENABLED, on).apply()
         refresh(context)
@@ -63,7 +72,7 @@ object SwipeLauncher {
         enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
         gameGuide.value = prefs(context).getBoolean(KEY_GAME_GUIDE, true)
         cocoonLinked.value = com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) != null
-        needsPermission.value = enabled.value && !isServiceOn(context)
+        needsPermission.value = enabled.value && (!hasConsent(context) || !isServiceOn(context))
     }
 
     fun isServiceOn(context: Context): Boolean {
@@ -119,7 +128,7 @@ class SwipeGestureService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == SwipeLauncher.KEY_ENABLED) reattach(0)
+        if (key == SwipeLauncher.KEY_ENABLED || key == SwipeLauncher.KEY_CONSENT) reattach(0)
     }
 
     private val displayListener = object : DisplayManager.DisplayListener {
@@ -156,7 +165,9 @@ class SwipeGestureService : AccessibilityService() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun attach() {
-        if (strip != null || !SwipeLauncher.prefs(this).getBoolean(SwipeLauncher.KEY_ENABLED, false)) return
+        if (strip != null) return
+        // Stays inert until the user has both switched the feature on and agreed to the disclosure.
+        if (!SwipeLauncher.prefs(this).getBoolean(SwipeLauncher.KEY_ENABLED, false) || !SwipeLauncher.hasConsent(this)) return
         val display = DisplayHelper.bottomDisplay(this) ?: return
         val ctx = if (Build.VERSION.SDK_INT >= 30) {
             createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
