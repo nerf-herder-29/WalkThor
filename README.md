@@ -5,21 +5,23 @@ becomes an animated book you can flip through and search while you play on the t
 
 ## Features
 
-- **Import PDF or TXT guides** — from the in-app picker, a file manager's *Open with*, or *Share*.
+- **Lives on the bottom screen** — WalkThor moves itself to the Thor's bottom display on launch
+  (toggle under ⋮ → *Always open on bottom screen*).
+- **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
 - **Animated book** — pages turn in 3D around the spine. Drag a page and it follows your finger;
-  tap the outer edges to turn; tap the middle of a page to open it full screen with pinch-zoom.
-  - PDFs default to a **two-page spread** (a portrait PDF page fits each half of the 1240×1080 panel almost exactly).
-  - TXT guides default to a **single wide page** sized to fit 80 columns, so GameFAQs-style ASCII
-    tables and maps stay aligned. Text size is adjustable.
-  - Switch layouts any time from the ⋮ menu.
-- **Search bar** across the top — results as you type, with a list of every page that matches
-  (snippet + match count), ▲/▼ to step through matching pages, and matches highlighted on the page
-  (including inside PDFs).
-- **Controller support** — L1/R1 (or D-pad left/right) turn pages.
-- **Remembers your place** in every guide, and a page scrubber at the bottom for big jumps.
-- **Move to other screen** (⋮ menu / library header) relaunches WalkThor on the Thor's other
-  display and remembers that choice for next launch.
+  tap the outer edges to turn. Toggle single page / two-page spread from the top bar.
+  - PDFs default to a two-page spread; TXT guides to a single wide page sized to 80 columns so
+    GameFAQs-style ASCII tables stay aligned. Text size is adjustable.
+- **Reading lens** — the magnifying-glass button (or tapping the middle of a page) shows the page
+  fit to the full width, zoomable to 500% with − / +, pinch or double-tap, with page arrows.
+- **Magnifier loupe** — press and hold on a page, then slide.
+- **Search bar** — results as you type, a list of every matching page (snippet + match count),
+  ▲/▼ to step through matches, and highlights on the page (PDFs included).
+- **Cover art from Cocoon** — link your Cocoon data folder and covers are matched to guides by
+  title; pick or search artwork manually, or use any image.
+- **Controller support** — L1/R1 (or D-pad left/right) turn pages, in the book and in the lens.
+- **Remembers your place** in every guide, with a page scrubber for big jumps.
 
 ## Getting the APK
 
@@ -47,6 +49,8 @@ Requires JDK 17 and the Android SDK (API 35).
 | PDF search | Text of every page is extracted once at import with PdfBox-Android and saved next to the guide; match rectangles are located on demand for highlighting |
 | TXT pages | `StaticLayout` pagination in the background; the same layout settings draw each page, so pages never overflow. Reading position is stored as a character offset, so it survives font/layout changes |
 | Page turn | `graphicsLayer` `rotationY` around the spine with camera perspective, front/back faces and shading |
+| Bottom screen | The smaller of the device's displays; the activity relaunches there with `ActivityOptions.setLaunchDisplayId` |
+| Cover art | Images under the linked folder are indexed (no assumed layout) and matched to guide titles by normalized word overlap; covers are copied into the app, loaded with Coil |
 
 Source layout:
 
