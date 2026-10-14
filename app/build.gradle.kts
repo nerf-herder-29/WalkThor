@@ -13,16 +13,29 @@ android {
         // AYN Thor ships with Android 13 (API 33); 26 keeps it usable on other handhelds too.
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 5
+        versionName = "1.3.1"
+    }
+
+    // One permanent key for every release, so new APKs install as updates over old ones.
+    // CI decodes it from the WALKTHOR_KEYSTORE secret; without it, release falls back to the debug key.
+    val releaseKeystore = System.getenv("WALKTHOR_KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("WALKTHOR_KEY_PASSWORD")
+                keyAlias = "walkthor"
+                keyPassword = System.getenv("WALKTHOR_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Signed with the debug key so CI release builds are installable by sideloading.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

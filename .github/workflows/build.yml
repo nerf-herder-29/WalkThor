@@ -23,7 +23,24 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Set up release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.WALKTHOR_KEYSTORE }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/walkthor-release.jks"
+            echo "WALKTHOR_KEYSTORE_FILE=$RUNNER_TEMP/walkthor-release.jks" >> "$GITHUB_ENV"
+            echo "Release APK will be signed with the WalkThor key."
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error title=Signing key missing::Add the WALKTHOR_KEYSTORE and WALKTHOR_KEY_PASSWORD repository secrets before tagging a release, or the APK won't install as an update."
+            exit 1
+          else
+            echo "::warning title=Signing key missing::WALKTHOR_KEYSTORE secret not set; release APK is signed with a throwaway debug key."
+          fi
+
       - name: Build debug and release APKs
+        env:
+          WALKTHOR_KEY_PASSWORD: ${{ secrets.WALKTHOR_KEY_PASSWORD }}
         run: |
           set -o pipefail
           chmod +x gradlew
