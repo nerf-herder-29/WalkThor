@@ -145,6 +145,7 @@ fun LibraryScreen(
                     color = BookColors.Text,
                 )
             }
+            StatusClock(Modifier.padding(end = 14.dp))
             Button(
                 onClick = actions.onImport,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),

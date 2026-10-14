@@ -346,14 +346,19 @@ fun ReaderScreen(
             }
         }
 
-        // ---- page position ----------------------------------------------------------------
-        if (lensPage == null) {
-            PageScrubber(
-                current = bookState.current,
-                pageCount = pageCount,
-                spread = spread,
-                onScrubbed = { goTo(it) },
-            )
+        // ---- page position, time and battery ------------------------------------------------
+        Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                if (lensPage == null) {
+                    PageScrubber(
+                        current = bookState.current,
+                        pageCount = pageCount,
+                        spread = spread,
+                        onScrubbed = { goTo(it) },
+                    )
+                }
+            }
+            StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
         }
     }
 }
