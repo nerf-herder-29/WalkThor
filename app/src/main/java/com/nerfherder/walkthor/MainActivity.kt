@@ -212,16 +212,11 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
         }
     }
     LaunchedEffect(pickedCocoon) {
+        // Hand off to the view model: clearing the picked folder below changes this effect's key,
+        // which cancels anything still running in here.
         pickedCocoon?.let { tree ->
             host.pickedCocoonFolderFlow.value = null
-            if (CocoonLaunchLog.hasLog(context, tree)) {
-                CocoonLaunchLog.link(context, tree)
-                SwipeLauncher.setGameGuide(context, true)
-                Toast.makeText(context, "Cocoon linked — swipe in during a game to open its guide", Toast.LENGTH_LONG).show()
-            } else {
-                Toast.makeText(context, "That folder has no launch_debug.log — pick the Cocoon folder itself", Toast.LENGTH_LONG).show()
-            }
-            SwipeLauncher.refresh(context)
+            library.linkCocoon(tree)
         }
     }
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }

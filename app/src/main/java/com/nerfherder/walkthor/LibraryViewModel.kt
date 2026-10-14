@@ -52,6 +52,21 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun coverFile(book: Book): File? = repo.coverFile(book)
 
+    /** Links Cocoon's data folder (the one holding launch_debug.log) for game-aware opening. */
+    fun linkCocoon(tree: Uri) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            if (com.nerfherder.walkthor.data.CocoonLaunchLog.hasLog(app, tree)) {
+                com.nerfherder.walkthor.data.CocoonLaunchLog.link(app, tree)
+                com.nerfherder.walkthor.SwipeLauncher.setGameGuide(app, true)
+                _message.tryEmit("Cocoon linked — swipe in during a game to open its guide")
+            } else {
+                _message.tryEmit("No launch_debug.log in that folder — pick the Cocoon folder itself")
+            }
+            com.nerfherder.walkthor.SwipeLauncher.refresh(app)
+        }
+    }
+
     fun importGuide(uri: Uri) {
         if (importJob?.isActive == true) return
         importJob = viewModelScope.launch {
