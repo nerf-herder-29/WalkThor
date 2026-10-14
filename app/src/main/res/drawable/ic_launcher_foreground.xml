@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Open book with a magnifying glass, drawn in the 108dp adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- left page -->
+    <path
+        android:fillColor="#FFF3EAD3"
+        android:pathData="M54,38 C46,33 36,32 28,34 L28,72 C36,70 46,71 54,76 Z" />
+    <!-- right page -->
+    <path
+        android:fillColor="#FFE9DDBF"
+        android:pathData="M54,38 C62,33 72,32 80,34 L80,72 C72,70 62,71 54,76 Z" />
+    <!-- text lines -->
+    <path
+        android:strokeColor="#FF8A6A4A"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:pathData="M33,42 L48,43 M33,48 L48,49 M33,54 L48,55 M33,60 L44,61 M60,43 L74,42 M60,49 L68,48" />
+    <!-- magnifier -->
+    <path
+        android:strokeColor="#FFD9A441"
+        android:strokeWidth="3.5"
+        android:fillColor="#00000000"
+        android:pathData="M71,58 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0" />
+    <path
+        android:strokeColor="#FFD9A441"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M77,64 L84,71" />
+</vector>
