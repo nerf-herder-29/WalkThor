@@ -48,7 +48,7 @@ data class PageColors(
     val inkFaint: Color,
     /** Background behind search matches in text guides. */
     val highlight: Color,
-    /** True for dark pages: PDFs are shown colour-inverted to match. */
+    /** True for dark pages (PDF pages themselves are always shown as they are). */
     val dark: Boolean,
 )
 
