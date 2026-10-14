@@ -45,7 +45,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nerfherder.walkthor.data.Book
 import kotlinx.coroutines.delay
+import java.io.File
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -56,14 +58,16 @@ sealed interface BootStatus {
     data object Idle : BootStatus
     /** Reading Cocoon's launch log. */
     data object Checking : BootStatus
-    /** Found the game being played. */
-    data class Playing(val title: String) : BootStatus
+    /** Found the game being played, and its guide if WalkThor has one. */
+    data class Playing(val title: String, val guide: Book? = null, val cover: File? = null) : BootStatus
 }
 
 /**
  * WalkThor's boot screen: the app's book opens, the magnifier sweeps across its pages while
- * WalkThor reads Cocoon's launch log, then everything fades out once [finished] is true and
- * [onGone] is called. Tap to skip.
+ * WalkThor reads Cocoon's launch log. When the game's guide is found, the book flips around into
+ * that guide's tile, which then pushes toward you as everything fades into the guide (one
+ * continuous animation, no separate guide intro). Fades out once [finished]; then [onGone].
+ * Tap to skip.
  */
 @Composable
 fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone: () -> Unit) {
@@ -72,6 +76,13 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
     val ink = remember { Animatable(0f) }       // text lines + magnifier appearing
     val word = remember { Animatable(0f) }      // wordmark
     val exit = remember { Animatable(0f) }      // 1 = faded out
+    val flip = remember { Animatable(0f) }      // 0 = the book, 1 = the guide's tile
+    val guide = (status as? BootStatus.Playing)?.guide
+    val cover = (status as? BootStatus.Playing)?.cover
+
+    LaunchedEffect(guide?.id) {
+        if (guide != null) flip.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
+    }
 
     LaunchedEffect(Unit) {
         open.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
@@ -108,12 +119,28 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.graphicsLayer {
-                val s = 1f + exit.value * 0.06f
-                scaleX = s; scaleY = s
-            },
         ) {
-            Canvas(Modifier.size(200.dp)) {
+          Box(
+            Modifier
+                .size(200.dp)
+                .graphicsLayer {
+                    // Leaving: a gentle swell for the logo, a push toward you for a guide's tile.
+                    val s = 1f + exit.value * (0.06f + 0.3f * flip.value)
+                    scaleX = s; scaleY = s
+                },
+            contentAlignment = Alignment.Center,
+          ) {
+            Canvas(
+                Modifier
+                    .size(200.dp)
+                    .graphicsLayer {
+                        // First half of the flip: the book turns away...
+                        val f = flip.value
+                        alpha = if (f < 0.5f) 1f else 0f
+                        rotationY = f * 180f
+                        cameraDistance = 14f * density
+                    }
+            ) {
                 // Glow behind the book.
                 drawCircle(
                     Brush.radialGradient(
@@ -162,6 +189,22 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                     }
                 }
             }
+            // ...second half: the guide's tile turns into view.
+            if (guide != null) {
+                GuideTile(
+                    book = guide,
+                    cover = cover,
+                    modifier = Modifier
+                        .size(184.dp)
+                        .graphicsLayer {
+                            val f = flip.value
+                            alpha = if (f >= 0.5f) 1f else 0f
+                            rotationY = (f - 1f) * 180f
+                            cameraDistance = 14f * density
+                        },
+                )
+            }
+          }
             Spacer(Modifier.height(6.dp))
             Text(
                 "WalkThor",
@@ -170,7 +213,7 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 34.sp,
                 modifier = Modifier.graphicsLayer {
-                    alpha = word.value
+                    alpha = word.value * (1f - flip.value)
                     translationY = (1f - word.value) * 10.dp.toPx()
                 },
             )
@@ -192,7 +235,7 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                             Text("NOW PLAYING", style = EyebrowStyle)
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                s.title,
+                                s.guide?.title ?: s.title,
                                 color = BookColors.Text,
                                 fontFamily = SerifDisplay,
                                 fontSize = 17.sp,

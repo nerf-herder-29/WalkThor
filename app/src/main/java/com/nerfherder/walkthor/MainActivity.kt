@@ -350,9 +350,11 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 if (System.currentTimeMillis() - start >= BOOT_WAIT_MS) break
                 delay(250)
             }
-            swipeGame?.takeIf { swipeGameAt >= start }?.let {
-                bootStatus = BootStatus.Playing(it.title)
-                delay(650)
+            swipeGame?.takeIf { swipeGameAt >= start }?.let { game ->
+                // The boot screen flips straight into the guide's tile, so no separate intro.
+                val guide = openNow?.let { id -> booksNow.firstOrNull { it.id == id } }
+                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile))
+                delay(if (guide != null) 1_150 else 650)
             }
         } else {
             checkGame(force = false) // just refreshes the play-time readout
@@ -380,7 +382,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var introFor by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(openId) {
-        if (openId != null && openId != lastOpened) introFor = openId
+        // A guide opened by the boot screen already got its flourish there.
+        if (openId != null && openId != lastOpened && !booting) introFor = openId
         lastOpened = openId
     }
     val current = openId
@@ -399,8 +402,6 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                     book = introBook,
                     cover = remember(introBook.id, introBook.cover) { library.coverFile(introBook) },
                     onDone = { introFor = null },
-                    // Wait behind the boot screen, then play as it fades.
-                    start = !booting || bootFinished,
                 )
             }
         }
