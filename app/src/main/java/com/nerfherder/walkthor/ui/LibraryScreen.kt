@@ -100,7 +100,8 @@ class LibraryActions(
     val onToggleAlwaysBottom: (Boolean) -> Unit,
     val onToggleSwipeToOpen: (Boolean) -> Unit,
     val onGrantSwipePermission: () -> Unit,
-    val canDrawOverlays: () -> Boolean,
+    val isSwipeServiceOn: () -> Boolean,
+    val onOpenAppInfo: () -> Unit,
     val onSwapScreen: (() -> Unit)?,
 )
 
@@ -150,7 +151,7 @@ fun LibraryScreen(
                 artLinked, artCount, alwaysBottom, swipeToOpen, actions,
                 onToggleSwipe = { on ->
                     actions.onToggleSwipeToOpen(on)
-                    if (on && !actions.canDrawOverlays()) explainSwipe = true
+                    if (on && !actions.isSwipeServiceOn()) explainSwipe = true
                 },
             )
         }
@@ -165,12 +166,12 @@ fun LibraryScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Swipe-to-open needs “Display over other apps”.",
+                    "Swipe-to-open: switch on “WalkThor swipe to open” in Accessibility.",
                     color = BookColors.Text,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = actions.onGrantSwipePermission) { Text("Allow") }
+                TextButton(onClick = { explainSwipe = true }) { Text("Set up") }
             }
         }
         if (artScanning != null) {
@@ -204,17 +205,35 @@ fun LibraryScreen(
             containerColor = BookColors.Surface,
             title = { Text("Swipe down to open", fontFamily = SerifDisplay) },
             text = {
-                Text(
-                    "To notice a swipe while another app is showing, WalkThor places a thin invisible strip " +
-                        "along the top edge of the bottom screen. Android calls this “Display over other apps”. " +
-                        "On the next screen, find WalkThor and turn it on.",
-                    color = BookColors.TextMuted,
-                )
+                Column {
+                    Text(
+                        "Android only lets an app pop up over other apps through an accessibility service, " +
+                            "so the swipe is handled by a tiny one. It only watches a thin strip at the top " +
+                            "of the bottom screen and doesn't read anything on your screen.",
+                        color = BookColors.TextMuted,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "1. Tap Open settings.\n2. Find “WalkThor swipe to open” (it may be under Downloaded apps) and switch it on.",
+                        color = BookColors.Text,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "If Android says it's a restricted setting: tap App info, then ⋮ → Allow restricted settings, and try again.",
+                        color = BookColors.TextMuted,
+                        fontSize = 12.sp,
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = { explainSwipe = false; actions.onGrantSwipePermission() }) { Text("Open settings") }
             },
-            dismissButton = { TextButton(onClick = { explainSwipe = false }) { Text("Later") } },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { actions.onOpenAppInfo() }) { Text("App info") }
+                    TextButton(onClick = { explainSwipe = false }) { Text("Later") }
+                }
+            },
         )
     }
 

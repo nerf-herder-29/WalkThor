@@ -1,149 +1,145 @@
 package com.nerfherder.walkthor
 
+import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.ActivityOptions
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
-import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
+import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
-import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
+import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * "Swipe down from the top of the bottom screen to open WalkThor."
  *
- * Android only lets an app see touches outside its own window through an overlay, so a thin,
- * invisible strip is laid along the top edge of the Thor's bottom display (needs "Display over
- * other apps"). A foreground service keeps it alive; it's restarted after reboot and app updates.
+ * Android blocks ordinary apps from bringing themselves to the front from the background, which is
+ * why an overlay-only approach only worked while WalkThor was already open. Accessibility services
+ * are allowed to, so the gesture lives in a tiny accessibility service that lays a thin invisible
+ * strip along the top edge of the Thor's bottom screen and opens WalkThor there on a downward swipe.
+ * The service reads no screen content.
  */
 object SwipeLauncher {
-    private const val PREFS = "swipe"
-    private const val KEY_ENABLED = "enabled"
+    const val PREFS = "swipe"
+    const val KEY_ENABLED = "enabled"
 
-    /** The user's choice (the toggle), independent of whether permission is granted yet. */
+    /** The user's choice (the toggle). */
     val enabled = MutableStateFlow(false)
-    /** True when the toggle is on but "Display over other apps" hasn't been allowed. */
+    /** True when the toggle is on but WalkThor's accessibility service hasn't been switched on. */
     val needsPermission = MutableStateFlow(false)
 
-    fun init(context: Context) {
-        enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
-        needsPermission.value = enabled.value && !Settings.canDrawOverlays(context)
-    }
-
-    fun canDrawOverlays(context: Context) = Settings.canDrawOverlays(context)
+    fun init(context: Context) = refresh(context)
 
     fun setEnabled(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean(KEY_ENABLED, on).apply()
-        enabled.value = on
-        sync(context)
+        refresh(context)
     }
 
-    /** Opens the system screen where WalkThor can be allowed to display over other apps. */
+    /** Re-reads the toggle and whether the service is on (e.g. after a trip to Settings). */
+    fun refresh(context: Context) {
+        enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
+        needsPermission.value = enabled.value && !isServiceOn(context)
+    }
+
+    fun isServiceOn(context: Context): Boolean {
+        val me = ComponentName(context, SwipeGestureService::class.java)
+        val list = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        return list.split(':').any { ComponentName.unflattenFromString(it) == me }
+    }
+
+    /** Opens Accessibility settings, where the user switches on "WalkThor swipe to open". */
     fun requestPermission(context: Context) {
-        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(intent) }
-    }
-
-    /** Starts or stops the gesture service to match the toggle and the permission. */
-    fun sync(context: Context) {
-        val on = prefs(context).getBoolean(KEY_ENABLED, false)
-        val allowed = Settings.canDrawOverlays(context)
-        enabled.value = on
-        needsPermission.value = on && !allowed
-        val intent = Intent(context, SwipeLaunchService::class.java)
-        if (on && allowed && DisplayHelper.bottomDisplay(context) != null) {
-            runCatching {
-                if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
-            }
-        } else {
-            context.stopService(intent)
+        runCatching {
+            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 
-    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    /** Opens WalkThor's App info page (for Android's "Allow restricted settings" on sideloaded apps). */
+    fun openAppInfo(context: Context) {
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+
+    fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
 
-class SwipeLaunchService : Service() {
+/** Where WalkThor's activity currently is, so the gesture can bring it to the right screen. */
+object AppState {
+    /** Display of the live activity, or null if none is running. */
+    @Volatile var activityDisplayId: Int? = null
+    /** Guide open in the reader, if any. */
+    @Volatile var openBookId: String? = null
+}
+
+class SwipeGestureService : AccessibilityService() {
 
     private var strip: View? = null
     private var windowManager: WindowManager? = null
     private var attachedDisplay = -1
     private val handler = Handler(Looper.getMainLooper())
 
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == SwipeLauncher.KEY_ENABLED) reattach(0)
+    }
+
     private val displayListener = object : DisplayManager.DisplayListener {
-        override fun onDisplayAdded(displayId: Int) = reattach()
-        override fun onDisplayRemoved(displayId: Int) = reattach()
+        override fun onDisplayAdded(displayId: Int) = reattach(400)
+        override fun onDisplayRemoved(displayId: Int) = reattach(400)
         override fun onDisplayChanged(displayId: Int) {
-            if (displayId == attachedDisplay) reattach()
+            if (displayId == attachedDisplay || attachedDisplay == -1) reattach(400)
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            buildNotification(),
-            if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0,
-        )
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_TURN_OFF) {
-            SwipeLauncher.setEnabled(this, false)
-            stopSelf()
-            return START_NOT_STICKY
-        }
-        if (strip == null) attach()
-        return START_STICKY
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
         detach()
         super.onDestroy()
     }
 
-    private fun reattach() {
+    private fun reattach(delayMs: Long) {
         handler.removeCallbacksAndMessages(null)
-        // Displays report several changes in a row while waking; settle first.
-        handler.postDelayed({ detach(); attach() }, 400)
+        handler.postDelayed({ detach(); attach() }, delayMs)
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun attach() {
-        if (strip != null || !Settings.canDrawOverlays(this)) return
+        if (strip != null || !SwipeLauncher.prefs(this).getBoolean(SwipeLauncher.KEY_ENABLED, false)) return
         val display = DisplayHelper.bottomDisplay(this) ?: return
-        val displayContext = createDisplayContext(display)
         val ctx = if (Build.VERSION.SDK_INT >= 30) {
-            displayContext.createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
-        } else displayContext
+            createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+        } else {
+            // Before Android 11 accessibility overlays can only go on the main display.
+            if (display.displayId != android.view.Display.DEFAULT_DISPLAY) return
+            this
+        }
         val wm = ctx.getSystemService(WindowManager::class.java) ?: return
         val density = ctx.resources.displayMetrics.density
-        val stripHeight = (STRIP_DP * density).toInt()
         val trigger = TRIGGER_DP * density
 
         val view = View(ctx)
@@ -163,8 +159,8 @@ class SwipeLaunchService : Service() {
         @Suppress("DEPRECATION")
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
-            stripHeight,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            (STRIP_DP * density).toInt(),
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -188,64 +184,28 @@ class SwipeLaunchService : Service() {
         attachedDisplay = -1
     }
 
-    private fun openWalkThor(displayId: Int) {
+    private fun openWalkThor(bottomDisplayId: Int) {
+        val runningOn = AppState.activityDisplayId
+        val book = AppState.openBookId
+        if (runningOn != null && runningOn != bottomDisplayId) {
+            // WalkThor is open on the other screen; Android would bring it back up there, so close
+            // that copy and reopen it on the bottom screen at the same guide.
+            getSystemService(ActivityManager::class.java)?.appTasks?.forEach { runCatching { it.finishAndRemoveTask() } }
+        }
         val intent = Intent(this, MainActivity::class.java)
             .setAction(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
-        val options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
+        if (runningOn != null && runningOn != bottomDisplayId && book != null) intent.putExtra(DisplayHelper.EXTRA_BOOK, book)
+        val options = ActivityOptions.makeBasic().setLaunchDisplayId(bottomDisplayId)
         runCatching { startActivity(intent, options.toBundle()) }
     }
 
-    private fun buildNotification(): Notification {
-        val nm = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= 26 && nm?.getNotificationChannel(CHANNEL) == null) {
-            nm?.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Swipe to open", NotificationManager.IMPORTANCE_MIN).apply {
-                    description = "Keeps the swipe-down gesture on the bottom screen active"
-                    setShowBadge(false)
-                }
-            )
-        }
-        val open = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-        val off = PendingIntent.getService(
-            this, 1,
-            Intent(this, SwipeLaunchService::class.java).setAction(ACTION_TURN_OFF),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-        return NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Swipe down to open WalkThor")
-            .setContentText("From the top edge of the bottom screen")
-            .setContentIntent(open)
-            .addAction(0, "Turn off", off)
-            .setOngoing(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .build()
-    }
-
     companion object {
-        private const val CHANNEL = "swipe"
-        private const val NOTIFICATION_ID = 7
-        private const val ACTION_TURN_OFF = "walkthor.swipe.OFF"
         /** Height of the invisible touch strip; thin so it rarely gets in the way of other apps. */
         private const val STRIP_DP = 12f
         /** How far the finger has to travel down before WalkThor opens. */
         private const val TRIGGER_DP = 36f
-    }
-}
-
-/** Brings the gesture back after a reboot or an app update. */
-class SwipeBootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> SwipeLauncher.sync(context)
-        }
     }
 }

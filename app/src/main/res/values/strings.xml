@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">WalkThor</string>
+    <string name="swipe_service_label">WalkThor swipe to open</string>
+    <string name="swipe_service_description">Swipe down from the top edge of the bottom screen to open WalkThor. WalkThor only watches for that swipe in a thin strip along the top edge; it doesn\'t read or change anything on your screen.</string>
 </resources>

@@ -74,8 +74,14 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         hasOtherScreen.value = DisplayHelper.otherDisplay(this) != null
-        // Picks up "Display over other apps" being granted after a trip to Settings.
-        SwipeLauncher.sync(this)
+        AppState.activityDisplayId = DisplayHelper.currentDisplayId(this)
+        // Picks up the swipe service being switched on after a trip to Settings.
+        SwipeLauncher.refresh(this)
+    }
+
+    override fun onDestroy() {
+        if (AppState.activityDisplayId == DisplayHelper.currentDisplayId(this)) AppState.activityDisplayId = null
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -171,6 +177,7 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
         }
     }
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }
+    LaunchedEffect(openId) { AppState.openBookId = openId }
     LaunchedEffect(Unit) {
         library.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
@@ -207,7 +214,8 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
                 onToggleSwipeToOpen = { SwipeLauncher.setEnabled(context, it) },
                 onGrantSwipePermission = { SwipeLauncher.requestPermission(context) },
-                canDrawOverlays = { SwipeLauncher.canDrawOverlays(context) },
+                isSwipeServiceOn = { SwipeLauncher.isServiceOn(context) },
+                onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
             ),
         )
