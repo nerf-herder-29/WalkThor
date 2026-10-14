@@ -1,5 +1,9 @@
 package com.nerfherder.walkthor.ui
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.Immutable
+import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -34,6 +38,44 @@ object BookColors {
 }
 
 val SerifDisplay = FontFamily.Serif
+
+/** Colours of the pages themselves (as opposed to the app chrome). */
+@Immutable
+data class PageColors(
+    val paper: Color,
+    val edge: Color,
+    val ink: Color,
+    val inkFaint: Color,
+    /** Background behind search matches in text guides. */
+    val highlight: Color,
+    /** True for dark pages: PDFs are shown colour-inverted to match. */
+    val dark: Boolean,
+)
+
+val LightPages = PageColors(
+    paper = BookColors.Paper, edge = BookColors.PaperEdge, ink = BookColors.PageInk,
+    inkFaint = BookColors.PageInkFaint, highlight = BookColors.Highlight, dark = false,
+)
+
+/** Near-black pages with parchment-coloured text, to sit on the OLED background. */
+val DarkPages = PageColors(
+    paper = Color(0xFF141216), edge = Color(0xFF2B272D), ink = Color(0xFFE4D9C6),
+    inkFaint = Color(0xFF8C8275), highlight = Color(0xFF6E5214), dark = true,
+)
+
+val LocalPageColors = staticCompositionLocalOf { DarkPages }
+
+/** The "Dark pages" setting (on by default). */
+object PageStyle {
+    val dark = MutableStateFlow(true)
+    fun init(context: Context) {
+        dark.value = context.getSharedPreferences("pages", Context.MODE_PRIVATE).getBoolean("dark", true)
+    }
+    fun setDark(context: Context, on: Boolean) {
+        dark.value = on
+        context.getSharedPreferences("pages", Context.MODE_PRIVATE).edit().putBoolean("dark", on).apply()
+    }
+}
 
 private val scheme = darkColorScheme(
     primary = BookColors.Brass,

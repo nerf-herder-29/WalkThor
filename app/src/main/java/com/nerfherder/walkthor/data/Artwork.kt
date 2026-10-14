@@ -299,14 +299,25 @@ object Matcher {
         return maxOf(wordScore, squashed)
     }
 
-    /** How well a game's name fits a guide title (guides often carry extra words, game names too). */
+    /** Guide-title words that say nothing about which game it is ("100% walkthrough"). */
+    private val GUIDE_NOISE = setOf("100", "percent", "completion", "completionist", "trophy", "trophies", "achievements", "achievement", "faqwalkthrough")
+
+    /**
+     * How well a game's name fits a guide title, 0..1. Guides usually name only part of the game
+     * ("Wind Waker Walkthrough" for "Legend of Zelda, The - The Wind Waker"), so what counts is
+     * how fully the shorter of the two is contained in the other. At least two words must match,
+     * so a one-word guide like "Zelda guide" never claims every Zelda game.
+     */
     fun gameScore(guideTitle: String, gameName: String): Float {
-        val guide = words(guideTitle, guide = true).toSet()
+        val guide = words(guideTitle, guide = true).filterNot { it in GUIDE_NOISE }.toSet()
         val game = words(gameName).toSet()
         if (game.isEmpty() || guide.isEmpty()) return 0f
-        val a = similarity(guide, game)
-        val b = similarity(game, guide)
-        return minOf(a, b) * 0.4f + maxOf(a, b) * 0.6f
+        val matchedGuide = guide.count { g -> game.any { wordsMatch(g, it) } }
+        val matchedGame = game.count { g -> guide.any { wordsMatch(g, it) } }
+        if (minOf(matchedGuide, matchedGame) < 2 && !(guide.size == 1 && game.size == 1 && matchedGuide == 1)) return 0f
+        val a = matchedGuide.toFloat() / guide.size
+        val b = matchedGame.toFloat() / game.size
+        return maxOf(a, b) * 0.7f + minOf(a, b) * 0.3f
     }
 
     /** How well an image fits a guide title, roughly 0..1 (plus a small artwork-type preference). */

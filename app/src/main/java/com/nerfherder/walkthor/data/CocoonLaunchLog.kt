@@ -58,6 +58,17 @@ object CocoonLaunchLog {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_TREE).apply()
     }
 
+    private const val KEY_HANDLED = "handled"
+    private fun handledKey(game: LaunchedGame) = "${game.at}|${game.title}"
+
+    /** Whether WalkThor already acted on this launch (so the background check leaves it alone). */
+    fun isHandled(context: Context, game: LaunchedGame) =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_HANDLED, null) == handledKey(game)
+
+    fun markHandled(context: Context, game: LaunchedGame) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_HANDLED, handledKey(game)).apply()
+    }
+
     /** True if [tree] looks like Cocoon's data folder (has the launch log). */
     suspend fun hasLog(context: Context, tree: Uri): Boolean = withContext(Dispatchers.IO) { findLog(context, tree) != null }
 
@@ -123,7 +134,7 @@ object CocoonLaunchLog {
  */
 object GameGuides {
     private const val PREFS = "gameGuides"
-    private const val MIN_SCORE = 0.8f
+    private const val MIN_SCORE = 0.75f
     private const val MIN_LEAD = 0.1f
 
     private fun key(game: LaunchedGame) = Matcher.words(game.title).joinToString(" ")

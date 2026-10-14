@@ -135,7 +135,7 @@ fun BookView(
             .shadow(14.dp, RoundedCornerShape(6.dp), ambientColor = Color.Black, spotColor = Color.Black)
             .clip(RoundedCornerShape(6.dp))
             // A sliver of page edges around the paper, like the side of a closed stack.
-            .background(BookColors.PaperEdge)
+            .background(LocalPageColors.current.edge)
             .padding(horizontal = 3.dp, vertical = 2.dp)
             .clipToBounds()
     ) {
@@ -338,7 +338,7 @@ private fun Shade(alpha: Float) {
 
 @Composable
 private fun PageSurface(spine: Spine, content: @Composable BoxScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().background(BookColors.Paper)) {
+    Box(Modifier.fillMaxSize().background(LocalPageColors.current.paper)) {
         content()
         // Shadow where the paper curves into the binding.
         Box(
@@ -362,7 +362,7 @@ private fun BoxScope.BlankPage(isEnd: Boolean) {
         Text(
             "❦  fin  ❦",
             modifier = Modifier.align(Alignment.Center),
-            color = BookColors.PageInkFaint,
+            color = LocalPageColors.current.inkFaint,
             fontFamily = FontFamily.Serif,
             fontStyle = FontStyle.Italic,
             fontSize = 16.sp,

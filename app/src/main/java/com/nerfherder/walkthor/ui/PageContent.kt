@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ColorFilter
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
@@ -32,20 +34,21 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun TxtPage(pagination: TxtPagination, index: Int, query: String, modifier: Modifier = Modifier) {
-    val layout = remember(pagination, index, query) {
+    val colors = LocalPageColors.current
+    val layout = remember(pagination, index, query, colors) {
         val text = pagination.pageText(index).trimEnd('\n')
         val spannable = SpannableString(text)
         if (query.isNotEmpty()) {
             var at = text.indexOf(query, ignoreCase = true)
             while (at >= 0) {
                 spannable.setSpan(
-                    BackgroundColorSpan(BookColors.Highlight.toArgb()),
+                    BackgroundColorSpan(colors.highlight.toArgb()),
                     at, at + query.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
                 at = text.indexOf(query, at + query.length, ignoreCase = true)
             }
         }
-        TxtPaginator.layout(spannable, TxtPaginator.paint(pagination.textSizePx), pagination.widthPx)
+        TxtPaginator.layout(spannable, TxtPaginator.paint(pagination.textSizePx, colors.ink.toArgb()), pagination.widthPx)
     }
     Canvas(modifier.fillMaxSize().clipToBounds()) {
         drawIntoCanvas { layout.draw(it.nativeCanvas) }
@@ -58,6 +61,7 @@ fun TxtPage(pagination: TxtPagination, index: Int, query: String, modifier: Modi
  */
 @Composable
 fun PdfPage(source: PdfSource, index: Int, query: String, modifier: Modifier = Modifier, renderScale: Float = 1f) {
+    val dark = LocalPageColors.current.dark
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = constraints.maxWidth
         val h = constraints.maxHeight
@@ -79,6 +83,7 @@ fun PdfPage(source: PdfSource, index: Int, query: String, modifier: Modifier = M
                 image = bmp,
                 dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
                 dstSize = IntSize(dw.roundToInt(), dh.roundToInt()),
+                colorFilter = if (dark) DarkPdfFilter else null,
             )
             for (r in matches) {
                 drawRect(
@@ -89,4 +94,27 @@ fun PdfPage(source: PdfSource, index: Int, query: String, modifier: Modifier = M
             }
         }
     }
+}
+
+/**
+ * Shows a PDF page as dark: inverts brightness, then rotates hue 180° so colours keep their hue
+ * (red stays red), and maps white→near-black paper and black→parchment text.
+ */
+private val DarkPdfFilter: ColorFilter = run {
+    // Inverse of the CSS hue-rotate(180deg) matrix applied to (255 - c), scaled into 22..228.
+    val s = 206f / 255f
+    val r = floatArrayOf(0.574f, -1.430f, -0.144f).map { it * s }
+    val g = floatArrayOf(-0.426f, -0.430f, -0.144f).map { it * s }
+    val b = floatArrayOf(-0.426f, -1.430f, 0.856f).map { it * s }
+    val off = 255f * s + 22f
+    ColorFilter.colorMatrix(
+        ColorMatrix(
+            floatArrayOf(
+                r[0], r[1], r[2], 0f, off,
+                g[0], g[1], g[2], 0f, off,
+                b[0], b[1], b[2], 0f, off,
+                0f, 0f, 0f, 1f, 0f,
+            )
+        )
+    )
 }

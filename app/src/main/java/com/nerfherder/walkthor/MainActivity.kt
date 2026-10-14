@@ -31,7 +31,20 @@ import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
+import com.nerfherder.walkthor.ui.PageStyle
+import com.nerfherder.walkthor.ui.LocalPageColors
+import com.nerfherder.walkthor.ui.DarkPages
+import com.nerfherder.walkthor.ui.LightPages
+import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 
@@ -45,12 +58,13 @@ class MainActivity : ComponentActivity() {
     private val pickedCocoonFolder = MutableStateFlow<Uri?>(null)
     /** Bumped each time WalkThor is opened by the swipe gesture. */
     private val swipeTick = MutableStateFlow(0L)
+    /** Ticks every few seconds while WalkThor is on screen, to notice a game launched meanwhile. */
+    private val pollTick = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private val pickedCover = MutableStateFlow<Pair<String, Uri>?>(null)
     private var coverForBookId: String? = null
 
     private val guidePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) incoming.value = uri
-        if (intent?.getBooleanExtra(EXTRA_FROM_SWIPE, false) == true) swipeTick.value = System.currentTimeMillis()
     }
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedArtFolder.value = uri
@@ -67,6 +81,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         DisplayHelper.init(this)
         SwipeLauncher.init(this)
+        PageStyle.init(this)
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         AppState.activity = java.lang.ref.WeakReference(this)
         coverForBookId = savedInstanceState?.getString("coverFor")
@@ -74,12 +89,24 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
         val initialBook = intent.getStringExtra(DisplayHelper.EXTRA_BOOK)
 
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    pollTick.tryEmit(Unit)
+                    delay(3_000)
+                }
+            }
+        }
+
         setContent {
             WalkThorTheme {
-                WalkThorApp(
-                    initialBookId = initialBook,
-                    host = this,
-                )
+                val darkPages by PageStyle.dark.collectAsState()
+                CompositionLocalProvider(LocalPageColors provides if (darkPages) DarkPages else LightPages) {
+                    WalkThorApp(
+                        initialBookId = initialBook,
+                        host = this,
+                    )
+                }
             }
         }
     }
@@ -123,6 +150,7 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
         if (uri != null) incoming.value = uri
+        if (intent?.getBooleanExtra(EXTRA_FROM_SWIPE, false) == true) swipeTick.value = System.currentTimeMillis()
     }
 
     // ---- used by the UI ----------------------------------------------------------------------
@@ -132,6 +160,7 @@ class MainActivity : ComponentActivity() {
     internal val pickedArtFolderFlow get() = pickedArtFolder
     internal val pickedCocoonFolderFlow get() = pickedCocoonFolder
     internal val swipeTickFlow get() = swipeTick
+    internal val pollTickFlow get() = pollTick
     internal val pickedCoverFlow get() = pickedCover
 
     /** Closes WalkThor (removing it from the screen it's on). */
@@ -222,23 +251,44 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }
     LaunchedEffect(openId) { AppState.openBookId = openId }
 
-    // ---- swiped in during a game: open that game's guide ----
-    // The game from the swipe, while we wait to see which guide the user opens for it.
+    // ---- open the guide for the game Cocoon just launched ----
+    // The game we last acted on, while we wait to see which guide the user opens for it.
     var swipeGame by remember { mutableStateOf<LaunchedGame?>(null) }
     var swipeGameAt by remember { mutableStateOf(0L) }
     var autoOpened by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(swipeTick) {
-        if (swipeTick == 0L || !gameGuideOn) return@LaunchedEffect
-        val tree = CocoonLaunchLog.linkedFolder(context) ?: return@LaunchedEffect
-        val game = CocoonLaunchLog.lastLaunch(context, tree) ?: return@LaunchedEffect
+    val booksNow by rememberUpdatedState(books)
+    val gameGuideNow by rememberUpdatedState(gameGuideOn)
+    val checkLock = remember { Mutex() }
+
+    /**
+     * Looks at Cocoon's newest launch. A swipe ([force]) always acts on it; the on-screen poll only
+     * acts on a launch it hasn't handled yet, so browsing other guides isn't interrupted.
+     */
+    suspend fun checkGame(force: Boolean) = checkLock.withLock {
+        if (!gameGuideNow) return@withLock
+        val tree = CocoonLaunchLog.linkedFolder(context) ?: return@withLock
+        val game = CocoonLaunchLog.lastLaunch(context, tree)
+        if (game == null) {
+            if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try ⋮ → Change Cocoon folder…", Toast.LENGTH_LONG).show()
+            return@withLock
+        }
         // Only a game launched in the last few hours counts as "playing now".
-        if (game.at > 0 && System.currentTimeMillis() - game.at > GAME_RECENT_MS) return@LaunchedEffect
+        if (game.at > 0 && System.currentTimeMillis() - game.at > GAME_RECENT_MS) return@withLock
+        if (!force && CocoonLaunchLog.isHandled(context, game)) return@withLock
+        CocoonLaunchLog.markHandled(context, game)
         swipeGame = game
         swipeGameAt = System.currentTimeMillis()
-        val book = withContext(Dispatchers.Default) { GameGuides.pick(context, books, game) }
+        val book = withContext(Dispatchers.Default) { GameGuides.pick(context, booksNow, game) }
         autoOpened = book?.id
-        if (book != null && book.id != openId) openId = book.id
+        if (book != null) {
+            if (book.id != openId) openId = book.id
+        } else {
+            Toast.makeText(context, "Playing ${game.title} — open its guide and WalkThor will remember it", Toast.LENGTH_LONG).show()
+        }
     }
+    LaunchedEffect(swipeTick) { if (swipeTick != 0L) checkGame(force = true) }
+    LaunchedEffect(Unit) { host.pollTickFlow.collect { checkGame(force = false) } }
+
     // Opening a different guide soon after swiping in teaches WalkThor which guide goes with the game.
     LaunchedEffect(openId) {
         val game = swipeGame ?: return@LaunchedEffect

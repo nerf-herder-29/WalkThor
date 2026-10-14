@@ -200,7 +200,7 @@ fun ReaderScreen(
                 fontSize = 10.sp,
                 fontFamily = SerifDisplay,
                 fontStyle = FontStyle.Italic,
-                color = BookColors.PageInkFaint,
+                color = LocalPageColors.current.inkFaint,
             )
         }
     }
@@ -497,11 +497,17 @@ private fun ReaderMenu(
     onClose: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val darkPages by PageStyle.dark.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = BookColors.TextMuted)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(if (darkPages) "Light pages" else "Dark pages") },
+                onClick = { open = false; PageStyle.setDark(context, !darkPages) },
+            )
             if (isTxt) {
                 DropdownMenuItem(text = { Text("Larger text") }, onClick = { onBigger() })
                 DropdownMenuItem(text = { Text("Smaller text") }, onClick = { onSmaller() })

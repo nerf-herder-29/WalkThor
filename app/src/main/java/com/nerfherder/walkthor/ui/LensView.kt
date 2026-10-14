@@ -136,7 +136,7 @@ fun LensView(
                         translationX = offset.x
                         translationY = offset.y
                     }
-                    .background(BookColors.Paper)
+                    .background(LocalPageColors.current.paper)
             ) {
                 content(page, scale)
             }
