@@ -22,14 +22,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.nerfherder.walkthor.data.CocoonLaunchLog
+import com.nerfherder.walkthor.data.GameGuides
+import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.ui.GuideIntro
 import com.nerfherder.walkthor.ui.ImportDialogs
-import com.nerfherder.walkthor.ui.ProbeReportDialog
 import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -39,11 +43,14 @@ class MainActivity : ComponentActivity() {
     /** Results from the system pickers, consumed by the UI. */
     private val pickedArtFolder = MutableStateFlow<Uri?>(null)
     private val pickedCocoonFolder = MutableStateFlow<Uri?>(null)
+    /** Bumped each time WalkThor is opened by the swipe gesture. */
+    private val swipeTick = MutableStateFlow(0L)
     private val pickedCover = MutableStateFlow<Pair<String, Uri>?>(null)
     private var coverForBookId: String? = null
 
     private val guidePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) incoming.value = uri
+        if (intent?.getBooleanExtra(EXTRA_FROM_SWIPE, false) == true) swipeTick.value = System.currentTimeMillis()
     }
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedArtFolder.value = uri
@@ -124,6 +131,7 @@ class MainActivity : ComponentActivity() {
     internal val hasOtherScreenFlow get() = hasOtherScreen
     internal val pickedArtFolderFlow get() = pickedArtFolder
     internal val pickedCocoonFolderFlow get() = pickedCocoonFolder
+    internal val swipeTickFlow get() = swipeTick
     internal val pickedCoverFlow get() = pickedCover
 
     /** Closes WalkThor (removing it from the screen it's on). */
@@ -136,19 +144,6 @@ class MainActivity : ComponentActivity() {
 
     internal fun pickArtFolder() = folderPicker.launch(null)
     internal fun pickCocoonFolder() = cocoonFolderPicker.launch(null)
-
-    internal fun shareText(subject: String, text: String) {
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-            .putExtra(Intent.EXTRA_SUBJECT, subject)
-            .putExtra(Intent.EXTRA_TEXT, text)
-        runCatching { startActivity(Intent.createChooser(send, subject)) }
-    }
-
-    internal fun copyText(label: String, text: String) {
-        val cm = getSystemService(android.content.ClipboardManager::class.java)
-        cm?.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
-        Toast.makeText(this, "Report copied", Toast.LENGTH_SHORT).show()
-    }
 
     internal fun pickCoverImage(bookId: String) {
         coverForBookId = bookId
@@ -191,8 +186,9 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     val pending by host.incomingFlow.collectAsState()
     val pickedFolder by host.pickedArtFolderFlow.collectAsState()
     val pickedCocoon by host.pickedCocoonFolderFlow.collectAsState()
-    val probeState by library.probe.collectAsState()
-    val probeReport by library.probeReport.collectAsState()
+    val swipeTick by host.swipeTickFlow.collectAsState()
+    val gameGuideOn by SwipeLauncher.gameGuide.collectAsState()
+    val cocoonLinked by SwipeLauncher.cocoonLinked.collectAsState()
     val pickedCover by host.pickedCoverFlow.collectAsState()
     val canSwap by host.hasOtherScreenFlow.collectAsState()
     var openId by rememberSaveable { mutableStateOf(initialBookId) }
@@ -216,13 +212,49 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
         }
     }
     LaunchedEffect(pickedCocoon) {
-        pickedCocoon?.let {
+        pickedCocoon?.let { tree ->
             host.pickedCocoonFolderFlow.value = null
-            library.probeCocoon(it)
+            if (CocoonLaunchLog.hasLog(context, tree)) {
+                CocoonLaunchLog.link(context, tree)
+                SwipeLauncher.setGameGuide(context, true)
+                Toast.makeText(context, "Cocoon linked — swipe in during a game to open its guide", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "That folder has no launch_debug.log — pick the Cocoon folder itself", Toast.LENGTH_LONG).show()
+            }
+            SwipeLauncher.refresh(context)
         }
     }
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }
     LaunchedEffect(openId) { AppState.openBookId = openId }
+
+    // ---- swiped in during a game: open that game's guide ----
+    // The game from the swipe, while we wait to see which guide the user opens for it.
+    var swipeGame by remember { mutableStateOf<LaunchedGame?>(null) }
+    var swipeGameAt by remember { mutableStateOf(0L) }
+    var autoOpened by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(swipeTick) {
+        if (swipeTick == 0L || !gameGuideOn) return@LaunchedEffect
+        val tree = CocoonLaunchLog.linkedFolder(context) ?: return@LaunchedEffect
+        val game = CocoonLaunchLog.lastLaunch(context, tree) ?: return@LaunchedEffect
+        // Only a game launched in the last few hours counts as "playing now".
+        if (game.at > 0 && System.currentTimeMillis() - game.at > GAME_RECENT_MS) return@LaunchedEffect
+        swipeGame = game
+        swipeGameAt = System.currentTimeMillis()
+        val book = withContext(Dispatchers.Default) { GameGuides.pick(context, books, game) }
+        autoOpened = book?.id
+        if (book != null && book.id != openId) openId = book.id
+    }
+    // Opening a different guide soon after swiping in teaches WalkThor which guide goes with the game.
+    LaunchedEffect(openId) {
+        val game = swipeGame ?: return@LaunchedEffect
+        val id = openId ?: return@LaunchedEffect
+        if (System.currentTimeMillis() - swipeGameAt > LEARN_WINDOW_MS) { swipeGame = null; return@LaunchedEffect }
+        if (id != autoOpened) {
+            GameGuides.remember(context, game, id)
+            autoOpened = id
+            Toast.makeText(context, "Linked this guide to ${game.title}", Toast.LENGTH_SHORT).show()
+        }
+    }
     // Each time a guide is opened, play its intro.
     var introFor by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
@@ -257,6 +289,8 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
             artScanning = artScanning,
             alwaysBottom = alwaysBottom,
             swipeToOpen = swipeOn,
+            gameGuide = gameGuideOn && cocoonLinked,
+            cocoonLinked = cocoonLinked,
             swipeNeedsPermission = swipeNeedsPermission,
             actions = LibraryActions(
                 onOpen = { openId = it.id },
@@ -269,7 +303,12 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onClearCover = library::clearCover,
                 suggestions = { library.suggestions(it) },
                 onLinkArtFolder = host::pickArtFolder,
-                onFindPlayHistory = host::pickCocoonFolder,
+                onLinkCocoon = host::pickCocoonFolder,
+                onToggleGameGuide = { on ->
+                    if (on && CocoonLaunchLog.linkedFolder(context) == null) host.pickCocoonFolder()
+                    else SwipeLauncher.setGameGuide(context, on)
+                },
+                onUnlinkCocoon = { CocoonLaunchLog.unlink(context); SwipeLauncher.refresh(context) },
                 onRescanArt = library::rescanArt,
                 onUnlinkArt = library::unlinkArt,
                 onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
@@ -284,24 +323,13 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     }
 
     ImportDialogs(
-        state = probeState,
-        onCancel = library::cancelProbe,
-        onDismissError = library::dismissProbe,
-        workingTitle = "Looking through Cocoon's folder",
-        failedTitle = "Couldn't read the folder",
-    )
-    probeReport?.let { report ->
-        ProbeReportDialog(
-            report = report,
-            onCopy = { host.copyText("WalkThor Cocoon report", report) },
-            onShare = { host.shareText("WalkThor Cocoon report", report) },
-            onDismiss = library::dismissProbe,
-        )
-    }
-
-    ImportDialogs(
         state = importState,
         onCancel = library::cancelImport,
         onDismissError = library::dismissError,
     )
 }
+
+/** A Cocoon launch this recent counts as the game being played. */
+private const val GAME_RECENT_MS = 6 * 60 * 60 * 1000L
+/** After swiping in, the next guide opened within this time is linked to the game. */
+private const val LEARN_WINDOW_MS = 15 * 60 * 1000L

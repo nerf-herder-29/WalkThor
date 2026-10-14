@@ -34,9 +34,20 @@ import java.lang.ref.WeakReference
 object SwipeLauncher {
     const val PREFS = "swipe"
     const val KEY_ENABLED = "enabled"
+    const val KEY_GAME_GUIDE = "gameGuide"
 
     /** The user's choice (the toggle). */
     val enabled = MutableStateFlow(false)
+    /** Open the guide for the game Cocoon launched (from its launch log) when swiping in. */
+    val gameGuide = MutableStateFlow(true)
+    /** Whether Cocoon's data folder (with its launch log) is linked. */
+    val cocoonLinked = MutableStateFlow(false)
+
+    fun setGameGuide(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean(KEY_GAME_GUIDE, on).apply()
+        refresh(context)
+    }
+
     /** True when the toggle is on but WalkThor's accessibility service hasn't been switched on. */
     val needsPermission = MutableStateFlow(false)
 
@@ -50,6 +61,8 @@ object SwipeLauncher {
     /** Re-reads the settings and whether the service is on (e.g. after a trip to Settings). */
     fun refresh(context: Context) {
         enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
+        gameGuide.value = prefs(context).getBoolean(KEY_GAME_GUIDE, true)
+        cocoonLinked.value = com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) != null
         needsPermission.value = enabled.value && !isServiceOn(context)
     }
 
@@ -78,6 +91,9 @@ object SwipeLauncher {
 
     fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
+
+/** Set on the intent when WalkThor is opened by the swipe gesture. */
+const val EXTRA_FROM_SWIPE = "walkthor.fromSwipe"
 
 /** Where WalkThor's activity currently is, so the gesture can bring it to (or take it off) the right screen. */
 object AppState {
@@ -212,8 +228,10 @@ class SwipeGestureService : AccessibilityService() {
         val intent = Intent(this, MainActivity::class.java)
             .setAction(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            // CLEAR_TOP + SINGLE_TOP: a running WalkThor hears about the swipe in onNewIntent.
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
+            .putExtra(EXTRA_FROM_SWIPE, true)
         if (elsewhere && book != null) intent.putExtra(DisplayHelper.EXTRA_BOOK, book)
         val options = ActivityOptions.makeBasic().setLaunchDisplayId(bottomDisplayId)
         runCatching { startActivity(intent, options.toBundle()) }

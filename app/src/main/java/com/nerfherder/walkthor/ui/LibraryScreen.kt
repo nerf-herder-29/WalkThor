@@ -96,7 +96,9 @@ class LibraryActions(
     val onClearCover: (Book) -> Unit,
     val suggestions: suspend (String) -> List<ArtMatch>,
     val onLinkArtFolder: () -> Unit,
-    val onFindPlayHistory: () -> Unit,
+    val onLinkCocoon: () -> Unit,
+    val onToggleGameGuide: (Boolean) -> Unit,
+    val onUnlinkCocoon: () -> Unit,
     val onRescanArt: () -> Unit,
     val onUnlinkArt: () -> Unit,
     val onToggleAlwaysBottom: (Boolean) -> Unit,
@@ -116,6 +118,8 @@ fun LibraryScreen(
     artScanning: String?,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
+    gameGuide: Boolean,
+    cocoonLinked: Boolean,
     swipeNeedsPermission: Boolean,
     actions: LibraryActions,
 ) {
@@ -154,7 +158,7 @@ fun LibraryScreen(
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
             }
             SettingsMenu(
-                artLinked, artCount, alwaysBottom, swipeToOpen, actions,
+                artLinked, artCount, alwaysBottom, swipeToOpen, gameGuide, cocoonLinked, actions,
                 onToggleSwipe = { on ->
                     actions.onToggleSwipeToOpen(on)
                     if (on && !actions.isSwipeServiceOn()) explainSwipe = true
@@ -262,6 +266,8 @@ private fun SettingsMenu(
     artCount: Int,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
+    gameGuide: Boolean,
+    cocoonLinked: Boolean,
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
 ) {
@@ -286,20 +292,37 @@ private fun SettingsMenu(
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
+            if (swipeToOpen) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Open the playing game's guide")
+                            Text(
+                                if (cocoonLinked) "Uses Cocoon's launch log" else "Link your Cocoon folder to turn on",
+                                fontSize = 11.sp,
+                                color = BookColors.TextMuted,
+                            )
+                        }
+                    },
+                    trailingIcon = { if (gameGuide) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                    onClick = { open = false; actions.onToggleGameGuide(!gameGuide) },
+                )
+            }
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
             }
             DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; actions.onClose() })
             HorizontalDivider(color = BookColors.Hairline)
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Find Cocoon play history…")
-                        Text("Makes a report to help build game-aware opening", fontSize = 11.sp, color = BookColors.TextMuted)
-                    }
-                },
-                onClick = { open = false; actions.onFindPlayHistory() },
-            )
+            if (cocoonLinked) {
+                DropdownMenuItem(text = { Text("Change Cocoon folder…") }, onClick = { open = false; actions.onLinkCocoon() })
+                DropdownMenuItem(text = { Text("Unlink Cocoon folder") }, onClick = { open = false; actions.onUnlinkCocoon() })
+            } else {
+                DropdownMenuItem(
+                    text = { Text("Link Cocoon folder…") },
+                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null) },
+                    onClick = { open = false; actions.onLinkCocoon() },
+                )
+            }
             if (!artLinked) {
                 DropdownMenuItem(
                     text = { Text("Link Cocoon artwork folder…") },
@@ -691,57 +714,6 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
                 if (book.cover != null) {
                     TextButton(onClick = { actions.onClearCover(book); onDismiss() }) { Text("Remove cover") }
                 }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProbeReportDialog(report: String, onCopy: () -> Unit, onShare: () -> Unit, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(
-            Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.92f)
-                .background(BookColors.Surface, RoundedCornerShape(16.dp))
-                .border(1.dp, BookColors.Hairline, RoundedCornerShape(16.dp))
-                .padding(16.dp)
-        ) {
-            Text("COCOON REPORT", style = EyebrowStyle)
-            Text(
-                "Copy or share this and send it over, so the playing game's guide can open automatically.",
-                color = BookColors.TextMuted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
-            )
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(BookColors.Ink, RoundedCornerShape(8.dp))
-                    .padding(10.dp)
-            ) {
-                androidx.compose.foundation.lazy.LazyColumn {
-                    val lines = report.lines()
-                    items(lines.size) { i ->
-                        Text(
-                            lines[i],
-                            color = BookColors.Text,
-                            fontSize = 11.sp,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            lineHeight = 14.sp,
-                        )
-                    }
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onCopy,
-                    colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
-                ) { Text("Copy") }
-                OutlinedButton(onClick = onShare) { Text("Share…", color = BookColors.Text) }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
             }
