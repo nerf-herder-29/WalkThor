@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -99,6 +100,8 @@ class LibraryActions(
     val onUnlinkArt: () -> Unit,
     val onToggleAlwaysBottom: (Boolean) -> Unit,
     val onToggleSwipeToOpen: (Boolean) -> Unit,
+    val onToggleGameGuide: (Boolean) -> Unit,
+    val onClose: () -> Unit,
     val onGrantSwipePermission: () -> Unit,
     val isSwipeServiceOn: () -> Boolean,
     val onOpenAppInfo: () -> Unit,
@@ -113,6 +116,7 @@ fun LibraryScreen(
     artScanning: String?,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
+    gameGuide: Boolean,
     swipeNeedsPermission: Boolean,
     actions: LibraryActions,
 ) {
@@ -147,8 +151,11 @@ fun LibraryScreen(
                 Spacer(Modifier.width(6.dp))
                 Text("Add guide", fontWeight = FontWeight.SemiBold)
             }
+            IconButton(onClick = actions.onClose) {
+                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
+            }
             SettingsMenu(
-                artLinked, artCount, alwaysBottom, swipeToOpen, actions,
+                artLinked, artCount, alwaysBottom, swipeToOpen, gameGuide, actions,
                 onToggleSwipe = { on ->
                     actions.onToggleSwipeToOpen(on)
                     if (on && !actions.isSwipeServiceOn()) explainSwipe = true
@@ -256,6 +263,7 @@ private fun SettingsMenu(
     artCount: Int,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
+    gameGuide: Boolean,
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
 ) {
@@ -280,9 +288,22 @@ private fun SettingsMenu(
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
+            if (swipeToOpen) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Open the playing game's guide")
+                            Text("Reads the game name Cocoon shows", fontSize = 11.sp, color = BookColors.TextMuted)
+                        }
+                    },
+                    trailingIcon = { if (gameGuide) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                    onClick = { actions.onToggleGameGuide(!gameGuide) },
+                )
+            }
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
             }
+            DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; actions.onClose() })
             HorizontalDivider(color = BookColors.Hairline)
             if (!artLinked) {
                 DropdownMenuItem(

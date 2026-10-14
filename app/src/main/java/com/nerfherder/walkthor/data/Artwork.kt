@@ -288,16 +288,30 @@ object Matcher {
         return 2f * inter / ((a.length - 1) + (b.length - 1))
     }
 
-    /** How well an image fits a guide title, roughly 0..1 (plus a small artwork-type preference). */
-    fun score(want: Set<String>, img: ArtImage): Float {
-        val have = img.titleTokens
+    /** Title similarity of two word sets, roughly 0..1, weighted toward covering [have]. */
+    fun similarity(want: Set<String>, have: Set<String>): Float {
         if (want.isEmpty() || have.isEmpty()) return 0f
         val matchedHave = have.count { h -> want.any { wordsMatch(h, it) } }
         val matchedWant = want.count { w -> have.any { wordsMatch(w, it) } }
         val wordScore = 0.7f * matchedHave / have.size + 0.3f * matchedWant / want.size
         val squashed = dice(want.sorted().joinToString(""), have.sorted().joinToString(""))
             .coerceAtLeast(dice(want.joinToString(""), have.joinToString("")))
-        var s = maxOf(wordScore, squashed)
+        return maxOf(wordScore, squashed)
+    }
+
+    /** How well a game name seen on screen fits a guide title (symmetric enough for both ways round). */
+    fun gameScore(guideTitle: String, gameName: String): Float {
+        val guide = words(guideTitle, guide = true).toSet()
+        val game = words(gameName).toSet()
+        if (game.isEmpty() || guide.isEmpty()) return 0f
+        // Both directions: the guide may carry extra words, or the on-screen name may.
+        return minOf(similarity(guide, game), similarity(game, guide)) * 0.4f +
+            maxOf(similarity(guide, game), similarity(game, guide)) * 0.6f
+    }
+
+    /** How well an image fits a guide title, roughly 0..1 (plus a small artwork-type preference). */
+    fun score(want: Set<String>, img: ArtImage): Float {
+        var s = similarity(want, img.titleTokens)
         if (s <= 0f) return 0f
         val where = (img.folder + "/" + img.name).lowercase()
         s += when {

@@ -91,6 +91,7 @@ private val FOOTER = 16.dp
 fun ReaderScreen(
     bookId: String,
     onBack: () -> Unit,
+    onClose: () -> Unit,
     onSwapScreen: (() -> Unit)?,
 ) {
     // The reader's ViewModel lives exactly as long as this screen, so the PDF is closed on exit.
@@ -264,6 +265,7 @@ fun ReaderScreen(
                 onSmaller = { vm.changeFontSize(bigger = false) },
                 onBigger = { vm.changeFontSize(bigger = true) },
                 onSwapScreen = onSwapScreen,
+                onClose = onClose,
             )
         }
 
@@ -492,8 +494,8 @@ private fun ReaderMenu(
     onSmaller: () -> Unit,
     onBigger: () -> Unit,
     onSwapScreen: (() -> Unit)?,
+    onClose: () -> Unit,
 ) {
-    if (!isTxt && onSwapScreen == null) return
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
@@ -507,6 +509,7 @@ private fun ReaderMenu(
             if (onSwapScreen != null) {
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; onSwapScreen() })
             }
+            DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; onClose() })
         }
     }
 }
