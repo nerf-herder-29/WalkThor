@@ -1,5 +1,9 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.RadioButton
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -297,6 +301,10 @@ private fun SettingsMenu(
     onAbout: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
+    var pickDim by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val dimDelay by AutoDim.delayMs.collectAsState()
+    val showTimer by PlaySession.showTimer.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
@@ -307,6 +315,27 @@ private fun SettingsMenu(
                 trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { actions.onToggleAlwaysBottom(!alwaysBottom) },
             )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Auto-dim")
+                        Text(AutoDim.label(dimDelay), fontSize = 11.sp, color = BookColors.TextMuted)
+                    }
+                },
+                onClick = { open = false; pickDim = true },
+            )
+            if (cocoonLinked) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Show play time")
+                            Text("Next to the clock, from Cocoon's launch log", fontSize = 11.sp, color = BookColors.TextMuted)
+                        }
+                    },
+                    trailingIcon = { if (showTimer) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                    onClick = { PlaySession.setShowTimer(context, !showTimer) },
+                )
+            }
             DropdownMenuItem(
                 text = {
                     Column {
@@ -368,6 +397,41 @@ private fun SettingsMenu(
             HorizontalDivider(color = BookColors.Hairline)
             DropdownMenuItem(text = { Text("About & licences") }, onClick = { open = false; onAbout() })
         }
+    }
+    if (pickDim) {
+        AlertDialog(
+            onDismissRequest = { pickDim = false },
+            containerColor = BookColors.Surface,
+            title = { Text("Auto-dim", fontFamily = SerifDisplay) },
+            text = {
+                Column {
+                    Text(
+                        "Fade the screen nearly to black after this long without a touch or button press. Any touch wakes it.",
+                        color = BookColors.TextMuted,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    AutoDim.OPTIONS.forEach { ms ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { AutoDim.setDelay(context, ms); pickDim = false }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = dimDelay == ms,
+                                onClick = { AutoDim.setDelay(context, ms); pickDim = false },
+                                colors = RadioButtonDefaults.colors(selectedColor = BookColors.Brass),
+                            )
+                            Text(if (ms == 0L) "Off" else "After ${AutoDim.label(ms)}", color = BookColors.Text)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { pickDim = false }) { Text("Close") } },
+        )
     }
 }
 

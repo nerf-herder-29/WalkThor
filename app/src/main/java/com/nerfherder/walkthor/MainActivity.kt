@@ -32,6 +32,9 @@ import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
 import com.nerfherder.walkthor.ui.PageStyle
+import com.nerfherder.walkthor.ui.AutoDim
+import com.nerfherder.walkthor.ui.AutoDimOverlay
+import com.nerfherder.walkthor.ui.PlaySession
 import com.nerfherder.walkthor.ui.LocalPageColors
 import com.nerfherder.walkthor.ui.DarkPages
 import com.nerfherder.walkthor.ui.LightPages
@@ -82,6 +85,8 @@ class MainActivity : ComponentActivity() {
         DisplayHelper.init(this)
         SwipeLauncher.init(this)
         PageStyle.init(this)
+        AutoDim.init(this)
+        PlaySession.init(this)
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         AppState.activity = java.lang.ref.WeakReference(this)
         coverForBookId = savedInstanceState?.getString("coverFor")
@@ -102,10 +107,13 @@ class MainActivity : ComponentActivity() {
             WalkThorTheme {
                 val darkPages by PageStyle.dark.collectAsState()
                 CompositionLocalProvider(LocalPageColors provides if (darkPages) DarkPages else LightPages) {
-                    WalkThorApp(
-                        initialBookId = initialBook,
-                        host = this,
-                    )
+                    Box(Modifier.fillMaxSize()) {
+                        WalkThorApp(
+                            initialBookId = initialBook,
+                            host = this@MainActivity,
+                        )
+                        AutoDimOverlay()
+                    }
                 }
             }
         }
@@ -182,7 +190,24 @@ class MainActivity : ComponentActivity() {
     internal fun swapScreen(bookId: String?) = DisplayHelper.moveToOtherScreen(this, bookId)
 
     // Shoulder buttons (L1/R1), page keys and the D-pad turn pages while a guide is open.
+    /** Key that only woke the dimmed screen; its key-up is swallowed too. */
+    private var wakeKey = -1
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        // Any touch counts as activity for auto-dim (the dim layer itself swallows a waking tap).
+        AutoDim.interact()
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && AutoDim.interact()) {
+            wakeKey = event.keyCode
+            return true
+        }
+        if (event.action == KeyEvent.ACTION_UP && event.keyCode == wakeKey) {
+            wakeKey = -1
+            return true
+        }
         if (KeyBus.readerActive) {
             val cmd = when (event.keyCode) {
                 KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_PAGE_DOWN -> KeyBus.Command.NEXT
@@ -265,15 +290,18 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
      * acts on a launch it hasn't handled yet, so browsing other guides isn't interrupted.
      */
     suspend fun checkGame(force: Boolean) = checkLock.withLock {
-        if (!gameGuideNow) return@withLock
-        val tree = CocoonLaunchLog.linkedFolder(context) ?: return@withLock
+        val tree = CocoonLaunchLog.linkedFolder(context)
+        if (tree == null) { PlaySession.current.value = null; return@withLock }
         val game = CocoonLaunchLog.lastLaunch(context, tree)
+        // Only a game launched in the last few hours counts as "playing now".
+        val recent = game != null && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
+        PlaySession.current.value = if (recent) game else null
+        if (!gameGuideNow) return@withLock
         if (game == null) {
             if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try ⋮ → Change Cocoon folder…", Toast.LENGTH_LONG).show()
             return@withLock
         }
-        // Only a game launched in the last few hours counts as "playing now".
-        if (game.at > 0 && System.currentTimeMillis() - game.at > GAME_RECENT_MS) return@withLock
+        if (!recent) return@withLock
         if (!force && CocoonLaunchLog.isHandled(context, game)) return@withLock
         CocoonLaunchLog.markHandled(context, game)
         swipeGame = game
@@ -281,7 +309,10 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
         val book = withContext(Dispatchers.Default) { GameGuides.pick(context, booksNow, game) }
         autoOpened = book?.id
         if (book != null) {
-            if (book.id != openId) openId = book.id
+            if (book.id != openId) {
+                openId = book.id
+                AutoDim.wake() // a new game's guide just opened; show it
+            }
         } else {
             Toast.makeText(context, "Playing ${game.title} — open its guide and WalkThor will remember it", Toast.LENGTH_LONG).show()
         }

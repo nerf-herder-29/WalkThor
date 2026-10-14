@@ -1,5 +1,9 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import android.widget.Toast
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -82,7 +86,24 @@ fun StatusClock(modifier: Modifier = Modifier) {
     val low = level in 0..15 && !charging
     val tint = if (low) LowBattery else BookColors.TextMuted
 
+    val game by PlaySession.current.collectAsState()
+    val showTimer by PlaySession.showTimer.collectAsState()
+
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        val g = game
+        if (showTimer && g != null && g.at > 0) {
+            val played = playTime(now.time - g.at)
+            Row(
+                Modifier
+                    .clickable { Toast.makeText(context, "Playing ${g.title}" + (g.player?.let { " · $it" } ?: ""), Toast.LENGTH_SHORT).show() }
+                    .padding(end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayGlyph()
+                Spacer(Modifier.width(4.dp))
+                Text(played, color = BookColors.Brass, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+        }
         Text(time, color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         if (level >= 0) {
             Spacer(Modifier.width(10.dp))
@@ -136,5 +157,25 @@ private fun BatteryGlyph(level: Int, charging: Boolean, tint: Color) {
             }
             drawPath(bolt, BookColors.Text)
         }
+    }
+}
+
+/** "45m", "1h 05m". */
+private fun playTime(ms: Long): String {
+    val minutes = (ms.coerceAtLeast(0) / 60_000L)
+    return if (minutes < 60) "${minutes}m" else "${minutes / 60}h ${"%02d".format(minutes % 60)}m"
+}
+
+/** A small "play" triangle in brass, marking the play-time readout. */
+@Composable
+private fun PlayGlyph() {
+    Canvas(Modifier.size(width = 8.dp, height = 9.dp)) {
+        val p = Path().apply {
+            moveTo(0f, 0f)
+            lineTo(size.width, size.height / 2f)
+            lineTo(0f, size.height)
+            close()
+        }
+        drawPath(p, BookColors.Brass)
     }
 }
