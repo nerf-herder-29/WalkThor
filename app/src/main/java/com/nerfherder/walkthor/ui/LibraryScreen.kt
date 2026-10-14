@@ -170,6 +170,7 @@ fun LibraryScreen(
         CoverPicker(
             book = live,
             artLinked = artLinked,
+            artCount = artCount,
             actions = actions,
             onDismiss = { coverFor = null },
         )
@@ -380,7 +381,7 @@ private fun Color.compositeOn(bg: Color): Color {
 }
 
 @Composable
-private fun CoverPicker(book: Book, artLinked: Boolean, actions: LibraryActions, onDismiss: () -> Unit) {
+private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: LibraryActions, onDismiss: () -> Unit) {
     var query by remember(book.id) { mutableStateOf(book.title) }
     val matches by produceState<List<ArtMatch>?>(null, query, artLinked) {
         value = null
@@ -430,7 +431,17 @@ private fun CoverPicker(book: Book, artLinked: Boolean, actions: LibraryActions,
                         }
                     },
                 )
-                Spacer(Modifier.height(10.dp))
+                Text(
+                    when {
+                        artCount == 0 -> "No images indexed yet — try ⋮ → Rescan artwork, or link a different folder."
+                        matches.isNullOrEmpty() -> "Searched $artCount images"
+                        else -> "Closest matches from $artCount images · tap one to use it"
+                    },
+                    fontSize = 11.sp,
+                    color = BookColors.TextMuted,
+                    modifier = Modifier.padding(top = 6.dp, start = 4.dp),
+                )
+                Spacer(Modifier.height(8.dp))
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     val list = matches
                     when {
@@ -462,12 +473,19 @@ private fun CoverPicker(book: Book, artLinked: Boolean, actions: LibraryActions,
                                             .background(BookColors.Ink, RoundedCornerShape(6.dp)),
                                     )
                                     Text(
-                                        m.image.folder.substringAfterLast('/').ifEmpty { m.image.name },
+                                        m.image.name,
+                                        fontSize = 10.sp,
+                                        color = BookColors.Text,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 3.dp),
+                                    )
+                                    Text(
+                                        m.image.folder.substringAfterLast('/').ifEmpty { "—" },
                                         fontSize = 10.sp,
                                         color = BookColors.TextMuted,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(top = 3.dp),
                                     )
                                 }
                             }

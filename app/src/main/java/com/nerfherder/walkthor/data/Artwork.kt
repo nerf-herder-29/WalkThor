@@ -109,7 +109,8 @@ class ArtworkRepository private constructor(private val context: Context) {
                     val name = c.getString(1) ?: continue
                     val mime = c.getString(2) ?: ""
                     if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        if (!name.startsWith(".")) dirs += id to name
+                        // Videos and manuals hold no images worth indexing; skipping them speeds up big libraries.
+                        if (!name.startsWith(".") && name.lowercase() !in SKIP_DIRS) dirs += id to name
                     } else if (name.substringAfterLast('.', "").lowercase() in IMAGE_EXTENSIONS) {
                         out += ArtImage(
                             uri = DocumentsContract.buildDocumentUriUsingTree(tree, id).toString(),
@@ -126,11 +127,12 @@ class ArtworkRepository private constructor(private val context: Context) {
 
     /** Best artwork for a title, best first. */
     suspend fun suggestions(title: String, limit: Int = 40): List<ArtMatch> = withContext(Dispatchers.Default) {
-        val want = Matcher.tokens(title)
+        val want = Matcher.words(title, guide = true).toSet()
         if (want.isEmpty()) return@withContext emptyList()
+        // Loose cut-off: the picker should always offer the nearest candidates to choose from.
         _images.value.asSequence()
             .map { ArtMatch(it, Matcher.score(want, it)) }
-            .filter { it.score > 0.34f }
+            .filter { it.score > 0.2f }
             .sortedByDescending { it.score }
             .take(limit)
             .toList()
@@ -189,8 +191,9 @@ class ArtworkRepository private constructor(private val context: Context) {
         private const val MAX_DEPTH = 8
         private const val MAX_IMAGES = 60_000
         private const val COVER_MAX = 720
-        const val AUTO_THRESHOLD = 0.72f
+        const val AUTO_THRESHOLD = 0.8f
         private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
+        private val SKIP_DIRS = setOf("videos", "manuals", "sounds", "music", "backup", "backups")
 
         @Volatile private var instance: ArtworkRepository? = null
         fun get(context: Context): ArtworkRepository =
@@ -200,15 +203,21 @@ class ArtworkRepository private constructor(private val context: Context) {
     }
 }
 
-/** Fuzzy title matching between guide names and artwork file names. */
+/**
+ * Fuzzy title matching between guide names and artwork file names.
+ *
+ * Built for ES-DE / Cocoon style media names ("Legend of Zelda, The - A Link to the Past (USA).png"):
+ * accents are folded, bracketed tags dropped, Roman numerals read as numbers, and words match
+ * loosely (prefixes, one-letter typos). A character-bigram similarity of the squashed titles
+ * catches split/joined words ("Spiderman" vs "Spider-Man").
+ */
 object Matcher {
     private val STOP = setOf(
-        "the", "a", "an", "of", "and", "faq", "faqs", "walkthrough", "walkthru", "guide", "guides",
-        "by", "version", "ver", "v", "txt", "pdf", "game", "complete", "official", "strategy",
-        "full", "final", "edition", "rev", "usa", "us", "eu", "europe", "jp", "japan", "en",
+        "the", "a", "an", "of", "and", "for", "by", "faq", "faqs", "walkthrough", "walkthru", "guide",
+        "guides", "version", "ver", "v", "txt", "pdf", "game", "complete", "official", "strategy", "full",
+        "edition", "rev", "usa", "us", "eu", "europe", "jp", "japan", "en", "world", "unl", "beta",
+        "proto", "demo", "prima", "bradygames", "gamefaqs",
     )
-    // "final" is common in titles (Final Fantasy) — only drop it when it's "final version" style noise.
-    private val KEEP_IF_ONLY = setOf("final")
 
     private val ROMAN = mapOf(
         "ii" to "2", "iii" to "3", "iv" to "4", "vi" to "6", "vii" to "7",
@@ -222,37 +231,82 @@ object Matcher {
         "fanart", "thumb", "thumbnail", "title", "snap", "background", "bg", "poster",
     )
 
-    fun tokens(raw: String): Set<String> {
-        val cleaned = raw.lowercase()
-            .replace(Regex("[\\(\\[\\{][^\\)\\]\\}]*[\\)\\]\\}]"), " ")   // (USA), [!], {hack}
-            .replace(Regex("['’]"), "")
-            .replace(Regex("[^a-z0-9]+"), " ")
-        val words = cleaned.split(' ').filter { it.isNotBlank() }.map { ROMAN[it] ?: it }
-        val kept = words.filter { it !in STOP || it in KEEP_IF_ONLY }
-        // Drop trailing author handles like "by somebody" (already removed "by"); keep the rest.
-        return kept.toSet()
+    private val BRACKETS = Regex("[\\(\\[\\{][^\\)\\]\\}]*[\\)\\]\\}]")
+    private val APOSTROPHES = Regex("['’`]")
+    private val NON_ALNUM = Regex("[^a-z0-9]+")
+    private val MARKS = Regex("\\p{Mn}+")
+
+    /**
+     * Significant words of a title. For guide titles ([guide] = true) everything from "by" on is
+     * dropped, since GameFAQs-style names end with the author ("… FAQ by SomeGuy").
+     */
+    fun words(raw: String, guide: Boolean = false): List<String> {
+        val folded = MARKS.replace(java.text.Normalizer.normalize(raw.lowercase(), java.text.Normalizer.Form.NFD), "")
+        val cleaned = NON_ALNUM.replace(APOSTROPHES.replace(BRACKETS.replace(folded, " ").replace("&", " and "), ""), " ")
+        var w = cleaned.split(' ').filter { it.isNotEmpty() }.map { ROMAN[it] ?: it }
+        if (guide) {
+            val by = w.indexOf("by")
+            if (by >= 1) w = w.subList(0, by)
+        }
+        return w.filter { it !in STOP }
     }
+
+    fun tokens(raw: String): Set<String> = words(raw).toSet()
 
     fun imageTokens(img: ArtImage): Set<String> {
-        val have = tokens(img.name)
+        val have = words(img.name)
         // Layouts like ".../Chrono Trigger/boxart.png": the game is the folder name.
-        return if (have.isEmpty() || have.all { it in GENERIC }) tokens(img.folder.substringAfterLast('/')) else have
+        return if (have.isEmpty() || have.all { it in GENERIC }) {
+            words(img.folder.substringAfterLast('/')).toSet()
+        } else have.toSet()
     }
 
+    private fun oneEditApart(a: String, b: String): Boolean {
+        if (kotlin.math.abs(a.length - b.length) > 1) return false
+        var i = 0
+        while (i < minOf(a.length, b.length) && a[i] == b[i]) i++
+        return a.drop(i + 1) == b.drop(i + 1) || a.drop(i + 1) == b.drop(i) || a.drop(i) == b.drop(i + 1)
+    }
+
+    private fun wordsMatch(a: String, b: String): Boolean {
+        if (a == b) return true
+        val m = minOf(a.length, b.length)
+        if (m >= 4 && (a.startsWith(b) || b.startsWith(a))) return true
+        return m >= 5 && oneEditApart(a, b)
+    }
+
+    private fun dice(a: String, b: String): Float {
+        if (a.length < 2 || b.length < 2) return 0f
+        val counts = HashMap<String, Int>()
+        for (i in 0 until a.length - 1) { val g = a.substring(i, i + 2); counts[g] = (counts[g] ?: 0) + 1 }
+        var inter = 0
+        for (i in 0 until b.length - 1) {
+            val g = b.substring(i, i + 2)
+            val c = counts[g] ?: 0
+            if (c > 0) { inter++; counts[g] = c - 1 }
+        }
+        return 2f * inter / ((a.length - 1) + (b.length - 1))
+    }
+
+    /** How well an image fits a guide title, roughly 0..1 (plus a small artwork-type preference). */
     fun score(want: Set<String>, img: ArtImage): Float {
         val have = img.titleTokens
-        if (have.isEmpty()) return 0f
-        val inter = have.count { it in want }
-        if (inter == 0) return 0f
-        // Mostly about how much of the artwork name the guide covers (guide names carry extra
-        // words like author names), with a little weight on covering the guide name too.
-        var s = 0.75f * inter / have.size + 0.25f * inter / want.size
+        if (want.isEmpty() || have.isEmpty()) return 0f
+        val matchedHave = have.count { h -> want.any { wordsMatch(h, it) } }
+        val matchedWant = want.count { w -> have.any { wordsMatch(w, it) } }
+        val wordScore = 0.7f * matchedHave / have.size + 0.3f * matchedWant / want.size
+        val squashed = dice(want.sorted().joinToString(""), have.sorted().joinToString(""))
+            .coerceAtLeast(dice(want.joinToString(""), have.joinToString("")))
+        var s = maxOf(wordScore, squashed)
+        if (s <= 0f) return 0f
         val where = (img.folder + "/" + img.name).lowercase()
         s += when {
             "theme" in where -> -0.4f
-            "box" in where || "cover" in where || "front" in where || "grid" in where -> 0.08f
-            "hero" in where || "fanart" in where -> 0.04f
-            "logo" in where || "wheel" in where || "marquee" in where -> -0.06f
+            "backcover" in where -> -0.05f
+            "cover" in where || "box" in where || "front" in where || "grid" in where -> 0.06f
+            "miximage" in where -> 0.04f
+            "hero" in where || "fanart" in where -> 0.02f
+            "marquee" in where || "logo" in where || "wheel" in where -> -0.05f
             else -> 0f
         }
         return s

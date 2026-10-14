@@ -11,15 +11,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Modern dark chrome with antique accents: near-black ink backgrounds, a single brass accent,
+ * Modern dark chrome with antique accents: true-black (OLED) backgrounds, a single brass accent,
  * serif display type, and warm parchment pages.
  */
 object BookColors {
     // chrome
-    val Ink = Color(0xFF121013)           // app background
-    val Surface = Color(0xFF1B181C)
-    val SurfaceHigh = Color(0xFF242026)
-    val Hairline = Color(0xFF353036)
+    val Ink = Color(0xFF000000)           // app background: true black for the OLED panels
+    val Surface = Color(0xFF0E0C0E)
+    val SurfaceHigh = Color(0xFF181519)
+    val Hairline = Color(0xFF2A262B)
     val Text = Color(0xFFEDE6DA)
     val TextMuted = Color(0xFFA39A8E)
     val Brass = Color(0xFFC9A35B)
@@ -51,7 +51,7 @@ private val scheme = darkColorScheme(
     surfaceContainerLow = BookColors.Surface,
     surfaceContainer = BookColors.Surface,
     surfaceContainerHigh = BookColors.SurfaceHigh,
-    surfaceContainerHighest = Color(0xFF2C272E),
+    surfaceContainerHighest = Color(0xFF211D22),
     outline = BookColors.Hairline,
     outlineVariant = BookColors.Hairline,
     error = Color(0xFFFF8A80),
