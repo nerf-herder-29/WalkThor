@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DisplayHelper.init(this)
+        SwipeLauncher.init(this)
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         coverForBookId = savedInstanceState?.getString("coverFor")
 
@@ -73,6 +74,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         hasOtherScreen.value = DisplayHelper.otherDisplay(this) != null
+        // Picks up "Display over other apps" being granted after a trip to Settings.
+        SwipeLauncher.sync(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -141,6 +144,8 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     val artImages by library.artImages.collectAsState()
     val artScanning by library.artScanning.collectAsState()
     val alwaysBottom by DisplayHelper.alwaysBottom.collectAsState()
+    val swipeOn by SwipeLauncher.enabled.collectAsState()
+    val swipeNeedsPermission by SwipeLauncher.needsPermission.collectAsState()
     val pending by host.incomingFlow.collectAsState()
     val pickedFolder by host.pickedArtFolderFlow.collectAsState()
     val pickedCover by host.pickedCoverFlow.collectAsState()
@@ -184,6 +189,8 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
             artCount = artImages.size,
             artScanning = artScanning,
             alwaysBottom = alwaysBottom,
+            swipeToOpen = swipeOn,
+            swipeNeedsPermission = swipeNeedsPermission,
             actions = LibraryActions(
                 onOpen = { openId = it.id },
                 onImport = host::pickGuide,
@@ -198,6 +205,9 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onRescanArt = library::rescanArt,
                 onUnlinkArt = library::unlinkArt,
                 onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
+                onToggleSwipeToOpen = { SwipeLauncher.setEnabled(context, it) },
+                onGrantSwipePermission = { SwipeLauncher.requestPermission(context) },
+                canDrawOverlays = { SwipeLauncher.canDrawOverlays(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
             ),
         )

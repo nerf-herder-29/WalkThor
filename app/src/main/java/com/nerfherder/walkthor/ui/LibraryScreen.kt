@@ -98,6 +98,9 @@ class LibraryActions(
     val onRescanArt: () -> Unit,
     val onUnlinkArt: () -> Unit,
     val onToggleAlwaysBottom: (Boolean) -> Unit,
+    val onToggleSwipeToOpen: (Boolean) -> Unit,
+    val onGrantSwipePermission: () -> Unit,
+    val canDrawOverlays: () -> Boolean,
     val onSwapScreen: (() -> Unit)?,
 )
 
@@ -108,9 +111,12 @@ fun LibraryScreen(
     artCount: Int,
     artScanning: String?,
     alwaysBottom: Boolean,
+    swipeToOpen: Boolean,
+    swipeNeedsPermission: Boolean,
     actions: LibraryActions,
 ) {
     var coverFor by remember { mutableStateOf<Book?>(null) }
+    var explainSwipe by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
@@ -140,7 +146,32 @@ fun LibraryScreen(
                 Spacer(Modifier.width(6.dp))
                 Text("Add guide", fontWeight = FontWeight.SemiBold)
             }
-            SettingsMenu(artLinked, artCount, alwaysBottom, actions)
+            SettingsMenu(
+                artLinked, artCount, alwaysBottom, swipeToOpen, actions,
+                onToggleSwipe = { on ->
+                    actions.onToggleSwipeToOpen(on)
+                    if (on && !actions.canDrawOverlays()) explainSwipe = true
+                },
+            )
+        }
+        if (swipeToOpen && swipeNeedsPermission) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                    .background(BookColors.Surface, RoundedCornerShape(10.dp))
+                    .border(1.dp, BookColors.Brass.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Swipe-to-open needs “Display over other apps”.",
+                    color = BookColors.Text,
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = actions.onGrantSwipePermission) { Text("Allow") }
+            }
         }
         if (artScanning != null) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
@@ -167,6 +198,26 @@ fun LibraryScreen(
         }
     }
 
+    if (explainSwipe) {
+        AlertDialog(
+            onDismissRequest = { explainSwipe = false },
+            containerColor = BookColors.Surface,
+            title = { Text("Swipe down to open", fontFamily = SerifDisplay) },
+            text = {
+                Text(
+                    "To notice a swipe while another app is showing, WalkThor places a thin invisible strip " +
+                        "along the top edge of the bottom screen. Android calls this “Display over other apps”. " +
+                        "On the next screen, find WalkThor and turn it on.",
+                    color = BookColors.TextMuted,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { explainSwipe = false; actions.onGrantSwipePermission() }) { Text("Open settings") }
+            },
+            dismissButton = { TextButton(onClick = { explainSwipe = false }) { Text("Later") } },
+        )
+    }
+
     coverFor?.let { book ->
         // Show the live copy so the picker reflects a cover that was just set.
         val live = books.firstOrNull { it.id == book.id } ?: book
@@ -181,7 +232,14 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun SettingsMenu(artLinked: Boolean, artCount: Int, alwaysBottom: Boolean, actions: LibraryActions) {
+private fun SettingsMenu(
+    artLinked: Boolean,
+    artCount: Int,
+    alwaysBottom: Boolean,
+    swipeToOpen: Boolean,
+    actions: LibraryActions,
+    onToggleSwipe: (Boolean) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
@@ -192,6 +250,16 @@ private fun SettingsMenu(artLinked: Boolean, artCount: Int, alwaysBottom: Boolea
                 text = { Text("Always open on bottom screen") },
                 trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { actions.onToggleAlwaysBottom(!alwaysBottom) },
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Swipe down to open")
+                        Text("From the top of the bottom screen", fontSize = 11.sp, color = BookColors.TextMuted)
+                    }
+                },
+                trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
