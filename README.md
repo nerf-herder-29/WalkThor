@@ -3,6 +3,15 @@
 A walkthrough reader for the **AYN Thor**'s bottom screen. Import a PDF or TXT guide and it
 becomes an animated book you can flip through and search while you play on the top screen.
 
+## Screenshots
+
+Rendered at the Thor bottom screen's 1240×1080 with a fictional sample guide.
+
+| | |
+|---|---|
+| ![Boot screen finding the game being played](docs/screenshots/01b-boot-now-playing.png) | ![Library](docs/screenshots/02-library.png) |
+| ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) | ![Search results](docs/screenshots/04a-search-results.png) |
+
 ## Features
 
 - **Lives on the bottom screen** — WalkThor moves itself to the Thor's bottom display on launch
