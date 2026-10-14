@@ -36,6 +36,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import android.os.Looper
+import java.time.Duration
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -57,6 +60,16 @@ class StoreScreenshots {
     private fun shot(name: String) {
         compose.waitForIdle()
         captureScreenRoboImage("build/screenshots/$name.png")
+    }
+
+    /** Lets the view model's debounce and background work finish (they run on real time and the main looper). */
+    private fun settle() {
+        repeat(12) {
+            compose.mainClock.advanceTimeBy(150)
+            Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(150))
+            Thread.sleep(80)
+        }
+        compose.waitForIdle()
     }
 
     @Before
@@ -170,11 +183,16 @@ class StoreScreenshots {
 
         // Search, then dismiss the keyboard so the highlighted matches show on the page.
         compose.onNode(hasSetTextAction()).performTextInput("lantern")
-        compose.mainClock.advanceTimeBy(1_000)
-        compose.waitForIdle()
+        settle()
         shot("04a-search-results")
         compose.onNode(hasSetTextAction()).performImeAction()
-        compose.mainClock.advanceTimeBy(1_000)
+        settle()
         shot("04b-search-highlights")
+
+        compose.onNodeWithContentDescription("Two-page spread").performClick()
+        settle()
+        compose.waitUntil(20_000) { compose.onAllNodesWithText("— 2 —").fetchSemanticsNodes().isNotEmpty() }
+        settle()
+        shot("03b-reader-spread")
     }
 }

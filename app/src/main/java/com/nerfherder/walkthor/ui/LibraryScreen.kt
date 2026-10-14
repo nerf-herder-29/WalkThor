@@ -1,5 +1,10 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+
 import kotlin.math.roundToInt
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Slider
@@ -408,28 +413,29 @@ private fun SettingsMenu(
             containerColor = BookColors.Surface,
             title = { Text("Auto-dim", fontFamily = SerifDisplay) },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     Text(
                         "Fade the screen nearly to black after this long without a touch or button press. Any touch wakes it.",
                         color = BookColors.TextMuted,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
-                    AutoDim.OPTIONS.forEach { ms ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { AutoDim.setDelay(context, ms) }
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
+                    Text("DIM AFTER", style = EyebrowStyle, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+                    // One compact row of choices, so the whole dialog fits the short bottom screen.
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AutoDim.OPTIONS.forEach { ms ->
+                            FilterChip(
                                 selected = dimDelay == ms,
                                 onClick = { AutoDim.setDelay(context, ms) },
-                                colors = RadioButtonDefaults.colors(selectedColor = BookColors.Brass),
+                                label = { Text(AutoDim.shortLabel(ms)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = BookColors.SurfaceHigh,
+                                    labelColor = BookColors.Text,
+                                    selectedContainerColor = BookColors.Brass,
+                                    selectedLabelColor = Color(0xFF1E1709),
+                                ),
+                                border = null,
                             )
-                            Text(if (ms == 0L) "Off" else "After ${AutoDim.label(ms)}", color = BookColors.Text)
                         }
                     }
                     Spacer(Modifier.height(14.dp))

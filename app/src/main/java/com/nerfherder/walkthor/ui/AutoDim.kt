@@ -58,6 +58,13 @@ object AutoDim {
         else -> "${ms / 60_000L} minutes"
     }
 
+    /** "Off", "30 sec", "1 min" — for the compact chips in settings. */
+    fun shortLabel(ms: Long) = when {
+        ms == 0L -> "Off"
+        ms < 60_000L -> "${ms / 1000} sec"
+        else -> "${ms / 60_000L} min"
+    }
+
     fun init(context: Context) {
         val p = context.getSharedPreferences("dim", Context.MODE_PRIVATE)
         delayMs.value = p.getLong("delay", 0L)
@@ -153,6 +160,13 @@ fun AutoDimOverlay() {
 object PlaySession {
     val current = MutableStateFlow<LaunchedGame?>(null)
     val showTimer = MutableStateFlow(true)
+
+    /** "Off", "30 sec", "1 min" — for the compact chips in settings. */
+    fun shortLabel(ms: Long) = when {
+        ms == 0L -> "Off"
+        ms < 60_000L -> "${ms / 1000} sec"
+        else -> "${ms / 60_000L} min"
+    }
 
     fun init(context: Context) {
         showTimer.value = context.getSharedPreferences("session", Context.MODE_PRIVATE).getBoolean("show", true)
