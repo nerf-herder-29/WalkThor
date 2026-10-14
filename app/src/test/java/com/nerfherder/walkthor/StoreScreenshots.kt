@@ -185,14 +185,9 @@ class StoreScreenshots {
         compose.onNode(hasSetTextAction()).performTextInput("lantern")
         settle()
         shot("04a-search-results")
-        compose.onNode(hasSetTextAction()).performImeAction()
+        // Jump to a result: the list closes and the page shows its highlighted matches.
+        compose.onNodeWithText("p. 2").performClick()
         settle()
         shot("04b-search-highlights")
-
-        compose.onNodeWithContentDescription("Two-page spread").performClick()
-        settle()
-        compose.waitUntil(20_000) { compose.onAllNodesWithText("— 2 —").fetchSemanticsNodes().isNotEmpty() }
-        settle()
-        shot("03b-reader-spread")
     }
 }
