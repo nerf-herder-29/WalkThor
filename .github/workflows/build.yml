@@ -39,4 +39,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          name: WalkThor ${{ github.ref_name }}
+          body_path: release-notes/${{ github.ref_name }}.md
           files: app/build/outputs/apk/release/*.apk
