@@ -49,6 +49,35 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     private var importJob: Job? = null
 
+    /** "Find Cocoon play history" report: null = idle, Working = running, Done = report text. */
+    private val _probe = MutableStateFlow<ImportState?>(null)
+    val probe: StateFlow<ImportState?> = _probe.asStateFlow()
+    private val _probeReport = MutableStateFlow<String?>(null)
+    val probeReport: StateFlow<String?> = _probeReport.asStateFlow()
+    private var probeJob: Job? = null
+
+    fun probeCocoon(tree: Uri) {
+        if (probeJob?.isActive == true) return
+        probeJob = viewModelScope.launch {
+            _probe.value = ImportState.Working("Starting…")
+            try {
+                val report = com.nerfherder.walkthor.data.CocoonProbe.inspect(getApplication(), tree) { msg ->
+                    _probe.value = ImportState.Working(msg)
+                }
+                _probe.value = null
+                _probeReport.value = report
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                _probe.value = null
+                throw e
+            } catch (e: Exception) {
+                _probe.value = ImportState.Failed("Couldn't read that folder (${e.message ?: e.javaClass.simpleName}).")
+            }
+        }
+    }
+
+    fun cancelProbe() { probeJob?.cancel(); _probe.value = null }
+    fun dismissProbe() { _probe.value = null; _probeReport.value = null }
+
     fun coverFile(book: Book): File? = repo.coverFile(book)
 
     fun importGuide(uri: Uri) {

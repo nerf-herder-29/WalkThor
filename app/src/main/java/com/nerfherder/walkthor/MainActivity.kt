@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.nerfherder.walkthor.ui.GuideIntro
 import com.nerfherder.walkthor.ui.ImportDialogs
+import com.nerfherder.walkthor.ui.ProbeReportDialog
 import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.ReaderScreen
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private val hasOtherScreen = MutableStateFlow(false)
     /** Results from the system pickers, consumed by the UI. */
     private val pickedArtFolder = MutableStateFlow<Uri?>(null)
+    private val pickedCocoonFolder = MutableStateFlow<Uri?>(null)
     private val pickedCover = MutableStateFlow<Pair<String, Uri>?>(null)
     private var coverForBookId: String? = null
 
@@ -45,6 +47,9 @@ class MainActivity : ComponentActivity() {
     }
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedArtFolder.value = uri
+    }
+    private val cocoonFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) pickedCocoonFolder.value = uri
     }
     private val imagePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val id = coverForBookId
@@ -118,6 +123,7 @@ class MainActivity : ComponentActivity() {
     internal val incomingFlow get() = incoming
     internal val hasOtherScreenFlow get() = hasOtherScreen
     internal val pickedArtFolderFlow get() = pickedArtFolder
+    internal val pickedCocoonFolderFlow get() = pickedCocoonFolder
     internal val pickedCoverFlow get() = pickedCover
 
     /** Closes WalkThor (removing it from the screen it's on). */
@@ -129,6 +135,20 @@ class MainActivity : ComponentActivity() {
     }
 
     internal fun pickArtFolder() = folderPicker.launch(null)
+    internal fun pickCocoonFolder() = cocoonFolderPicker.launch(null)
+
+    internal fun shareText(subject: String, text: String) {
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, subject)
+            .putExtra(Intent.EXTRA_TEXT, text)
+        runCatching { startActivity(Intent.createChooser(send, subject)) }
+    }
+
+    internal fun copyText(label: String, text: String) {
+        val cm = getSystemService(android.content.ClipboardManager::class.java)
+        cm?.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
+        Toast.makeText(this, "Report copied", Toast.LENGTH_SHORT).show()
+    }
 
     internal fun pickCoverImage(bookId: String) {
         coverForBookId = bookId
@@ -170,6 +190,9 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
     val swipeNeedsPermission by SwipeLauncher.needsPermission.collectAsState()
     val pending by host.incomingFlow.collectAsState()
     val pickedFolder by host.pickedArtFolderFlow.collectAsState()
+    val pickedCocoon by host.pickedCocoonFolderFlow.collectAsState()
+    val probeState by library.probe.collectAsState()
+    val probeReport by library.probeReport.collectAsState()
     val pickedCover by host.pickedCoverFlow.collectAsState()
     val canSwap by host.hasOtherScreenFlow.collectAsState()
     var openId by rememberSaveable { mutableStateOf(initialBookId) }
@@ -190,6 +213,12 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
         pickedCover?.let { (bookId, uri) ->
             host.pickedCoverFlow.value = null
             books.firstOrNull { it.id == bookId }?.let { library.setCover(it, uri) }
+        }
+    }
+    LaunchedEffect(pickedCocoon) {
+        pickedCocoon?.let {
+            host.pickedCocoonFolderFlow.value = null
+            library.probeCocoon(it)
         }
     }
     LaunchedEffect(Unit) { library.opened.collect { openId = it } }
@@ -240,6 +269,7 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onClearCover = library::clearCover,
                 suggestions = { library.suggestions(it) },
                 onLinkArtFolder = host::pickArtFolder,
+                onFindPlayHistory = host::pickCocoonFolder,
                 onRescanArt = library::rescanArt,
                 onUnlinkArt = library::unlinkArt,
                 onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
@@ -250,6 +280,22 @@ private fun WalkThorApp(initialBookId: String?, host: MainActivity) {
                 onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
             ),
+        )
+    }
+
+    ImportDialogs(
+        state = probeState,
+        onCancel = library::cancelProbe,
+        onDismissError = library::dismissProbe,
+        workingTitle = "Looking through Cocoon's folder",
+        failedTitle = "Couldn't read the folder",
+    )
+    probeReport?.let { report ->
+        ProbeReportDialog(
+            report = report,
+            onCopy = { host.copyText("WalkThor Cocoon report", report) },
+            onShare = { host.shareText("WalkThor Cocoon report", report) },
+            onDismiss = library::dismissProbe,
         )
     }
 

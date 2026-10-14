@@ -96,6 +96,7 @@ class LibraryActions(
     val onClearCover: (Book) -> Unit,
     val suggestions: suspend (String) -> List<ArtMatch>,
     val onLinkArtFolder: () -> Unit,
+    val onFindPlayHistory: () -> Unit,
     val onRescanArt: () -> Unit,
     val onUnlinkArt: () -> Unit,
     val onToggleAlwaysBottom: (Boolean) -> Unit,
@@ -290,6 +291,15 @@ private fun SettingsMenu(
             }
             DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; actions.onClose() })
             HorizontalDivider(color = BookColors.Hairline)
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Find Cocoon play history…")
+                        Text("Makes a report to help build game-aware opening", fontSize = 11.sp, color = BookColors.TextMuted)
+                    }
+                },
+                onClick = { open = false; actions.onFindPlayHistory() },
+            )
             if (!artLinked) {
                 DropdownMenuItem(
                     text = { Text("Link Cocoon artwork folder…") },
@@ -689,12 +699,69 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
 }
 
 @Composable
-fun ImportDialogs(state: ImportState?, onCancel: () -> Unit, onDismissError: () -> Unit) {
+fun ProbeReportDialog(report: String, onCopy: () -> Unit, onShare: () -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.92f)
+                .background(BookColors.Surface, RoundedCornerShape(16.dp))
+                .border(1.dp, BookColors.Hairline, RoundedCornerShape(16.dp))
+                .padding(16.dp)
+        ) {
+            Text("COCOON REPORT", style = EyebrowStyle)
+            Text(
+                "Copy or share this and send it over, so the playing game's guide can open automatically.",
+                color = BookColors.TextMuted,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
+            )
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(BookColors.Ink, RoundedCornerShape(8.dp))
+                    .padding(10.dp)
+            ) {
+                androidx.compose.foundation.lazy.LazyColumn {
+                    val lines = report.lines()
+                    items(lines.size) { i ->
+                        Text(
+                            lines[i],
+                            color = BookColors.Text,
+                            fontSize = 11.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onCopy,
+                    colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                ) { Text("Copy") }
+                OutlinedButton(onClick = onShare) { Text("Share…", color = BookColors.Text) }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
+            }
+        }
+    }
+}
+
+@Composable
+fun ImportDialogs(
+    state: ImportState?,
+    onCancel: () -> Unit,
+    onDismissError: () -> Unit,
+    workingTitle: String = "Adding guide",
+    failedTitle: String = "Couldn't add guide",
+) {
     when (state) {
         is ImportState.Working -> AlertDialog(
             onDismissRequest = {},
             containerColor = BookColors.Surface,
-            title = { Text("Adding guide", fontFamily = SerifDisplay) },
+            title = { Text(workingTitle, fontFamily = SerifDisplay) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(color = BookColors.Brass, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
@@ -708,7 +775,7 @@ fun ImportDialogs(state: ImportState?, onCancel: () -> Unit, onDismissError: () 
         is ImportState.Failed -> AlertDialog(
             onDismissRequest = onDismissError,
             containerColor = BookColors.Surface,
-            title = { Text("Couldn't add guide", fontFamily = SerifDisplay) },
+            title = { Text(failedTitle, fontFamily = SerifDisplay) },
             text = { Text(state.message, color = BookColors.TextMuted) },
             confirmButton = { TextButton(onClick = onDismissError) { Text("OK") } },
         )
