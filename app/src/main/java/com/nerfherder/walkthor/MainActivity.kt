@@ -106,7 +106,11 @@ class MainActivity : ComponentActivity() {
         applyGameFocus(initial = true)
         lifecycleScope.launch {
             kotlinx.coroutines.flow.combine(GameFocus.keepOnGame, GameFocus.gameRunning, GameFocus.wantFocus) { _, _, _ -> }
-                .collect { applyGameFocus(initial = false) }
+                .collect {
+                    applyGameFocus(initial = false)
+                    // Back to yielding (e.g. finished a search) while still top: hand priority back again.
+                    if (yielding == true && PerfCheck.walkThorIsTop.value == true) scheduleHandBack()
+                }
         }
         AppState.activity = java.lang.ref.WeakReference(this)
         coverForBookId = savedInstanceState?.getString("coverFor")
@@ -167,6 +171,30 @@ class MainActivity : ComponentActivity() {
     override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
         super.onTopResumedActivityChanged(isTopResumedActivity)
         PerfCheck.setTop(isTopResumedActivity)
+        if (isTopResumedActivity) scheduleHandBack() else handBackJob?.cancel()
+    }
+
+    private var handBackJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * WalkThor just became Android's top app while a game is running (e.g. Cocoon opened it as
+     * the companion): shortly after, hand that priority back to the game's screen.
+     */
+    private fun scheduleHandBack() {
+        handBackJob?.cancel()
+        handBackJob = lifecycleScope.launch {
+            delay(HAND_BACK_DELAY_MS) // let the launch (and boot screen) settle first
+            val wanted = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && !GameFocus.wantFocus.value
+            if (!wanted || yielding != true) return@launch
+            val gameDisplay = DisplayHelper.otherDisplay(this@MainActivity) ?: return@launch
+            runCatching {
+                startActivity(
+                    Intent(this@MainActivity, HandBackActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+                    android.app.ActivityOptions.makeBasic().setLaunchDisplayId(gameDisplay.displayId).toBundle(),
+                )
+            }
+        }
     }
 
     private val frameListener = android.view.Window.OnFrameMetricsAvailableListener { _, _, _ ->
@@ -628,6 +656,9 @@ private data class Showing(val game: LaunchedGame, val art: GameArt, val guide: 
 
 /** What a check of Cocoon's launch log acted on: the game, and its guide or (without one) its art. */
 private data class Acted(val game: LaunchedGame, val guide: com.nerfherder.walkthor.data.Book?, val art: GameArt?)
+
+/** How long after WalkThor becomes the top app before it hands priority back to the game. */
+private const val HAND_BACK_DELAY_MS = 2_500L
 
 /** Longest the boot screen waits for Cocoon to log a new launch. */
 private const val BOOT_WAIT_MS = 1_500L

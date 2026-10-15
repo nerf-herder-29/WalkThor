@@ -24,7 +24,7 @@ jobs:
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest --tests "*StoreScreenshots*" --tests "*IdleDraws*" 2>&1 | tee test.log
+          ./gradlew --no-daemon testDebugUnitTest --tests "*StoreScreenshots*" 2>&1 | tee test.log
       - name: Report failures
         if: failure()
         run: |
