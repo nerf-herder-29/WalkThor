@@ -323,20 +323,20 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
      * Looks at Cocoon's newest launch. A swipe ([force]) always acts on it; the on-screen poll only
      * acts on a launch it hasn't handled yet, so browsing other guides isn't interrupted.
      */
-    suspend fun checkGame(force: Boolean) = checkLock.withLock {
+    suspend fun checkGame(force: Boolean): Acted? = checkLock.withLock {
         val tree = CocoonLaunchLog.linkedFolder(context)
-        if (tree == null) { PlaySession.current.value = null; return@withLock }
+        if (tree == null) { PlaySession.current.value = null; return@withLock null }
         val game = CocoonLaunchLog.lastLaunch(context, tree)
         // Only a game launched in the last few hours counts as "playing now".
         val recent = game != null && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
         PlaySession.current.value = if (recent) game else null
-        if (!gameGuideNow) return@withLock
+        if (!gameGuideNow) return@withLock null
         if (game == null) {
             if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try ⋮ → Change Cocoon folder…", Toast.LENGTH_LONG).show()
-            return@withLock
+            return@withLock null
         }
-        if (!recent) return@withLock
-        if (!force && CocoonLaunchLog.isHandled(context, game)) return@withLock
+        if (!recent) return@withLock null
+        if (!force && CocoonLaunchLog.isHandled(context, game)) return@withLock null
         CocoonLaunchLog.markHandled(context, game)
         swipeGame = game
         swipeGameAt = System.currentTimeMillis()
@@ -348,15 +348,18 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 openId = book.id
                 AutoDim.wake() // a new game's guide just opened; show it
             }
+            Acted(game, book, null)
         } else if (openId == null || force) {
             // No guide: show the game's artwork where its guide would be.
             val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
             openId = null
             noGuide = game to art
             AutoDim.wake()
+            Acted(game, null, art)
         } else {
             // Reading another guide; don't pull it away for a game we can't help with yet.
             Toast.makeText(context, "Playing ${game.title} — no guide for it yet", Toast.LENGTH_LONG).show()
+            Acted(game, null, null)
         }
     }
     // ---- boot screen: plays while Cocoon's launch log is read on a fresh open ----
@@ -365,7 +368,6 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var bootStatus by remember { mutableStateOf<BootStatus>(BootStatus.Idle) }
     // A swipe that opened WalkThor is handled by the boot check, not the effect below.
     val bootSwipeTick = remember { if (boot) swipeTick else 0L }
-    val openNow by rememberUpdatedState(openId)
     LaunchedEffect(Unit) {
         if (!booting) return@LaunchedEffect
         val start = System.currentTimeMillis()
@@ -375,20 +377,27 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             // Cocoon may start WalkThor (as a companion app) a moment before it finishes writing
             // the launch to its log, so keep looking briefly for a launch we haven't seen yet.
             var force = bootSwipeTick != 0L
+            // What the check found, straight from it (a guide it opened, or the game's art).
+            var found: Acted? = null
             while (true) {
-                checkGame(force)
+                found = checkGame(force)
                 force = false
-                if (swipeGameAt >= start || openNow != null) break
+                // The poll (or a swipe) may have acted on the launch first.
+                if (found != null || swipeGameAt >= start || openId != null) break
                 if (System.currentTimeMillis() - start >= BOOT_WAIT_MS) break
                 delay(250)
             }
-            swipeGame?.takeIf { swipeGameAt >= start }?.let { game ->
-                // The boot screen flips straight into the guide's tile, so no separate intro.
-                val guide = openNow?.let { id -> booksNow.firstOrNull { it.id == id } }
-                // No guide: flip into the game's artwork instead, then reveal the no-guide screen.
-                val art = if (guide == null) noGuide?.second?.cover else null
-                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), art)
-                delay(if (guide != null || art != null) 1_150 else 800)
+            if (found == null && swipeGameAt >= start) {
+                // Acted on elsewhere: rebuild what it found from the current state.
+                val game = swipeGame
+                val guide = openId?.let { id -> booksNow.firstOrNull { it.id == id } }
+                if (game != null) found = Acted(game, guide, noGuide?.second)
+            }
+            found?.let { (game, guide, art) ->
+                // A guide: flip into its tile (no separate intro). No guide: flip into the game's art.
+                val cover = if (guide == null) art?.cover else null
+                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover)
+                delay(if (guide != null || cover != null) 1_150 else 800)
             }
         } else {
             checkGame(force = false) // just refreshes the play-time readout
@@ -510,6 +519,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         onDismissError = library::dismissError,
     )
 }
+
+/** What a check of Cocoon's launch log acted on: the game, and its guide or (without one) its art. */
+private data class Acted(val game: LaunchedGame, val guide: com.nerfherder.walkthor.data.Book?, val art: GameArt?)
 
 /** Longest the boot screen waits for Cocoon to log a new launch. */
 private const val BOOT_WAIT_MS = 1_500L

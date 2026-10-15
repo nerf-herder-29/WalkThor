@@ -32,8 +32,8 @@ data class ArtImage(
 
 data class ArtMatch(val image: ArtImage, val score: Float)
 
-/** Artwork for a launched game (content URIs as strings); either may be missing. */
-data class GameArt(val cover: String?, val backdrop: String?)
+/** Artwork for a launched game (a content URI as a string), if any was found. */
+data class GameArt(val cover: String?)
 
 /**
  * Reads cover artwork from a folder the user links once (e.g. their Cocoon data folder).
@@ -146,8 +146,8 @@ class ArtworkRepository private constructor(private val context: Context) {
         suggestions(title, 1).firstOrNull()?.takeIf { it.score >= AUTO_THRESHOLD }?.image
 
     /**
-     * Artwork for a game Cocoon launched, for the "no guide yet" screen: a [GameArt.cover] (box
-     * art preferred) and a wide [GameArt.backdrop] (fan art / screenshot) if the folder has them.
+     * Artwork for a game Cocoon launched, for the "no guide yet" screen: its [GameArt.cover],
+     * box art preferred.
      * Matches against both the game's title and its ROM file name (ES-DE names media after the
      * ROM file), and only accepts close matches, since the art is shown as *this* game's.
      */
@@ -155,9 +155,8 @@ class ArtworkRepository private constructor(private val context: Context) {
         val names = listOfNotNull(title, file?.substringBeforeLast('.'))
             .map { Matcher.words(it).toSet() }
             .filter { it.isNotEmpty() }
-        if (names.isEmpty()) return@withContext GameArt(null, null)
+        if (names.isEmpty()) return@withContext GameArt(null)
         var cover: Pair<ArtImage, Float>? = null
-        var backdrop: Pair<ArtImage, Float>? = null
         for (img in _images.value) {
             val sim = names.maxOf { Matcher.closeness(it, img.titleTokens) }
             if (sim < GAME_ART_MIN) continue
@@ -171,16 +170,9 @@ class ArtworkRepository private constructor(private val context: Context) {
                 "screenshot" in where || "titlescreen" in where || "fanart" in where || "hero" in where -> -0.1f
                 else -> 0f
             }
-            val backBonus = when {
-                "fanart" in where || "hero" in where -> 0.15f
-                "screenshot" in where -> 0.1f
-                "titlescreen" in where -> 0.05f
-                else -> null
-            }
             if (coverBonus != null && (cover == null || sim + coverBonus > cover.second)) cover = img to sim + coverBonus
-            if (backBonus != null && (backdrop == null || sim + backBonus > backdrop.second)) backdrop = img to sim + backBonus
         }
-        GameArt(cover?.first?.uri, backdrop?.first?.uri)
+        GameArt(cover?.first?.uri)
     }
 
     /**

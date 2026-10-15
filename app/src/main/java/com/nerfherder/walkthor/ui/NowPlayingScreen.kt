@@ -1,7 +1,6 @@
 package com.nerfherder.walkthor.ui
 
 import android.net.Uri
-import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -27,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
@@ -45,10 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -84,37 +82,17 @@ fun NowPlayingScreen(
     val enter = remember { Animatable(0f) }
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
 
-    Box(Modifier.fillMaxSize().background(BookColors.Ink)) {
-        // Backdrop: fan art or a screenshot (else the cover), blurred and sunk into the black.
-        val backdrop = art.backdrop ?: art.cover
-        if (backdrop != null) {
-            AsyncImage(
-                model = Uri.parse(backdrop),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(28.dp) else Modifier)
-                    .graphicsLayer { alpha = 0.38f * enter.value },
-            )
-        }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to BookColors.Ink.copy(alpha = 0.35f),
-                    0.55f to BookColors.Ink.copy(alpha = 0.75f),
-                    1f to BookColors.Ink.copy(alpha = 0.92f),
-                )
-            )
-        )
-
-        // Top bar: status readout and close, as on the shelf.
+    // Pure OLED black like the rest of WalkThor; auto-dim applies here too.
+    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+        // Top bar: back to the shelf, and close.
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp),
+            Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("NOW PLAYING", style = EyebrowStyle, modifier = Modifier.weight(1f))
-            StatusClock(Modifier.padding(end = 6.dp))
+            IconButton(onClick = onLibrary) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = BookColors.TextMuted)
+            }
+            Text("NOW PLAYING", style = EyebrowStyle, modifier = Modifier.weight(1f).padding(start = 4.dp))
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
             }
@@ -122,8 +100,9 @@ fun NowPlayingScreen(
 
         Row(
             Modifier
-                .fillMaxSize()
-                .padding(start = 40.dp, end = 40.dp, top = 64.dp, bottom = 28.dp),
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(start = 40.dp, end = 40.dp, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The game's art, where its guide would be.
@@ -219,6 +198,11 @@ fun NowPlayingScreen(
                     Text("Go to my shelf", color = BookColors.TextMuted)
                 }
             }
+        }
+        // Time, play time and battery in the same spot as in the reader.
+        Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.weight(1f))
+            StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
         }
     }
 
