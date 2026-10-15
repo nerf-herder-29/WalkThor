@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.BatteryManager
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -315,5 +316,25 @@ class StoreScreenshots {
         compose.waitUntil(20_000) { compose.onAllNodesWithText("— 1 —").fetchSemanticsNodes().isNotEmpty() }
         settle()
         shot("check-reader-dense")
+    }
+
+    /** Dimmed during a game: the bright status corner plus what's playing, centred. */
+    @Test
+    fun dimmed() {
+        PlaySession.current.value = LaunchedGame(
+            "Legend of Zelda, The - The Wind Waker", null, "Dolphin Emulator", System.currentTimeMillis() - 47 * 60_000L,
+        )
+        AutoDim.delayMs.value = 60_000L
+        content {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                Library()
+                com.nerfherder.walkthor.ui.AutoDimOverlay()
+            }
+        }
+        AutoDim.dimmed.value = true
+        settle()
+        shot("07-dimmed")
+        AutoDim.dimmed.value = false
+        AutoDim.delayMs.value = 0L
     }
 }

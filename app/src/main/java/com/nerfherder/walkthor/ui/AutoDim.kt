@@ -1,4 +1,10 @@
 package com.nerfherder.walkthor.ui
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
 
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.IntOffset
@@ -54,8 +60,7 @@ object AutoDim {
     const val DEFAULT_LEVEL = 0.95f
     /** Where the time/play-time/battery readout is on screen (kept bright while dimmed). */
     val statusBounds = MutableStateFlow<Rect?>(null)
-    /** Whether that readout includes the game's name, so the bright copy matches it exactly. */
-    val statusShowsGame = MutableStateFlow(false)
+
     @Volatile internal var statusOwner: Any? = null
     val dimmed = MutableStateFlow(false)
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
@@ -137,7 +142,7 @@ fun AutoDimOverlay() {
     }
     val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 400 else 150), label = "dim")
     val status by AutoDim.statusBounds.collectAsState()
-    val statusShowsGame by AutoDim.statusShowsGame.collectAsState()
+
     if (alpha <= 0.001f) return
     Box(
         Modifier
@@ -157,7 +162,36 @@ fun AutoDimOverlay() {
         Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.background(Color.Black))
         // The time, play time and battery stay at full brightness, drawn exactly over the originals.
         status?.let { b ->
-            StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false, showGame = statusShowsGame)
+            StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
+        }
+        // While dimmed during a game: what's playing, centred on the black screen, in full.
+        val game by PlaySession.current.collectAsState()
+        val g = game
+        if (g != null && !previewing) {
+            Column(
+                Modifier
+                    .align(Alignment.Center)
+                    .widthIn(max = 560.dp)
+                    .padding(horizontal = 32.dp)
+                    .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("NOW PLAYING", style = EyebrowStyle.copy(color = BookColors.Brass.copy(alpha = 0.7f)))
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    g.title,
+                    color = BookColors.Text.copy(alpha = 0.85f),
+                    fontFamily = SerifDisplay,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 26.sp,
+                    lineHeight = 32.sp,
+                    textAlign = TextAlign.Center,
+                )
+                g.player?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 14.sp)
+                }
+            }
         }
         Text(
             "Tap to wake",

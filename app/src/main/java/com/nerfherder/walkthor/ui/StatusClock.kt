@@ -50,7 +50,7 @@ private val LowBattery = Color(0xFFE0675A)
  * Follows the system 12/24-hour setting; shows a bolt while charging and turns red at 15% or less.
  */
 @Composable
-fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true, showGame: Boolean = false) {
+fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     var level by remember { mutableIntStateOf(-1) }
@@ -101,26 +101,12 @@ fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true, showGame:
     }
     val placed = if (anchor) Modifier.onGloballyPositioned {
         AutoDim.statusOwner = token
-        AutoDim.statusShowsGame.value = showGame
         AutoDim.statusBounds.value = it.boundsInRoot()
     } else Modifier
-    val narrow = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 480
+
 
     Row(modifier.then(placed), verticalAlignment = Alignment.CenterVertically) {
         val g = game
-        // "Game · Emulator" beside the play time (in the reader), shortened to fit.
-        if (showGame && !narrow && g != null) {
-            Text(
-                gameLabel(g),
-                color = BookColors.TextMuted,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .widthIn(max = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 600) 150.dp else 240.dp)
-                    .padding(end = 10.dp),
-            )
-        }
         if (showTimer && g != null && g.at > 0) {
             val played = playTime(now.time - g.at)
             Row(
@@ -189,10 +175,6 @@ private fun BatteryGlyph(level: Int, charging: Boolean, tint: Color) {
         }
     }
 }
-
-/** "Legend of Zelda, The - The Wind Waker · Dolphin". */
-internal fun gameLabel(g: com.nerfherder.walkthor.data.LaunchedGame): String =
-    listOfNotNull(g.title, g.player?.let(::emulatorName)).joinToString(" · ")
 
 /** "Dolphin Emulator" → "Dolphin"; names without the suffix are left alone. */
 internal fun emulatorName(player: String): String =

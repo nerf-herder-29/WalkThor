@@ -369,7 +369,7 @@ fun ReaderScreen(
                     )
                 }
             }
-            StatusClock(Modifier.padding(start = 4.dp, end = 16.dp), showGame = true)
+            StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
         }
     }
 }
