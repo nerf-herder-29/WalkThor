@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+
 import androidx.compose.ui.platform.LocalConfiguration
 
 import androidx.compose.foundation.rememberScrollState
@@ -623,15 +625,19 @@ private val BANNER = 22.dp
 @Composable
 internal fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 8.dp, bottomEnd = 8.dp)
-    Box(
+    BoxWithConstraints(
         modifier
             .aspectRatio(1f)
             .shadow(10.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(shape)
             .background(BookColors.Surface)
     ) {
+        // Small tiles (e.g. beside a guide's name) scale the banner and binding down to fit.
+        val k = (maxWidth / 110.dp).coerceIn(0.3f, 1f)
+        val banner = BANNER * k
+        val binding = BINDING * k
         // ---- artwork, right of the binding ----
-        Box(Modifier.fillMaxSize().padding(start = BINDING)) {
+        Box(Modifier.fillMaxSize().padding(start = binding)) {
             val resting by AutoDim.resting.collectAsState()
             if (cover != null && !resting) {
                 AsyncImage(
@@ -655,22 +661,24 @@ internal fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) 
                 Modifier
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
-                    .height(BANNER)
+                    .height(banner)
                     .background(Brush.verticalGradient(listOf(GuideRed, GuideRedDeep))),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     "GUIDE",
                     color = Color.White,
-                    fontSize = 11.sp,
+                    fontSize = 11.sp * k,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 3.sp,
+                    letterSpacing = 3.sp * k,
+                    maxLines = 1,
+                    softWrap = false,
                     fontFamily = SerifDisplay,
                 )
             }
             Box(
                 Modifier
-                    .padding(top = BANNER)
+                    .padding(top = banner)
                     .fillMaxWidth()
                     .height(4.dp)
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)))
@@ -683,7 +691,7 @@ internal fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) 
             }
         }
         // ---- the binding ----
-        Canvas(Modifier.fillMaxHeight().width(BINDING)) {
+        Canvas(Modifier.fillMaxHeight().width(binding)) {
             drawRect(
                 Brush.horizontalGradient(
                     0f to Color(0xFF160807),
