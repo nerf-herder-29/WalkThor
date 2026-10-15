@@ -321,7 +321,8 @@ fun NowPlayingScreen(
             IconButton(onClick = onLibrary, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = Color.White.copy(alpha = 0.85f))
             }
-            Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)), modifier = Modifier.align(Alignment.Center))
+            // Beside the back arrow, clear of the glass edge in the middle.
+            Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)), modifier = Modifier.align(Alignment.CenterStart).padding(start = 52.dp))
             IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
             }
