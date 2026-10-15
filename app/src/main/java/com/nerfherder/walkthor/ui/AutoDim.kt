@@ -1,4 +1,5 @@
 package com.nerfherder.walkthor.ui
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.widthIn
@@ -173,13 +174,26 @@ fun AutoDimOverlay() {
                     .align(Alignment.Center)
                     .widthIn(max = 560.dp)
                     .padding(horizontal = 32.dp)
-                    .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
+                    .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) }
+                    // A soft pool of black so the dimmed page doesn't show through the letters.
+                    .drawBehind {
+                        drawRect(
+                            androidx.compose.ui.graphics.Brush.radialGradient(
+                                listOf(Color.Black, Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                                center = center,
+                                radius = size.maxDimension * 0.75f,
+                            ),
+                            topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.25f, -size.height * 0.6f),
+                            size = androidx.compose.ui.geometry.Size(size.width * 1.5f, size.height * 2.2f),
+                        )
+                    }
+                    .padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text("NOW PLAYING", style = EyebrowStyle.copy(color = BookColors.Brass.copy(alpha = 0.7f)))
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    g.title,
+                    displayTitle(g.title),
                     color = BookColors.Text.copy(alpha = 0.85f),
                     fontFamily = SerifDisplay,
                     fontWeight = FontWeight.SemiBold,

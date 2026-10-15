@@ -155,7 +155,7 @@ fun NowPlayingScreen(
                     },
             ) {
                 Text(
-                    game.title,
+                    displayTitle(game.title),
                     color = BookColors.Text,
                     fontFamily = SerifDisplay,
                     fontWeight = FontWeight.SemiBold,

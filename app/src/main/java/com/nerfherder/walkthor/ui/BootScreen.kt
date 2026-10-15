@@ -267,7 +267,7 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                             Text("NOW PLAYING", style = EyebrowStyle)
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                s.title, // always the game, never the guide
+                                displayTitle(s.title), // always the game, never the guide
                                 color = BookColors.Text,
                                 fontFamily = SerifDisplay,
                                 fontSize = 17.sp,

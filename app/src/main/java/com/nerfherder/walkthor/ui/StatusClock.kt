@@ -176,6 +176,16 @@ private fun BatteryGlyph(level: Int, charging: Boolean, tint: Color) {
     }
 }
 
+/**
+ * Library-style titles read naturally: "Legend of Zelda, The - The Wind Waker" becomes
+ * "The Legend of Zelda - The Wind Waker".
+ */
+internal fun displayTitle(title: String): String {
+    val m = Regex("""^(.+?), (The|A|An)(\s*[-:].*)?$""").find(title.trim()) ?: return title
+    val (name, article, rest) = m.destructured
+    return "$article $name$rest"
+}
+
 /** "Dolphin Emulator" → "Dolphin"; names without the suffix are left alone. */
 internal fun emulatorName(player: String): String =
     player.removeSuffix(" Emulator").removeSuffix(" emulator").trim().ifEmpty { player }
