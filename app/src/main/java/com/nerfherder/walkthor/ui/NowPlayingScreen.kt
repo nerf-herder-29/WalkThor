@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.ui.draw.blur
+
 import androidx.compose.ui.geometry.Offset
 
 import androidx.compose.ui.graphics.Brush
@@ -117,12 +119,11 @@ fun NowPlayingScreen(
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
     val resting by AutoDim.resting.collectAsState()
     val guideCover = remember(guide?.id, guide?.cover) { guide?.let(coverFile) }
-    // The box art's colour fills the screen (deepened so white text reads well on it).
-    val accent = rememberArtAccent(art.cover ?: art.hero ?: guideCover?.let { Uri.fromFile(it).toString() })
-    val fill = deepShade(accent)
     val banner = art.hero ?: art.cover
+    // Button text colour on the white primary button.
+    val fill = BookColors.Ink
 
-    Box(Modifier.fillMaxSize().background(fill)) {
+    Box(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- the game's wide art across the whole screen ----
         if (banner != null && !resting) {
             AsyncImage(
@@ -132,29 +133,61 @@ fun NowPlayingScreen(
                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = enter.value },
             )
         }
-        // Fade it into the game's colour toward the right, so the guide side reads clearly...
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to Color.Transparent,
-                    0.35f to Color.Transparent,
-                    0.55f to fill.copy(alpha = 0.78f),
-                    0.75f to fill.copy(alpha = 0.92f),
-                    1f to fill.copy(alpha = 0.96f),
-                )
-            )
-        )
-        // ...and gently at the top and bottom, for the bar icons and the logo.
+        // Gentle shading at the top and bottom, for the bar icons, the logo and the status corner.
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to fill.copy(alpha = 0.5f),
-                    0.25f to Color.Transparent,
-                    0.6f to Color.Transparent,
-                    1f to fill.copy(alpha = 0.8f),
+                    0f to Color.Black.copy(alpha = 0.45f),
+                    0.22f to Color.Transparent,
+                    0.62f to Color.Transparent,
+                    1f to Color.Black.copy(alpha = 0.7f),
                 )
             )
         )
+        // ---- frosted glass over the right half, for the guide ----
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clip(RightHalf)
+                .graphicsLayer { alpha = enter.value },
+        ) {
+            if (banner != null && !resting) {
+                // The same art, blurred: the "frost". (Android 12+; older versions just get the tint.)
+                AsyncImage(
+                    model = Uri.parse(banner),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(30.dp) else Modifier),
+                )
+            }
+            // Smoky tint so white text reads on any art, with a faint sheen.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0f to Color(0xFF0B0B10).copy(alpha = 0.62f),
+                        1f to Color(0xFF0B0B10).copy(alpha = 0.74f),
+                    )
+                )
+            )
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.linearGradient(
+                        0f to Color.White.copy(alpha = 0.07f),
+                        0.4f to Color.Transparent,
+                    )
+                )
+            )
+            // A thin bright edge where the glass begins.
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.5f)
+                    .align(Alignment.CenterEnd)
+                    .drawBehind { drawLine(Color.White.copy(alpha = 0.16f), Offset(0f, 0f), Offset(0f, size.height), strokeWidth = 1.dp.toPx()) },
+            )
+        }
         Row(Modifier.fillMaxSize()) {
             // ---- left half: the logo over the art ----
             Box(
@@ -332,6 +365,11 @@ fun NowPlayingScreen(
             confirmButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
         )
     }
+}
+
+/** The right half of whatever it clips. */
+private val RightHalf = androidx.compose.foundation.shape.GenericShape { size, _ ->
+    addRect(androidx.compose.ui.geometry.Rect(size.width / 2f, 0f, size.width, size.height))
 }
 
 /** A plain card standing in for the game's art when none was found. */
