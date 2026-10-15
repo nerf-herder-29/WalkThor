@@ -45,6 +45,8 @@ class PdfSource private constructor(
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 
+    init { synchronized(live) { live.add(this) } }
+
     /** Renders [index] to fit inside [boxW]×[boxH] px. */
     suspend fun render(index: Int, boxW: Int, boxH: Int): Bitmap? {
         if (index !in pageSizes.indices || boxW <= 0 || boxH <= 0) return null
@@ -72,6 +74,14 @@ class PdfSource private constructor(
                     }
                 }.getOrNull()
             }?.also { cache.put(key, it) }
+        }
+    }
+
+    /** Drops cached pages and the parsed PDF used for highlighting; both come back on demand. */
+    private fun trim() {
+        cache.evictAll()
+        if (textLock.tryLock()) {
+            try { runCatching { textDoc?.close() }; textDoc = null } finally { textLock.unlock() }
         }
     }
 
@@ -171,6 +181,14 @@ class PdfSource private constructor(
 
     companion object {
         private const val MAX_DIMENSION = 3000
+
+        /** Open PDFs, so rendered pages can be dropped when Android is short of memory. */
+        private val live: MutableSet<PdfSource> = java.util.Collections.newSetFromMap(java.util.WeakHashMap())
+
+        /** Frees every cached page bitmap (they're re-rendered on demand). */
+        fun trimAll() {
+            synchronized(live) { live.toList() }.forEach { it.trim() }
+        }
 
         suspend fun open(context: Context, file: File): PdfSource = withContext(Dispatchers.IO) {
             val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)

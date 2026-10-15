@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CrashLog.install(this)
+        installImageLoader()
         DisplayHelper.init(this)
         SwipeLauncher.init(this)
         PageStyle.init(this)
@@ -142,6 +143,30 @@ class MainActivity : ComponentActivity() {
     }
 
     private var yielding: Boolean? = null
+
+    /**
+     * Cover images: a small in-memory cache (the default takes a quarter of the app's memory),
+     * so WalkThor leaves room for the game and other apps running alongside it.
+     */
+    private fun installImageLoader() {
+        if (imageLoaderSet) return
+        imageLoaderSet = true
+        coil.Coil.setImageLoader(
+            coil.ImageLoader.Builder(applicationContext)
+                .memoryCache { coil.memory.MemoryCache.Builder(applicationContext).maxSizePercent(0.08).build() }
+                .build()
+        )
+    }
+
+    /** Android is short of memory, or WalkThor went to the background: let go of what can be rebuilt. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        @Suppress("DEPRECATION")
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            com.nerfherder.walkthor.data.PdfSource.trimAll()
+            runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
+        }
+    }
 
     /** Makes the window non-focusable while a game is running (see [GameFocus]). */
     private fun applyGameFocus(initial: Boolean) {
@@ -558,6 +583,9 @@ private data class Acted(val game: LaunchedGame, val guide: com.nerfherder.walkt
 private const val BOOT_WAIT_MS = 1_500L
 /** Shortest the boot screen shows, so it reads as an animation rather than a flicker. */
 private const val BOOT_MIN_MS = 1_100L
+/** Set once per process. */
+private var imageLoaderSet = false
+
 /** A Cocoon launch this recent counts as the game being played. */
 private const val GAME_RECENT_MS = 6 * 60 * 60 * 1000L
 /** After swiping in, the next guide opened within this time is linked to the game. */
