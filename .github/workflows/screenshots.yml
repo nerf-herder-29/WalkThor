@@ -24,7 +24,7 @@ jobs:
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest --tests "*StoreScreenshots*" 2>&1 | tee test.log
+          ./gradlew --no-daemon testDebugUnitTest --tests "*StoreScreenshots*" --tests "*IdleDraws*" 2>&1 | tee test.log
       - name: Report failures
         if: failure()
         run: |
@@ -40,6 +40,7 @@ jobs:
         run: |
           mkdir -p docs/screenshots
           cp app/build/screenshots/*.png docs/screenshots/
+          cp app/build/screenshots/*.txt docs/screenshots/ 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/screenshots
