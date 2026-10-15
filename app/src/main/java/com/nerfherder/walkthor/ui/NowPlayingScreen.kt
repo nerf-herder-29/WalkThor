@@ -85,6 +85,12 @@ fun NowPlayingScreen(
     onClose: () -> Unit,
 ) {
     var picking by remember { mutableStateOf(false) }
+    // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is).
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        AutoDim.wake()
+        AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
+        onDispose { AutoDim.screenDelayMs.value = null }
+    }
     // The Thor's bottom screen is short; at denser display settings tighten everything up.
     val compact = LocalConfiguration.current.screenHeightDp < 480
     val enter = remember { Animatable(0f) }

@@ -39,6 +39,13 @@ object AutoDim {
     val OPTIONS = listOf(0L, 30_000L, 60_000L, 120_000L, 300_000L)
 
     val delayMs = MutableStateFlow(0L)
+    /**
+     * A screen-specific delay that replaces [delayMs] while that screen is up. The Now playing
+     * screen (a game with no guide) uses a short one, since there's nothing on it to read.
+     */
+    val screenDelayMs = MutableStateFlow<Long?>(null)
+    /** How long the Now playing screen (no guide) stays bright. */
+    const val NO_GUIDE_DELAY_MS = 5_000L
     /** How dark the dimming gets: 0.5 = half, 1.0 = fully black (the status readout always stays bright). */
     val level = MutableStateFlow(DEFAULT_LEVEL)
     /** True while the user is adjusting [level], to show it live. */
@@ -101,7 +108,9 @@ object AutoDim {
 /** Watches for inactivity and draws the dimming layer over everything when it's time. */
 @Composable
 fun AutoDimOverlay() {
-    val delayMs by AutoDim.delayMs.collectAsState()
+    val settingDelay by AutoDim.delayMs.collectAsState()
+    val screenDelay by AutoDim.screenDelayMs.collectAsState()
+    val delayMs = screenDelay ?: settingDelay
     val dimmed by AutoDim.dimmed.collectAsState()
 
     LaunchedEffect(delayMs) {
@@ -112,7 +121,7 @@ fun AutoDimOverlay() {
                 AutoDim.dimmed.value = true
                 delay(1_000)
             } else {
-                delay(left.coerceAtMost(5_000))
+                delay(left.coerceAtMost(1_000))
             }
         }
     }
