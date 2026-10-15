@@ -81,3 +81,15 @@ private suspend fun accentOf(context: Context, uri: String): Color? {
         Color(android.graphics.Color.HSVToColor(hsv))
     }
 }
+
+/** A deep, rich shade of [accent] to fill a background behind white text. */
+fun deepShade(accent: Color): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(
+        android.graphics.Color.rgb((accent.red * 255).toInt(), (accent.green * 255).toInt(), (accent.blue * 255).toInt()),
+        hsv,
+    )
+    hsv[1] = hsv[1].coerceAtMost(0.75f)
+    hsv[2] = 0.30f
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}

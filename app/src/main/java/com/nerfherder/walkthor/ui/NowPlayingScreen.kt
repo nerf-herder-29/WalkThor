@@ -77,12 +77,14 @@ import com.nerfherder.walkthor.data.Matcher
 import java.io.File
 
 /**
- * Shown whenever Cocoon launches a game. With a [guide]: its tile and an Open guide button.
- * Without one: the game's artwork (from the linked artwork folder), a "no guide yet" note, and
- * ways to add one. Either way it dims after a few seconds; with a guide, the dimmed screen
- * keeps an Open guide button. Whatever guide is added or picked here is remembered for the game.
+ * Shown whenever Cocoon launches a game, before it dims after a few seconds.
+ *
+ * The whole screen takes on the box art's colour. The left half is the game's wide art (a
+ * hero, fan art or screenshot; else the box art) with its logo on top; the right half is the
+ * guide: Open guide with a guide, or Add guide / From my shelf without one. With a guide, the
+ * dimmed screen keeps an Open guide button. Whatever guide is added or picked here is
+ * remembered for the game.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NowPlayingScreen(
     game: LaunchedGame,
@@ -115,197 +117,181 @@ fun NowPlayingScreen(
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
     val resting by AutoDim.resting.collectAsState()
     val guideCover = remember(guide?.id, guide?.cover) { guide?.let(coverFile) }
-    // The art's main colour: a soft glow behind it and the card's accents.
-    val accent = rememberArtAccent(art.cover ?: guideCover?.let { Uri.fromFile(it).toString() })
+    // The box art's colour fills the screen (deepened so white text reads well on it).
+    val accent = rememberArtAccent(art.cover ?: art.hero ?: guideCover?.let { Uri.fromFile(it).toString() })
+    val fill = deepShade(accent)
+    val banner = art.hero ?: art.cover
 
-    // OLED black, with one soft pool of the game's colour behind its art that fades to black
-    // well before the edges. Auto-dim applies here too.
-    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
-        // Top bar: back on the left, close on the right, the label centred between them.
-        Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(top = 6.dp)) {
-            IconButton(onClick = onLibrary, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = BookColors.TextMuted)
-            }
-            Text("NOW PLAYING", style = EyebrowStyle.copy(color = accent), modifier = Modifier.align(Alignment.Center))
-            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
-                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
-            }
-        }
-
-        Row(
-            Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = if (compact) 28.dp else 44.dp)
-                .padding(top = 4.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // The game's art, where its guide would be. The box hugs the art's own shape, so the
-            // gap to the text is the same whatever the cover's proportions.
+    Box(Modifier.fillMaxSize().background(fill)) {
+        Row(Modifier.fillMaxSize()) {
+            // ---- left half: the game's wide art, with its logo on top ----
             Box(
                 Modifier
-                    .fillMaxHeight(if (compact) 0.78f else 0.8f)
-                    .widthIn(max = if (compact) 150.dp else 260.dp)
-                    // The game's colour glows from behind its art and fades to black.
-                    .drawBehind {
-                        val r = size.maxDimension * 1.05f
-                        drawCircle(
-                            Brush.radialGradient(
-                                listOf(accent.copy(alpha = 0.30f * enter.value), accent.copy(alpha = 0.08f * enter.value), Color.Transparent),
-                                center = center,
-                                radius = r,
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .graphicsLayer { alpha = enter.value },
+            ) {
+                if (banner != null && !resting) {
+                    AsyncImage(
+                        model = Uri.parse(banner),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                // Fade the art into the colour: gently at the top and bottom, fully at the seam.
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(
+                            0.55f to Color.Transparent,
+                            1f to fill,
+                        )
+                    )
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            0f to fill.copy(alpha = 0.55f),
+                            0.3f to Color.Transparent,
+                            0.6f to Color.Transparent,
+                            1f to fill.copy(alpha = 0.85f),
+                        )
+                    )
+                )
+                // The logo, or the title when there's no logo.
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = if (compact) 18.dp else 28.dp)
+                        .padding(bottom = if (compact) 22.dp else 36.dp)
+                        .graphicsLayer { translationY = (1f - enter.value) * 16.dp.toPx() },
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    if (art.logo != null && !resting) {
+                        AsyncImage(
+                            model = Uri.parse(art.logo),
+                            contentDescription = displayTitle(game.title),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .heightIn(max = if (compact) 80.dp else 130.dp),
+                        )
+                    } else {
+                        Text(
+                            displayTitle(game.title),
+                            color = Color.White,
+                            fontFamily = SerifDisplay,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = if (compact) 22.sp else 30.sp,
+                            lineHeight = if (compact) 26.sp else 36.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            style = androidx.compose.ui.text.TextStyle(
+                                shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.6f), blurRadius = 12f),
                             ),
-                            radius = r,
-                            center = center,
                         )
                     }
-                    .graphicsLayer {
-                        alpha = enter.value
-                        val s = 0.94f + 0.06f * enter.value
-                        scaleX = s; scaleY = s
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (art.cover != null && !resting) {
-                    // The game's own box art, front and centre.
-                    AsyncImage(
-                        model = Uri.parse(art.cover),
-                        contentDescription = game.title,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxHeight().clip(RoundedCornerShape(10.dp)),
-                    )
-                } else if (guide != null) {
-                    // No box art found: the guide's tile stands in.
-                    GuideTile(guide, if (resting) null else guideCover, Modifier.fillMaxHeight())
-                } else {
-                    NoArtPlaceholder(game.title)
                 }
             }
-            Spacer(Modifier.width(if (compact) 22.dp else 36.dp))
+
+            // ---- right half: the guide ----
             Column(
                 Modifier
                     .weight(1f)
-                    // Never cut anything off: scroll if it still doesn't fit.
+                    .fillMaxHeight()
+                    .padding(horizontal = if (compact) 22.dp else 40.dp)
+                    .padding(top = 52.dp, bottom = 40.dp)
                     .verticalScroll(rememberScrollState())
                     .graphicsLayer {
                         alpha = enter.value
                         translationX = (1f - enter.value) * 24.dp.toPx()
                     },
+                verticalArrangement = Arrangement.Center,
             ) {
-                if (art.logo != null && !resting) {
-                    // The game's logo in place of the plain title.
-                    AsyncImage(
-                        model = Uri.parse(art.logo),
-                        contentDescription = displayTitle(game.title),
-                        contentScale = ContentScale.Fit,
-                        alignment = Alignment.CenterStart,
-                        modifier = Modifier.fillMaxWidth().heightIn(max = if (compact) 72.dp else 116.dp),
-                    )
+                game.player?.let {
+                    Text(emulatorName(it).uppercase(), style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.7f)))
+                    Spacer(Modifier.height(if (compact) 10.dp else 16.dp))
+                }
+                val primary = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = fill)
+                val secondary = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                val outline = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                val pad = PaddingValues(horizontal = 16.dp, vertical = if (compact) 6.dp else 10.dp)
+                if (guide != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        GuideTile(guide, if (resting) null else guideCover, Modifier.size(if (compact) 44.dp else 60.dp))
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text("YOUR GUIDE", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.7f)))
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                guide.title,
+                                color = Color.White,
+                                fontFamily = SerifDisplay,
+                                fontSize = if (compact) 16.sp else 19.sp,
+                                lineHeight = if (compact) 20.sp else 24.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
+                    Button(onClick = onOpenGuide, colors = primary, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
+                        Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                    }
+                    if (books.size > 1) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = { picking = true }, colors = secondary, border = outline, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
+                            Text("Other guide", maxLines = 1, softWrap = false)
+                        }
+                    }
                 } else {
                     Text(
-                        displayTitle(game.title),
-                        color = BookColors.Text,
+                        "No guide yet",
+                        color = Color.White,
                         fontFamily = SerifDisplay,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = if (compact) 20.sp else 30.sp,
-                        lineHeight = if (compact) 24.sp else 36.sp,
-                        maxLines = if (compact) 2 else 3,
-                        overflow = TextOverflow.Ellipsis,
+                        fontSize = if (compact) 20.sp else 26.sp,
                     )
-                }
-                game.player?.let {
-                    Spacer(Modifier.height(4.dp))
-                    Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 13.sp)
-                }
-                Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(BookColors.Surface.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
-                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                        .padding(if (compact) 12.dp else 18.dp),
-                ) {
-                    if (guide != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // The guide as a small tile beside its name.
-                            GuideTile(guide, if (resting) null else guideCover, Modifier.size(if (compact) 40.dp else 52.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("YOUR GUIDE", style = EyebrowStyle.copy(color = accent))
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    guide.title,
-                                    color = BookColors.Text,
-                                    fontFamily = SerifDisplay,
-                                    fontSize = if (compact) 15.sp else 17.sp,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    } else if (compact) {
-                        Text("NO GUIDE YET", style = EyebrowStyle.copy(color = accent))
-                    } else {
-                        Text(
-                            "No guide for this game yet",
-                            color = BookColors.Text,
-                            fontFamily = SerifDisplay,
-                            fontSize = 18.sp,
-                        )
-                        Spacer(Modifier.height(4.dp))
+                    if (!compact) {
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             "Add one, or pick one from your shelf, and WalkThor will open it for this game from now on.",
-                            color = BookColors.TextMuted,
+                            color = Color.White.copy(alpha = 0.75f),
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
                         )
                     }
-                    Spacer(Modifier.height(if (compact) 10.dp else 14.dp))
-                    // Full-width buttons, main action first: even at any screen size.
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val pad = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp)
-                        if (guide != null) {
-                            Button(
-                                onClick = onOpenGuide,
-                                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
-                                contentPadding = pad,
-                            modifier = Modifier.fillMaxWidth(),
-                            ) { Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
-                            if (books.size > 1) {
-                                OutlinedButton(
-                                    onClick = { picking = true },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
-                                    contentPadding = pad,
-                            modifier = Modifier.fillMaxWidth(),
-                                ) { Text("Other guide", maxLines = 1, softWrap = false) }
-                            }
-                        } else {
-                            Button(
-                                onClick = onAddGuide,
-                                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
-                                contentPadding = pad,
-                            modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
-                            }
-                            if (books.isNotEmpty()) {
-                                OutlinedButton(
-                                    onClick = { picking = true },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
-                                    contentPadding = pad,
-                            modifier = Modifier.fillMaxWidth(),
-                                ) { Text("From my shelf", maxLines = 1, softWrap = false) }
-                            }
+                    Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
+                    Button(onClick = onAddGuide, colors = primary, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                    }
+                    if (books.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = { picking = true }, colors = secondary, border = outline, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
+                            Text("From my shelf", maxLines = 1, softWrap = false)
                         }
                     }
                 }
             }
         }
-        // Time, play time and battery in the same spot as in the reader.
-        Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
+
+        // ---- over everything: back and close at the top, the status corner at the bottom ----
+        Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(top = 6.dp)) {
+            IconButton(onClick = onLibrary, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = Color.White.copy(alpha = 0.85f))
+            }
+            Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)), modifier = Modifier.align(Alignment.Center))
+            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
+                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
+            }
+        }
+        Row(
+            Modifier.align(Alignment.BottomEnd).height(34.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
         }
     }

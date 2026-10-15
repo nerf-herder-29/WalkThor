@@ -241,6 +241,36 @@ class StoreScreenshots {
         return Uri.fromFile(f).toString()
     }
 
+    /** A made-up wide "fan art" scene for the fictional game. */
+    private fun fakeHero(): String {
+        val w = 1280; val h = 720
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0xFF101C3A.toInt(), 0xFF7A3418.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        // distant hills
+        p.shader = null
+        p.color = 0xFF1A1424.toInt()
+        val hills = android.graphics.Path().apply {
+            moveTo(0f, 470f); cubicTo(260f, 380f, 420f, 520f, 640f, 440f); cubicTo(860f, 360f, 1040f, 500f, 1280f, 420f)
+            lineTo(1280f, 720f); lineTo(0f, 720f); close()
+        }
+        c.drawPath(hills, p)
+        // lanterns floating up
+        val rnd = java.util.Random(7)
+        repeat(26) {
+            val x = rnd.nextFloat() * w; val y = 80f + rnd.nextFloat() * 380f; val r = 6f + rnd.nextFloat() * 10f
+            p.shader = android.graphics.RadialGradient(x, y, r * 4, 0xAAFFC56B.toInt(), 0x00FFC56B, android.graphics.Shader.TileMode.CLAMP)
+            c.drawCircle(x, y, r * 4, p)
+            p.shader = null; p.color = 0xFFFFE2A8.toInt()
+            c.drawRect(x - r * 0.5f, y - r * 0.7f, x + r * 0.5f, y + r * 0.7f, p)
+        }
+        val f = File(app.cacheDir, "Lanterns of Emberfall (USA)-fanart.png")
+        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        return Uri.fromFile(f).toString()
+    }
+
     private val noGuideGame get() = LaunchedGame("Lanterns of Emberfall", "Lanterns of Emberfall (USA).rvz", "Dolphin Emulator", System.currentTimeMillis())
 
     @Test
@@ -250,7 +280,7 @@ class StoreScreenshots {
         content {
             NowPlayingScreen(
                 game = noGuideGame,
-                art = GameArt(cover = art, logo = logo),
+                art = GameArt(cover = art, logo = logo, hero = fakeHero()),
                 books = shelf.drop(1),
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
@@ -364,7 +394,7 @@ class StoreScreenshots {
         content {
             NowPlayingScreen(
                 game = noGuideGame,
-                art = GameArt(cover = fakeBoxArt(), logo = fakeLogo()),
+                art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
                 books = shelf,
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},

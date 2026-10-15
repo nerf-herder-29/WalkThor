@@ -40,6 +40,8 @@ data class GameArt(
     val cover: String?,
     /** The game's logo (ES-DE "marquee"/"wheel" images, usually transparent), if there is one. */
     val logo: String? = null,
+    /** Wide art for a banner: a "hero", else fan art, else a screenshot or title screen. */
+    val hero: String? = null,
 )
 
 /**
@@ -184,6 +186,7 @@ class ArtworkRepository private constructor(private val context: Context) {
         val anyWord = names.flatten().toSet()
         var cover: Pair<ArtImage, Float>? = null
         var logo: Pair<ArtImage, Float>? = null
+        var hero: Pair<ArtImage, Float>? = null
         val images = withIndex { it }
         for (img in images) {
             val tokens = img.titleTokens
@@ -207,8 +210,16 @@ class ArtworkRepository private constructor(private val context: Context) {
                 else -> null
             }
             if (logoBonus != null && (logo == null || sim + logoBonus > logo.second)) logo = img to sim + logoBonus
+            val heroBonus = when {
+                "hero" in where -> 0.2f
+                "fanart" in where -> 0.15f
+                "screenshot" in where -> 0.1f
+                "titlescreen" in where -> 0.05f
+                else -> null
+            }
+            if (heroBonus != null && (hero == null || sim + heroBonus > hero.second)) hero = img to sim + heroBonus
         }
-        GameArt(cover?.first?.uri, logo?.first?.uri).also { lastGameArt = key to it }
+        GameArt(cover?.first?.uri, logo?.first?.uri, hero?.first?.uri).also { lastGameArt = key to it }
     }
 
     @Volatile private var lastGameArt: Pair<String, GameArt>? = null
