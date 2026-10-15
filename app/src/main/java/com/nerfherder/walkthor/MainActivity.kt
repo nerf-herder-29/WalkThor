@@ -356,7 +356,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         GameGuides.remember(context, game, id)
         autoOpened = id // already linked; the learning effect below needn't repeat it
         // The Now playing screen (waiting under the guide) now shows this guide too.
-        noGuide = noGuide?.let { s -> if (s.game == game) s.copy(guide = booksNow.firstOrNull { it.id == id } ?: s.guide) else s }
+        noGuide = noGuide?.let { s -> if (s.game == game) s.copy(guide = books.firstOrNull { b -> b.id == id } ?: s.guide) else s }
         Toast.makeText(context, "WalkThor will open this guide for ${game.title} from now on", Toast.LENGTH_SHORT).show()
     }
 
