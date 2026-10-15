@@ -261,23 +261,24 @@ fun NowPlayingScreen(
                         )
                     }
                     Spacer(Modifier.height(if (compact) 10.dp else 14.dp))
-                    // Wraps onto a second line on narrow screens instead of cutting a button off.
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    // Full-width buttons, main action first: even at any screen size.
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val pad = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp)
                         if (guide != null) {
                             Button(
                                 onClick = onOpenGuide,
                                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
                                 contentPadding = pad,
+                            modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                             ) { Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
                             if (books.size > 1) {
                                 OutlinedButton(
                                     onClick = { picking = true },
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
                                     contentPadding = pad,
+                            modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                                 ) { Text("Other guide", maxLines = 1, softWrap = false) }
                             }
                         } else {
@@ -285,6 +286,8 @@ fun NowPlayingScreen(
                                 onClick = onAddGuide,
                                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
                                 contentPadding = pad,
+                            modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
@@ -295,6 +298,8 @@ fun NowPlayingScreen(
                                     onClick = { picking = true },
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
                                     contentPadding = pad,
+                            modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                                 ) { Text("From my shelf", maxLines = 1, softWrap = false) }
                             }
                         }
