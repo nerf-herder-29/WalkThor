@@ -355,6 +355,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     fun linkGuide(game: LaunchedGame, id: String) {
         GameGuides.remember(context, game, id)
         autoOpened = id // already linked; the learning effect below needn't repeat it
+        // The Now playing screen (waiting under the guide) now shows this guide too.
+        noGuide = noGuide?.let { s -> if (s.game == game) s.copy(guide = booksNow.firstOrNull { it.id == id } ?: s.guide) else s }
         Toast.makeText(context, "WalkThor will open this guide for ${game.title} from now on", Toast.LENGTH_SHORT).show()
     }
 
@@ -365,7 +367,16 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             openId = id
         }
     }
-    LaunchedEffect(openId) { if (openId != null) noGuide = null }
+    // The Now playing screen stays underneath an opened guide, so Back from the guide returns
+    // to it. A guide just imported for it may arrive on the shelf a moment after it's linked.
+    LaunchedEffect(books) {
+        val s = noGuide ?: return@LaunchedEffect
+        if (s.guide == null) {
+            GameGuides.linkedTo(context, s.game)?.let { id ->
+                books.firstOrNull { it.id == id }?.let { noGuide = s.copy(guide = it) }
+            }
+        }
+    }
     // Leaving the no-guide screen without adding a guide: don't link some later import to that game.
     LaunchedEffect(noGuide) { if (noGuide == null) linkImportTo = null }
     LaunchedEffect(openId) { AppState.openBookId = openId }
