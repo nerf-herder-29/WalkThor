@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -67,6 +69,7 @@ import java.io.File
  * linked artwork folder) where the guide would be, a "no guide yet" note, and ways to fix that.
  * Whatever guide is added or picked from here is remembered for this game.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NowPlayingScreen(
     game: LaunchedGame,
@@ -102,7 +105,7 @@ fun NowPlayingScreen(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(start = 40.dp, end = 40.dp, top = 4.dp, bottom = 8.dp),
+                .padding(start = 32.dp, end = 32.dp, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The game's art, where its guide would be.
@@ -110,7 +113,7 @@ fun NowPlayingScreen(
                 Modifier
                     .fillMaxHeight(0.92f)
                     .widthIn(max = 300.dp)
-                    .weight(0.9f)
+                    .weight(0.8f)
                     .graphicsLayer {
                         alpha = enter.value
                         val s = 0.94f + 0.06f * enter.value
@@ -129,7 +132,7 @@ fun NowPlayingScreen(
                     NoArtPlaceholder(game.title)
                 }
             }
-            Spacer(Modifier.width(36.dp))
+            Spacer(Modifier.width(28.dp))
             Column(
                 Modifier
                     .weight(1.25f)
@@ -174,7 +177,11 @@ fun NowPlayingScreen(
                         lineHeight = 18.sp,
                     )
                     Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Wraps onto a second line on narrow screens instead of cutting a button off.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         Button(
                             onClick = onAddGuide,
                             colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
@@ -182,14 +189,14 @@ fun NowPlayingScreen(
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Add guide", fontWeight = FontWeight.SemiBold)
+                            Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                         }
                         if (books.isNotEmpty()) {
                             OutlinedButton(
                                 onClick = { picking = true },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            ) { Text("From my shelf") }
+                            ) { Text("From my shelf", maxLines = 1, softWrap = false) }
                         }
                     }
                 }

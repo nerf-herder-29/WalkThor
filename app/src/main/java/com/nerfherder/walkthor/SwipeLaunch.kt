@@ -131,16 +131,32 @@ class SwipeGestureService : AccessibilityService() {
         if (key == SwipeLauncher.KEY_ENABLED || key == SwipeLauncher.KEY_CONSENT) reattach(0)
     }
 
+    /** Which bottom screen the strip was laid out for (id, size, on/off). */
+    private var attachedSignature: String? = null
+
+    private fun bottomSignature(): String? = DisplayHelper.bottomDisplay(this)?.let { d ->
+        "${d.displayId}:${d.mode.physicalWidth}x${d.mode.physicalHeight}:${d.rotation}:${d.state == android.view.Display.STATE_OFF}"
+    }
+
+    // Displays report "changed" constantly (refresh rate, brightness, HDR, power state), especially
+    // while a game starts. Only rebuild the strip when the bottom screen itself really changed,
+    // so WalkThor isn't adding and removing windows while other apps are launching.
     private val displayListener = object : DisplayManager.DisplayListener {
-        override fun onDisplayAdded(displayId: Int) = reattach(400)
-        override fun onDisplayRemoved(displayId: Int) = reattach(400)
-        override fun onDisplayChanged(displayId: Int) {
-            if (displayId == attachedDisplay || attachedDisplay == -1) reattach(400)
-        }
+        override fun onDisplayAdded(displayId: Int) = reattachIfChanged()
+        override fun onDisplayRemoved(displayId: Int) = reattachIfChanged()
+        override fun onDisplayChanged(displayId: Int) = reattachIfChanged()
+    }
+
+    private fun reattachIfChanged() {
+        handler.removeCallbacksAndMessages(null)
+        handler.postDelayed({
+            if (bottomSignature() != attachedSignature || strip == null) { detach(); attach() }
+        }, 600)
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        CrashLog.install(this)
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
@@ -212,6 +228,7 @@ class SwipeGestureService : AccessibilityService() {
             strip = view
             windowManager = wm
             attachedDisplay = display.displayId
+            attachedSignature = bottomSignature()
         }
     }
 
@@ -220,6 +237,7 @@ class SwipeGestureService : AccessibilityService() {
         strip = null
         windowManager = null
         attachedDisplay = -1
+        attachedSignature = null
     }
 
     private fun onSwipe(bottomDisplayId: Int) {

@@ -22,7 +22,8 @@ accounts, no analytics and no ads. Everything below stays on your device.
 ## What WalkThor stores (on your device only)
 
 Your library of guides, cover images, reading positions, settings, and which guide you linked to
-which game. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
+which game, and — only if WalkThor crashes — a crash report (the error and device model) that you
+can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 swipe-to-open at any time from the library's ⋮ menu or Android's Accessibility settings.
 
 ## Contact

@@ -25,6 +25,9 @@ object DisplayHelper {
     const val EXTRA_BOOK = "walkthor.book"
     private const val PREFS = "display"
     private const val KEY_ALWAYS_BOTTOM = "alwaysBottom"
+    private const val KEY_LAST_BOUNCE = "lastBounce"
+    /** Don't move ourselves to the bottom screen again within this long of the last move. */
+    private const val BOUNCE_COOLDOWN_MS = 10_000L
 
     /** "Always open on the bottom screen" setting (on by default). */
     val alwaysBottom = MutableStateFlow(true)
@@ -78,6 +81,13 @@ object DisplayHelper {
         if (activity.intent.getBooleanExtra(EXTRA_RELAUNCHED, false)) return false
         val bottom = bottomDisplay(activity) ?: return false
         if (bottom.displayId == currentDisplayId(activity)) return false
+        // If we bounced to the bottom screen moments ago and are back on the top one, another app
+        // (a screen manager like Wayfinder, or a frontend) put us there on purpose. Stay put rather
+        // than fight it: ping-ponging between screens disrupts the game launching alongside.
+        val p = prefs(activity)
+        val now = System.currentTimeMillis()
+        if (now - p.getLong(KEY_LAST_BOUNCE, 0L) < BOUNCE_COOLDOWN_MS) return false
+        p.edit().putLong(KEY_LAST_BOUNCE, now).apply()
         return relaunch(activity, bottom.displayId, Intent(activity.intent), quiet = true)
     }
 

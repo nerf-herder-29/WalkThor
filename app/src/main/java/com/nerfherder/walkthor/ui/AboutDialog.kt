@@ -23,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -129,6 +132,23 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "Cocoon's launch_debug.log (to see which game you launched). The swipe service responds " +
                         "only to swipes from the top edge of the bottom screen and never reads screen content."
                 )
+
+                // A saved crash report, if WalkThor has crashed, for sharing in a bug report.
+                var crash by remember { mutableStateOf(com.nerfherder.walkthor.CrashLog.file(context)?.lastModified()) }
+                crash?.let { at ->
+                    Section("LAST CRASH")
+                    Body(
+                        "WalkThor crashed on " +
+                            java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(at)) +
+                            ". The report stays on this device; share it if you'd like to report the problem."
+                    )
+                    Row {
+                        TextButton(onClick = { com.nerfherder.walkthor.CrashLog.share(context) }) { Text("Share report") }
+                        TextButton(onClick = { com.nerfherder.walkthor.CrashLog.clear(context); crash = null }) {
+                            Text("Delete", color = BookColors.TextMuted)
+                        }
+                    }
+                }
 
                 Section("OPEN-SOURCE SOFTWARE")
                 COMPONENTS.forEach { c ->

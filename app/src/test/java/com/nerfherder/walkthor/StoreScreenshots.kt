@@ -238,6 +238,24 @@ class StoreScreenshots {
         shot("06-no-guide")
     }
 
+    /** The same screen at a denser setting (fewer dp), to check nothing gets cut off. */
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun noGuideDense() {
+        val art = fakeBoxArt()
+        content {
+            NowPlayingScreen(
+                game = noGuideGame,
+                art = GameArt(cover = art),
+                books = shelf.drop(1),
+                coverFile = { null },
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+            )
+        }
+        settle()
+        shot("check-no-guide-dense")
+    }
+
     @Test
     fun bootIntoArt() {
         val art = fakeBoxArt()
