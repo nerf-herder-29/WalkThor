@@ -1,5 +1,12 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
+
 import android.app.Application
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -156,7 +163,11 @@ fun ReaderScreen(
     // Controller shoulder buttons / D-pad turn pages (or move the lens).
     DisposableEffect(Unit) {
         KeyBus.readerActive = true
-        onDispose { KeyBus.readerActive = false; KeyBus.textFieldFocused = false }
+        onDispose {
+            KeyBus.readerActive = false
+            KeyBus.textFieldFocused = false
+            com.nerfherder.walkthor.GameFocus.wantFocus.value = false
+        }
     }
     val lensPageNow by rememberUpdatedState(lensPage)
     LaunchedEffect(step) {
@@ -373,6 +384,11 @@ private fun SearchField(
 ) {
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
+    // While a game has focus, WalkThor's window can't take it; tapping the search field asks for
+    // focus just while typing, then hands it back to the game.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(windowFocused, focused) { if (windowFocused && focused) keyboard?.show() }
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -381,7 +397,18 @@ private fun SearchField(
         cursorBrush = SolidColor(BookColors.Brass),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch(); focusManager.clearFocus() }),
-        modifier = modifier.onFocusChanged { focused = it.isFocused; onFocusChanged(it.isFocused) },
+        modifier = modifier
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    com.nerfherder.walkthor.GameFocus.wantFocus.value = true
+                }
+            }
+            .onFocusChanged {
+                focused = it.isFocused
+                if (!it.isFocused) com.nerfherder.walkthor.GameFocus.wantFocus.value = false
+                onFocusChanged(it.isFocused)
+            },
         decorationBox = { inner ->
             Row(
                 Modifier

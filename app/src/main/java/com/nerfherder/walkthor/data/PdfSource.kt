@@ -41,7 +41,7 @@ class PdfSource private constructor(
     private val renderLock = Mutex()
     private var closed = false
 
-    private val cache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 6).toInt()) {
+    private val cache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 10).toInt()) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 

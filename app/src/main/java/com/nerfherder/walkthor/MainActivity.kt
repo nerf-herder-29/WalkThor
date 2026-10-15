@@ -96,7 +96,16 @@ class MainActivity : ComponentActivity() {
         // A fresh open always starts bright (the idle clock may have been running in the background).
         AutoDim.wake()
         PlaySession.init(this)
+        GameFocus.init(this)
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
+        // Until the launch log has been checked, assume a game may be running (when Cocoon is
+        // linked) so WalkThor never grabs focus from it while starting up as its companion.
+        GameFocus.gameRunning.value = CocoonLaunchLog.linkedFolder(this) != null
+        applyGameFocus(initial = true)
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(GameFocus.keepOnGame, GameFocus.gameRunning, GameFocus.wantFocus) { _, _, _ -> }
+                .collect { applyGameFocus(initial = false) }
+        }
         AppState.activity = java.lang.ref.WeakReference(this)
         coverForBookId = savedInstanceState?.getString("coverFor")
 
@@ -127,6 +136,26 @@ class MainActivity : ComponentActivity() {
                         )
                         AutoDimOverlay()
                     }
+                }
+            }
+        }
+    }
+
+    private var yielding: Boolean? = null
+
+    /** Makes the window non-focusable while a game is running (see [GameFocus]). */
+    private fun applyGameFocus(initial: Boolean) {
+        val yieldToGame = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && !GameFocus.wantFocus.value
+        if (yielding == yieldToGame) return
+        yielding = yieldToGame
+        if (yieldToGame) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+            // Asked for focus (e.g. tapped the search field): bring WalkThor forward so typing works.
+            if (!initial && GameFocus.wantFocus.value) {
+                runCatching {
+                    getSystemService(android.app.ActivityManager::class.java)?.moveTaskToFront(taskId, 0)
                 }
             }
         }
@@ -326,11 +355,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
      */
     suspend fun checkGame(force: Boolean): Acted? = checkLock.withLock {
         val tree = CocoonLaunchLog.linkedFolder(context)
-        if (tree == null) { PlaySession.current.value = null; return@withLock null }
+        if (tree == null) { PlaySession.current.value = null; GameFocus.gameRunning.value = false; return@withLock null }
         val game = CocoonLaunchLog.lastLaunch(context, tree)
         // Only a game launched in the last few hours counts as "playing now".
         val recent = game != null && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
         PlaySession.current.value = if (recent) game else null
+        GameFocus.gameRunning.value = recent
         if (!gameGuideNow) return@withLock null
         if (game == null) {
             if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try ⋮ → Change Cocoon folder…", Toast.LENGTH_LONG).show()

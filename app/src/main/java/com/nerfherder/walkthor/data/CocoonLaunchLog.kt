@@ -72,9 +72,18 @@ object CocoonLaunchLog {
     /** True if [tree] looks like Cocoon's data folder (has the launch log). */
     suspend fun hasLog(context: Context, tree: Uri): Boolean = withContext(Dispatchers.IO) { findLog(context, tree) != null }
 
+    /** The log's location, remembered so the folder isn't listed again on every check. */
+    @Volatile private var cached: Pair<Uri, Uri>? = null
+
     suspend fun lastLaunch(context: Context, tree: Uri): LaunchedGame? = withContext(Dispatchers.IO) {
+        // Fast path: read the log we found last time.
+        cached?.takeIf { it.first == tree }?.let { (_, log) ->
+            runCatching { return@withContext parseLast(readTail(context, log)) }
+            cached = null // moved or deleted: look for it again
+        }
         runCatching {
             val log = findLog(context, tree) ?: return@runCatching null
+            cached = tree to log
             parseLast(readTail(context, log))
         }.getOrNull()
     }

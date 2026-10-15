@@ -335,6 +335,7 @@ private fun SettingsMenu(
     val dimDelay by AutoDim.delayMs.collectAsState()
     val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
+    val keepGameFocus by com.nerfherder.walkthor.GameFocus.keepOnGame.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
@@ -344,6 +345,20 @@ private fun SettingsMenu(
                 text = { Text("Always open on bottom screen") },
                 trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { actions.onToggleAlwaysBottom(!alwaysBottom) },
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Keep focus on the game")
+                        Text(
+                            "Recommended. WalkThor won't take focus (and performance) from a running game.",
+                            fontSize = 11.sp,
+                            color = BookColors.TextMuted,
+                        )
+                    }
+                },
+                trailingIcon = { if (keepGameFocus) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                onClick = { com.nerfherder.walkthor.GameFocus.setKeepOnGame(context, !keepGameFocus) },
             )
             DropdownMenuItem(
                 text = {
