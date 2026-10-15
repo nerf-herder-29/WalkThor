@@ -338,6 +338,7 @@ private fun SettingsMenu(
     val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
     val keepGameFocus by com.nerfherder.walkthor.GameFocus.keepOnGame.collectAsState()
+    val perfCheck by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
@@ -442,6 +443,16 @@ private fun SettingsMenu(
                 DropdownMenuItem(text = { Text("Unlink artwork folder") }, onClick = { open = false; actions.onUnlinkArt() })
             }
             HorizontalDivider(color = BookColors.Hairline)
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Performance check")
+                        Text("Shows on the dimmed screen whether WalkThor is Android's top app.", fontSize = 11.sp, color = BookColors.TextMuted)
+                    }
+                },
+                trailingIcon = { if (perfCheck) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                onClick = { com.nerfherder.walkthor.PerfCheck.setEnabled(context, !perfCheck) },
+            )
             DropdownMenuItem(text = { Text("About & licences") }, onClick = { open = false; onAbout() })
         }
     }

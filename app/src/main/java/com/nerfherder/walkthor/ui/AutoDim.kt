@@ -248,6 +248,30 @@ fun AutoDimOverlay() {
                 }
             }
         }
+        // Performance check readout (⋮ → Performance check).
+        val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
+        if (perfOn) {
+            val isTop by com.nerfherder.walkthor.PerfCheck.walkThorIsTop.collectAsState()
+            val since by com.nerfherder.walkthor.PerfCheck.since.collectAsState()
+            val frames by com.nerfherder.walkthor.PerfCheck.recentFrames.collectAsState()
+            val secs = ((android.os.SystemClock.elapsedRealtime() - since) / 1000).coerceAtLeast(0)
+            val (label, color) = when (isTop) {
+                true -> "TOP APP: WalkThor (the game is NOT getting top priority)" to Color(0xFFE0675A)
+                false -> "TOP APP: not WalkThor (the game can have top priority)" to Color(0xFF7FC48A)
+                null -> "TOP APP: unknown yet" to BookColors.TextMuted
+            }
+            Column(Modifier.align(Alignment.TopStart).padding(16.dp)) {
+                Text("PERFORMANCE CHECK", style = EyebrowStyle.copy(color = BookColors.TextMuted))
+                Spacer(Modifier.height(4.dp))
+                Text(label, color = color, fontSize = 13.sp)
+                Text("for ${secs / 60}m ${secs % 60}s · as of this readout", color = BookColors.TextMuted, fontSize = 11.sp)
+                Text(
+                    "WalkThor drew $frames frame${if (frames == 1) "" else "s"} in the last 10 s (0–1 = idle)",
+                    color = if (frames > 5) Color(0xFFE0675A) else BookColors.TextMuted,
+                    fontSize = 12.sp,
+                )
+            }
+        }
         Text(
             "Tap to wake",
             color = BookColors.TextMuted.copy(alpha = 0.35f * alpha),

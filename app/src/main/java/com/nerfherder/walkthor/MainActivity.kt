@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
         AutoDim.wake()
         PlaySession.init(this)
         GameFocus.init(this)
+        PerfCheck.init(this)
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         // Until the launch log has been checked, assume a game may be running (when Cocoon is
         // linked) so WalkThor never grabs focus from it while starting up as its companion.
@@ -124,6 +125,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // Performance check: count WalkThor's drawn frames while it's switched on.
+        lifecycleScope.launch {
+            PerfCheck.enabled.collect { on ->
+                if (on && !frameListenerOn) {
+                    runCatching { window.addOnFrameMetricsAvailableListener(frameListener, android.os.Handler(mainLooper)) }
+                    frameListenerOn = true
+                } else if (!on && frameListenerOn) {
+                    runCatching { window.removeOnFrameMetricsAvailableListener(frameListener) }
+                    frameListenerOn = false
+                }
+            }
+        }
+        lifecycleScope.launch {
+            while (true) {
+                delay(10_000)
+                PerfCheck.recentFrames.value = PerfCheck.frameCounter.getAndSet(0)
+            }
+        }
 
         setContent {
             WalkThorTheme {
@@ -143,6 +162,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private var yielding: Boolean? = null
+
+    // ---- performance check: is WalkThor Android's top app, and is it drawing? ----
+    override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
+        super.onTopResumedActivityChanged(isTopResumedActivity)
+        PerfCheck.setTop(isTopResumedActivity)
+    }
+
+    private val frameListener = android.view.Window.OnFrameMetricsAvailableListener { _, _, _ ->
+        PerfCheck.frameCounter.incrementAndGet()
+    }
+    private var frameListenerOn = false
 
     /**
      * Cover images: a small in-memory cache (the default takes a quarter of the app's memory),
