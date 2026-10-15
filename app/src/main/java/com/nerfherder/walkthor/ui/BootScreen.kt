@@ -105,7 +105,8 @@ fun BootScreen(
     val flip = remember { Animatable(0f) }      // 0 = the book, 1 = the guide's tile
     val guide = (status as? BootStatus.Playing)?.guide
     val cover = (status as? BootStatus.Playing)?.cover
-    val art = (status as? BootStatus.Playing)?.art?.takeIf { guide == null }
+    // The game's box art when there is some (what the Now playing screen shows next), else the guide's tile.
+    val art = (status as? BootStatus.Playing)?.art
 
     LaunchedEffect(guide?.id, art) {
         if (guide != null || art != null) flip.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
@@ -219,8 +220,8 @@ fun BootScreen(
                     }
                 }
             }
-            // ...second half: the guide's tile turns into view.
-            if (guide != null) {
+            // ...second half: the guide's tile (when there's no box art) turns into view...
+            if (guide != null && art == null) {
                 GuideTile(
                     book = guide,
                     cover = cover,
@@ -234,7 +235,7 @@ fun BootScreen(
                         },
                 )
             } else if (art != null) {
-                // No guide: the game's own artwork turns into view instead.
+                // ...or the game's own box art.
                 AsyncImage(
                     model = Uri.parse(art),
                     contentDescription = null,

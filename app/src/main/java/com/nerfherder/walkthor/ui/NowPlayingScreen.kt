@@ -1,5 +1,11 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.ui.geometry.Offset
+
+import androidx.compose.ui.graphics.Brush
+
+import androidx.compose.ui.draw.drawBehind
+
 import androidx.compose.runtime.collectAsState
 
 import android.net.Uri
@@ -107,9 +113,29 @@ fun NowPlayingScreen(
     val compact = LocalConfiguration.current.screenHeightDp < 480
     val enter = remember { Animatable(0f) }
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
+    val resting by AutoDim.resting.collectAsState()
+    val guideCover = remember(guide?.id, guide?.cover) { guide?.let(coverFile) }
+    // The art's main colour: a soft glow behind it and the card's accents.
+    val accent = rememberArtAccent(art.cover ?: guideCover?.let { Uri.fromFile(it).toString() })
 
-    // Pure OLED black like the rest of WalkThor; auto-dim applies here too.
-    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+    // OLED black, with one soft pool of the game's colour behind its art that fades to black
+    // well before the edges. Auto-dim applies here too.
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(BookColors.Ink)
+            .drawBehind {
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(accent.copy(alpha = 0.26f * enter.value), accent.copy(alpha = 0.08f * enter.value), Color.Transparent),
+                        center = Offset(size.width * 0.22f, size.height * 0.52f),
+                        radius = size.height * 0.62f,
+                    ),
+                    radius = size.height * 0.62f,
+                    center = Offset(size.width * 0.22f, size.height * 0.52f),
+                )
+            },
+    ) {
         // Top bar: back to the shelf, and close.
         Row(
             Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 6.dp),
@@ -118,7 +144,7 @@ fun NowPlayingScreen(
             IconButton(onClick = onLibrary) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = BookColors.TextMuted)
             }
-            Text("NOW PLAYING", style = EyebrowStyle, modifier = Modifier.weight(1f).padding(start = 4.dp))
+            Text("NOW PLAYING", style = EyebrowStyle.copy(color = accent), modifier = Modifier.weight(1f).padding(start = 4.dp))
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
             }
@@ -144,21 +170,17 @@ fun NowPlayingScreen(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                val resting by AutoDim.resting.collectAsState()
-                if (guide != null) {
-                    // The guide itself, where the boot screen's flip left it.
-                    GuideTile(
-                        guide,
-                        if (resting) null else remember(guide.id, guide.cover) { coverFile(guide) },
-                        Modifier.fillMaxWidth().aspectRatio(1f),
-                    )
-                } else if (art.cover != null && !resting) {
+                if (art.cover != null && !resting) {
+                    // The game's own box art, front and centre.
                     AsyncImage(
                         model = Uri.parse(art.cover),
                         contentDescription = game.title,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                     )
+                } else if (guide != null) {
+                    // No box art found: the guide's tile stands in.
+                    GuideTile(guide, if (resting) null else guideCover, Modifier.fillMaxWidth().aspectRatio(1f))
                 } else {
                     NoArtPlaceholder(game.title)
                 }
@@ -174,16 +196,27 @@ fun NowPlayingScreen(
                         translationX = (1f - enter.value) * 24.dp.toPx()
                     },
             ) {
-                Text(
-                    displayTitle(game.title),
-                    color = BookColors.Text,
-                    fontFamily = SerifDisplay,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = if (compact) 20.sp else 30.sp,
-                    lineHeight = if (compact) 24.sp else 36.sp,
-                    maxLines = if (compact) 2 else 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (art.logo != null && !resting) {
+                    // The game's logo in place of the plain title.
+                    AsyncImage(
+                        model = Uri.parse(art.logo),
+                        contentDescription = displayTitle(game.title),
+                        contentScale = ContentScale.Fit,
+                        alignment = Alignment.CenterStart,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = if (compact) 72.dp else 116.dp),
+                    )
+                } else {
+                    Text(
+                        displayTitle(game.title),
+                        color = BookColors.Text,
+                        fontFamily = SerifDisplay,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = if (compact) 20.sp else 30.sp,
+                        lineHeight = if (compact) 24.sp else 36.sp,
+                        maxLines = if (compact) 2 else 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 game.player?.let {
                     Spacer(Modifier.height(4.dp))
                     Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 13.sp)
@@ -193,22 +226,29 @@ fun NowPlayingScreen(
                     Modifier
                         .fillMaxWidth()
                         .background(BookColors.Surface.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
-                        .border(1.dp, BookColors.Hairline, RoundedCornerShape(12.dp))
+                        .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
                         .padding(if (compact) 12.dp else 18.dp),
                 ) {
                     if (guide != null) {
-                        Text("YOUR GUIDE", style = EyebrowStyle)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            guide.title,
-                            color = BookColors.Text,
-                            fontFamily = SerifDisplay,
-                            fontSize = if (compact) 15.sp else 17.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // The guide as a small tile beside its name.
+                            GuideTile(guide, if (resting) null else guideCover, Modifier.size(if (compact) 40.dp else 52.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("YOUR GUIDE", style = EyebrowStyle.copy(color = accent))
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    guide.title,
+                                    color = BookColors.Text,
+                                    fontFamily = SerifDisplay,
+                                    fontSize = if (compact) 15.sp else 17.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
                     } else if (compact) {
-                        Text("NO GUIDE YET", style = EyebrowStyle)
+                        Text("NO GUIDE YET", style = EyebrowStyle.copy(color = accent))
                     } else {
                         Text(
                             "No guide for this game yet",

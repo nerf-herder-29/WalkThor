@@ -405,7 +405,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         } else {
             // Every launch lands on the Now playing screen, which dims after a few seconds;
             // with a guide it offers Open guide, without one the game's artwork and ways to add one.
-            val art = if (book == null) ArtworkRepository.get(context).gameArt(game.title, game.file) else GameArt(null)
+            val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
             openId = null
             noGuide = Showing(game, art, book)
             AutoDim.wake()
@@ -448,7 +448,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             }
             found?.let { (game, guide, art) ->
                 // A guide: flip into its tile (no separate intro). No guide: flip into the game's art.
-                val cover = if (guide == null) art?.cover else null
+                val cover = art?.cover
                 bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover, game.player)
                 delay(if (guide != null || cover != null) 1_150 else 800)
             }

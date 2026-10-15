@@ -221,15 +221,36 @@ class StoreScreenshots {
         return Uri.fromFile(f).toString()
     }
 
+    /** A made-up transparent logo for the fictional game. */
+    private fun fakeLogo(): String {
+        val w = 900; val h = 260
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
+        p.textAlign = android.graphics.Paint.Align.LEFT
+        p.shader = android.graphics.LinearGradient(0f, 40f, 0f, 200f, 0xFFFFE2A8.toInt(), 0xFFE07A3A.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        p.textSize = 120f
+        c.drawText("LANTERNS", 10f, 130f, p)
+        p.shader = null
+        p.color = 0xFFF3E6C8.toInt()
+        p.textSize = 58f
+        c.drawText("of  EMBERFALL", 16f, 215f, p)
+        val f = File(app.cacheDir, "Lanterns of Emberfall (USA)-marquee.png")
+        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        return Uri.fromFile(f).toString()
+    }
+
     private val noGuideGame get() = LaunchedGame("Lanterns of Emberfall", "Lanterns of Emberfall (USA).rvz", "Dolphin Emulator", System.currentTimeMillis())
 
     @Test
     fun noGuide() {
         val art = fakeBoxArt()
+        val logo = fakeLogo()
         content {
             NowPlayingScreen(
                 game = noGuideGame,
-                art = GameArt(cover = art),
+                art = GameArt(cover = art, logo = logo),
                 books = shelf.drop(1),
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
@@ -343,7 +364,7 @@ class StoreScreenshots {
         content {
             NowPlayingScreen(
                 game = noGuideGame,
-                art = GameArt(null),
+                art = GameArt(cover = fakeBoxArt(), logo = fakeLogo()),
                 books = shelf,
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},

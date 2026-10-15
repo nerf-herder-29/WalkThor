@@ -36,7 +36,11 @@ data class ArtImage(
 data class ArtMatch(val image: ArtImage, val score: Float)
 
 /** Artwork for a launched game (a content URI as a string), if any was found. */
-data class GameArt(val cover: String?)
+data class GameArt(
+    val cover: String?,
+    /** The game's logo (ES-DE "marquee"/"wheel" images, usually transparent), if there is one. */
+    val logo: String? = null,
+)
 
 /**
  * Reads cover artwork from a folder the user links once (e.g. their Cocoon data folder).
@@ -179,6 +183,7 @@ class ArtworkRepository private constructor(private val context: Context) {
         // Cheap pre-check: an image must share at least one word with the game's name.
         val anyWord = names.flatten().toSet()
         var cover: Pair<ArtImage, Float>? = null
+        var logo: Pair<ArtImage, Float>? = null
         val images = withIndex { it }
         for (img in images) {
             val tokens = img.titleTokens
@@ -196,8 +201,14 @@ class ArtworkRepository private constructor(private val context: Context) {
                 else -> 0f
             }
             if (coverBonus != null && (cover == null || sim + coverBonus > cover.second)) cover = img to sim + coverBonus
+            val logoBonus = when {
+                "marquee" in where || "wheel" in where -> 0.1f
+                "logo" in where -> 0.05f
+                else -> null
+            }
+            if (logoBonus != null && (logo == null || sim + logoBonus > logo.second)) logo = img to sim + logoBonus
         }
-        GameArt(cover?.first?.uri).also { lastGameArt = key to it }
+        GameArt(cover?.first?.uri, logo?.first?.uri).also { lastGameArt = key to it }
     }
 
     @Volatile private var lastGameArt: Pair<String, GameArt>? = null
