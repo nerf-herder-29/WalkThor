@@ -118,7 +118,7 @@ fun NowPlayingScreen(
                 Modifier
                     .fillMaxHeight(0.92f)
                     .widthIn(max = 300.dp)
-                    .weight(0.8f)
+                    .weight(if (compact) 0.55f else 0.8f)
                     .graphicsLayer {
                         alpha = enter.value
                         val s = 0.94f + 0.06f * enter.value
@@ -137,10 +137,10 @@ fun NowPlayingScreen(
                     NoArtPlaceholder(game.title)
                 }
             }
-            Spacer(Modifier.width(28.dp))
+            Spacer(Modifier.width(if (compact) 18.dp else 28.dp))
             Column(
                 Modifier
-                    .weight(1.25f)
+                    .weight(if (compact) 1.45f else 1.25f)
                     // Never cut anything off: scroll if it still doesn't fit.
                     .verticalScroll(rememberScrollState())
                     .graphicsLayer {
@@ -153,8 +153,8 @@ fun NowPlayingScreen(
                     color = BookColors.Text,
                     fontFamily = SerifDisplay,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = if (compact) 22.sp else 30.sp,
-                    lineHeight = if (compact) 27.sp else 36.sp,
+                    fontSize = if (compact) 20.sp else 30.sp,
+                    lineHeight = if (compact) 24.sp else 36.sp,
                     maxLines = if (compact) 2 else 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -170,20 +170,23 @@ fun NowPlayingScreen(
                         .border(1.dp, BookColors.Hairline, RoundedCornerShape(12.dp))
                         .padding(if (compact) 12.dp else 18.dp),
                 ) {
-                    Text(
-                        "No guide for this game yet",
-                        color = BookColors.Text,
-                        fontFamily = SerifDisplay,
-                        fontSize = if (compact) 16.sp else 18.sp,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        if (compact) "The one you add or pick opens for this game from now on."
-                        else "Add one, or pick one from your shelf, and WalkThor will open it for this game from now on.",
-                        color = BookColors.TextMuted,
-                        fontSize = if (compact) 12.sp else 13.sp,
-                        lineHeight = if (compact) 16.sp else 18.sp,
-                    )
+                    if (compact) {
+                        Text("NO GUIDE YET", style = EyebrowStyle)
+                    } else {
+                        Text(
+                            "No guide for this game yet",
+                            color = BookColors.Text,
+                            fontFamily = SerifDisplay,
+                            fontSize = 18.sp,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Add one, or pick one from your shelf, and WalkThor will open it for this game from now on.",
+                            color = BookColors.TextMuted,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                        )
+                    }
                     Spacer(Modifier.height(if (compact) 10.dp else 14.dp))
                     // Wraps onto a second line on narrow screens instead of cutting a button off.
                     FlowRow(
@@ -193,7 +196,7 @@ fun NowPlayingScreen(
                         Button(
                             onClick = onAddGuide,
                             colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp),
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
@@ -203,7 +206,7 @@ fun NowPlayingScreen(
                             OutlinedButton(
                                 onClick = { picking = true },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp),
                             ) { Text("From my shelf", maxLines = 1, softWrap = false) }
                         }
                     }

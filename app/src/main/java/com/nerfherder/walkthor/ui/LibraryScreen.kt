@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.ui.platform.LocalConfiguration
+
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
@@ -148,6 +150,7 @@ fun LibraryScreen(
         if (!actions.isSwipeServiceOn()) explainSwipe = true
     }
 
+    val narrowHeader = LocalConfiguration.current.screenWidthDp < 560
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
         Row(
@@ -156,8 +159,10 @@ fun LibraryScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (books.isEmpty()) "YOUR SHELF" else "YOUR SHELF · ${books.size} GUIDE${if (books.size == 1) "" else "S"}",
+                    if (books.isEmpty() || narrowHeader) "YOUR SHELF" else "YOUR SHELF · ${books.size} GUIDE${if (books.size == 1) "" else "S"}",
                     style = EyebrowStyle,
+                    maxLines = 1,
+                    softWrap = false,
                 )
                 Text(
                     "WalkThor",
@@ -165,17 +170,23 @@ fun LibraryScreen(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 26.sp,
                     color = BookColors.Text,
+                    maxLines = 1,
+                    softWrap = false,
                 )
             }
-            StatusClock(Modifier.padding(end = 14.dp))
+            StatusClock(Modifier.padding(end = if (narrowHeader) 6.dp else 14.dp))
             Button(
                 onClick = actions.onImport,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = if (narrowHeader) PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                else PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Add guide", fontWeight = FontWeight.SemiBold)
+                // On narrow screens the button is just "+", so the header never crowds out the shelf.
+                Icon(Icons.Filled.Add, contentDescription = if (narrowHeader) "Add guide" else null, modifier = Modifier.size(18.dp))
+                if (!narrowHeader) {
+                    Spacer(Modifier.width(6.dp))
+                    Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                }
             }
             IconButton(onClick = actions.onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)

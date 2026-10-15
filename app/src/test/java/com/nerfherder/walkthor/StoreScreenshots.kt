@@ -302,4 +302,18 @@ class StoreScreenshots {
         compose.mainClock.advanceTimeBy(2_000)
         shot("check-boot-dense")
     }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun readerDense() {
+        val sample = File(app.cacheDir, "Lanterns of Emberfall - Complete Walkthrough.txt")
+        javaClass.classLoader!!.getResourceAsStream("sample-guide.txt")!!.use { input ->
+            sample.outputStream().use { input.copyTo(it) }
+        }
+        val book = runBlocking { BookRepository.get(app).importGuide(Uri.fromFile(sample)) {} }
+        content { ReaderScreen(bookId = book.id, onBack = {}, onClose = {}, onSwapScreen = {}) }
+        compose.waitUntil(20_000) { compose.onAllNodesWithText("— 1 —").fetchSemanticsNodes().isNotEmpty() }
+        settle()
+        shot("check-reader-dense")
+    }
 }
