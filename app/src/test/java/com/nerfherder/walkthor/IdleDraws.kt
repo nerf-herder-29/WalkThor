@@ -70,7 +70,9 @@ class IdleDraws {
         PlaySession.showTimer.value = true
         AutoDim.dimmed.value = false
         AutoDim.delayMs.value = 0L
-        compose.activity.window.decorView.viewTreeObserver.addOnDrawListener { draws++ }
+        // Every Compose redraw starts with a change to some on-screen state; count those changes.
+        androidx.compose.runtime.snapshots.Snapshot.registerApplyObserver { changed, _ -> draws += changed.size }
+        androidx.compose.runtime.snapshots.Snapshot.registerGlobalWriteObserver { draws++ }
     }
 
     private fun step(ms: Long) {
@@ -98,7 +100,7 @@ class IdleDraws {
         }
         draws = 0
         run(10)
-        val line = "$name${if (dim) " (dimmed)" else ""}: $draws draws in 10 s"
+        val line = "$name${if (dim) " (dimmed)" else ""}: $draws state changes in 10 s"
         println("IDLE-DRAWS $line")
         File("build/screenshots").mkdirs()
         File("build/screenshots/idle-draws.txt").appendText(line + "\n")
