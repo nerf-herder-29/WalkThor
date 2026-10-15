@@ -1,0 +1,8 @@
+blank screen: 0 state changes in 10 s
+dim overlay alone (dimmed): 0 state changes in 10 s
+status clock: 4 state changes in 10 s
+CONTROL boot animation (should be high): 0 state changes in 10 s
+now playing: 6 state changes in 10 s
+reader: 6 state changes in 10 s
+reader + dim (dimmed): 10 state changes in 10 s
+now playing + dim (dimmed): 10 state changes in 10 s
