@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.ui.draw.drawWithContent
+
 import androidx.compose.ui.draw.blur
 
 import androidx.compose.ui.geometry.Offset
@@ -144,49 +146,42 @@ fun NowPlayingScreen(
                 )
             )
         )
-        // ---- frosted glass over the right half, for the guide ----
+        // ---- frosted glass that eases in toward the right, for the guide ----
+        // A blurred, darkened copy of the art, faded in with a soft mask across the middle, so
+        // the art goes from sharp on the left to frosted on the right with no hard edge.
         Box(
             Modifier
                 .fillMaxSize()
-                .clip(RightHalf)
-                .graphicsLayer { alpha = enter.value },
+                .graphicsLayer {
+                    alpha = enter.value
+                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        Brush.horizontalGradient(
+                            0f to Color.Transparent,
+                            0.36f to Color.Transparent,
+                            0.62f to Color.Black,
+                            1f to Color.Black,
+                        ),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                    )
+                },
         ) {
             if (banner != null && !resting) {
-                // The same art, blurred: the "frost". (Android 12+; older versions just get the tint.)
+                // The same art, gently blurred. (Android 12+; older versions just get the tint.)
                 AsyncImage(
                     model = Uri.parse(banner),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(30.dp) else Modifier),
+                        .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(14.dp) else Modifier),
                 )
             }
-            // Smoky tint so white text reads on any art, with a faint sheen.
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        0f to Color(0xFF0B0B10).copy(alpha = 0.62f),
-                        1f to Color(0xFF0B0B10).copy(alpha = 0.74f),
-                    )
-                )
-            )
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.linearGradient(
-                        0f to Color.White.copy(alpha = 0.07f),
-                        0.4f to Color.Transparent,
-                    )
-                )
-            )
-            // A thin bright edge where the glass begins.
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.5f)
-                    .align(Alignment.CenterEnd)
-                    .drawBehind { drawLine(Color.White.copy(alpha = 0.16f), Offset(0f, 0f), Offset(0f, size.height), strokeWidth = 1.dp.toPx()) },
-            )
+            // Smoky tint so white text reads on any art.
+            Box(Modifier.fillMaxSize().background(Color(0xFF0B0B10).copy(alpha = 0.62f)))
         }
         Row(Modifier.fillMaxSize()) {
             // ---- left half: the logo over the art ----
@@ -366,11 +361,6 @@ fun NowPlayingScreen(
             confirmButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
         )
     }
-}
-
-/** The right half of whatever it clips. */
-private val RightHalf = androidx.compose.foundation.shape.GenericShape { size, _ ->
-    addRect(androidx.compose.ui.geometry.Rect(size.width / 2f, 0f, size.width, size.height))
 }
 
 /** A plain card standing in for the game's art when none was found. */
