@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.runtime.collectAsState
+
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
@@ -62,8 +64,11 @@ fun PdfPage(source: PdfSource, index: Int, query: String, modifier: Modifier = M
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = constraints.maxWidth
         val h = constraints.maxHeight
-        val bitmap by produceState<ImageBitmap?>(null, source, index, w, h, renderScale) {
-            value = source.render(index, (w * renderScale).roundToInt(), (h * renderScale).roundToInt())?.asImageBitmap()
+        // While resting under a long dim, let the page image go (it's re-rendered on wake).
+        val resting by AutoDim.resting.collectAsState()
+        val bitmap by produceState<ImageBitmap?>(null, source, index, w, h, renderScale, resting) {
+            value = if (resting) null
+            else source.render(index, (w * renderScale).roundToInt(), (h * renderScale).roundToInt())?.asImageBitmap()
         }
         val matches by produceState(emptyList<android.graphics.RectF>(), source, index, query) {
             value = if (query.isEmpty()) emptyList() else source.findMatches(index, query)

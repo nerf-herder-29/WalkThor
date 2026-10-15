@@ -422,6 +422,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var booting by rememberSaveable { mutableStateOf(boot) }
     var bootFinished by remember { mutableStateOf(false) }
     var bootStatus by remember { mutableStateOf<BootStatus>(BootStatus.Idle) }
+    // Cocoon linked with auto-open on: WalkThor is most likely opening alongside a game, so
+    // keep the boot animation light while the game loads.
+    val bootLight = remember { CocoonLaunchLog.linkedFolder(context) != null && gameGuideOn }
     // A swipe that opened WalkThor is handled by the boot check, not the effect below.
     val bootSwipeTick = remember { if (boot) swipeTick else 0L }
     LaunchedEffect(Unit) {
@@ -562,6 +565,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
 
     if (booting) {
         BootScreen(
+            light = bootLight,
             status = bootStatus,
             finished = bootFinished,
             onSkip = { bootFinished = true },

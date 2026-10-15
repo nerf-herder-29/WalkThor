@@ -64,6 +64,12 @@ object AutoDim {
 
     @Volatile internal var statusOwner: Any? = null
     val dimmed = MutableStateFlow(false)
+    /**
+     * True once the screen has stayed dimmed for [REST_AFTER_MS]: rendered pages and cover images
+     * are let go (nothing can be seen under the dim anyway) and come back when you wake it.
+     */
+    val resting = MutableStateFlow(false)
+    const val REST_AFTER_MS = 30_000L
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
     fun label(ms: Long) = when (ms) {
@@ -120,6 +126,17 @@ fun AutoDimOverlay() {
     val screenDelay by AutoDim.screenDelayMs.collectAsState()
     val delayMs = screenDelay ?: settingDelay
     val dimmed by AutoDim.dimmed.collectAsState()
+
+    // After a while dimmed, free the memory held by what's under the dim, for the game's benefit.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(dimmed) {
+        if (!dimmed) { AutoDim.resting.value = false; return@LaunchedEffect }
+        delay(AutoDim.REST_AFTER_MS)
+        AutoDim.resting.value = true
+        delay(500) // let pages and covers drop their images first
+        com.nerfherder.walkthor.data.PdfSource.trimAll()
+        runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
+    }
 
     LaunchedEffect(delayMs) {
         if (delayMs <= 0L) { AutoDim.dimmed.value = false; return@LaunchedEffect }

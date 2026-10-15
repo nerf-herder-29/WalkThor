@@ -85,7 +85,18 @@ sealed interface BootStatus {
  * Tap to skip.
  */
 @Composable
-fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone: () -> Unit) {
+fun BootScreen(
+    status: BootStatus,
+    finished: Boolean,
+    onSkip: () -> Unit,
+    onGone: () -> Unit,
+    /**
+     * Opening alongside a game that's just starting: skip the continuous parts (the drifting
+     * magnifier, the glow, the pulsing text) so the bottom screen isn't redrawn the whole time
+     * the game is loading. The book still opens and flips into the guide.
+     */
+    light: Boolean = false,
+) {
     val gone by rememberUpdatedState(onGone)
     val open = remember { Animatable(0f) }      // pages folding open from the spine
     val ink = remember { Animatable(0f) }       // text lines + magnifier appearing
@@ -117,13 +128,16 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
         gone()
     }
 
-    // The magnifier drifts over the pages, as if reading.
-    val sweep = rememberInfiniteTransition(label = "boot")
-    val t by sweep.animateFloat(
-        0f, 1f,
-        infiniteRepeatable(tween(2_400, easing = LinearEasing), RepeatMode.Restart),
-        label = "sweep",
-    )
+    // The magnifier drifts over the pages, as if reading (held still in light mode).
+    val t = if (light) 0.12f else {
+        val sweep = rememberInfiniteTransition(label = "boot")
+        val v by sweep.animateFloat(
+            0f, 1f,
+            infiniteRepeatable(tween(2_400, easing = LinearEasing), RepeatMode.Restart),
+            label = "sweep",
+        )
+        v
+    }
 
     Box(
         Modifier
@@ -158,7 +172,7 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                     }
             ) {
                 // Glow behind the book.
-                drawCircle(
+                if (!light) drawCircle(
                     Brush.radialGradient(
                         listOf(BookColors.Brass.copy(alpha = 0.22f * open.value), Color.Transparent),
                         center = center,

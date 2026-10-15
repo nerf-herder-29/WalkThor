@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.runtime.collectAsState
+
 import android.net.Uri
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -132,7 +134,8 @@ fun NowPlayingScreen(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                if (art.cover != null) {
+                val resting by AutoDim.resting.collectAsState()
+                if (art.cover != null && !resting) {
                     AsyncImage(
                         model = Uri.parse(art.cover),
                         contentDescription = game.title,

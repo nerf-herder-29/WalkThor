@@ -632,7 +632,8 @@ internal fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) 
     ) {
         // ---- artwork, right of the binding ----
         Box(Modifier.fillMaxSize().padding(start = BINDING)) {
-            if (cover != null) {
+            val resting by AutoDim.resting.collectAsState()
+            if (cover != null && !resting) {
                 AsyncImage(
                     model = cover,
                     contentDescription = null,
