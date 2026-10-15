@@ -270,4 +270,36 @@ class StoreScreenshots {
         }
         shot("06a-boot-no-guide")
     }
+
+    // ---- the same screens at a denser display setting, to catch anything cut off ----
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun libraryDense() {
+        content { Library() }
+        shot("check-library-dense")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun autoDimDense() {
+        AutoDim.delayMs.value = 60_000L
+        content { Library() }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Auto-dim").performClick()
+        shot("check-auto-dim-dense")
+        AutoDim.delayMs.value = 0L
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun bootDense() {
+        compose.mainClock.autoAdvance = false
+        content {
+            BootScreen(BootStatus.Playing("Lanterns of Emberfall", shelf[0], null), finished = false, onSkip = {}, onGone = {})
+        }
+        compose.mainClock.advanceTimeBy(2_000)
+        shot("check-boot-dense")
+    }
 }

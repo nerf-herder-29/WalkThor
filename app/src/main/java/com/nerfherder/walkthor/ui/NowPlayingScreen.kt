@@ -58,6 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import com.nerfherder.walkthor.data.Book
 import com.nerfherder.walkthor.data.GameArt
 import com.nerfherder.walkthor.data.LaunchedGame
@@ -82,6 +85,8 @@ fun NowPlayingScreen(
     onClose: () -> Unit,
 ) {
     var picking by remember { mutableStateOf(false) }
+    // The Thor's bottom screen is short; at denser display settings tighten everything up.
+    val compact = LocalConfiguration.current.screenHeightDp < 480
     val enter = remember { Animatable(0f) }
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
 
@@ -136,6 +141,8 @@ fun NowPlayingScreen(
             Column(
                 Modifier
                     .weight(1.25f)
+                    // Never cut anything off: scroll if it still doesn't fit.
+                    .verticalScroll(rememberScrollState())
                     .graphicsLayer {
                         alpha = enter.value
                         translationX = (1f - enter.value) * 24.dp.toPx()
@@ -146,37 +153,38 @@ fun NowPlayingScreen(
                     color = BookColors.Text,
                     fontFamily = SerifDisplay,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 30.sp,
-                    lineHeight = 36.sp,
-                    maxLines = 3,
+                    fontSize = if (compact) 22.sp else 30.sp,
+                    lineHeight = if (compact) 27.sp else 36.sp,
+                    maxLines = if (compact) 2 else 3,
                     overflow = TextOverflow.Ellipsis,
                 )
                 game.player?.let {
                     Spacer(Modifier.height(4.dp))
                     Text(it, color = BookColors.TextMuted, fontSize = 13.sp)
                 }
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .background(BookColors.Surface.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
                         .border(1.dp, BookColors.Hairline, RoundedCornerShape(12.dp))
-                        .padding(18.dp),
+                        .padding(if (compact) 12.dp else 18.dp),
                 ) {
                     Text(
                         "No guide for this game yet",
                         color = BookColors.Text,
                         fontFamily = SerifDisplay,
-                        fontSize = 18.sp,
+                        fontSize = if (compact) 16.sp else 18.sp,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Add one, or pick one from your shelf, and WalkThor will open it for this game from now on.",
+                        if (compact) "The one you add or pick opens for this game from now on."
+                        else "Add one, or pick one from your shelf, and WalkThor will open it for this game from now on.",
                         color = BookColors.TextMuted,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
+                        fontSize = if (compact) 12.sp else 13.sp,
+                        lineHeight = if (compact) 16.sp else 18.sp,
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(if (compact) 10.dp else 14.dp))
                     // Wraps onto a second line on narrow screens instead of cutting a button off.
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -200,9 +208,12 @@ fun NowPlayingScreen(
                         }
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                TextButton(onClick = onLibrary) {
-                    Text("Go to my shelf", color = BookColors.TextMuted)
+                if (!compact) {
+                    // (The back arrow at the top does the same; skipped when space is tight.)
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(onClick = onLibrary) {
+                        Text("Go to my shelf", color = BookColors.TextMuted)
+                    }
                 }
             }
         }
