@@ -34,7 +34,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     val artFolder: StateFlow<Uri?> = art.folder
     /** Number of images in the linked artwork folder (the index itself stays on disk). */
-    val artCount = art.count
+    val artCount = art.count.also { art.prepare() }
     val artScanning: StateFlow<String?> = art.scanning
 
     private val _import = MutableStateFlow<ImportState?>(null)

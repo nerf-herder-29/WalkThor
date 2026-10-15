@@ -133,7 +133,7 @@ fun AutoDimOverlay() {
         dimmed -> level
         else -> 0f
     }
-    val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 1_200 else 180), label = "dim")
+    val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 400 else 150), label = "dim")
     val status by AutoDim.statusBounds.collectAsState()
     if (alpha <= 0.001f) return
     Box(

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -25,9 +26,11 @@ data class ArtImage(
     val name: String,
     /** Folder path inside the linked folder, lower-case, e.g. "media/snes/boxart". */
     val folder: String,
+    /** Title words worked out when the folder was indexed, so matching doesn't redo it. */
+    private val precomputed: Set<String>? = null,
 ) {
     /** Title words of the game this image is for (computed once; matching runs over thousands). */
-    val titleTokens: Set<String> by lazy { Matcher.imageTokens(this) }
+    val titleTokens: Set<String> by lazy { precomputed ?: Matcher.imageTokens(this) }
 }
 
 data class ArtMatch(val image: ArtImage, val score: Float)
@@ -51,8 +54,9 @@ class ArtworkRepository private constructor(private val context: Context) {
      * It lives on disk and is only read while matching artwork, never kept in memory, because a
      * full ES-DE media folder can hold tens of thousands of images.
      */
-    private val indexFile = File(context.filesDir, "artwork-index.tsv")
-    /** Older versions kept the index as JSON (and loaded it all at start-up). */
+    private val indexFile = File(context.filesDir, "artwork-index-v2.tsv")
+    /** 1.16's index (no title words), and older versions' JSON (loaded whole at start-up). */
+    private val v1File = File(context.filesDir, "artwork-index.tsv")
     private val legacyFile = File(context.filesDir, "artwork-index.json")
 
     private val _folder = MutableStateFlow(prefs.getString(KEY_TREE, null)?.let(Uri::parse))
@@ -84,7 +88,9 @@ class ArtworkRepository private constructor(private val context: Context) {
         _folder.value = null
         _count.value = 0
         indexFile.delete()
+        v1File.delete()
         legacyFile.delete()
+        lastGameArt = null
     }
 
     suspend fun rescan() = withContext(Dispatchers.IO) {
@@ -95,6 +101,7 @@ class ArtworkRepository private constructor(private val context: Context) {
             val root = DocumentsContract.getTreeDocumentId(tree)
             walk(tree, root, "", out, 0)
             saveIndex(out)
+            lastGameArt = null
         } finally {
             _scanning.value = null
         }
@@ -137,7 +144,7 @@ class ArtworkRepository private constructor(private val context: Context) {
     }
 
     /** Best artwork for a title, best first. */
-    suspend fun suggestions(title: String, limit: Int = 40): List<ArtMatch> = withContext(Dispatchers.Default) {
+    suspend fun suggestions(title: String, limit: Int = 40): List<ArtMatch> = withContext(Background.dispatcher) {
         val want = Matcher.words(title, guide = true).toSet()
         if (want.isEmpty()) return@withContext emptyList()
         // Loose cut-off: the picker should always offer the nearest candidates to choose from.
@@ -161,15 +168,22 @@ class ArtworkRepository private constructor(private val context: Context) {
      * Matches against both the game's title and its ROM file name (ES-DE names media after the
      * ROM file), and only accepts close matches, since the art is shown as *this* game's.
      */
-    suspend fun gameArt(title: String, file: String?): GameArt = withContext(Dispatchers.Default) {
+    suspend fun gameArt(title: String, file: String?): GameArt = withContext(Background.dispatcher) {
+        // The same game is looked up again on every swipe; answer from the last lookup.
+        val key = "$title|$file"
+        lastGameArt?.let { (k, art) -> if (k == key) return@withContext art }
         val names = listOfNotNull(title, file?.substringBeforeLast('.'))
             .map { Matcher.words(it).toSet() }
             .filter { it.isNotEmpty() }
         if (names.isEmpty()) return@withContext GameArt(null)
+        // Cheap pre-check: an image must share at least one word with the game's name.
+        val anyWord = names.flatten().toSet()
         var cover: Pair<ArtImage, Float>? = null
         val images = withIndex { it }
         for (img in images) {
-            val sim = names.maxOf { Matcher.closeness(it, img.titleTokens) }
+            val tokens = img.titleTokens
+            if (tokens.none { it in anyWord }) continue
+            val sim = names.maxOf { Matcher.closeness(it, tokens) }
             if (sim < GAME_ART_MIN) continue
             val where = (img.folder + "/" + img.name).lowercase()
             val coverBonus = when {
@@ -183,8 +197,10 @@ class ArtworkRepository private constructor(private val context: Context) {
             }
             if (coverBonus != null && (cover == null || sim + coverBonus > cover.second)) cover = img to sim + coverBonus
         }
-        GameArt(cover?.first?.uri)
+        GameArt(cover?.first?.uri).also { lastGameArt = key to it }
     }
+
+    @Volatile private var lastGameArt: Pair<String, GameArt>? = null
 
     /**
      * Copies an image (any content/file URI) into [dir] as a reasonably sized cover.
@@ -219,7 +235,7 @@ class ArtworkRepository private constructor(private val context: Context) {
      * Loads the index for one matching job. The list is only referenced by the caller, so it's
      * freed as soon as the job is done.
      */
-    private suspend fun <T> withIndex(block: (List<ArtImage>) -> T): T = withContext(Dispatchers.IO) {
+    private suspend fun <T> withIndex(block: (List<ArtImage>) -> T): T = withContext(Background.dispatcher) {
         migrateLegacy()
         val tree = _folder.value
         val images = ArrayList<ArtImage>()
@@ -228,11 +244,12 @@ class ArtworkRepository private constructor(private val context: Context) {
                 indexFile.bufferedReader().useLines { lines ->
                     for (line in lines) {
                         val parts = line.split('\t')
-                        if (parts.size < 3) continue
+                        if (parts.size < 4) continue
                         images += ArtImage(
                             DocumentsContract.buildDocumentUriUsingTree(tree, parts[0]).toString(),
                             parts[1],
                             parts[2],
+                            parts[3].split(' ').filter { it.isNotEmpty() }.toSet(),
                         )
                     }
                 }
@@ -246,28 +263,50 @@ class ArtworkRepository private constructor(private val context: Context) {
         indexFile.bufferedWriter().use { w ->
             for (img in list) {
                 val id = runCatching { DocumentsContract.getDocumentId(Uri.parse(img.uri)) }.getOrNull() ?: continue
-                w.append(clean(id)).append('\t').append(clean(img.name)).append('\t').append(clean(img.folder)).append('\n')
+                w.append(clean(id)).append('\t').append(clean(img.name)).append('\t').append(clean(img.folder))
+                    .append('\t').append(img.titleTokens.joinToString(" ")).append('\n')
             }
         }
         legacyFile.delete()
+        v1File.delete()
         _count.value = list.size
         prefs.edit().putInt(KEY_COUNT, list.size).apply()
     }
 
-    /** One-time move from the old JSON index to the compact one. */
+    /** One-time move from older index formats to the current one (with title words). */
     private fun migrateLegacy() {
-        if (!legacyFile.exists()) return
+        if (!legacyFile.exists() && !v1File.exists()) return
         synchronized(this) {
-            if (!legacyFile.exists()) return
-            runCatching {
-                val arr = JSONArray(legacyFile.readText())
-                saveIndex(List(arr.length()) {
-                    val o = arr.getJSONObject(it)
-                    ArtImage(o.getString("u"), o.getString("n"), o.getString("f"))
-                })
+            val tree = _folder.value
+            if (v1File.exists() && tree != null) {
+                runCatching {
+                    val list = ArrayList<ArtImage>()
+                    v1File.bufferedReader().useLines { lines ->
+                        for (line in lines) {
+                            val p = line.split('\t')
+                            if (p.size >= 3) list += ArtImage(DocumentsContract.buildDocumentUriUsingTree(tree, p[0]).toString(), p[1], p[2])
+                        }
+                    }
+                    saveIndex(list)
+                }
+            } else if (legacyFile.exists()) {
+                runCatching {
+                    val arr = JSONArray(legacyFile.readText())
+                    saveIndex(List(arr.length()) {
+                        val o = arr.getJSONObject(it)
+                        ArtImage(o.getString("u"), o.getString("n"), o.getString("f"))
+                    })
+                }
             }
             legacyFile.delete()
+            v1File.delete()
         }
+    }
+
+    /** Converts an older index in the background at start-up, so it never happens mid-launch. */
+    fun prepare() {
+        if (!legacyFile.exists() && !v1File.exists()) return
+        kotlinx.coroutines.CoroutineScope(Background.dispatcher).launch { migrateLegacy() }
     }
 
     companion object {
