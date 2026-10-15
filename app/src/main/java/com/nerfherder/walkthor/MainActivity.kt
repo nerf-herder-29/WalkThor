@@ -191,7 +191,7 @@ class MainActivity : ComponentActivity() {
         handBackJob?.cancel()
         handBackJob = lifecycleScope.launch {
             delay(HAND_BACK_DELAY_MS) // let the launch (and boot screen) settle first
-            for (attempt in 0 until 3) {
+            for (attempt in 0 until 4) {
                 val skip = when {
                     !GameFocus.keepOnGame.value -> "off (Keep focus on the game is off)"
                     !GameFocus.gameRunning.value -> "skipped (no game running per Cocoon's launch log)"
@@ -200,17 +200,19 @@ class MainActivity : ComponentActivity() {
                 }
                 if (skip != null) { PerfCheck.handBack.value = skip; return@launch }
                 if (yielding != true || PerfCheck.walkThorIsTop.value != true) return@launch
-                val gameDisplay = DisplayHelper.otherDisplay(this@MainActivity)
-                if (gameDisplay == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
+                if (DisplayHelper.otherDisplay(this@MainActivity) == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
+                val ownDisplay = DisplayHelper.currentDisplayId(this@MainActivity)
                 // Through the swipe-to-open service: refocuses the game's window without pausing it.
                 val service = SwipeGestureService.instance?.get()
                 if (service == null) {
                     PerfCheck.handBack.value = "needs swipe-to-open switched on"
                     return@launch
                 }
-                val outcome = service.handBack(gameDisplay.displayId, attempt)
+                val outcome = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    service.handBack(ownDisplay, attempt)
+                }
                 PerfCheck.handBack.value = "try ${attempt + 1}: $outcome"
-                if (!outcome.startsWith("sent")) return@launch
+                if (outcome.startsWith("swipe-to-open") || outcome.startsWith("turn WalkThor") || outcome.startsWith("needs")) return@launch
                 delay(1_500L)
             }
             if (PerfCheck.walkThorIsTop.value == true) {
