@@ -151,6 +151,8 @@ fun LibraryScreen(
     }
 
     val narrowHeader = LocalConfiguration.current.screenWidthDp < 560
+    // Very narrow: the time and battery move to a bottom bar (as in the reader) to give the title room.
+    val statusAtBottom = LocalConfiguration.current.screenWidthDp < 480
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
         Row(
@@ -174,7 +176,7 @@ fun LibraryScreen(
                     softWrap = false,
                 )
             }
-            StatusClock(Modifier.padding(end = if (narrowHeader) 6.dp else 14.dp))
+            if (!statusAtBottom) StatusClock(Modifier.padding(end = if (narrowHeader) 6.dp else 14.dp))
             Button(
                 onClick = actions.onImport,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
@@ -225,19 +227,27 @@ fun LibraryScreen(
         }
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
-        if (books.isEmpty()) {
-            EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder)
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 118.dp),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(books, key = { it.id }) { book ->
-                    ShelfItem(book, actions, onChooseCover = { coverFor = book })
+        Box(Modifier.weight(1f)) {
+            if (books.isEmpty()) {
+                EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder)
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 118.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(books, key = { it.id }) { book ->
+                        ShelfItem(book, actions, onChooseCover = { coverFor = book })
+                    }
                 }
+            }
+        }
+        if (statusAtBottom) {
+            Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
             }
         }
     }
