@@ -123,41 +123,46 @@ fun NowPlayingScreen(
     val banner = art.hero ?: art.cover
 
     Box(Modifier.fillMaxSize().background(fill)) {
+        // ---- the game's wide art across the whole screen ----
+        if (banner != null && !resting) {
+            AsyncImage(
+                model = Uri.parse(banner),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = enter.value },
+            )
+        }
+        // Fade it into the game's colour toward the right, so the guide side reads clearly...
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    0f to Color.Transparent,
+                    0.35f to Color.Transparent,
+                    0.55f to fill.copy(alpha = 0.78f),
+                    0.75f to fill.copy(alpha = 0.92f),
+                    1f to fill.copy(alpha = 0.96f),
+                )
+            )
+        )
+        // ...and gently at the top and bottom, for the bar icons and the logo.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to fill.copy(alpha = 0.5f),
+                    0.25f to Color.Transparent,
+                    0.6f to Color.Transparent,
+                    1f to fill.copy(alpha = 0.8f),
+                )
+            )
+        )
         Row(Modifier.fillMaxSize()) {
-            // ---- left half: the game's wide art, with its logo on top ----
+            // ---- left half: the logo over the art ----
             Box(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .graphicsLayer { alpha = enter.value },
             ) {
-                if (banner != null && !resting) {
-                    AsyncImage(
-                        model = Uri.parse(banner),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-                // Fade the art into the colour: gently at the top and bottom, fully at the seam.
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.horizontalGradient(
-                            0.55f to Color.Transparent,
-                            1f to fill,
-                        )
-                    )
-                )
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            0f to fill.copy(alpha = 0.55f),
-                            0.3f to Color.Transparent,
-                            0.6f to Color.Transparent,
-                            1f to fill.copy(alpha = 0.85f),
-                        )
-                    )
-                )
                 // The logo, or the title when there's no logo.
                 Box(
                     Modifier
