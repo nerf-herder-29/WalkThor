@@ -41,7 +41,8 @@ class PdfSource private constructor(
     private val renderLock = Mutex()
     private var closed = false
 
-    private val cache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 10).toInt()) {
+    // A few pages' worth: the spread on screen plus the pages either side, never more than 24 MB.
+    private val cache = object : LruCache<String, Bitmap>(minOf(Runtime.getRuntime().maxMemory() / 10, 24L shl 20).toInt()) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 
@@ -180,7 +181,8 @@ class PdfSource private constructor(
     }
 
     companion object {
-        private const val MAX_DIMENSION = 3000
+        /** Largest side of a rendered page (the zoom lens); 2400 px keeps one page under ~20 MB. */
+        private const val MAX_DIMENSION = 2400
 
         /** Open PDFs, so rendered pages can be dropped when Android is short of memory. */
         private val live: MutableSet<PdfSource> = java.util.Collections.newSetFromMap(java.util.WeakHashMap())

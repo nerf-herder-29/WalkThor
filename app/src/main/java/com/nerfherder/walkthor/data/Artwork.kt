@@ -46,13 +46,21 @@ data class GameArt(val cover: String?)
 class ArtworkRepository private constructor(private val context: Context) {
 
     private val prefs = context.getSharedPreferences("artwork", Context.MODE_PRIVATE)
-    private val cacheFile = File(context.filesDir, "artwork-index.json")
+    /**
+     * The index of images in the linked folder: one "documentId\tname\tfolder" line per image.
+     * It lives on disk and is only read while matching artwork, never kept in memory, because a
+     * full ES-DE media folder can hold tens of thousands of images.
+     */
+    private val indexFile = File(context.filesDir, "artwork-index.tsv")
+    /** Older versions kept the index as JSON (and loaded it all at start-up). */
+    private val legacyFile = File(context.filesDir, "artwork-index.json")
 
     private val _folder = MutableStateFlow(prefs.getString(KEY_TREE, null)?.let(Uri::parse))
     val folder: StateFlow<Uri?> = _folder.asStateFlow()
 
-    private val _images = MutableStateFlow(loadCache())
-    val images: StateFlow<List<ArtImage>> = _images.asStateFlow()
+    private val _count = MutableStateFlow(prefs.getInt(KEY_COUNT, 0))
+    /** How many images the index holds (for the settings menu). */
+    val count: StateFlow<Int> = _count.asStateFlow()
 
     private val _scanning = MutableStateFlow<String?>(null)
     /** Non-null while scanning: a progress message. */
@@ -72,10 +80,11 @@ class ArtworkRepository private constructor(private val context: Context) {
         _folder.value?.let { old ->
             runCatching { context.contentResolver.releasePersistableUriPermission(old, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         }
-        prefs.edit().remove(KEY_TREE).apply()
+        prefs.edit().remove(KEY_TREE).remove(KEY_COUNT).apply()
         _folder.value = null
-        _images.value = emptyList()
-        cacheFile.delete()
+        _count.value = 0
+        indexFile.delete()
+        legacyFile.delete()
     }
 
     suspend fun rescan() = withContext(Dispatchers.IO) {
@@ -85,8 +94,7 @@ class ArtworkRepository private constructor(private val context: Context) {
             val out = ArrayList<ArtImage>()
             val root = DocumentsContract.getTreeDocumentId(tree)
             walk(tree, root, "", out, 0)
-            _images.value = out
-            saveCache(out)
+            saveIndex(out)
         } finally {
             _scanning.value = null
         }
@@ -133,12 +141,14 @@ class ArtworkRepository private constructor(private val context: Context) {
         val want = Matcher.words(title, guide = true).toSet()
         if (want.isEmpty()) return@withContext emptyList()
         // Loose cut-off: the picker should always offer the nearest candidates to choose from.
-        _images.value.asSequence()
-            .map { ArtMatch(it, Matcher.score(want, it)) }
-            .filter { it.score > 0.2f }
-            .sortedByDescending { it.score }
-            .take(limit)
-            .toList()
+        withIndex { images ->
+            images.asSequence()
+                .map { ArtMatch(it, Matcher.score(want, it)) }
+                .filter { it.score > 0.2f }
+                .sortedByDescending { it.score }
+                .take(limit)
+                .toList()
+        }
     }
 
     /** The closest artwork for a title (anything that shares a real resemblance with it). */
@@ -157,7 +167,8 @@ class ArtworkRepository private constructor(private val context: Context) {
             .filter { it.isNotEmpty() }
         if (names.isEmpty()) return@withContext GameArt(null)
         var cover: Pair<ArtImage, Float>? = null
-        for (img in _images.value) {
+        val images = withIndex { it }
+        for (img in images) {
             val sim = names.maxOf { Matcher.closeness(it, img.titleTokens) }
             if (sim < GAME_ART_MIN) continue
             val where = (img.folder + "/" + img.name).lowercase()
@@ -204,23 +215,64 @@ class ArtworkRepository private constructor(private val context: Context) {
         }.getOrNull()
     }
 
-    private fun loadCache(): List<ArtImage> = runCatching {
-        if (!cacheFile.exists()) return emptyList()
-        val arr = JSONArray(cacheFile.readText())
-        List(arr.length()) {
-            val o = arr.getJSONObject(it)
-            ArtImage(o.getString("u"), o.getString("n"), o.getString("f"))
+    /**
+     * Loads the index for one matching job. The list is only referenced by the caller, so it's
+     * freed as soon as the job is done.
+     */
+    private suspend fun <T> withIndex(block: (List<ArtImage>) -> T): T = withContext(Dispatchers.IO) {
+        migrateLegacy()
+        val tree = _folder.value
+        val images = ArrayList<ArtImage>()
+        if (tree != null && indexFile.exists()) {
+            runCatching {
+                indexFile.bufferedReader().useLines { lines ->
+                    for (line in lines) {
+                        val parts = line.split('\t')
+                        if (parts.size < 3) continue
+                        images += ArtImage(
+                            DocumentsContract.buildDocumentUriUsingTree(tree, parts[0]).toString(),
+                            parts[1],
+                            parts[2],
+                        )
+                    }
+                }
+            }
         }
-    }.getOrDefault(emptyList())
+        block(images)
+    }
 
-    private fun saveCache(list: List<ArtImage>) {
-        val arr = JSONArray()
-        list.forEach { arr.put(JSONObject().put("u", it.uri).put("n", it.name).put("f", it.folder)) }
-        cacheFile.writeText(arr.toString())
+    private fun saveIndex(list: List<ArtImage>) {
+        val clean = { v: String -> v.replace('\t', ' ').replace('\n', ' ') }
+        indexFile.bufferedWriter().use { w ->
+            for (img in list) {
+                val id = runCatching { DocumentsContract.getDocumentId(Uri.parse(img.uri)) }.getOrNull() ?: continue
+                w.append(clean(id)).append('\t').append(clean(img.name)).append('\t').append(clean(img.folder)).append('\n')
+            }
+        }
+        legacyFile.delete()
+        _count.value = list.size
+        prefs.edit().putInt(KEY_COUNT, list.size).apply()
+    }
+
+    /** One-time move from the old JSON index to the compact one. */
+    private fun migrateLegacy() {
+        if (!legacyFile.exists()) return
+        synchronized(this) {
+            if (!legacyFile.exists()) return
+            runCatching {
+                val arr = JSONArray(legacyFile.readText())
+                saveIndex(List(arr.length()) {
+                    val o = arr.getJSONObject(it)
+                    ArtImage(o.getString("u"), o.getString("n"), o.getString("f"))
+                })
+            }
+            legacyFile.delete()
+        }
     }
 
     companion object {
         private const val KEY_TREE = "tree"
+        private const val KEY_COUNT = "count"
         private const val MAX_DEPTH = 8
         private const val MAX_IMAGES = 60_000
         private const val COVER_MAX = 720

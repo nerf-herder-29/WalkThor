@@ -74,17 +74,40 @@ object CocoonLaunchLog {
 
     /** The log's location, remembered so the folder isn't listed again on every check. */
     @Volatile private var cached: Pair<Uri, Uri>? = null
+    /** Size and modification time at the last read, and what it held. */
+    @Volatile private var lastStamp: Pair<Long, Long>? = null
+    @Volatile private var lastResult: LaunchedGame? = null
+
+    /** The log's (size, last modified), or null if it's gone. A cheap query; no file read. */
+    private fun stamp(context: Context, log: Uri): Pair<Long, Long>? =
+        context.contentResolver.query(
+            log,
+            arrayOf(DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED),
+            null, null, null,
+        )?.use { c -> if (c.moveToFirst()) c.getLong(0) to c.getLong(1) else null }
 
     suspend fun lastLaunch(context: Context, tree: Uri): LaunchedGame? = withContext(Dispatchers.IO) {
-        // Fast path: read the log we found last time.
+        // Fast path: the log we found last time, and only re-read when it has changed.
         cached?.takeIf { it.first == tree }?.let { (_, log) ->
-            runCatching { return@withContext parseLast(readTail(context, log)) }
+            val stamp = runCatching { stamp(context, log) }.getOrNull()
+            if (stamp != null) {
+                if (stamp == lastStamp) return@withContext lastResult
+                runCatching {
+                    val result = parseLast(readTail(context, log))
+                    lastStamp = stamp
+                    lastResult = result
+                    return@withContext result
+                }
+            }
             cached = null // moved or deleted: look for it again
         }
         runCatching {
             val log = findLog(context, tree) ?: return@runCatching null
             cached = tree to log
-            parseLast(readTail(context, log))
+            val result = parseLast(readTail(context, log))
+            lastStamp = runCatching { stamp(context, log) }.getOrNull()
+            lastResult = result
+            result
         }.getOrNull()
     }
 

@@ -301,7 +301,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     val books by library.books.collectAsState()
     val importState by library.importState.collectAsState()
     val artFolder by library.artFolder.collectAsState()
-    val artImages by library.artImages.collectAsState()
+    val artCount by library.artCount.collectAsState()
     val artScanning by library.artScanning.collectAsState()
     val alwaysBottom by DisplayHelper.alwaysBottom.collectAsState()
     val swipeOn by SwipeLauncher.enabled.collectAsState()
@@ -521,7 +521,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         LibraryScreen(
             books = books,
             artLinked = artFolder != null,
-            artCount = artImages.size,
+            artCount = artCount,
             artScanning = artScanning,
             alwaysBottom = alwaysBottom,
             swipeToOpen = swipeOn,

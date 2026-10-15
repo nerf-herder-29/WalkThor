@@ -33,7 +33,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val books: StateFlow<List<Book>> = repo.books
 
     val artFolder: StateFlow<Uri?> = art.folder
-    val artImages = art.images
+    /** Number of images in the linked artwork folder (the index itself stays on disk). */
+    val artCount = art.count
     val artScanning: StateFlow<String?> = art.scanning
 
     private val _import = MutableStateFlow<ImportState?>(null)
@@ -117,7 +118,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             art.linkFolder(tree)
             val n = autoCoverAll()
-            val total = art.images.value.size
+            val total = art.count.value
             _message.tryEmit(
                 if (total == 0) "No images found in that folder"
                 else "Found $total images · matched $n cover${if (n == 1) "" else "s"}"

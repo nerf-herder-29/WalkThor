@@ -13,8 +13,8 @@ android {
         // AYN Thor ships with Android 13 (API 33); 26 keeps it usable on other handhelds too.
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.15.2"
+        versionCode = 31
+        versionName = "1.16.0"
     }
 
     // One permanent key for every release, so new APKs install as updates over old ones.
@@ -33,7 +33,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Shrink and optimise: less code to load means less memory taken from the game.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
