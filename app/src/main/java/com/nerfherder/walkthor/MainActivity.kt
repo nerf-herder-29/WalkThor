@@ -171,7 +171,14 @@ class MainActivity : ComponentActivity() {
     override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
         super.onTopResumedActivityChanged(isTopResumedActivity)
         PerfCheck.setTop(isTopResumedActivity)
-        if (isTopResumedActivity) scheduleHandBack() else handBackJob?.cancel()
+        if (isTopResumedActivity) {
+            scheduleHandBack()
+        } else {
+            if (handBackJob?.isActive == true) {
+                PerfCheck.handBack.value = "worked (${PerfCheck.handBack.value ?: "try 1"})"
+            }
+            handBackJob?.cancel()
+        }
     }
 
     private var handBackJob: kotlinx.coroutines.Job? = null
@@ -184,11 +191,31 @@ class MainActivity : ComponentActivity() {
         handBackJob?.cancel()
         handBackJob = lifecycleScope.launch {
             delay(HAND_BACK_DELAY_MS) // let the launch (and boot screen) settle first
-            val wanted = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && !GameFocus.wantFocus.value
-            if (!wanted || yielding != true) return@launch
-            val gameDisplay = DisplayHelper.otherDisplay(this@MainActivity) ?: return@launch
-            // Through the swipe-to-open service: refocuses the game's window without pausing it.
-            SwipeGestureService.instance?.get()?.handBack(gameDisplay.displayId)
+            for (attempt in 0 until 3) {
+                val skip = when {
+                    !GameFocus.keepOnGame.value -> "off (Keep focus on the game is off)"
+                    !GameFocus.gameRunning.value -> "skipped (no game running per Cocoon's launch log)"
+                    GameFocus.wantFocus.value -> "paused while typing"
+                    else -> null
+                }
+                if (skip != null) { PerfCheck.handBack.value = skip; return@launch }
+                if (yielding != true || PerfCheck.walkThorIsTop.value != true) return@launch
+                val gameDisplay = DisplayHelper.otherDisplay(this@MainActivity)
+                if (gameDisplay == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
+                // Through the swipe-to-open service: refocuses the game's window without pausing it.
+                val service = SwipeGestureService.instance?.get()
+                if (service == null) {
+                    PerfCheck.handBack.value = "needs swipe-to-open switched on"
+                    return@launch
+                }
+                val outcome = service.handBack(gameDisplay.displayId, attempt)
+                PerfCheck.handBack.value = "try ${attempt + 1}: $outcome"
+                if (!outcome.startsWith("sent")) return@launch
+                delay(1_500L)
+            }
+            if (PerfCheck.walkThorIsTop.value == true) {
+                PerfCheck.handBack.value = (PerfCheck.handBack.value ?: "") + " · Android kept WalkThor on top"
+            }
         }
     }
 

@@ -280,17 +280,34 @@ class SwipeGestureService : AccessibilityService() {
      * acts on a window: here the action is a harmless "clear focus" on the window's outermost
      * container. Nothing in the window is read, and the game isn't paused or interrupted.
      */
-    fun handBack(gameDisplayId: Int): Boolean {
-        if (Build.VERSION.SDK_INT < 30 || !SwipeLauncher.hasConsent(this)) return false
+    /**
+     * Refocuses the game's window on [gameDisplayId] (attempt 0: clear-focus on its root view;
+     * later attempts: focus). Either goes through Android's accessibility path, which makes the
+     * game's activity the focused (top) one without pausing it. Returns a short outcome for the
+     * performance check.
+     */
+    fun handBack(gameDisplayId: Int, attempt: Int): String {
+        if (Build.VERSION.SDK_INT < 30) return "needs Android 11+"
+        if (!SwipeLauncher.hasConsent(this)) return "swipe-to-open needs setting up again (shelf banner)"
+        val info = serviceInfo
+        if (info == null ||
+            (info.capabilities and android.accessibilityservice.AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT) == 0 ||
+            (info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS) == 0
+        ) return "turn WalkThor off and on in Accessibility settings"
         return runCatching {
-            val windows = windowsOnAllDisplays.get(gameDisplayId) ?: return false
+            val all = windowsOnAllDisplays
+            val windows = all.get(gameDisplayId)
+                ?: return "no windows seen on the game screen (${all.size()} screens)"
             val game = windows
                 .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
-                .maxByOrNull { it.layer } ?: return false
-            val root = game.root ?: return false
-            root.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
-            true
-        }.getOrDefault(false)
+                .maxByOrNull { it.layer }
+                ?: return "no game window found (${windows.size} windows)"
+            val root = game.root ?: return "couldn't reach the game window"
+            val action = if (attempt == 0) android.view.accessibility.AccessibilityNodeInfo.ACTION_CLEAR_FOCUS
+            else android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS
+            root.performAction(action)
+            "sent to ${game.title ?: "game window"}"
+        }.getOrElse { "error: ${it.javaClass.simpleName}" }
     }
 
     companion object {

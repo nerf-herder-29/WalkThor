@@ -270,6 +270,12 @@ fun AutoDimOverlay() {
                     color = if (frames > 5) Color(0xFFE0675A) else BookColors.TextMuted,
                     fontSize = 12.sp,
                 )
+                val handBack by com.nerfherder.walkthor.PerfCheck.handBack.collectAsState()
+                Text(
+                    "Hand-back: ${handBack ?: "not tried yet"}",
+                    color = BookColors.TextMuted,
+                    fontSize = 12.sp,
+                )
             }
         }
         Text(

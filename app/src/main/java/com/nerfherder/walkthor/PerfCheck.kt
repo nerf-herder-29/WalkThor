@@ -21,6 +21,8 @@ object PerfCheck {
     val since = MutableStateFlow(SystemClock.elapsedRealtime())
     /** Frames WalkThor drew in the last 10 seconds. */
     val recentFrames = MutableStateFlow(0)
+    /** What happened the last time WalkThor tried to hand top priority back to the game. */
+    val handBack = MutableStateFlow<String?>(null)
     internal val frameCounter = AtomicInteger(0)
 
     fun init(context: Context) {
