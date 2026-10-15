@@ -47,6 +47,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nerfherder.walkthor.data.Book
 import kotlinx.coroutines.delay
+import android.net.Uri
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.cos
@@ -58,8 +63,16 @@ sealed interface BootStatus {
     data object Idle : BootStatus
     /** Reading Cocoon's launch log. */
     data object Checking : BootStatus
-    /** Found the game being played, and its guide if WalkThor has one. */
-    data class Playing(val title: String, val guide: Book? = null, val cover: File? = null) : BootStatus
+    /**
+     * Found the game being played, and its guide if WalkThor has one; with no guide, [art] is
+     * the game's artwork (content URI) to flip into instead.
+     */
+    data class Playing(
+        val title: String,
+        val guide: Book? = null,
+        val cover: File? = null,
+        val art: String? = null,
+    ) : BootStatus
 }
 
 /**
@@ -79,9 +92,10 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
     val flip = remember { Animatable(0f) }      // 0 = the book, 1 = the guide's tile
     val guide = (status as? BootStatus.Playing)?.guide
     val cover = (status as? BootStatus.Playing)?.cover
+    val art = (status as? BootStatus.Playing)?.art?.takeIf { guide == null }
 
-    LaunchedEffect(guide?.id) {
-        if (guide != null) flip.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
+    LaunchedEffect(guide?.id, art) {
+        if (guide != null || art != null) flip.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
     }
 
     LaunchedEffect(Unit) {
@@ -203,6 +217,22 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                             cameraDistance = 14f * density
                         },
                 )
+            } else if (art != null) {
+                // No guide: the game's own artwork turns into view instead.
+                AsyncImage(
+                    model = Uri.parse(art),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(196.dp)
+                        .graphicsLayer {
+                            val f = flip.value
+                            alpha = if (f >= 0.5f) 1f else 0f
+                            rotationY = (f - 1f) * 180f
+                            cameraDistance = 14f * density
+                        }
+                        .clip(RoundedCornerShape(8.dp)),
+                )
             }
           }
             Spacer(Modifier.height(6.dp))
@@ -218,7 +248,7 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                 },
             )
             Spacer(Modifier.height(14.dp))
-            Box(Modifier.height(52.dp).widthIn(max = 520.dp), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.height(74.dp).widthIn(max = 520.dp), contentAlignment = Alignment.TopCenter) {
                 AnimatedContent(
                     targetState = status,
                     transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
@@ -243,6 +273,10 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                            if (s.guide == null) {
+                                Spacer(Modifier.height(4.dp))
+                                Text("No guide yet", color = BookColors.TextMuted, fontSize = 13.sp)
+                            }
                         }
                     }
                 }

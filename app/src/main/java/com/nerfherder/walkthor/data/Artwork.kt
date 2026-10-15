@@ -32,6 +32,9 @@ data class ArtImage(
 
 data class ArtMatch(val image: ArtImage, val score: Float)
 
+/** Artwork for a launched game (content URIs as strings); either may be missing. */
+data class GameArt(val cover: String?, val backdrop: String?)
+
 /**
  * Reads cover artwork from a folder the user links once (e.g. their Cocoon data folder).
  *
@@ -143,6 +146,44 @@ class ArtworkRepository private constructor(private val context: Context) {
         suggestions(title, 1).firstOrNull()?.takeIf { it.score >= AUTO_THRESHOLD }?.image
 
     /**
+     * Artwork for a game Cocoon launched, for the "no guide yet" screen: a [GameArt.cover] (box
+     * art preferred) and a wide [GameArt.backdrop] (fan art / screenshot) if the folder has them.
+     * Matches against both the game's title and its ROM file name (ES-DE names media after the
+     * ROM file), and only accepts close matches, since the art is shown as *this* game's.
+     */
+    suspend fun gameArt(title: String, file: String?): GameArt = withContext(Dispatchers.Default) {
+        val names = listOfNotNull(title, file?.substringBeforeLast('.'))
+            .map { Matcher.words(it).toSet() }
+            .filter { it.isNotEmpty() }
+        if (names.isEmpty()) return@withContext GameArt(null, null)
+        var cover: Pair<ArtImage, Float>? = null
+        var backdrop: Pair<ArtImage, Float>? = null
+        for (img in _images.value) {
+            val sim = names.maxOf { Matcher.closeness(it, img.titleTokens) }
+            if (sim < GAME_ART_MIN) continue
+            val where = (img.folder + "/" + img.name).lowercase()
+            val coverBonus = when {
+                "theme" in where || "backcover" in where || "marquee" in where || "logo" in where ||
+                    "wheel" in where || "manual" in where -> null
+                "cover" in where || "box" in where || "front" in where -> 0.15f
+                "grid" in where || "icon" in where -> 0.1f
+                "miximage" in where -> 0.05f
+                "screenshot" in where || "titlescreen" in where || "fanart" in where || "hero" in where -> -0.1f
+                else -> 0f
+            }
+            val backBonus = when {
+                "fanart" in where || "hero" in where -> 0.15f
+                "screenshot" in where -> 0.1f
+                "titlescreen" in where -> 0.05f
+                else -> null
+            }
+            if (coverBonus != null && (cover == null || sim + coverBonus > cover.second)) cover = img to sim + coverBonus
+            if (backBonus != null && (backdrop == null || sim + backBonus > backdrop.second)) backdrop = img to sim + backBonus
+        }
+        GameArt(cover?.first?.uri, backdrop?.first?.uri)
+    }
+
+    /**
      * Copies an image (any content/file URI) into [dir] as a reasonably sized cover.
      * Returns the new file name.
      */
@@ -192,6 +233,8 @@ class ArtworkRepository private constructor(private val context: Context) {
         private const val MAX_IMAGES = 60_000
         private const val COVER_MAX = 720
         const val AUTO_THRESHOLD = 0.3f
+        /** How close an image's title must be to be shown as a launched game's art. */
+        const val GAME_ART_MIN = 0.6f
         private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
         private val SKIP_DIRS = setOf("videos", "manuals", "sounds", "music", "backup", "backups")
 
@@ -297,6 +340,17 @@ object Matcher {
         val squashed = dice(want.sorted().joinToString(""), have.sorted().joinToString(""))
             .coerceAtLeast(dice(want.joinToString(""), have.joinToString("")))
         return maxOf(wordScore, squashed)
+    }
+
+    /**
+     * Two-way closeness, 0..1: both names must be mostly covered by the other, so "Zelda" alone
+     * doesn't count as art for "Legend of Zelda, The - The Wind Waker".
+     */
+    fun closeness(a: Set<String>, b: Set<String>): Float {
+        if (a.isEmpty() || b.isEmpty()) return 0f
+        val inB = a.count { x -> b.any { wordsMatch(x, it) } }.toFloat() / a.size
+        val inA = b.count { y -> a.any { wordsMatch(y, it) } }.toFloat() / b.size
+        return minOf(inA, inB) * 0.6f + maxOf(inA, inB) * 0.4f
     }
 
     /** Guide-title words that say nothing about which game it is ("100% walkthrough"). */

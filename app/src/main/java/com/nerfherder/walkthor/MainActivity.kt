@@ -27,6 +27,10 @@ import com.nerfherder.walkthor.data.GameGuides
 import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.ui.GuideIntro
 import com.nerfherder.walkthor.ui.BootScreen
+import com.nerfherder.walkthor.ui.NowPlayingScreen
+import com.nerfherder.walkthor.data.ArtworkRepository
+import com.nerfherder.walkthor.data.GameArt
+import androidx.activity.compose.BackHandler
 import com.nerfherder.walkthor.ui.BootStatus
 import com.nerfherder.walkthor.ui.ImportDialogs
 import com.nerfherder.walkthor.ui.LibraryActions
@@ -283,14 +287,34 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             library.linkCocoon(tree)
         }
     }
-    LaunchedEffect(Unit) { library.opened.collect { openId = it } }
-    LaunchedEffect(openId) { AppState.openBookId = openId }
-
     // ---- open the guide for the game Cocoon just launched ----
     // The game we last acted on, while we wait to see which guide the user opens for it.
     var swipeGame by remember { mutableStateOf<LaunchedGame?>(null) }
     var swipeGameAt by remember { mutableStateOf(0L) }
     var autoOpened by remember { mutableStateOf<String?>(null) }
+    /** A launched game with no guide, shown with its artwork until a guide is added or picked. */
+    var noGuide by remember { mutableStateOf<Pair<LaunchedGame, GameArt>?>(null) }
+    /** "Add guide" on the no-guide screen: the next imported guide is linked to this game. */
+    var linkImportTo by remember { mutableStateOf<LaunchedGame?>(null) }
+
+    fun linkGuide(game: LaunchedGame, id: String) {
+        GameGuides.remember(context, game, id)
+        autoOpened = id // already linked; the learning effect below needn't repeat it
+        Toast.makeText(context, "WalkThor will open this guide for ${game.title} from now on", Toast.LENGTH_SHORT).show()
+    }
+
+    LaunchedEffect(Unit) {
+        library.opened.collect { id ->
+            linkImportTo?.let { linkGuide(it, id) }
+            linkImportTo = null
+            openId = id
+        }
+    }
+    LaunchedEffect(openId) { if (openId != null) noGuide = null }
+    // Leaving the no-guide screen without adding a guide: don't link some later import to that game.
+    LaunchedEffect(noGuide) { if (noGuide == null) linkImportTo = null }
+    LaunchedEffect(openId) { AppState.openBookId = openId }
+
     val booksNow by rememberUpdatedState(books)
     val gameGuideNow by rememberUpdatedState(gameGuideOn)
     val checkLock = remember { Mutex() }
@@ -319,12 +343,20 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val book = withContext(Dispatchers.Default) { GameGuides.pick(context, booksNow, game) }
         autoOpened = book?.id
         if (book != null) {
+            noGuide = null
             if (book.id != openId) {
                 openId = book.id
                 AutoDim.wake() // a new game's guide just opened; show it
             }
+        } else if (openId == null || force) {
+            // No guide: show the game's artwork where its guide would be.
+            val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
+            openId = null
+            noGuide = game to art
+            AutoDim.wake()
         } else {
-            Toast.makeText(context, "Playing ${game.title} — open its guide and WalkThor will remember it", Toast.LENGTH_LONG).show()
+            // Reading another guide; don't pull it away for a game we can't help with yet.
+            Toast.makeText(context, "Playing ${game.title} — no guide for it yet", Toast.LENGTH_LONG).show()
         }
     }
     // ---- boot screen: plays while Cocoon's launch log is read on a fresh open ----
@@ -353,8 +385,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             swipeGame?.takeIf { swipeGameAt >= start }?.let { game ->
                 // The boot screen flips straight into the guide's tile, so no separate intro.
                 val guide = openNow?.let { id -> booksNow.firstOrNull { it.id == id } }
-                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile))
-                delay(if (guide != null) 1_150 else 650)
+                // No guide: flip into the game's artwork instead, then reveal the no-guide screen.
+                val art = if (guide == null) noGuide?.second?.cover else null
+                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), art)
+                delay(if (guide != null || art != null) 1_150 else 800)
             }
         } else {
             checkGame(force = false) // just refreshes the play-time readout
@@ -405,6 +439,19 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 )
             }
         }
+    } else if (noGuide != null) {
+        val (game, art) = noGuide!!
+        BackHandler { noGuide = null }
+        NowPlayingScreen(
+            game = game,
+            art = art,
+            books = books,
+            coverFile = library::coverFile,
+            onAddGuide = { linkImportTo = game; host.pickGuide() },
+            onPickGuide = { linkGuide(game, it.id); openId = it.id },
+            onLibrary = { noGuide = null },
+            onClose = host::closeApp,
+        )
     } else {
         LibraryScreen(
             books = books,

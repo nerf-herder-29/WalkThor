@@ -23,6 +23,8 @@ import com.nerfherder.walkthor.data.BookType
 import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.ui.AutoDim
 import com.nerfherder.walkthor.ui.BootScreen
+import com.nerfherder.walkthor.ui.NowPlayingScreen
+import com.nerfherder.walkthor.data.GameArt
 import com.nerfherder.walkthor.ui.BootStatus
 import com.nerfherder.walkthor.ui.DarkPages
 import com.nerfherder.walkthor.ui.LibraryActions
@@ -189,5 +191,65 @@ class StoreScreenshots {
         compose.onNodeWithText("p. 2").performClick()
         settle()
         shot("04b-search-highlights")
+    }
+
+    /** A made-up box-art image for the fictional game, drawn on the fly. */
+    private fun fakeBoxArt(): String {
+        val w = 600; val h = 840
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0xFF1B2A4A.toInt(), 0xFF6B2E1F.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        p.shader = android.graphics.RadialGradient(w / 2f, h * 0.62f, 220f, 0xFFFFC56B.toInt(), 0x00FFC56B, android.graphics.Shader.TileMode.CLAMP)
+        c.drawCircle(w / 2f, h * 0.62f, 220f, p)
+        p.shader = null
+        p.color = 0xFF2B1A12.toInt()
+        c.drawRect(w / 2f - 50f, h * 0.55f, w / 2f + 50f, h * 0.72f, p) // a lantern
+        p.color = 0xFFFFE2A8.toInt()
+        c.drawRect(w / 2f - 36f, h * 0.57f, w / 2f + 36f, h * 0.70f, p)
+        p.color = 0xFFF3E6C8.toInt()
+        p.textAlign = android.graphics.Paint.Align.CENTER
+        p.typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
+        p.textSize = 64f
+        c.drawText("LANTERNS", w / 2f, 150f, p)
+        p.textSize = 40f
+        c.drawText("of EMBERFALL", w / 2f, 205f, p)
+        val f = File(app.cacheDir, "Lanterns of Emberfall (USA).png")
+        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        return Uri.fromFile(f).toString()
+    }
+
+    private val noGuideGame get() = LaunchedGame("Lanterns of Emberfall", "Lanterns of Emberfall (USA).rvz", "Dolphin Emulator", System.currentTimeMillis())
+
+    @Test
+    fun noGuide() {
+        val art = fakeBoxArt()
+        content {
+            NowPlayingScreen(
+                game = noGuideGame,
+                art = GameArt(cover = art, backdrop = art),
+                books = shelf.drop(1),
+                coverFile = { null },
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+            )
+        }
+        settle()
+        shot("06-no-guide")
+    }
+
+    @Test
+    fun bootIntoArt() {
+        val art = fakeBoxArt()
+        compose.mainClock.autoAdvance = false
+        content {
+            BootScreen(BootStatus.Playing("Lanterns of Emberfall", art = art), finished = false, onSkip = {}, onGone = {})
+        }
+        repeat(20) {
+            compose.mainClock.advanceTimeBy(100)
+            Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+            Thread.sleep(50)
+        }
+        shot("06a-boot-no-guide")
     }
 }
