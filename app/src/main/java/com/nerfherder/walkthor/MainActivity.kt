@@ -348,7 +348,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var swipeGameAt by remember { mutableStateOf(0L) }
     var autoOpened by remember { mutableStateOf<String?>(null) }
     /** A launched game with no guide, shown with its artwork until a guide is added or picked. */
-    var noGuide by remember { mutableStateOf<Pair<LaunchedGame, GameArt>?>(null) }
+    var noGuide by remember { mutableStateOf<Showing?>(null) }
     /** "Add guide" on the no-guide screen: the next imported guide is linked to this game. */
     var linkImportTo by remember { mutableStateOf<LaunchedGame?>(null) }
 
@@ -398,24 +398,18 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         swipeGameAt = System.currentTimeMillis()
         val book = withContext(Dispatchers.Default) { GameGuides.pick(context, booksNow, game) }
         autoOpened = book?.id
-        if (book != null) {
+        if (book != null && book.id == openId) {
+            // Already reading this game's guide (e.g. swiped back in): stay on the page.
             noGuide = null
-            if (book.id != openId) {
-                openId = book.id
-                AutoDim.wake() // a new game's guide just opened; show it
-            }
             Acted(game, book, null)
-        } else if (openId == null || force) {
-            // No guide: show the game's artwork where its guide would be.
-            val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
-            openId = null
-            noGuide = game to art
-            AutoDim.wake()
-            Acted(game, null, art)
         } else {
-            // Reading another guide; don't pull it away for a game we can't help with yet.
-            Toast.makeText(context, "Playing ${game.title} — no guide for it yet", Toast.LENGTH_LONG).show()
-            Acted(game, null, null)
+            // Every launch lands on the Now playing screen, which dims after a few seconds;
+            // with a guide it offers Open guide, without one the game's artwork and ways to add one.
+            val art = if (book == null) ArtworkRepository.get(context).gameArt(game.title, game.file) else GameArt(null)
+            openId = null
+            noGuide = Showing(game, art, book)
+            AutoDim.wake()
+            Acted(game, book, art)
         }
     }
     // ---- boot screen: plays while Cocoon's launch log is read on a fresh open ----
@@ -449,8 +443,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             if (found == null && swipeGameAt >= start) {
                 // Acted on elsewhere: rebuild what it found from the current state.
                 val game = swipeGame
-                val guide = openId?.let { id -> booksNow.firstOrNull { it.id == id } }
-                if (game != null) found = Acted(game, guide, noGuide?.second)
+                val guide = noGuide?.guide ?: openId?.let { id -> booksNow.firstOrNull { it.id == id } }
+                if (game != null) found = Acted(game, guide, noGuide?.art)
             }
             found?.let { (game, guide, art) ->
                 // A guide: flip into its tile (no separate intro). No guide: flip into the game's art.
@@ -508,7 +502,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             }
         }
     } else if (noGuide != null) {
-        val (game, art) = noGuide!!
+        val (game, art, guide) = noGuide!!
         BackHandler { noGuide = null }
         NowPlayingScreen(
             game = game,
@@ -518,6 +512,14 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             onAddGuide = { linkImportTo = game; host.pickGuide() },
             onPickGuide = { linkGuide(game, it.id); openId = it.id },
             onLibrary = { noGuide = null },
+            guide = guide,
+            onOpenGuide = {
+                if (guide != null) {
+                    AutoDim.wake()
+                    lastOpened = guide.id // the tile was just on screen; skip the opening flourish
+                    openId = guide.id
+                }
+            },
             onClose = host::closeApp,
         )
     } else {
@@ -579,6 +581,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         onDismissError = library::dismissError,
     )
 }
+
+/** The Now playing screen's subject: the launched game, its art, and its guide if it has one. */
+private data class Showing(val game: LaunchedGame, val art: GameArt, val guide: com.nerfherder.walkthor.data.Book?)
 
 /** What a check of Cocoon's launch log acted on: the game, and its guide or (without one) its art. */
 private data class Acted(val game: LaunchedGame, val guide: com.nerfherder.walkthor.data.Book?, val art: GameArt?)

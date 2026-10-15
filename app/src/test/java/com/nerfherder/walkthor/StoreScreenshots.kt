@@ -337,4 +337,44 @@ class StoreScreenshots {
         AutoDim.dimmed.value = false
         AutoDim.delayMs.value = 0L
     }
+
+    @Test
+    fun nowPlayingWithGuide() {
+        content {
+            NowPlayingScreen(
+                game = noGuideGame,
+                art = GameArt(null),
+                books = shelf,
+                coverFile = { null },
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                guide = shelf[0],
+            )
+        }
+        settle()
+        shot("06b-now-playing-guide")
+    }
+
+    @Test
+    fun dimmedWithGuide() {
+        AutoDim.delayMs.value = 60_000L
+        content {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                NowPlayingScreen(
+                    game = noGuideGame,
+                    art = GameArt(null),
+                    books = shelf,
+                    coverFile = { null },
+                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                    guide = shelf[0],
+                )
+                com.nerfherder.walkthor.ui.AutoDimOverlay()
+            }
+        }
+        settle()
+        AutoDim.dimmed.value = true
+        settle()
+        shot("07b-dimmed-open-guide")
+        AutoDim.dimmed.value = false
+        AutoDim.delayMs.value = 0L
+    }
 }

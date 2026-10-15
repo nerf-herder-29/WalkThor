@@ -1,4 +1,6 @@
 package com.nerfherder.walkthor.ui
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +71,8 @@ object AutoDim {
      * are let go (nothing can be seen under the dim anyway) and come back when you wake it.
      */
     val resting = MutableStateFlow(false)
+    /** Set by the Now playing screen when the game has a guide: the dimmed screen offers it. */
+    val openGuide = MutableStateFlow<(() -> Unit)?>(null)
     const val REST_AFTER_MS = 30_000L
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
@@ -221,6 +225,26 @@ fun AutoDimOverlay() {
                 g.player?.let {
                     Spacer(Modifier.height(6.dp))
                     Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 14.sp)
+                }
+                // The game has a guide: open it straight from the dimmed screen. Acts on touch
+                // down, since that same touch also wakes the screen and removes this layer.
+                val open by AutoDim.openGuide.collectAsState()
+                open?.let { action ->
+                    Spacer(Modifier.height(22.dp))
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(BookColors.Brass.copy(alpha = 0.85f))
+                            .pointerInput(action) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                    action()
+                                }
+                            }
+                            .padding(horizontal = 22.dp, vertical = 10.dp),
+                    ) {
+                        Text("Open guide", color = Color(0xFF1E1709), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
@@ -70,9 +71,10 @@ import com.nerfherder.walkthor.data.Matcher
 import java.io.File
 
 /**
- * Shown when Cocoon launches a game WalkThor has no guide for: the game's artwork (from the
- * linked artwork folder) where the guide would be, a "no guide yet" note, and ways to fix that.
- * Whatever guide is added or picked from here is remembered for this game.
+ * Shown whenever Cocoon launches a game. With a [guide]: its tile and an Open guide button.
+ * Without one: the game's artwork (from the linked artwork folder), a "no guide yet" note, and
+ * ways to add one. Either way it dims after a few seconds; with a guide, the dimmed screen
+ * keeps an Open guide button. Whatever guide is added or picked here is remembered for the game.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -85,13 +87,21 @@ fun NowPlayingScreen(
     onPickGuide: (Book) -> Unit,
     onLibrary: () -> Unit,
     onClose: () -> Unit,
+    guide: Book? = null,
+    onOpenGuide: () -> Unit = {},
 ) {
     var picking by remember { mutableStateOf(false) }
-    // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is).
-    androidx.compose.runtime.DisposableEffect(Unit) {
+    // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is);
+    // with a guide, the dimmed screen offers to open it.
+    val openGuide by androidx.compose.runtime.rememberUpdatedState(onOpenGuide)
+    androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
         AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
-        onDispose { AutoDim.screenDelayMs.value = null }
+        AutoDim.openGuide.value = if (guide != null) ({ openGuide() }) else null
+        onDispose {
+            AutoDim.screenDelayMs.value = null
+            AutoDim.openGuide.value = null
+        }
     }
     // The Thor's bottom screen is short; at denser display settings tighten everything up.
     val compact = LocalConfiguration.current.screenHeightDp < 480
@@ -135,7 +145,14 @@ fun NowPlayingScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 val resting by AutoDim.resting.collectAsState()
-                if (art.cover != null && !resting) {
+                if (guide != null) {
+                    // The guide itself, where the boot screen's flip left it.
+                    GuideTile(
+                        guide,
+                        if (resting) null else remember(guide.id, guide.cover) { coverFile(guide) },
+                        Modifier.fillMaxWidth().aspectRatio(1f),
+                    )
+                } else if (art.cover != null && !resting) {
                     AsyncImage(
                         model = Uri.parse(art.cover),
                         contentDescription = game.title,
@@ -169,7 +186,7 @@ fun NowPlayingScreen(
                 )
                 game.player?.let {
                     Spacer(Modifier.height(4.dp))
-                    Text(it, color = BookColors.TextMuted, fontSize = 13.sp)
+                    Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 13.sp)
                 }
                 Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
                 Column(
@@ -179,7 +196,18 @@ fun NowPlayingScreen(
                         .border(1.dp, BookColors.Hairline, RoundedCornerShape(12.dp))
                         .padding(if (compact) 12.dp else 18.dp),
                 ) {
-                    if (compact) {
+                    if (guide != null) {
+                        Text("YOUR GUIDE", style = EyebrowStyle)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            guide.title,
+                            color = BookColors.Text,
+                            fontFamily = SerifDisplay,
+                            fontSize = if (compact) 15.sp else 17.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else if (compact) {
                         Text("NO GUIDE YET", style = EyebrowStyle)
                     } else {
                         Text(
@@ -202,21 +230,37 @@ fun NowPlayingScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Button(
-                            onClick = onAddGuide,
-                            colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
-                            contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp),
-                        ) {
-                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
-                        }
-                        if (books.isNotEmpty()) {
-                            OutlinedButton(
-                                onClick = { picking = true },
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
-                                contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp),
-                            ) { Text("From my shelf", maxLines = 1, softWrap = false) }
+                        val pad = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 4.dp else 8.dp)
+                        if (guide != null) {
+                            Button(
+                                onClick = onOpenGuide,
+                                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                                contentPadding = pad,
+                            ) { Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
+                            if (books.size > 1) {
+                                OutlinedButton(
+                                    onClick = { picking = true },
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
+                                    contentPadding = pad,
+                                ) { Text("Other guide", maxLines = 1, softWrap = false) }
+                            }
+                        } else {
+                            Button(
+                                onClick = onAddGuide,
+                                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                                contentPadding = pad,
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                            }
+                            if (books.isNotEmpty()) {
+                                OutlinedButton(
+                                    onClick = { picking = true },
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
+                                    contentPadding = pad,
+                                ) { Text("From my shelf", maxLines = 1, softWrap = false) }
+                            }
                         }
                     }
                 }
