@@ -270,7 +270,6 @@ fun NowPlayingScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
                                 contentPadding = pad,
                             modifier = Modifier.fillMaxWidth(),
-                                modifier = Modifier.fillMaxWidth(),
                             ) { Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }
                             if (books.size > 1) {
                                 OutlinedButton(
@@ -278,7 +277,6 @@ fun NowPlayingScreen(
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
                                     contentPadding = pad,
                             modifier = Modifier.fillMaxWidth(),
-                                modifier = Modifier.fillMaxWidth(),
                                 ) { Text("Other guide", maxLines = 1, softWrap = false) }
                             }
                         } else {
@@ -287,7 +285,6 @@ fun NowPlayingScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
                                 contentPadding = pad,
                             modifier = Modifier.fillMaxWidth(),
-                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
@@ -299,7 +296,6 @@ fun NowPlayingScreen(
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = BookColors.Text),
                                     contentPadding = pad,
                             modifier = Modifier.fillMaxWidth(),
-                                modifier = Modifier.fillMaxWidth(),
                                 ) { Text("From my shelf", maxLines = 1, softWrap = false) }
                             }
                         }
