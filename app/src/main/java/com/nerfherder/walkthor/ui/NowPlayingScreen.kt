@@ -144,8 +144,8 @@ fun NowPlayingScreen(
             // gap to the text is the same whatever the cover's proportions.
             Box(
                 Modifier
-                    .fillMaxHeight(if (compact) 0.8f else 0.84f)
-                    .widthIn(max = if (compact) 170.dp else 320.dp)
+                    .fillMaxHeight(if (compact) 0.78f else 0.8f)
+                    .widthIn(max = if (compact) 150.dp else 260.dp)
                     // The game's colour glows from behind its art and fades to black.
                     .drawBehind {
                         val r = size.maxDimension * 1.05f
