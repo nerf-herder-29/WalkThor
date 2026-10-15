@@ -54,6 +54,8 @@ object AutoDim {
     const val DEFAULT_LEVEL = 0.95f
     /** Where the time/play-time/battery readout is on screen (kept bright while dimmed). */
     val statusBounds = MutableStateFlow<Rect?>(null)
+    /** Whether that readout includes the game's name, so the bright copy matches it exactly. */
+    val statusShowsGame = MutableStateFlow(false)
     @Volatile internal var statusOwner: Any? = null
     val dimmed = MutableStateFlow(false)
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
@@ -135,6 +137,7 @@ fun AutoDimOverlay() {
     }
     val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 400 else 150), label = "dim")
     val status by AutoDim.statusBounds.collectAsState()
+    val statusShowsGame by AutoDim.statusShowsGame.collectAsState()
     if (alpha <= 0.001f) return
     Box(
         Modifier
@@ -154,7 +157,7 @@ fun AutoDimOverlay() {
         Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.background(Color.Black))
         // The time, play time and battery stay at full brightness, drawn exactly over the originals.
         status?.let { b ->
-            StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
+            StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false, showGame = statusShowsGame)
         }
         Text(
             "Tap to wake",

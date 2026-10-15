@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -49,7 +50,7 @@ private val LowBattery = Color(0xFFE0675A)
  * Follows the system 12/24-hour setting; shows a bolt while charging and turns red at 15% or less.
  */
 @Composable
-fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
+fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true, showGame: Boolean = false) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     var level by remember { mutableIntStateOf(-1) }
@@ -100,11 +101,26 @@ fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     }
     val placed = if (anchor) Modifier.onGloballyPositioned {
         AutoDim.statusOwner = token
+        AutoDim.statusShowsGame.value = showGame
         AutoDim.statusBounds.value = it.boundsInRoot()
     } else Modifier
+    val narrow = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 480
 
     Row(modifier.then(placed), verticalAlignment = Alignment.CenterVertically) {
         val g = game
+        // "Game · Emulator" beside the play time (in the reader), shortened to fit.
+        if (showGame && !narrow && g != null) {
+            Text(
+                gameLabel(g),
+                color = BookColors.TextMuted,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .widthIn(max = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 600) 150.dp else 240.dp)
+                    .padding(end = 10.dp),
+            )
+        }
         if (showTimer && g != null && g.at > 0) {
             val played = playTime(now.time - g.at)
             Row(
@@ -173,6 +189,14 @@ private fun BatteryGlyph(level: Int, charging: Boolean, tint: Color) {
         }
     }
 }
+
+/** "Legend of Zelda, The - The Wind Waker · Dolphin". */
+internal fun gameLabel(g: com.nerfherder.walkthor.data.LaunchedGame): String =
+    listOfNotNull(g.title, g.player?.let(::emulatorName)).joinToString(" · ")
+
+/** "Dolphin Emulator" → "Dolphin"; names without the suffix are left alone. */
+internal fun emulatorName(player: String): String =
+    player.removeSuffix(" Emulator").removeSuffix(" emulator").trim().ifEmpty { player }
 
 /** "45m", "1h 05m". */
 private fun playTime(ms: Long): String {

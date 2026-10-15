@@ -163,7 +163,7 @@ class StoreScreenshots {
         compose.mainClock.autoAdvance = false
         content {
             BootScreen(
-                BootStatus.Playing("Lanterns of Emberfall", shelf[0], null),
+                BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator"),
                 finished = false, onSkip = {}, onGone = {},
             )
         }
@@ -261,7 +261,7 @@ class StoreScreenshots {
         val art = fakeBoxArt()
         compose.mainClock.autoAdvance = false
         content {
-            BootScreen(BootStatus.Playing("Lanterns of Emberfall", art = art), finished = false, onSkip = {}, onGone = {})
+            BootScreen(BootStatus.Playing("Lanterns of Emberfall", art = art, player = "Dolphin Emulator"), finished = false, onSkip = {}, onGone = {})
         }
         repeat(20) {
             compose.mainClock.advanceTimeBy(100)
@@ -297,7 +297,7 @@ class StoreScreenshots {
     fun bootDense() {
         compose.mainClock.autoAdvance = false
         content {
-            BootScreen(BootStatus.Playing("Lanterns of Emberfall", shelf[0], null), finished = false, onSkip = {}, onGone = {})
+            BootScreen(BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator"), finished = false, onSkip = {}, onGone = {})
         }
         compose.mainClock.advanceTimeBy(2_000)
         shot("check-boot-dense")

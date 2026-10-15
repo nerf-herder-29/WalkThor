@@ -452,7 +452,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             found?.let { (game, guide, art) ->
                 // A guide: flip into its tile (no separate intro). No guide: flip into the game's art.
                 val cover = if (guide == null) art?.cover else null
-                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover)
+                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover, game.player)
                 delay(if (guide != null || cover != null) 1_150 else 800)
             }
         } else {

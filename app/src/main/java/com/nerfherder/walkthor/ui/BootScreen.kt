@@ -72,6 +72,8 @@ sealed interface BootStatus {
         val guide: Book? = null,
         val cover: File? = null,
         val art: String? = null,
+        /** Emulator, e.g. "Dolphin Emulator". */
+        val player: String? = null,
     ) : BootStatus
 }
 
@@ -248,7 +250,7 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                 },
             )
             Spacer(Modifier.height(14.dp))
-            Box(Modifier.height(74.dp).widthIn(max = 520.dp), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.height(92.dp).widthIn(max = 520.dp), contentAlignment = Alignment.TopCenter) {
                 AnimatedContent(
                     targetState = status,
                     transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
@@ -273,9 +275,10 @@ fun BootScreen(status: BootStatus, finished: Boolean, onSkip: () -> Unit, onGone
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            if (s.guide == null) {
+                            val sub = listOfNotNull(s.player?.let(::emulatorName), if (s.guide == null) "No guide yet" else null)
+                            if (sub.isNotEmpty()) {
                                 Spacer(Modifier.height(4.dp))
-                                Text("No guide yet", color = BookColors.TextMuted, fontSize = 13.sp)
+                                Text(sub.joinToString(" · "), color = BookColors.TextMuted, fontSize = 13.sp)
                             }
                         }
                     }
