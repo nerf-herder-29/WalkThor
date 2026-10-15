@@ -142,4 +142,10 @@ class IdleDraws {
         measure("reader", dim = false)
         measure("reader + dim", dim = true)
     }
+
+    /** Control: the full boot animation redraws continuously, so this must NOT be 0. */
+    @Test fun z_controlBootAnimation() {
+        content { com.nerfherder.walkthor.ui.BootScreen(com.nerfherder.walkthor.ui.BootStatus.Checking, false, {}, {}, light = false) }
+        measure("CONTROL boot animation (should be high)", dim = false)
+    }
 }
