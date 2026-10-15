@@ -120,32 +120,14 @@ fun NowPlayingScreen(
 
     // OLED black, with one soft pool of the game's colour behind its art that fades to black
     // well before the edges. Auto-dim applies here too.
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(BookColors.Ink)
-            .drawBehind {
-                drawCircle(
-                    Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.26f * enter.value), accent.copy(alpha = 0.08f * enter.value), Color.Transparent),
-                        center = Offset(size.width * 0.22f, size.height * 0.52f),
-                        radius = size.height * 0.62f,
-                    ),
-                    radius = size.height * 0.62f,
-                    center = Offset(size.width * 0.22f, size.height * 0.52f),
-                )
-            },
-    ) {
-        // Top bar: back to the shelf, and close.
-        Row(
-            Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onLibrary) {
+    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+        // Top bar: back on the left, close on the right, the label centred between them.
+        Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(top = 6.dp)) {
+            IconButton(onClick = onLibrary, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = BookColors.TextMuted)
             }
-            Text("NOW PLAYING", style = EyebrowStyle.copy(color = accent), modifier = Modifier.weight(1f).padding(start = 4.dp))
-            IconButton(onClick = onClose) {
+            Text("NOW PLAYING", style = EyebrowStyle.copy(color = accent), modifier = Modifier.align(Alignment.Center))
+            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
             }
         }
@@ -154,15 +136,29 @@ fun NowPlayingScreen(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(start = 32.dp, end = 32.dp, top = 4.dp, bottom = 8.dp),
+                .padding(horizontal = if (compact) 28.dp else 44.dp)
+                .padding(top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // The game's art, where its guide would be.
+            // The game's art, where its guide would be. The box hugs the art's own shape, so the
+            // gap to the text is the same whatever the cover's proportions.
             Box(
                 Modifier
-                    .fillMaxHeight(0.92f)
-                    .widthIn(max = 300.dp)
-                    .weight(if (compact) 0.55f else 0.8f)
+                    .fillMaxHeight(if (compact) 0.8f else 0.84f)
+                    .widthIn(max = if (compact) 170.dp else 320.dp)
+                    // The game's colour glows from behind its art and fades to black.
+                    .drawBehind {
+                        val r = size.maxDimension * 1.05f
+                        drawCircle(
+                            Brush.radialGradient(
+                                listOf(accent.copy(alpha = 0.30f * enter.value), accent.copy(alpha = 0.08f * enter.value), Color.Transparent),
+                                center = center,
+                                radius = r,
+                            ),
+                            radius = r,
+                            center = center,
+                        )
+                    }
                     .graphicsLayer {
                         alpha = enter.value
                         val s = 0.94f + 0.06f * enter.value
@@ -176,19 +172,19 @@ fun NowPlayingScreen(
                         model = Uri.parse(art.cover),
                         contentDescription = game.title,
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                        modifier = Modifier.fillMaxHeight().clip(RoundedCornerShape(10.dp)),
                     )
                 } else if (guide != null) {
                     // No box art found: the guide's tile stands in.
-                    GuideTile(guide, if (resting) null else guideCover, Modifier.fillMaxWidth().aspectRatio(1f))
+                    GuideTile(guide, if (resting) null else guideCover, Modifier.fillMaxHeight())
                 } else {
                     NoArtPlaceholder(game.title)
                 }
             }
-            Spacer(Modifier.width(if (compact) 18.dp else 28.dp))
+            Spacer(Modifier.width(if (compact) 22.dp else 36.dp))
             Column(
                 Modifier
-                    .weight(if (compact) 1.45f else 1.25f)
+                    .weight(1f)
                     // Never cut anything off: scroll if it still doesn't fit.
                     .verticalScroll(rememberScrollState())
                     .graphicsLayer {
@@ -304,13 +300,6 @@ fun NowPlayingScreen(
                         }
                     }
                 }
-                if (!compact) {
-                    // (The back arrow at the top does the same; skipped when space is tight.)
-                    Spacer(Modifier.height(10.dp))
-                    TextButton(onClick = onLibrary) {
-                        Text("Go to my shelf", color = BookColors.TextMuted)
-                    }
-                }
             }
         }
         // Time, play time and battery in the same spot as in the reader.
@@ -358,8 +347,8 @@ fun NowPlayingScreen(
 private fun NoArtPlaceholder(title: String) {
     Box(
         Modifier
-            .fillMaxWidth()
-            .height(260.dp)
+            .fillMaxHeight()
+            .aspectRatio(0.72f)
             .shadow(10.dp, RoundedCornerShape(10.dp))
             .background(BookColors.SurfaceHigh, RoundedCornerShape(10.dp))
             .border(1.dp, BookColors.Hairline, RoundedCornerShape(10.dp))
