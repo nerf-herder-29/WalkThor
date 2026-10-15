@@ -29,13 +29,19 @@ import java.lang.ref.WeakReference
  * Android blocks ordinary apps from bringing themselves to the front from the background;
  * accessibility services are allowed to, so the gesture lives in a small accessibility service
  * that lays a thin invisible strip along the top edge of the Thor's bottom screen.
- * The service reads no screen content; swiping again while WalkThor is showing puts it away.
+ * Swiping again while WalkThor is showing puts it away. While a game is running, the service
+ * also finds the game's window (and nothing in it) so it can hand the game back Android's
+ * top-app priority after WalkThor opens; see [SwipeGestureService.handBack].
  */
 object SwipeLauncher {
     const val PREFS = "swipe"
     const val KEY_ENABLED = "enabled"
-    /** The user agreed to the in-app disclosure of what the accessibility service does. */
-    const val KEY_CONSENT = "consent"
+    /**
+     * The user agreed to the in-app disclosure of what the accessibility service does.
+     * ("consent2": the disclosure changed when the service started finding the game's window,
+     * so everyone is asked again.)
+     */
+    const val KEY_CONSENT = "consent2"
     const val KEY_GAME_GUIDE = "gameGuide"
 
     /** The user's choice (the toggle). */
@@ -156,6 +162,7 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = java.lang.ref.WeakReference(this)
         CrashLog.install(this)
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
@@ -166,6 +173,7 @@ class SwipeGestureService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        if (instance?.get() === this) instance = null
         SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
         detach()
@@ -266,7 +274,29 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { startActivity(intent, options.toBundle()) }
     }
 
+    /**
+     * Makes the game's window (on [gameDisplayId]) Android's focused one again, so the game gets
+     * top-app priority back from WalkThor. Android does this itself when an accessibility service
+     * acts on a window: here the action is a harmless "clear focus" on the window's outermost
+     * container. Nothing in the window is read, and the game isn't paused or interrupted.
+     */
+    fun handBack(gameDisplayId: Int): Boolean {
+        if (Build.VERSION.SDK_INT < 30 || !SwipeLauncher.hasConsent(this)) return false
+        return runCatching {
+            val windows = windowsOnAllDisplays.get(gameDisplayId) ?: return false
+            val game = windows
+                .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
+                .maxByOrNull { it.layer } ?: return false
+            val root = game.root ?: return false
+            root.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
+            true
+        }.getOrDefault(false)
+    }
+
     companion object {
+        /** The running service, for [handBack]. */
+        @Volatile var instance: java.lang.ref.WeakReference<SwipeGestureService>? = null
+
         /** Height of the invisible touch strip; thin so it rarely gets in the way of other apps. */
         private const val STRIP_DP = 12f
         /** How far the finger has to travel down before WalkThor opens. */

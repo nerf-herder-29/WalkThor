@@ -187,13 +187,8 @@ class MainActivity : ComponentActivity() {
             val wanted = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && !GameFocus.wantFocus.value
             if (!wanted || yielding != true) return@launch
             val gameDisplay = DisplayHelper.otherDisplay(this@MainActivity) ?: return@launch
-            runCatching {
-                startActivity(
-                    Intent(this@MainActivity, HandBackActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
-                    android.app.ActivityOptions.makeBasic().setLaunchDisplayId(gameDisplay.displayId).toBundle(),
-                )
-            }
+            // Through the swipe-to-open service: refocuses the game's window without pausing it.
+            SwipeGestureService.instance?.get()?.handBack(gameDisplay.displayId)
         }
     }
 

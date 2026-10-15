@@ -60,15 +60,18 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "WalkThor uses an Android accessibility service, “WalkThor swipe to open”, for one thing: " +
+                    "WalkThor uses an Android accessibility service, “WalkThor swipe to open”, for two things: " +
                         "noticing when you swipe down from the top edge of the bottom screen, so it can open or " +
-                        "close WalkThor over the game you're playing.",
+                        "close WalkThor, and handing your game back Android's top performance priority after " +
+                        "WalkThor opens, so the game doesn't slow down.",
                     color = BookColors.Text,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text("WHAT IT ACCESSES", style = EyebrowStyle)
                 Text(
-                    "Only touches that begin in a thin strip along the top edge of the bottom screen.",
+                    "Touches that begin in a thin strip along the top edge of the bottom screen. And, while a game " +
+                        "is running, which app windows are open, so it can find the game's window and make it the " +
+                        "focused one again. It doesn't look inside that window.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -76,7 +79,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 Text("WHAT IT DOESN'T DO", style = EyebrowStyle)
                 Text(
                     "It doesn't read what's on your screen or in other apps, doesn't record what you type, and " +
-                        "doesn't take actions in other apps. It doesn't collect, store or share any data — " +
+                        "doesn't press anything in other apps. It doesn't collect, store or share any data — " +
                         "WalkThor has no internet access at all.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
@@ -130,7 +133,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "reading positions and game links stay on this device and are removed if you uninstall. " +
                         "It reads only what you point it at: guides you import, an artwork folder you link, and " +
                         "Cocoon's launch_debug.log (to see which game you launched). The swipe service responds " +
-                        "only to swipes from the top edge of the bottom screen and never reads screen content."
+                        "only to swipes from the top edge of the bottom screen, and, during a game, finds the game's " +
+                        "window to hand it back top performance priority. It never reads screen content."
                 )
 
                 // A saved crash report, if WalkThor has crashed, for sharing in a bug report.

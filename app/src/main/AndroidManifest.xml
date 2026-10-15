@@ -47,14 +47,6 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
-        <!-- Invisible, instant: hands the game's screen back its top priority (see HandBackActivity). -->
-        <activity
-            android:name=".HandBackActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@android:style/Theme.NoDisplay" />
         <!-- Swipe-down-to-open gesture on the bottom screen (optional, off unless switched on). -->
         <service
             android:name=".SwipeGestureService"
