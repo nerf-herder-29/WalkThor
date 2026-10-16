@@ -202,7 +202,6 @@ class MainActivity : ComponentActivity() {
             }
             for (attempt in 0 until 2) {
                 val skip = when {
-                    !GameFocus.keepOnGame.value -> "off (Keep focus on the game is off)"
                     !GameFocus.gameRunning.value -> "skipped (no game running per Cocoon's launch log)"
                     GameFocus.wantFocus.value -> "paused while typing"
                     else -> null

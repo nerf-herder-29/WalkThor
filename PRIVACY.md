@@ -18,8 +18,7 @@ accounts, no analytics and no ads. Everything below stays on your device.
   invisible strip along the top edge of the bottom screen and responds only to swipes that start
   there, to open or close WalkThor. While a game is running, it also taps the very top edge of
   the game's screen once, a couple of seconds after WalkThor opens, because Android gives top
-  performance priority to the screen last touched (you can turn this off with ⋮ → Keep focus on
-  the game). It does **not** read the content of your screen or of other apps, and does not
+  performance priority to the screen last touched (turning off swipe-to-open stops it too). It does **not** read the content of your screen or of other apps, and does not
   record what you type.
 
 ## What WalkThor stores (on your device only)

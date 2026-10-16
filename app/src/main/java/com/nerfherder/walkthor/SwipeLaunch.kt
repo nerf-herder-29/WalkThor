@@ -76,7 +76,7 @@ object SwipeLauncher {
     /** Re-reads the settings and whether the service is on (e.g. after a trip to Settings). */
     fun refresh(context: Context) {
         enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
-        gameGuide.value = prefs(context).getBoolean(KEY_GAME_GUIDE, true)
+        gameGuide.value = true // always on (it used to be a setting)
         cocoonLinked.value = com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) != null
         needsPermission.value = enabled.value && (!hasConsent(context) || !isServiceOn(context))
     }

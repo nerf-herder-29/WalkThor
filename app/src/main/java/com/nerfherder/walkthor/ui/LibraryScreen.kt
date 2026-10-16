@@ -337,7 +337,6 @@ private fun SettingsMenu(
     val dimDelay by AutoDim.delayMs.collectAsState()
     val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
-    val keepGameFocus by com.nerfherder.walkthor.GameFocus.keepOnGame.collectAsState()
     val perfCheck by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
@@ -348,20 +347,6 @@ private fun SettingsMenu(
                 text = { Text("Always open on bottom screen") },
                 trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { actions.onToggleAlwaysBottom(!alwaysBottom) },
-            )
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Keep focus on the game")
-                        Text(
-                            "Recommended. WalkThor won't take focus (and performance) from a running game.",
-                            fontSize = 11.sp,
-                            color = BookColors.TextMuted,
-                        )
-                    }
-                },
-                trailingIcon = { if (keepGameFocus) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                onClick = { com.nerfherder.walkthor.GameFocus.setKeepOnGame(context, !keepGameFocus) },
             )
             DropdownMenuItem(
                 text = {
@@ -394,22 +379,6 @@ private fun SettingsMenu(
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
-            if (swipeToOpen) {
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text("Open the playing game's guide")
-                            Text(
-                                if (cocoonLinked) "Uses Cocoon's launch log" else "Link your Cocoon folder to turn on",
-                                fontSize = 11.sp,
-                                color = BookColors.TextMuted,
-                            )
-                        }
-                    },
-                    trailingIcon = { if (gameGuide) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                    onClick = { open = false; actions.onToggleGameGuide(!gameGuide) },
-                )
-            }
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
             }
