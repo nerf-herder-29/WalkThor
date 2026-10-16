@@ -45,6 +45,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -145,6 +146,7 @@ fun LibraryScreen(
     var explainSwipe by remember { mutableStateOf(false) }
     var showDisclosure by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var showSetup by remember { mutableStateOf(false) }
     // Turning swipe-to-open on always goes through the disclosure first.
     fun startSwipeSetup() {
         if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
@@ -199,6 +201,7 @@ fun LibraryScreen(
                 artLinked, artCount, alwaysBottom, swipeToOpen, gameGuide, cocoonLinked, actions,
                 onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
                 onAbout = { showAbout = true },
+                onSetupGuide = { showSetup = true },
             )
         }
         if (swipeToOpen && swipeNeedsPermission) {
@@ -231,7 +234,7 @@ fun LibraryScreen(
 
         Box(Modifier.weight(1f)) {
             if (books.isEmpty()) {
-                EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder)
+                EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder, onSetupGuide = { showSetup = true })
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 118.dp),
@@ -267,6 +270,21 @@ fun LibraryScreen(
         )
     }
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
+    if (showSetup) {
+        SetupGuideDialog(
+            state = SetupState(
+                hasGuides = books.isNotEmpty(),
+                cocoonLinked = cocoonLinked,
+                artLinked = artLinked,
+                swipeReady = swipeToOpen && !swipeNeedsPermission,
+            ),
+            onAddGuide = actions.onImport,
+            onLinkCocoon = actions.onLinkCocoon,
+            onLinkArt = actions.onLinkArtFolder,
+            onSetUpSwipe = { showSetup = false; startSwipeSetup() },
+            onDismiss = { showSetup = false },
+        )
+    }
 
     if (explainSwipe) {
         AlertDialog(
@@ -330,6 +348,7 @@ private fun SettingsMenu(
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
     onAbout: () -> Unit,
+    onSetupGuide: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     var pickDim by remember { mutableStateOf(false) }
@@ -337,12 +356,17 @@ private fun SettingsMenu(
     val dimDelay by AutoDim.delayMs.collectAsState()
     val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
-    val perfCheck by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("How to set up WalkThor", fontWeight = FontWeight.SemiBold) },
+                leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null, tint = BookColors.Brass) },
+                onClick = { open = false; onSetupGuide() },
+            )
+            HorizontalDivider(color = BookColors.Hairline)
             DropdownMenuItem(
                 text = { Text("Always open on bottom screen") },
                 trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
@@ -412,16 +436,6 @@ private fun SettingsMenu(
                 DropdownMenuItem(text = { Text("Unlink artwork folder") }, onClick = { open = false; actions.onUnlinkArt() })
             }
             HorizontalDivider(color = BookColors.Hairline)
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Performance check")
-                        Text("Shows on the dimmed screen whether WalkThor is Android's top app.", fontSize = 11.sp, color = BookColors.TextMuted)
-                    }
-                },
-                trailingIcon = { if (perfCheck) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                onClick = { com.nerfherder.walkthor.PerfCheck.setEnabled(context, !perfCheck) },
-            )
             DropdownMenuItem(text = { Text("About & licences") }, onClick = { open = false; onAbout() })
         }
     }
@@ -492,7 +506,7 @@ private fun SettingsMenu(
 }
 
 @Composable
-private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -> Unit) {
+private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -> Unit, onSetupGuide: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
@@ -518,6 +532,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
                 OutlinedButton(onClick = onLinkArt) { Text("Link Cocoon artwork", color = BookColors.Text) }
             }
         }
+        TextButton(onClick = onSetupGuide, modifier = Modifier.padding(top = 6.dp)) { Text("How to set up WalkThor") }
     }
 }
 

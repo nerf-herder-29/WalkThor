@@ -22,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -160,6 +161,18 @@ fun AboutDialog(onDismiss: () -> Unit) {
                             Text("Delete", color = BookColors.TextMuted)
                         }
                     }
+                }
+
+                // Diagnostics: the performance check readout (moved here from the ⋮ menu).
+                Section("DIAGNOSTICS")
+                val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
+                Body(
+                    "Performance check shows on the dimmed screen whether WalkThor or your game has Android's " +
+                        "top priority, and how often WalkThor is drawing. Only needed if a game seems slower with " +
+                        "WalkThor open."
+                )
+                TextButton(onClick = { com.nerfherder.walkthor.PerfCheck.setEnabled(context, !perfOn) }) {
+                    Text(if (perfOn) "Turn off performance check" else "Turn on performance check")
                 }
 
                 Section("OPEN-SOURCE SOFTWARE")
