@@ -212,7 +212,7 @@ class MainActivity : ComponentActivity() {
                 if (gameDisplay == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
                 val service = SwipeGestureService.instance?.get()
                 if (service == null) {
-                    PerfCheck.handBack.value = "needs swipe-to-open switched on"
+                    PerfCheck.handBack.value = "needs accessibility access switched on"
                     return@launch
                 }
                 val outcome = service.handBack(gameDisplay.displayId)

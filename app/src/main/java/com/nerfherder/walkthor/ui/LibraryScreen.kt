@@ -215,8 +215,8 @@ fun LibraryScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    if (actions.hasSwipeConsent()) "Swipe-to-open: switch on “WalkThor swipe to open” in Accessibility."
-                    else "Swipe-to-open needs your OK before it can run.",
+                    if (actions.hasSwipeConsent()) "Accessibility access: switch on “WalkThor” in Accessibility settings."
+                    else "Accessibility access needs your OK before it can run.",
                     color = BookColors.Text,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -290,18 +290,18 @@ fun LibraryScreen(
         AlertDialog(
             onDismissRequest = { explainSwipe = false },
             containerColor = BookColors.Surface,
-            title = { Text("Swipe down to open", fontFamily = SerifDisplay) },
+            title = { Text("Allow accessibility access", fontFamily = SerifDisplay) },
             text = {
                 Column {
                     Text(
-                        "Android only lets an app pop up over other apps through an accessibility service, " +
-                            "so the swipe is handled by a tiny one. It only watches a thin strip at the top " +
-                            "of the bottom screen and doesn't read anything on your screen.",
+                        "Android only lets an app open over other apps, or hand a game back its speed, through " +
+                            "an accessibility service, so WalkThor has a tiny one. It only watches a thin strip at " +
+                            "the top of the bottom screen and doesn't read anything on your screen.",
                         color = BookColors.TextMuted,
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "1. Tap Open settings.\n2. Find “WalkThor swipe to open” (it may be under Downloaded apps) and switch it on.",
+                        "1. Tap Open settings.\n2. Find “WalkThor” (it may be under Downloaded apps) and switch it on.",
                         color = BookColors.Text,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -396,8 +396,8 @@ private fun SettingsMenu(
             DropdownMenuItem(
                 text = {
                     Column {
-                        Text("Swipe down to open")
-                        Text("From the top of the bottom screen", fontSize = 11.sp, color = BookColors.TextMuted)
+                        Text("Accessibility access")
+                        Text("Swipe down to open, and keeps games at full speed", fontSize = 11.sp, color = BookColors.TextMuted)
                     }
                 },
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },

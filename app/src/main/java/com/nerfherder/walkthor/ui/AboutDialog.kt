@@ -57,11 +57,11 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = BookColors.Surface,
-        title = { Text("Before you turn on swipe-to-open", fontFamily = SerifDisplay) },
+        title = { Text("Before you allow accessibility access", fontFamily = SerifDisplay) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "WalkThor uses an Android accessibility service, “WalkThor swipe to open”, for two things: " +
+                    "WalkThor uses an Android accessibility service, “WalkThor”, for two things: " +
                         "noticing when you swipe down from the top edge of the bottom screen, so it can open or " +
                         "close WalkThor, and handing your game back Android's top performance priority after " +
                         "WalkThor opens, so the game doesn't slow down.",
@@ -73,7 +73,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                     "While a game is running, a couple of seconds after WalkThor opens, it taps the very top edge " +
                         "of the game's screen once, in the middle, just as you could yourself. Android gives top " +
                         "priority to the screen you last touched, so this hands it back to the game. Turning off " +
-                        "swipe-to-open stops it too.",
+                        "accessibility access stops it too.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -141,7 +141,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     "WalkThor doesn't collect, send or share any data, and has no internet access. Guides, covers, " +
                         "reading positions and game links stay on this device and are removed if you uninstall. " +
                         "It reads only what you point it at: guides you import, an artwork folder you link, and " +
-                        "Cocoon's launch_debug.log (to see which game you launched). The swipe service responds " +
+                        "Cocoon's launch_debug.log (to see which game you launched). The accessibility service responds " +
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority. It never reads screen content."
                 )

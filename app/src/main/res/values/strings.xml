@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">WalkThor</string>
-    <string name="swipe_service_label">WalkThor swipe to open</string>
+    <string name="swipe_service_label">WalkThor</string>
     <string name="swipe_service_description">Swipe down from the top edge of the bottom screen to open WalkThor, and swipe again to put it away. While a game is running, it also taps the very top edge of the game\'s screen once after WalkThor opens, which hands the game back Android\'s top performance priority. It doesn\'t read, store or change what\'s on your screen.</string>
 </resources>

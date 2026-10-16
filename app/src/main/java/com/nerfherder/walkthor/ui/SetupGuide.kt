@@ -110,11 +110,11 @@ fun SetupGuideDialog(
                         "just the ones you want). Cocoon then opens WalkThor whenever it starts a game.",
                 )
                 Step(
-                    5, "Turn on swipe to open", state.swipeReady, "Set up", onSetUpSwipe,
+                    5, "Allow accessibility access", state.swipeReady, "Set up", onSetUpSwipe,
                     "Lets you swipe down from the top edge of the bottom screen to open or put away WalkThor. " +
                         "It also hands your game its full speed back after WalkThor opens, with one tap on the " +
                         "top screen. WalkThor explains exactly what it does, then Android asks you to switch on " +
-                        "“WalkThor swipe to open” in Accessibility settings. Strongly recommended.",
+                        "“WalkThor” in Accessibility settings. Strongly recommended.",
                 )
 
                 Heading("When you play")
