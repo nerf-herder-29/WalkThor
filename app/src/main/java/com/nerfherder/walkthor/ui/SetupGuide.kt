@@ -56,14 +56,16 @@ fun SetupGuideDialog(
     onSetUpSwipe: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // The Thor's bottom screen is short; at denser display settings use the space more tightly.
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
             Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.92f)
+                .fillMaxWidth(if (compact) 0.97f else 0.94f)
+                .fillMaxHeight(if (compact) 0.97f else 0.92f)
                 .background(BookColors.Surface, RoundedCornerShape(16.dp))
                 .border(1.dp, BookColors.Hairline, RoundedCornerShape(16.dp))
-                .padding(18.dp)
+                .padding(horizontal = if (compact) 14.dp else 18.dp, vertical = if (compact) 10.dp else 18.dp)
         ) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 Text("INSTRUCTIONS", style = EyebrowStyle)
@@ -71,7 +73,7 @@ fun SetupGuideDialog(
                     "How to set up WalkThor",
                     fontFamily = SerifDisplay,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 24.sp,
+                    fontSize = if (compact) 19.sp else 24.sp,
                     color = BookColors.Text,
                 )
                 Text(
@@ -140,8 +142,8 @@ fun SetupGuideDialog(
                 Bullet("Typing in search briefly gives WalkThor focus. Tap the top screen once you're done.")
                 Bullet("If WalkThor ever opens on the wrong screen, use ⋮ → Move to other screen.")
             }
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("Done") }
+            Row(Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss, modifier = if (compact) Modifier.height(36.dp) else Modifier) { Text("Close") }
             }
         }
     }
