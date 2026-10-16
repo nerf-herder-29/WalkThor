@@ -141,6 +141,25 @@ class StoreScreenshots {
     }
 
     @Test
+    fun setupGuide() {
+        content { Library() }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("How to set up WalkThor").performClick()
+        shot("09-setup-guide")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun setupGuideDense() {
+        content { Library() }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("How to set up WalkThor").performClick()
+        shot("09-setup-guide-dense")
+    }
+
+    @Test
     fun autoDimSettings() {
         AutoDim.delayMs.value = 60_000L
         content { Library() }
