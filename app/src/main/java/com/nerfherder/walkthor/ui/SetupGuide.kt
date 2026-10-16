@@ -112,7 +112,7 @@ fun SetupGuideDialog(
                 Step(
                     5, "Allow accessibility access", state.swipeReady, "Set up", onSetUpSwipe,
                     "Lets you swipe down from the top edge of the bottom screen to open or put away WalkThor. " +
-                        "It also hands your game its full speed back after WalkThor opens, with one tap on the " +
+                        "It also hands your game its full speed back after WalkThor opens or you search, with one tap on the " +
                         "top screen. WalkThor explains exactly what it does, then Android asks you to switch on " +
                         "“WalkThor” in Accessibility settings. Strongly recommended.",
                 )
@@ -139,7 +139,7 @@ fun SetupGuideDialog(
 
                 Heading("Good to know")
                 Bullet("Tapping WalkThor never slows your game: the game keeps top priority while you read.")
-                Bullet("Typing in search briefly gives WalkThor focus. Tap the top screen once you're done.")
+                Bullet("Typing in search briefly gives WalkThor focus for the keyboard. When you're done, WalkThor hands it back to the game on its own.")
                 Bullet("If WalkThor ever opens on the wrong screen, use ⋮ → Move to other screen.")
             }
             Row(Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.End) {

@@ -70,7 +70,8 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 Spacer(Modifier.height(12.dp))
                 Text("WHAT IT DOES ON THE GAME'S SCREEN", style = EyebrowStyle)
                 Text(
-                    "While a game is running, a couple of seconds after WalkThor opens, it taps the very top edge " +
+                    "While a game is running, a couple of seconds after WalkThor opens (or after you finish typing " +
+                        "a search), it taps the very top edge " +
                         "of the game's screen once, in the middle, just as you could yourself. Android gives top " +
                         "priority to the screen you last touched, so this hands it back to the game. Turning off " +
                         "accessibility access stops it too.",

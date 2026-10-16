@@ -17,7 +17,8 @@ accounts, no analytics and no ads. Everything below stays on your device.
 - **Accessibility access ("WalkThor", an Android accessibility service), if you turn it on,** places a thin
   invisible strip along the top edge of the bottom screen and responds only to swipes that start
   there, to open or close WalkThor. While a game is running, it also taps the very top edge of
-  the game's screen once, a couple of seconds after WalkThor opens, because Android gives top
+  the game's screen once, a couple of seconds after WalkThor opens or after you finish typing a
+  search, because Android gives top
   performance priority to the screen last touched (turning off accessibility access stops it too). It does **not** read the content of your screen or of other apps, and does not
   record what you type.
 

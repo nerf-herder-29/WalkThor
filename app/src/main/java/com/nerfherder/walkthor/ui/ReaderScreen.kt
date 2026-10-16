@@ -389,6 +389,15 @@ private fun SearchField(
     val keyboard = LocalSoftwareKeyboardController.current
     val windowFocused = LocalWindowInfo.current.isWindowFocused
     LaunchedEffect(windowFocused, focused) { if (windowFocused && focused) keyboard?.show() }
+    // Keyboard put away (Back, or its hide key) while the field still has focus: finish typing,
+    // so the game gets its priority back.
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    val imeVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
+    var imeWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) imeWasVisible = true
+        else if (imeWasVisible && focused) { imeWasVisible = false; focusManager.clearFocus() }
+    }
     BasicTextField(
         value = value,
         onValueChange = onValueChange,

@@ -106,10 +106,15 @@ class MainActivity : ComponentActivity() {
         GameFocus.gameRunning.value = CocoonLaunchLog.linkedFolder(this) != null
         applyGameFocus(initial = true)
         lifecycleScope.launch {
+            var typing = GameFocus.wantFocus.value
             kotlinx.coroutines.flow.combine(GameFocus.keepOnGame, GameFocus.gameRunning, GameFocus.wantFocus) { _, _, _ -> }
                 .collect {
                     applyGameFocus(initial = false)
-                    // Back to yielding (e.g. finished a search) while still top: hand priority back again.
+                    // Just finished typing a search: WalkThor took focus for the keyboard, so hand
+                    // the game its priority back with the same tap as after opening.
+                    val finishedTyping = typing && !GameFocus.wantFocus.value
+                    typing = GameFocus.wantFocus.value
+                    if (finishedTyping) openedAt = android.os.SystemClock.elapsedRealtime()
                     if (yielding == true && PerfCheck.walkThorIsTop.value == true) scheduleHandBack()
                 }
         }
