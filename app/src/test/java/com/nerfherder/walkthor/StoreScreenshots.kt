@@ -298,7 +298,7 @@ class StoreScreenshots {
         content {
             NowPlayingScreen(
                 game = noGuideGame,
-                art = GameArt(cover = art, backdrop = art),
+                art = GameArt(cover = art),
                 books = shelf.drop(1),
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},

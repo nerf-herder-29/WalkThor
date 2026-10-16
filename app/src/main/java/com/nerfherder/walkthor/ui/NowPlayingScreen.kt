@@ -121,7 +121,8 @@ fun NowPlayingScreen(
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
     val resting by AutoDim.resting.collectAsState()
     val guideCover = remember(guide?.id, guide?.cover) { guide?.let(coverFile) }
-    val banner = art.hero ?: art.backdrop
+    // Only wide scene art makes a background; box art and icons (with their logos baked in) don't.
+    val banner = art.hero
     // Button text colour on the white primary button.
     val fill = BookColors.Ink
 

@@ -42,8 +42,6 @@ data class GameArt(
     val logo: String? = null,
     /** Wide art for a banner: a "hero", else fan art, else a screenshot or title screen. */
     val hero: String? = null,
-    /** The best box-style art that isn't an icon, for a background when there's no [hero]. */
-    val backdrop: String? = null,
 )
 
 /**
@@ -189,7 +187,6 @@ class ArtworkRepository private constructor(private val context: Context) {
         var cover: Pair<ArtImage, Float>? = null
         var logo: Pair<ArtImage, Float>? = null
         var hero: Pair<ArtImage, Float>? = null
-        var backdrop: Pair<ArtImage, Float>? = null
         val images = withIndex { it }
         for (img in images) {
             val tokens = img.titleTokens
@@ -207,10 +204,6 @@ class ArtworkRepository private constructor(private val context: Context) {
                 else -> 0f
             }
             if (coverBonus != null && (cover == null || sim + coverBonus > cover.second)) cover = img to sim + coverBonus
-            // Icons look poor stretched across the screen: never a background.
-            if (coverBonus != null && "icon" !in where && (backdrop == null || sim + coverBonus > backdrop.second)) {
-                backdrop = img to sim + coverBonus
-            }
             val logoBonus = when {
                 "marquee" in where || "wheel" in where -> 0.1f
                 "logo" in where -> 0.05f
@@ -226,7 +219,7 @@ class ArtworkRepository private constructor(private val context: Context) {
             }
             if (heroBonus != null && (hero == null || sim + heroBonus > hero.second)) hero = img to sim + heroBonus
         }
-        GameArt(cover?.first?.uri, logo?.first?.uri, hero?.first?.uri, backdrop?.first?.uri).also { lastGameArt = key to it }
+        GameArt(cover?.first?.uri, logo?.first?.uri, hero?.first?.uri).also { lastGameArt = key to it }
     }
 
     @Volatile private var lastGameArt: Pair<String, GameArt>? = null
