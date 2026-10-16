@@ -309,7 +309,7 @@ private fun pulse(t: Float) = (0.5f - 0.5f * cos(4f * PI.toFloat() * t))
 private val BookPaperLeft = Color(0xFFF3EAD3)
 private val BookPaperRight = Color(0xFFE9DDBF)
 private val BookLineInk = Color(0xFF8A6A4A)
-private val LensBrass = Color(0xFFD9A441)
+private val LensBrass = Color(0xFFB4B4B9)
 
 private val leftPage = Path().apply {
     moveTo(54f, 38f)

@@ -26,8 +26,11 @@ object BookColors {
     val Hairline = Color(0xFF2A262B)
     val Text = Color(0xFFEDE6DA)
     val TextMuted = Color(0xFFA39A8E)
-    val Brass = Color(0xFFC9A35B)
-    val BrassSoft = Color(0xFFE3CD95)
+    /** Accent for text, icons, ticks and lines: a medium grey (it used to be brass). */
+    val Brass = Color(0xFF85858B)
+    val BrassSoft = Color(0xFFB4B4B9)
+    /** Fill for buttons and selected chips: a medium-dark grey, with light text on it. */
+    val ButtonFill = Color(0xFF48484D)
 
     // pages
     val Paper = Color(0xFFF4ECDD)
@@ -79,8 +82,8 @@ object PageStyle {
 
 private val scheme = darkColorScheme(
     primary = BookColors.Brass,
-    onPrimary = Color(0xFF1E1709),
-    primaryContainer = Color(0xFF3A2F1A),
+    onPrimary = BookColors.Text,
+    primaryContainer = BookColors.ButtonFill,
     onPrimaryContainer = BookColors.BrassSoft,
     secondary = BookColors.BrassSoft,
     background = BookColors.Ink,

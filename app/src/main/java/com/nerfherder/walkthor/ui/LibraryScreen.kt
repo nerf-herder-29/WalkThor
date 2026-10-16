@@ -183,7 +183,7 @@ fun LibraryScreen(
             if (!statusAtBottom) StatusClock(Modifier.padding(end = if (narrowHeader) 6.dp else 14.dp))
             Button(
                 onClick = actions.onImport,
-                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
                 contentPadding = if (narrowHeader) PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                 else PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
@@ -463,8 +463,8 @@ private fun SettingsMenu(
                                 colors = FilterChipDefaults.filterChipColors(
                                     containerColor = BookColors.SurfaceHigh,
                                     labelColor = BookColors.Text,
-                                    selectedContainerColor = BookColors.Brass,
-                                    selectedLabelColor = Color(0xFF1E1709),
+                                    selectedContainerColor = BookColors.ButtonFill,
+                                    selectedLabelColor = BookColors.Text,
                                 ),
                                 border = null,
                             )
@@ -526,7 +526,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = onImport,
-                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
             ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
             if (!artLinked) {
                 OutlinedButton(onClick = onLinkArt) { Text("Link Cocoon artwork", color = BookColors.Text) }

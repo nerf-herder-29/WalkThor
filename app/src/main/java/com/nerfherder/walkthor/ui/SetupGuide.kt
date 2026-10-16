@@ -170,12 +170,12 @@ private fun Step(
         Box(
             Modifier
                 .size(28.dp)
-                .background(if (done == true) BookColors.Brass else Color.Transparent, CircleShape)
+                .background(if (done == true) BookColors.ButtonFill else Color.Transparent, CircleShape)
                 .border(1.5.dp, BookColors.Brass, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (done == true) {
-                Icon(Icons.Filled.Check, contentDescription = "Done", tint = Color(0xFF1E1709), modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Check, contentDescription = "Done", tint = BookColors.Text, modifier = Modifier.size(16.dp))
             } else {
                 Text("$number", color = BookColors.Brass, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
@@ -195,7 +195,7 @@ private fun Step(
                 } else if (actionLabel != null && onAction != null) {
                     Button(
                         onClick = onAction,
-                        colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                        colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp),
                     ) { Text(actionLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }

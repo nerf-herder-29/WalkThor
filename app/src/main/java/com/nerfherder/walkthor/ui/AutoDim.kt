@@ -234,7 +234,7 @@ fun AutoDimOverlay() {
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(22.dp))
-                            .background(BookColors.Brass.copy(alpha = 0.85f))
+                            .background(BookColors.ButtonFill)
                             .pointerInput(action) {
                                 awaitEachGesture {
                                     awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
@@ -243,7 +243,7 @@ fun AutoDimOverlay() {
                             }
                             .padding(horizontal = 22.dp, vertical = 10.dp),
                     ) {
-                        Text("Open guide", color = Color(0xFF1E1709), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text("Open guide", color = BookColors.Text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                     }
                 }
             }

@@ -258,8 +258,8 @@ fun ReaderScreen(
             IconButton(
                 onClick = { if (lensOn) lensPage = null else openLens(bookState.current) },
                 colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (lensOn) BookColors.Brass else androidx.compose.ui.graphics.Color.Transparent,
-                    contentColor = if (lensOn) MaterialTheme.colorScheme.onPrimary else BookColors.Text,
+                    containerColor = if (lensOn) BookColors.ButtonFill else androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = BookColors.Text,
                 ),
             ) {
                 Icon(AppIcons.ZoomIn, contentDescription = if (lensOn) "Close reading lens" else "Reading lens")

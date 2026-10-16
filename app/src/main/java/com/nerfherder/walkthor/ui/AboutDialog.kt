@@ -105,7 +105,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
         confirmButton = {
             Button(
                 onClick = onAgree,
-                colors = ButtonDefaults.buttonColors(containerColor = BookColors.Brass, contentColor = Color(0xFF1E1709)),
+                colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
             ) { Text("Agree & continue", fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(onClick = onDecline) { Text("No thanks", color = BookColors.TextMuted) } },
