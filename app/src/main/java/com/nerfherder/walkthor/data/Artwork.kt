@@ -193,7 +193,10 @@ class ArtworkRepository private constructor(private val context: Context) {
             if (tokens.none { it in anyWord }) continue
             val sim = names.maxOf { Matcher.closeness(it, tokens) }
             if (sim < GAME_ART_MIN) continue
-            val where = (img.folder + "/" + img.name).lowercase()
+            // What kind of art this is, from its folder and the parts of its file name that aren't
+            // the game's name: "Guitar Hero.png" in an icon folder is an icon, not a hero image.
+            val extra = Matcher.words(img.name.substringBeforeLast('.')).filter { w -> w !in anyWord }
+            val where = (img.folder + "/" + extra.joinToString(" ")).lowercase()
             val coverBonus = when {
                 "theme" in where || "backcover" in where || "marquee" in where || "logo" in where ||
                     "wheel" in where || "manual" in where -> null
