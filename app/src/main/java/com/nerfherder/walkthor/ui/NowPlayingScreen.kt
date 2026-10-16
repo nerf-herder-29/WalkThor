@@ -121,7 +121,7 @@ fun NowPlayingScreen(
     LaunchedEffect(game.title, game.at) { enter.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
     val resting by AutoDim.resting.collectAsState()
     val guideCover = remember(guide?.id, guide?.cover) { guide?.let(coverFile) }
-    val banner = art.hero ?: art.cover
+    val banner = art.hero ?: art.backdrop
     // Button text colour on the white primary button.
     val fill = BookColors.Ink
 
