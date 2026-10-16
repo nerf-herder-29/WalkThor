@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        openedAt = android.os.SystemClock.elapsedRealtime()
         super.onCreate(savedInstanceState)
         CrashLog.install(this)
         installImageLoader()
@@ -182,16 +183,24 @@ class MainActivity : ComponentActivity() {
     }
 
     private var handBackJob: kotlinx.coroutines.Job? = null
+    /** When WalkThor was last opened or brought back (elapsedRealtime). */
+    private var openedAt = 0L
 
     /**
      * WalkThor just became Android's top app while a game is running (e.g. Cocoon opened it as
-     * the companion): shortly after, hand that priority back to the game's screen.
+     * the companion): shortly after, hand that priority back with one tap on the game's screen
+     * (through the swipe-to-open service; see [SwipeGestureService.handBack]).
      */
     private fun scheduleHandBack() {
         handBackJob?.cancel()
         handBackJob = lifecycleScope.launch {
             delay(HAND_BACK_DELAY_MS) // let the launch (and boot screen) settle first
-            for (attempt in 0 until 4) {
+            // Only tap the game's screen just after WalkThor opens, never in the middle of play.
+            if (android.os.SystemClock.elapsedRealtime() - openedAt > HAND_BACK_WINDOW_MS) {
+                PerfCheck.handBack.value = "skipped (WalkThor wasn't just opened)"
+                return@launch
+            }
+            for (attempt in 0 until 2) {
                 val skip = when {
                     !GameFocus.keepOnGame.value -> "off (Keep focus on the game is off)"
                     !GameFocus.gameRunning.value -> "skipped (no game running per Cocoon's launch log)"
@@ -200,20 +209,17 @@ class MainActivity : ComponentActivity() {
                 }
                 if (skip != null) { PerfCheck.handBack.value = skip; return@launch }
                 if (yielding != true || PerfCheck.walkThorIsTop.value != true) return@launch
-                if (DisplayHelper.otherDisplay(this@MainActivity) == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
-                val ownDisplay = DisplayHelper.currentDisplayId(this@MainActivity)
-                // Through the swipe-to-open service: refocuses the game's window without pausing it.
+                val gameDisplay = DisplayHelper.gameDisplay(this@MainActivity)
+                if (gameDisplay == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
                 val service = SwipeGestureService.instance?.get()
                 if (service == null) {
                     PerfCheck.handBack.value = "needs swipe-to-open switched on"
                     return@launch
                 }
-                val outcome = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    service.handBack(ownDisplay, attempt)
-                }
+                val outcome = service.handBack(gameDisplay.displayId)
                 PerfCheck.handBack.value = "try ${attempt + 1}: $outcome"
-                if (outcome.startsWith("swipe-to-open") || outcome.startsWith("turn WalkThor") || outcome.startsWith("needs")) return@launch
-                delay(1_500L)
+                if (outcome != "tapped the game screen") return@launch
+                delay(2_000L)
             }
             if (PerfCheck.walkThorIsTop.value == true) {
                 PerfCheck.handBack.value = (PerfCheck.handBack.value ?: "") + " · Android kept WalkThor on top"
@@ -274,6 +280,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onResume() {
+        openedAt = android.os.SystemClock.elapsedRealtime()
         super.onResume()
         hasOtherScreen.value = DisplayHelper.otherDisplay(this) != null
         AppState.activityDisplayId = DisplayHelper.currentDisplayId(this)
@@ -296,6 +303,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
+        openedAt = android.os.SystemClock.elapsedRealtime()
         super.onNewIntent(intent)
         handleIntent(intent)
     }
@@ -683,6 +691,8 @@ private data class Acted(val game: LaunchedGame, val guide: com.nerfherder.walkt
 
 /** How long after WalkThor becomes the top app before it hands priority back to the game. */
 private const val HAND_BACK_DELAY_MS = 2_500L
+/** The hand-back tap only happens this soon after WalkThor opens. */
+private const val HAND_BACK_WINDOW_MS = 20_000L
 
 /** Longest the boot screen waits for Cocoon to log a new launch. */
 private const val BOOT_WAIT_MS = 1_500L

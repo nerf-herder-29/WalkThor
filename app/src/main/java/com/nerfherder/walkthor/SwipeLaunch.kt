@@ -30,18 +30,18 @@ import java.lang.ref.WeakReference
  * accessibility services are allowed to, so the gesture lives in a small accessibility service
  * that lays a thin invisible strip along the top edge of the Thor's bottom screen.
  * Swiping again while WalkThor is showing puts it away. While a game is running, the service
- * also finds the game's window (and nothing in it) so it can hand the game back Android's
- * top-app priority after WalkThor opens; see [SwipeGestureService.handBack].
+ * also taps the game's screen once after WalkThor opens, to hand the game back Android's
+ * top-app priority; see [SwipeGestureService.handBack].
  */
 object SwipeLauncher {
     const val PREFS = "swipe"
     const val KEY_ENABLED = "enabled"
     /**
      * The user agreed to the in-app disclosure of what the accessibility service does.
-     * ("consent2": the disclosure changed when the service started finding the game's window,
-     * so everyone is asked again.)
+     * ("consent3": the disclosure changed when the service started tapping the game's screen to
+     * hand it back priority, so everyone is asked again.)
      */
-    const val KEY_CONSENT = "consent2"
+    const val KEY_CONSENT = "consent3"
     const val KEY_GAME_GUIDE = "gameGuide"
 
     /** The user's choice (the toggle). */
@@ -275,70 +275,31 @@ class SwipeGestureService : AccessibilityService() {
     }
 
     /**
-     * Makes the game's window Android's focused one again, so the game gets top-app priority
-     * back from WalkThor (which is on [ownDisplayId]). Two ways, neither pausing the game:
-     *  1. Act on the game window's outermost container ("clear focus" / "focus"): Android
-     *     focuses a window's activity whenever an accessibility service acts on it.
-     *  2. If the game's window can't be reached (some emulators don't answer), move the game's
-     *     task to the front, which needs only the window's task number.
-     * Nothing in the window is read. Returns a short outcome for the performance check.
-     * Blocking (talks to other apps): call off the main thread.
+     * Hands the game back Android's top-app priority with one short tap on its screen
+     * ([gameDisplayId]), exactly as if you had tapped it: Android moves its focus to the screen
+     * you touch, without pausing anything. The tap lands on the very top edge, in the middle,
+     * where games rarely have anything to press. Nothing on the screen is read.
+     * Returns a short outcome for the performance check.
      */
-    fun handBack(ownDisplayId: Int, attempt: Int): String {
+    fun handBack(gameDisplayId: Int): String {
         if (Build.VERSION.SDK_INT < 30) return "needs Android 11+"
         if (!SwipeLauncher.hasConsent(this)) return "swipe-to-open needs setting up again (shelf banner)"
         val info = serviceInfo
         if (info == null ||
-            (info.capabilities and android.accessibilityservice.AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT) == 0 ||
-            (info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS) == 0
+            (info.capabilities and android.accessibilityservice.AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES) == 0
         ) return "turn WalkThor off and on in Accessibility settings"
         return runCatching {
-            val all = windowsOnAllDisplays
-            val elsewhere = (0 until all.size())
-                .filter { all.keyAt(it) != ownDisplayId }
-                .flatMap { all.valueAt(it) }
-            val apps = elsewhere.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
-            if (apps.isEmpty()) {
-                val seen = elsewhere.joinToString(",") { typeName(it.type) }.ifEmpty { "none" }
-                return "no game window found (screens ${(0 until all.size()).map { all.keyAt(it) }}, own $ownDisplayId, windows: $seen)"
-            }
-            // The game: prefer the focused/active app window, else the topmost one.
-            val game = apps.firstOrNull { it.isFocused } ?: apps.firstOrNull { it.isActive } ?: apps.maxBy { it.layer }
-            val name = game.title?.toString()?.take(24) ?: "game"
-            // Last tries: the task route, in case acting on the window didn't move the focus.
-            val root = if (attempt >= 2) null else game.root ?: run { Thread.sleep(300); game.root }
-            if (root != null) {
-                val action = if (attempt % 2 == 0) android.view.accessibility.AccessibilityNodeInfo.ACTION_CLEAR_FOCUS
-                else android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS
-                root.performAction(action)
-                return "sent to $name"
-            }
-            // The game's window didn't answer: bring its task forward instead.
-            val taskId = taskIdOf(game)
-                ?: return if (attempt >= 2) "no task number for $name" else "couldn't reach $name, and no task number"
-            val am = getSystemService(ActivityManager::class.java) ?: return "couldn't reach $name"
-            am.moveTaskToFront(taskId, 0)
-            "sent to $name (task $taskId)"
-        }.getOrElse { "error: ${it.javaClass.simpleName}: ${it.message?.take(40)}" }
-    }
-
-    /** The window's task number. Android keeps it on the window info but doesn't publish it. */
-    private fun taskIdOf(window: android.view.accessibility.AccessibilityWindowInfo): Int? {
-        val cls = android.view.accessibility.AccessibilityWindowInfo::class.java
-        runCatching { (cls.getMethod("getTaskId").invoke(window) as Int).takeIf { it > 0 } }.getOrNull()?.let { return it }
-        return runCatching {
-            cls.getDeclaredField("mTaskId").apply { isAccessible = true }.getInt(window).takeIf { it > 0 }
-        }.getOrNull()
-    }
-
-    private fun typeName(type: Int) = when (type) {
-        android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION -> "app"
-        android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "keyboard"
-        android.view.accessibility.AccessibilityWindowInfo.TYPE_SYSTEM -> "system"
-        android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "a11y-overlay"
-        android.view.accessibility.AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER -> "divider"
-        android.view.accessibility.AccessibilityWindowInfo.TYPE_MAGNIFICATION_OVERLAY -> "magnifier"
-        else -> "type$type"
+            val display = getSystemService(DisplayManager::class.java)?.getDisplay(gameDisplayId)
+                ?: return "game screen not found"
+            val size = android.graphics.Point()
+            @Suppress("DEPRECATION") display.getRealSize(size)
+            val path = android.graphics.Path().apply { moveTo(size.x / 2f, 2f) }
+            val gesture = android.accessibilityservice.GestureDescription.Builder()
+                .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 40))
+                .setDisplayId(gameDisplayId)
+                .build()
+            if (dispatchGesture(gesture, null, null)) "tapped the game screen" else "Android refused the tap"
+        }.getOrElse { "error: ${it.javaClass.simpleName}" }
     }
 
     companion object {

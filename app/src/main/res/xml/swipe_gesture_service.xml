@@ -3,6 +3,5 @@
     android:description="@string/swipe_service_description"
     android:accessibilityEventTypes="typeAnnouncement"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRetrieveInteractiveWindows"
-    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
     android:notificationTimeout="1000" />

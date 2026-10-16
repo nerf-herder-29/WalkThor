@@ -16,11 +16,11 @@ accounts, no analytics and no ads. Everything below stays on your device.
   guide. Nothing in the folder is changed.
 - **"WalkThor swipe to open" (an Android accessibility service), if you turn it on,** places a thin
   invisible strip along the top edge of the bottom screen and responds only to swipes that start
-  there, to open or close WalkThor. While a game is running, it also looks at which app windows
-  are open, to find the game's window and make it Android's focused window again after WalkThor
-  opens (so the game keeps top performance priority). It does **not** read the content of your
-  screen or of other apps, does not record what you type, and does not press anything in other
-  apps.
+  there, to open or close WalkThor. While a game is running, it also taps the very top edge of
+  the game's screen once, a couple of seconds after WalkThor opens, because Android gives top
+  performance priority to the screen last touched (you can turn this off with ⋮ → Keep focus on
+  the game). It does **not** read the content of your screen or of other apps, and does not
+  record what you type.
 
 ## What WalkThor stores (on your device only)
 

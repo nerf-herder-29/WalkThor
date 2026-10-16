@@ -66,6 +66,14 @@ object DisplayHelper {
         return usableDisplays(activity).firstOrNull { it.displayId != current }
     }
 
+    /** The game's screen: the biggest switched-on screen other than WalkThor's own. */
+    fun gameDisplay(activity: Activity): Display? {
+        val current = currentDisplayId(activity)
+        return usableDisplays(activity)
+            .filter { it.displayId != current }
+            .maxByOrNull { d -> d.mode.physicalWidth.toLong() * d.mode.physicalHeight }
+    }
+
     fun isOnBottom(activity: Activity): Boolean {
         val bottom = bottomDisplay(activity) ?: return true
         return bottom.displayId == currentDisplayId(activity)
