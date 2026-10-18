@@ -414,12 +414,12 @@ private fun DrawScope.drawBadge(b: PadButton, box: Rect, input: ThorInput, measu
     val s = b.size * box.width
     if (input == ThorInput.NONE) return
     if (input.isFace) {
-        val g = 15.dp.toPx()
+        // Small enough not to cover the button's own letter on denser screens.
+        val g = min(15.dp.toPx(), s * 0.42f).coerceAtLeast(9.dp.toPx())
         val r = when (b.shape) {
-            Shape.PILL -> Offset(s * 0.62f, s * 0.3f)
-            Shape.STICK -> Offset(s * 0.36f, s * 0.36f)
-            Shape.SHOULDER, Shape.TRIGGER, Shape.SMALL -> Offset(s * 0.5f, s * 0.15f)
-            else -> Offset(s * 0.36f, s * 0.36f)
+            Shape.PILL -> Offset(s * 0.7f, s * 0.32f)
+            Shape.SHOULDER, Shape.TRIGGER, Shape.SMALL -> Offset(s * 0.55f, s * 0.15f)
+            else -> Offset(s * 0.42f, s * 0.42f)
         }
         val center = c + r
         drawCircle(Color(0xFF0B0B0D), g * 0.72f, center)

@@ -18,6 +18,7 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 | ![Now playing: the game's art, its guide and the play time](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after 5 seconds, with Open guide](docs/screenshots/07b-dimmed-open-guide.png) |
 | ![Your shelf of guides](docs/screenshots/02-library.png) | ![A GameFAQs-style text guide in the reader](docs/screenshots/03-reader.png) |
 | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) | ![In-app setup instructions](docs/screenshots/09-setup-guide.png) |
+| ![Controls: a PlayStation-style layout with its Thor buttons](docs/screenshots/10-controls-playstation.png) | ![Controls: an N64-style layout with its Thor buttons](docs/screenshots/10-controls-n64.png) |
 
 ## Features
 
