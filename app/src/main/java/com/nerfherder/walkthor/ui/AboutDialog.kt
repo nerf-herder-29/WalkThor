@@ -82,7 +82,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 Text("WHAT IT ACCESSES", style = EyebrowStyle)
                 Text(
                     "Touches that begin in a thin strip along the top edge of the bottom screen. And, only if you " +
-                        "turn on Show presses on the Controls screen and only while that screen is open, your " +
+                        "agree on the Face Buttons screen, and only while that screen is open, your " +
                         "controller button presses, to light up the matching buttons. Every press is passed straight " +
                         "on to your game; none is recorded or stored.",
                     color = BookColors.TextMuted,
@@ -148,8 +148,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority. It never reads screen content. " +
                         "Mirror shows part of the top screen here only when you start it (Android asks each time); " +
-                        "the picture is never recorded, saved or sent. Controls can light up the buttons you press, only " +
-                        "while that screen is open with Show presses on; presses go straight on to the game and aren't kept."
+                        "the picture is never recorded, saved or sent. Face Buttons can light up the buttons you press, only " +
+                        "while that screen is open; presses go straight on to the game and aren't kept."
                 )
 
                 // A saved crash report, if WalkThor has crashed, for sharing in a bug report.

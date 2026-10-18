@@ -241,7 +241,7 @@ fun AutoDimOverlay() {
                     androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
                         open?.let { DimButton("Open guide", filled = true, action = it) }
                         mirror?.let { DimButton("Mirror", filled = open == null, action = it) }
-                        controlsAction?.let { DimButton("Controls", filled = open == null && mirror == null, action = it) }
+                        controlsAction?.let { DimButton("Face Buttons", filled = open == null && mirror == null, action = it) }
                     }
                 }
             }

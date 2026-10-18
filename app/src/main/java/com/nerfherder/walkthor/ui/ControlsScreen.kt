@@ -67,7 +67,7 @@ private val Line = Color.White.copy(alpha = 0.55f)
 private val ButtonDark = Color(0xFF26262B)
 
 /**
- * Controls: the four face buttons, labelled the way the game's system labels them (shapes for
+ * Face Buttons: the four face buttons, labelled the way the game's system labels them (shapes for
  * PlayStation, letters for Xbox and Nintendo), each at the same spot as the Thor button that
  * presses it. With Show presses on, the one you press lights up.
  */
@@ -75,27 +75,13 @@ private val ButtonDark = Color(0xFF26262B)
 fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
     val context = LocalContext.current
     var style by remember(game?.player, game?.file) { mutableStateOf(ControlPrefs.faceStyle(context, game?.player, game?.file)) }
-    var showPresses by remember { mutableStateOf(ControlPrefs.showPresses(context) && ControlPrefs.keysConsent(context)) }
-    var askConsent by remember { mutableStateOf(false) }
+    // Presses are always shown here, once you've agreed to the explanation (asked on first open).
+    var agreed by remember { mutableStateOf(ControlPrefs.keysConsent(context)) }
+    val showPresses = agreed
     var watchProblem by remember { mutableStateOf<String?>(null) }
     val pressed by ControllerInput.pressed.collectAsState()
     val last by ControllerInput.last.collectAsState()
-    // Which key code each face position sends (Nintendo-style unless set up otherwise).
-    var faceCodes by remember { mutableStateOf(ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) }) }
-    // "Set up face buttons": which position we're asking for next, or null.
-    var settingUp by remember { mutableStateOf<Int?>(null) }
-    val count by ControllerInput.count.collectAsState()
-    var countAtStep by remember { mutableIntStateOf(0) }
-    LaunchedEffect(count) {
-        val step = settingUp ?: return@LaunchedEffect
-        if (count == countAtStep) return@LaunchedEffect
-        val code = ControllerInput.last.value ?: return@LaunchedEffect
-        val pos = ThorPad.FACE_ORDER[step]
-        ControlPrefs.setFaceCode(context, pos, code)
-        faceCodes = faceCodes + (pos to code)
-        countAtStep = count
-        settingUp = if (step + 1 < ThorPad.FACE_ORDER.size) step + 1 else null
-    }
+    val faceCodes = remember { ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) } }
 
     // Watch presses only while this screen is open with the option on; the screen stays bright
     // then, since you're looking at it while you play.
@@ -115,7 +101,6 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
             AutoDim.screenDelayMs.value = null
             SwipeGestureService.instance?.get()?.setKeyWatch(false)
             watchProblem = null
-            settingUp = null
         }
     }
     DisposableEffect(Unit) {
@@ -135,17 +120,7 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.Text)
                 }
-                Text("CONTROLS", style = EyebrowStyle, modifier = Modifier.weight(1f))
-                if (showPresses && watchProblem == null) {
-                    TextButton(onClick = {
-                        countAtStep = ControllerInput.count.value
-                        settingUp = if (settingUp == null) 0 else null
-                    }) { Text(if (settingUp == null) "Set up buttons" else "Cancel", color = BookColors.TextMuted) }
-                }
-                Toggle("Show presses", showPresses) { on ->
-                    if (on && !ControlPrefs.keysConsent(context)) askConsent = true
-                    else { showPresses = on; ControlPrefs.setShowPresses(context, on) }
-                }
+                Text("FACE BUTTONS", style = EyebrowStyle, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
             }
             // Which system's labels: guessed from the emulator, remembered if you change it.
@@ -153,7 +128,7 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {
-                FaceStyle.entries.forEach { s ->
+                FaceStyle.entries.filter { it != FaceStyle.THOR }.forEach { s ->
                     Toggle(s.title, s == style) {
                         style = s
                         ControlPrefs.setFaceStyle(context, game?.player, s)
@@ -161,14 +136,12 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
                 }
             }
             Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
-                FaceDiagram(style, faceCodes, pressed, settingUp?.let { ThorPad.FACE_ORDER[it] })
+                FaceDiagram(style, faceCodes, pressed, null)
             }
             val message = when {
                 watchProblem != null -> watchProblem!!
-                settingUp != null -> "Press the Thor's ${ThorPad.FACE_ORDER[settingUp!!]} face button (the one outlined)."
                 showPresses && last != null -> "You pressed ${buttonLabel(last!!)} · sent as ${keyName(last!!)}"
-                showPresses -> "Press A, B, X or Y on the Thor to see which button it is here."
-                else -> "Each button sits where its Thor button is. Turn on Show presses to see them light up."
+                else -> "Press A, B, X or Y on the Thor to see which button it is here."
             }
             Text(
                 message,
@@ -180,32 +153,29 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
         }
     }
 
-    if (askConsent) {
+    if (!agreed) {
         AlertDialog(
-            onDismissRequest = { askConsent = false },
+            onDismissRequest = onBack,
             containerColor = BookColors.Surface,
-            title = { Text("Show button presses?", fontFamily = SerifDisplay) },
+            title = { Text("Light up button presses?", fontFamily = SerifDisplay) },
             text = {
                 Text(
                     "To light up the buttons you press, WalkThor's accessibility service briefly sees each controller " +
                         "button press before your game does, and passes it straight on. It only does this while this " +
-                        "Controls screen is open with Show presses on. Nothing is recorded, stored or sent, and " +
-                        "nothing you type is read. You can turn it off here at any time.",
+                        "Face Buttons screen is open. Nothing is recorded, stored or sent, and nothing you type is read.",
                     color = BookColors.TextMuted,
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        askConsent = false
                         ControlPrefs.setKeysConsent(context, true)
-                        ControlPrefs.setShowPresses(context, true)
-                        showPresses = true
+                        agreed = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
                 ) { Text("Agree & turn on", fontWeight = FontWeight.SemiBold) }
             },
-            dismissButton = { TextButton(onClick = { askConsent = false }) { Text("No thanks", color = BookColors.TextMuted) } },
+            dismissButton = { TextButton(onClick = onBack) { Text("Not now", color = BookColors.TextMuted) } },
         )
     }
 }

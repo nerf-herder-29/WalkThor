@@ -29,10 +29,10 @@ accounts, no analytics and no ads. Everything below stays on your device.
   or sent anywhere. Capture stops as soon as you leave the mirror screen. The only thing stored is
   which part of the screen you chose for each game.
 
-- **Controls: button presses, only when you turn it on.** The Controls screen can light up the
-  buttons you press. If you switch on *Show presses* (and agree to the explanation shown first),
+- **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
+  buttons you press. After you agree to the explanation shown the first time you open it,
   the accessibility service sees each controller button press just before your game does, and
-  passes it straight on. This happens only while the Controls screen is open; nothing is recorded,
+  passes it straight on. This happens only while the Face Buttons screen is open; nothing is recorded,
   stored or sent, and keyboard text elsewhere is never read. Your button mappings for each emulator
   are stored on the device.
 

@@ -407,7 +407,7 @@ private fun SecondaryButtons(
     border: androidx.compose.foundation.BorderStroke,
     pad: PaddingValues,
 ) {
-    val items = listOfNotNull(first, onMirror?.let { "Mirror" to it }, onControls?.let { "Controls" to it })
+    val items = listOfNotNull(first, onMirror?.let { "Mirror" to it }, onControls?.let { "Face Buttons" to it })
     if (items.isEmpty()) return
     Spacer(Modifier.height(8.dp))
     // Side by side only when every label fits its half without being cut off.

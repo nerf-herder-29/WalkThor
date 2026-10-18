@@ -99,7 +99,8 @@ enum class FaceStyle(val title: String, val labels: List<String>?) {
                 ext in setOf("iso", "chd", "cue", "pbp", "cso") && "retroarch" in p -> PLAYSTATION
                 ext in setOf("sfc", "smc", "nes", "gba", "gb", "gbc", "nds", "3ds", "z64", "n64", "v64", "nsp", "xci", "rvz", "gcz", "wbfs") -> NINTENDO
                 ext == "xex" -> XBOX
-                else -> THOR
+                // Anything else: the Thor's own layout, which is letters with A at right.
+                else -> NINTENDO
             }
         }
     }
@@ -131,7 +132,8 @@ object ControlPrefs {
 
     /** The face-button style for an emulator: your pick, else a guess. */
     fun faceStyle(context: Context, player: String?, file: String?): FaceStyle =
-        FaceStyle.byName(prefs(context).getString("style/" + emu(player), null)) ?: FaceStyle.detect(player, file)
+        (FaceStyle.byName(prefs(context).getString("style/" + emu(player), null)) ?: FaceStyle.detect(player, file))
+            .let { if (it == FaceStyle.THOR) FaceStyle.NINTENDO else it }
 
     fun setFaceStyle(context: Context, player: String?, style: FaceStyle) =
         prefs(context).edit().putString("style/" + emu(player), style.name).apply()
