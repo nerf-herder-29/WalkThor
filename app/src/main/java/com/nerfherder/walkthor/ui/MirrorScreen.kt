@@ -13,6 +13,12 @@ import android.os.Build
 import android.view.Display
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,9 +91,20 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
     val context = LocalContext.current
     val projection by Mirror.projection.collectAsState()
     val error by Mirror.error.collectAsState()
-    var region by remember(game) { mutableStateOf(Mirror.region(context, game)) }
-    var editing by remember(game) { mutableStateOf(region == null) }
-    var draft by remember(game) { mutableStateOf(region ?: floatArrayOf(0f, 0f, 1f, 1f)) }
+    var areas by remember(game) { mutableStateOf(Mirror.areas(context, game)) }
+    var selected by remember(game) {
+        mutableStateOf(Mirror.selected(context, game).let { if (it == Mirror.ALL || it in areas.indices) it else 0 })
+    }
+    // The area being edited: an index into [areas], or areas.size for a new one; null = not editing.
+    var editingIndex by remember(game) { mutableStateOf<Int?>(if (areas.isEmpty()) 0 else null) }
+    val editing = editingIndex != null
+    var draft by remember(game) { mutableStateOf(floatArrayOf(0f, 0f, 1f, 1f)) }
+    fun save(newAreas: List<FloatArray>, newSelected: Int) {
+        areas = newAreas
+        selected = newSelected
+        Mirror.setAreas(context, game, newAreas)
+        Mirror.setSelected(context, game, newSelected)
+    }
     var frame by remember { mutableStateOf<ImageBitmap?>(null) }
     var reader by remember { mutableStateOf<ImageReader?>(null) }
     // Android mirrors its main display (the Thor's top screen). If WalkThor itself is there, the
@@ -176,7 +193,9 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
             projection == null -> StartPanel(error, onStartCapture)
             img == null -> Message("Starting the mirror…")
             editing -> AreaPicker(img, draft, onChange = { draft = it })
-            else -> MirrorView(img, region ?: floatArrayOf(0f, 0f, 1f, 1f))
+            areas.isEmpty() -> MirrorView(img, listOf(floatArrayOf(0f, 0f, 1f, 1f)))
+            selected == Mirror.ALL -> MirrorView(img, areas)
+            else -> MirrorView(img, listOf(areas[selected.coerceIn(0, areas.lastIndex)]))
         }
 
         // ---- top bar ----
@@ -187,25 +206,65 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White.copy(alpha = 0.85f))
             }
-            Text(
-                if (editing) "PICK THE AREA TO MIRROR" else "MIRROR",
-                style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)),
-                modifier = Modifier.weight(1f),
-            )
-            if (projection != null && img != null) {
+            val ready = projection != null && img != null
+            if (editing || !ready || areas.size <= 1) {
+                Text(
+                    when {
+                        editing && (editingIndex ?: 0) >= areas.size && areas.isNotEmpty() -> "PICK A NEW AREA"
+                        editing -> "PICK THE AREA TO MIRROR"
+                        else -> "MIRROR"
+                    },
+                    style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)),
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                // One chip per area, plus All to see them side by side.
+                Row(
+                    Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    areas.indices.forEach { i ->
+                        AreaChip("${i + 1}", selected == i) { save(areas, i) }
+                    }
+                    AreaChip("All", selected == Mirror.ALL) { save(areas, Mirror.ALL) }
+                }
+            }
+            if (ready) {
                 if (editing) {
                     TextButton(onClick = { draft = floatArrayOf(0f, 0f, 1f, 1f) }) { Text("Whole screen", color = BookColors.TextMuted) }
+                    if (areas.isNotEmpty()) {
+                        TextButton(onClick = { editingIndex = null }) { Text("Cancel", color = BookColors.TextMuted) }
+                    }
                     Button(
                         onClick = {
-                            region = draft.copyOf()
-                            Mirror.setRegion(context, game, draft)
-                            editing = false
+                            val i = editingIndex ?: 0
+                            val list = areas.toMutableList()
+                            if (i >= list.size) list.add(draft.copyOf()) else list[i] = draft.copyOf()
+                            save(list, i.coerceAtMost(list.lastIndex))
+                            editingIndex = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
                     ) { Text("Done", fontWeight = FontWeight.SemiBold) }
                 } else {
-                    TextButton(onClick = { draft = region ?: floatArrayOf(0f, 0f, 1f, 1f); editing = true }) {
-                        Text("Change area", color = Color.White.copy(alpha = 0.8f))
+                    val one = selected != Mirror.ALL && areas.isNotEmpty()
+                    if (one) {
+                        IconButton(onClick = { draft = areas[selected].copyOf(); editingIndex = selected }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Change this area", tint = Color.White.copy(alpha = 0.85f))
+                        }
+                    }
+                    if (one && areas.size > 1) {
+                        IconButton(onClick = {
+                            val list = areas.toMutableList().also { it.removeAt(selected) }
+                            save(list, (selected - 1).coerceAtLeast(0))
+                        }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Remove this area", tint = Color.White.copy(alpha = 0.85f))
+                        }
+                    }
+                    if (areas.size < Mirror.MAX_AREAS) {
+                        IconButton(onClick = { draft = floatArrayOf(0.25f, 0.25f, 0.75f, 0.75f); editingIndex = areas.size }) {
+                            Icon(Icons.Filled.Add, contentDescription = "Add another area", tint = Color.White.copy(alpha = 0.85f))
+                        }
                     }
                 }
             }
@@ -264,23 +323,76 @@ private fun StartPanel(error: String?, onStart: () -> Unit) {
     }
 }
 
-/** The chosen part of the top screen, as large as fits, keeping its shape. */
+/**
+ * The chosen parts of the top screen, as large as they fit, each keeping its shape. Several are
+ * laid out in whichever grid (one row, two rows…) makes them biggest.
+ */
 @Composable
-private fun MirrorView(img: ImageBitmap, r: FloatArray) {
+private fun MirrorView(img: ImageBitmap, areas: List<FloatArray>) {
     Canvas(Modifier.fillMaxSize()) {
-        val sx = (r[0] * img.width).roundToInt().coerceIn(0, img.width - 1)
-        val sy = (r[1] * img.height).roundToInt().coerceIn(0, img.height - 1)
-        val sw = ((r[2] - r[0]) * img.width).roundToInt().coerceIn(1, img.width - sx)
-        val sh = ((r[3] - r[1]) * img.height).roundToInt().coerceIn(1, img.height - sy)
-        val fit = fitRect(sw.toFloat(), sh.toFloat(), size)
-        drawImage(
-            img,
-            srcOffset = IntOffset(sx, sy),
-            srcSize = IntSize(sw, sh),
-            dstOffset = IntOffset(fit.left.roundToInt(), fit.top.roundToInt()),
-            dstSize = IntSize(fit.width.roundToInt(), fit.height.roundToInt()),
-            filterQuality = FilterQuality.Low,
-        )
+        val gap = 8.dp.toPx()
+        val srcs = areas.map { r ->
+            val sx = (r[0] * img.width).roundToInt().coerceIn(0, img.width - 1)
+            val sy = (r[1] * img.height).roundToInt().coerceIn(0, img.height - 1)
+            val sw = ((r[2] - r[0]) * img.width).roundToInt().coerceIn(1, img.width - sx)
+            val sh = ((r[3] - r[1]) * img.height).roundToInt().coerceIn(1, img.height - sy)
+            intArrayOf(sx, sy, sw, sh)
+        }
+        val cells = bestGrid(srcs.map { Size(it[2].toFloat(), it[3].toFloat()) }, size, gap)
+        srcs.forEachIndexed { i, s ->
+            val fit = fitRect(s[2].toFloat(), s[3].toFloat(), cells[i].size).translate(cells[i].left, cells[i].top)
+            drawImage(
+                img,
+                srcOffset = IntOffset(s[0], s[1]),
+                srcSize = IntSize(s[2], s[3]),
+                dstOffset = IntOffset(fit.left.roundToInt(), fit.top.roundToInt()),
+                dstSize = IntSize(fit.width.roundToInt(), fit.height.roundToInt()),
+                filterQuality = FilterQuality.Low,
+            )
+        }
+    }
+}
+
+/** Cells for [shapes] in the grid (columns × rows) where they come out largest. */
+private fun bestGrid(shapes: List<Size>, space: Size, gap: Float): List<Rect> {
+    val n = shapes.size
+    if (n <= 1) return listOf(Rect(Offset.Zero, space))
+    var best: List<Rect> = emptyList()
+    var bestArea = -1f
+    for (cols in 1..n) {
+        val rows = (n + cols - 1) / cols
+        val cw = (space.width - gap * (cols - 1)) / cols
+        val ch = (space.height - gap * (rows - 1)) / rows
+        if (cw <= 0f || ch <= 0f) continue
+        val cellsHere = (0 until n).map { i ->
+            val c = i % cols
+            val r = i / cols
+            // Centre a short last row.
+            val inRow = if (r == rows - 1) n - cols * (rows - 1) else cols
+            val rowOffset = (cols - inRow) * (cw + gap) / 2f
+            Rect(Offset(rowOffset + c * (cw + gap), r * (ch + gap)), Size(cw, ch))
+        }
+        val shown = shapes.indices.sumOf { i ->
+            val f = fitRect(shapes[i].width, shapes[i].height, cellsHere[i].size)
+            (f.width * f.height).toDouble()
+        }.toFloat()
+        if (shown > bestArea) { bestArea = shown; best = cellsHere }
+    }
+    return best
+}
+
+@Composable
+private fun AreaChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .height(30.dp)
+            .background(if (selected) BookColors.ButtonFill else Color.Black.copy(alpha = 0.4f), RoundedCornerShape(15.dp))
+            .border(1.dp, if (selected) BookColors.ButtonFill else Color.White.copy(alpha = 0.3f), RoundedCornerShape(15.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = Color.White.copy(alpha = if (selected) 0.95f else 0.75f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

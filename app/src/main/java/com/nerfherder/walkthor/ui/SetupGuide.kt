@@ -131,7 +131,8 @@ fun SetupGuideDialog(
                 Para(
                     "Mirror (on Now playing and the dimmed screen) shows part of the top screen here, like a " +
                         "minimap or a HUD. The first time for a game, drag a box over the part you want; WalkThor " +
-                        "remembers it. Android asks for permission each time you start it."
+                        "remembers it. Add up to four areas with +, switch between them with the numbers at the top, or " +
+                        "tap All to see them side by side. Android asks for permission each time you start it."
                 )
 
                 Heading("Reading a guide")

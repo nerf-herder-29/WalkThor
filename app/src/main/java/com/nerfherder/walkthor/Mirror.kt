@@ -32,15 +32,33 @@ object Mirror {
     /** Why the last start failed, if it did. */
     val error = MutableStateFlow<String?>(null)
 
-    /** The part of the top screen to show for a game, as fractions (left, top, right, bottom). */
-    fun region(context: Context, game: String): FloatArray? {
-        val s = prefs(context).getString(key(game), null) ?: return null
-        val parts = s.split(',').mapNotNull { it.toFloatOrNull() }
-        return parts.takeIf { it.size == 4 }?.toFloatArray()
+    /** Most areas one game can have. */
+    const val MAX_AREAS = 4
+    /** [selected] value meaning "show every area at once". */
+    const val ALL = -1
+
+    /**
+     * The parts of the top screen to show for a game, each as fractions (left, top, right, bottom).
+     * Empty if none has been picked yet.
+     */
+    fun areas(context: Context, game: String): List<FloatArray> {
+        val s = prefs(context).getString(key(game), null) ?: return emptyList()
+        return s.split(';').mapNotNull { one ->
+            one.split(',').mapNotNull { it.toFloatOrNull() }.takeIf { it.size == 4 }?.toFloatArray()
+        }.take(MAX_AREAS)
     }
 
-    fun setRegion(context: Context, game: String, r: FloatArray) {
-        prefs(context).edit().putString(key(game), r.joinToString(",")).apply()
+    fun setAreas(context: Context, game: String, areas: List<FloatArray>) {
+        prefs(context).edit()
+            .putString(key(game), areas.joinToString(";") { it.joinToString(",") })
+            .apply()
+    }
+
+    /** Which area was showing last time for a game (an index, or [ALL]). */
+    fun selected(context: Context, game: String): Int = prefs(context).getInt(key(game) + "#sel", 0)
+
+    fun setSelected(context: Context, game: String, index: Int) {
+        prefs(context).edit().putInt(key(game) + "#sel", index).apply()
     }
 
     /** Starts the capture session with the permission Android just granted. */
