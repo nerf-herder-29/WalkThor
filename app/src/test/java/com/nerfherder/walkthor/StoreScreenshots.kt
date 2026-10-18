@@ -302,7 +302,7 @@ class StoreScreenshots {
                 art = GameArt(cover = art, logo = logo, hero = fakeHero()),
                 books = shelf.drop(1),
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
             )
         }
         settle()
@@ -320,7 +320,7 @@ class StoreScreenshots {
                 art = GameArt(cover = art),
                 books = shelf.drop(1),
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
             )
         }
         settle()
@@ -416,7 +416,7 @@ class StoreScreenshots {
                 art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
                 books = shelf,
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
                 guide = shelf[0],
             )
         }
@@ -434,7 +434,7 @@ class StoreScreenshots {
                     art = GameArt(null),
                     books = shelf,
                     coverFile = { null },
-                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
                     guide = shelf[0],
                     onMirror = {},
                 )

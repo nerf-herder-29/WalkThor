@@ -253,10 +253,12 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
                             Icon(Icons.Filled.Edit, contentDescription = "Change this area", tint = Color.White.copy(alpha = 0.85f))
                         }
                     }
-                    if (one && areas.size > 1) {
+                    if (one) {
                         IconButton(onClick = {
                             val list = areas.toMutableList().also { it.removeAt(selected) }
                             save(list, (selected - 1).coerceAtLeast(0))
+                            // Removed the only one: pick a new area straight away.
+                            if (list.isEmpty()) { draft = floatArrayOf(0f, 0f, 1f, 1f); editingIndex = 0 }
                         }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Remove this area", tint = Color.White.copy(alpha = 0.85f))
                         }

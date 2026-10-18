@@ -278,12 +278,10 @@ fun NowPlayingScreen(
                     Button(onClick = onOpenGuide, colors = primary, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
                         Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                     }
-                    if (books.size > 1) {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = { picking = true }, colors = secondary, border = outline, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
-                            Text("Other guide", maxLines = 1, softWrap = false)
-                        }
-                    }
+                    SecondaryButtons(
+                        first = if (books.size > 1) ("Other guide" to { picking = true }) else null,
+                        onMirror = onMirror, compact = compact, colors = secondary, border = outline, pad = pad,
+                    )
                 } else {
                     Text(
                         "No guide yet",
@@ -306,12 +304,10 @@ fun NowPlayingScreen(
                         Spacer(Modifier.width(6.dp))
                         Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                     }
-                    if (books.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = { picking = true }, colors = secondary, border = outline, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
-                            Text("From my shelf", maxLines = 1, softWrap = false)
-                        }
-                    }
+                    SecondaryButtons(
+                        first = if (books.isNotEmpty()) ("From my shelf" to { picking = true }) else null,
+                        onMirror = onMirror, compact = compact, colors = secondary, border = outline, pad = pad,
+                    )
                 }
             }
         }
@@ -323,15 +319,8 @@ fun NowPlayingScreen(
             }
             // Beside the back arrow, clear of the glass edge in the middle.
             Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)), modifier = Modifier.align(Alignment.CenterStart).padding(start = 52.dp))
-            Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-                onMirror?.let { m ->
-                    androidx.compose.material3.TextButton(onClick = m) {
-                        Text("Mirror", color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold)
-                    }
-                }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
-                }
+            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
+                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
             }
         }
         Row(
@@ -397,5 +386,39 @@ private fun NoArtPlaceholder(title: String) {
             maxLines = 5,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/**
+ * The buttons under the main one (Other guide / From my shelf, and Mirror), side by side so they
+ * read as one group; stacked on dense screens where two don't fit across.
+ */
+@Composable
+private fun SecondaryButtons(
+    first: Pair<String, () -> Unit>?,
+    onMirror: (() -> Unit)?,
+    compact: Boolean,
+    colors: androidx.compose.material3.ButtonColors,
+    border: androidx.compose.foundation.BorderStroke,
+    pad: PaddingValues,
+) {
+    val items = listOfNotNull(first, onMirror?.let { "Mirror" to it })
+    if (items.isEmpty()) return
+    Spacer(Modifier.height(8.dp))
+    if (compact || items.size == 1) {
+        items.forEachIndexed { i, (label, action) ->
+            if (i > 0) Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = action, colors = colors, border = border, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
+                Text(label, maxLines = 1, softWrap = false)
+            }
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.forEach { (label, action) ->
+                OutlinedButton(onClick = action, colors = colors, border = border, contentPadding = pad, modifier = Modifier.weight(1f)) {
+                    Text(label, maxLines = 1, softWrap = false)
+                }
+            }
+        }
     }
 }
