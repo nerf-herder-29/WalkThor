@@ -164,7 +164,7 @@ class StoreScreenshots {
         // As if A and R1 are held, to show the lit state.
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value =
             setOf(android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_BUTTON_R1)
-        content { com.nerfherder.walkthor.ui.ControlsScreen(onBack = {}) }
+        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {}) }
         settle()
         shot("10-controls")
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
@@ -173,7 +173,7 @@ class StoreScreenshots {
     @Test
     @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
     fun controlsDense() {
-        content { com.nerfherder.walkthor.ui.ControlsScreen(onBack = {}) }
+        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.xex", "aX360e", 0L), onBack = {}) }
         settle()
         shot("10-controls-dense")
     }

@@ -1,12 +1,12 @@
 package com.nerfherder.walkthor.ui
 
-import android.view.KeyEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,21 +31,20 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -56,32 +56,36 @@ import androidx.compose.ui.unit.sp
 import com.nerfherder.walkthor.SwipeGestureService
 import com.nerfherder.walkthor.controls.ControlPrefs
 import com.nerfherder.walkthor.controls.ControllerInput
-import com.nerfherder.walkthor.controls.PadButton
-import com.nerfherder.walkthor.controls.Shape
+import com.nerfherder.walkthor.controls.FaceStyle
 import com.nerfherder.walkthor.controls.ThorPad
+import com.nerfherder.walkthor.controls.buttonLabel
 import com.nerfherder.walkthor.controls.keyName
-import kotlin.math.max
+import com.nerfherder.walkthor.data.LaunchedGame
 import kotlin.math.min
 
 private val Line = Color.White.copy(alpha = 0.55f)
-private val BodyFill = Color(0xFF141417)
 private val ButtonDark = Color(0xFF26262B)
 
-/** Controls: the Thor's buttons, drawn generically, lighting up as you press them. */
+/**
+ * Controls: the four face buttons, labelled the way the game's system labels them (shapes for
+ * PlayStation, letters for Xbox and Nintendo), each at the same spot as the Thor button that
+ * presses it. With Show presses on, the one you press lights up.
+ */
 @Composable
-fun ControlsScreen(onBack: () -> Unit) {
+fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
     val context = LocalContext.current
+    var style by remember(game?.player, game?.file) { mutableStateOf(ControlPrefs.faceStyle(context, game?.player, game?.file)) }
     var showPresses by remember { mutableStateOf(ControlPrefs.showPresses(context) && ControlPrefs.keysConsent(context)) }
     var askConsent by remember { mutableStateOf(false) }
     var watchProblem by remember { mutableStateOf<String?>(null) }
     val pressed by ControllerInput.pressed.collectAsState()
     val last by ControllerInput.last.collectAsState()
-    // Which key code each face button position sends (Nintendo-style unless set up otherwise).
+    // Which key code each face position sends (Nintendo-style unless set up otherwise).
     var faceCodes by remember { mutableStateOf(ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) }) }
-    // "Set up face buttons": which position we're asking for next (index into FACE_ORDER), or null.
+    // "Set up face buttons": which position we're asking for next, or null.
     var settingUp by remember { mutableStateOf<Int?>(null) }
     val count by ControllerInput.count.collectAsState()
-    var countAtStep by remember { mutableStateOf(0) }
+    var countAtStep by remember { mutableIntStateOf(0) }
     LaunchedEffect(count) {
         val step = settingUp ?: return@LaunchedEffect
         if (count == countAtStep) return@LaunchedEffect
@@ -111,6 +115,7 @@ fun ControlsScreen(onBack: () -> Unit) {
             AutoDim.screenDelayMs.value = null
             SwipeGestureService.instance?.get()?.setKeyWatch(false)
             watchProblem = null
+            settingUp = null
         }
     }
     DisposableEffect(Unit) {
@@ -130,15 +135,12 @@ fun ControlsScreen(onBack: () -> Unit) {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.Text)
                 }
-                Column(Modifier.weight(1f)) {
-                    Text("CONTROLS", style = EyebrowStyle)
-                    Text("Thor buttons", color = BookColors.Text, fontSize = 15.sp, maxLines = 1)
-                }
+                Text("CONTROLS", style = EyebrowStyle, modifier = Modifier.weight(1f))
                 if (showPresses && watchProblem == null) {
                     TextButton(onClick = {
                         countAtStep = ControllerInput.count.value
                         settingUp = if (settingUp == null) 0 else null
-                    }) { Text(if (settingUp == null) "Set up face buttons" else "Cancel", color = BookColors.TextMuted) }
+                    }) { Text(if (settingUp == null) "Set up buttons" else "Cancel", color = BookColors.TextMuted) }
                 }
                 Toggle("Show presses", showPresses) { on ->
                     if (on && !ControlPrefs.keysConsent(context)) askConsent = true
@@ -146,19 +148,27 @@ fun ControlsScreen(onBack: () -> Unit) {
                 }
                 Spacer(Modifier.width(8.dp))
             }
-            Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp)) {
-                PadDiagram(pressed, faceCodes, settingUp?.let { ThorPad.FACE_ORDER[it] })
+            // Which system's labels: guessed from the emulator, remembered if you change it.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            ) {
+                FaceStyle.entries.forEach { s ->
+                    Toggle(s.title, s == style) {
+                        style = s
+                        ControlPrefs.setFaceStyle(context, game?.player, s)
+                    }
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
+                FaceDiagram(style, faceCodes, pressed, settingUp?.let { ThorPad.FACE_ORDER[it] })
             }
             val message = when {
                 watchProblem != null -> watchProblem!!
-                settingUp != null -> "Press the ${ThorPad.FACE_ORDER[settingUp!!]} face button (the one outlined)."
-                showPresses && last != null -> {
-                    val code = last!!
-                    val known = ControllerInput.inputFor(code)
-                    "You pressed ${known?.label ?: keyName(code)} · sent as ${keyName(code)}"
-                }
-                showPresses -> "Press any button. The sticks and the analog L2/R2 triggers can't be shown (Android doesn't share them), and on some devices neither can the D-pad."
-                else -> "Turn on Show presses to see the buttons light up as you play."
+                settingUp != null -> "Press the Thor's ${ThorPad.FACE_ORDER[settingUp!!]} face button (the one outlined)."
+                showPresses && last != null -> "You pressed ${buttonLabel(last!!)} · sent as ${keyName(last!!)}"
+                showPresses -> "Press A, B, X or Y on the Thor to see which button it is here."
+                else -> "Each button sits where its Thor button is. Turn on Show presses to see them light up."
             }
             Text(
                 message,
@@ -215,115 +225,71 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** The Thor's buttons in a generic body, each lit while held. */
+/**
+ * The four face buttons in a diamond, as large as fits. Each position shows the system's label,
+ * lights when the Thor button at that position is held, and names that Thor button underneath.
+ */
 @Composable
-private fun PadDiagram(pressed: Set<Int>, faceCodes: Map<String, Int>, asking: String?) {
+private fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: Set<Int>, asking: String?) {
     val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val w = with(density) { maxWidth.toPx() }
-        val h = with(density) { maxHeight.toPx() }
-        // The pad lives in a 2:1 box, as large as fits, centred.
-        val bw = min(w, h * 2f)
-        val bh = bw / 2f
-        val box = Rect(Offset((w - bw) / 2f, (h - bh) / 2f), Size(bw, bh))
-        Canvas(Modifier.fillMaxSize()) {
-            drawBody(box)
-            ThorPad.BUTTONS.forEach { b ->
-                val faceCode = b.face?.let { faceCodes[it] }
-                if (faceCode != null) {
-                    // Face buttons: labelled with what the Thor sends from that position.
-                    val shown = b.copy(label = com.nerfherder.walkthor.controls.buttonLabel(faceCode))
-                    drawButton(shown, box, faceCode in pressed, pressed, measurer)
-                    if (b.face == asking) {
-                        drawCircle(Color.White, b.size * box.width * 0.68f, centerOf(b, box), style = Stroke(3.dp.toPx()))
-                    }
-                } else {
-                    drawButton(b, box, b.input.keys.any { it in pressed }, pressed, measurer)
+    Canvas(Modifier.fillMaxSize()) {
+        val unit = min(size.width, size.height) / 3.4f
+        val r = unit * 0.62f
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val spots = mapOf(
+            "top" to Offset(0f, -unit), "right" to Offset(unit, 0f),
+            "bottom" to Offset(0f, unit), "left" to Offset(-unit, 0f),
+        )
+        ThorPad.FACE_ORDER.forEachIndexed { i, pos ->
+            val c = center + spots.getValue(pos)
+            val code = faceCodes[pos]
+            val down = code != null && code in pressed
+            drawCircle(if (down) Color.White else ButtonDark, r, c)
+            drawCircle(Line, r, c, style = Stroke(2.dp.toPx()))
+            val ink = if (down) Color.Black else Color.White
+            val label = style.labels?.get(i) ?: code?.let { buttonLabel(it) } ?: "?"
+            when (label) {
+                "triangle", "circle", "cross", "square" -> drawSymbol(label, c, r * 0.46f, ink)
+                else -> {
+                    val t = measurer.measure(label, TextStyle(color = ink, fontSize = (r * 0.85f).toSp(), fontWeight = FontWeight.SemiBold))
+                    drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y - t.size.height / 2f))
+                }
+            }
+            if (pos == asking) drawCircle(Color.White, r * 1.18f, c, style = Stroke(3.dp.toPx()))
+            // Which Thor button this is, unless the label already says it.
+            if (style != FaceStyle.THOR && code != null) {
+                val thor = buttonLabel(code)
+                if (!thor.equals(label, ignoreCase = true)) {
+                    val t = measurer.measure("Thor $thor", TextStyle(color = BookColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
+                    drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y + r + 4.dp.toPx()))
                 }
             }
         }
     }
 }
 
-private fun centerOf(b: PadButton, box: Rect) = Offset(box.left + b.x * box.width, box.top + b.y * box.height)
-
-/** A plain, generic body of WalkThor's own: a rounded bar with two grips. */
-private fun DrawScope.drawBody(box: Rect) {
-    val bw = box.width
-    val bh = box.height
-    val bar = Rect(box.left + 0.07f * bw, box.top + 0.17f * bh, box.right - 0.07f * bw, box.top + 0.74f * bh)
-    val r = CornerRadius(0.18f * bh, 0.18f * bh)
-    listOf(0.24f, 0.76f).forEach { gx ->
-        val tl = Offset(box.left + (gx - 0.13f) * bw, box.top + 0.5f * bh)
-        val sz = Size(0.26f * bw, 0.48f * bh)
-        drawOval(BodyFill, tl, sz)
-        drawOval(Line.copy(alpha = 0.25f), tl, sz, style = Stroke(1.5f))
-    }
-    drawRoundRect(BodyFill, bar.topLeft, bar.size, r)
-    drawRoundRect(Line.copy(alpha = 0.25f), bar.topLeft, bar.size, r, style = Stroke(1.5f))
-}
-
-private fun DrawScope.drawButton(b: PadButton, box: Rect, down: Boolean, pressed: Set<Int>, measurer: TextMeasurer) {
-    val c = centerOf(b, box)
-    val s = b.size * box.width
-    val fill = if (down) Color.White else ButtonDark
-    val ink = if (down) Color.Black else Color.White
-    when (b.shape) {
-        Shape.FACE -> {
-            drawCircle(fill, s / 2f, c)
-            drawCircle(Line, s / 2f, c, style = Stroke(1.5f))
-            label(b.label, c, ink, s * 0.48f, measurer)
-        }
-        Shape.SHOULDER, Shape.TRIGGER -> {
-            val sz = if (b.shape == Shape.SHOULDER) Size(s, s * 0.3f) else Size(s * 0.8f, s * 0.36f)
-            val tl = Offset(c.x - sz.width / 2f, c.y - sz.height / 2f)
-            drawRoundRect(fill, tl, sz, CornerRadius(sz.height / 2f))
-            drawRoundRect(Line, tl, sz, CornerRadius(sz.height / 2f), style = Stroke(1.5f))
-            label(b.label, c, ink, sz.height * 0.62f, measurer)
-        }
-        Shape.SMALL -> {
-            val text = measurer.measure(b.label, TextStyle(fontSize = (s * 0.32f).toSp(), fontWeight = FontWeight.SemiBold))
-            val sz = Size(max(s * 1.4f, text.size.width + s * 0.5f), s * 0.55f)
-            val tl = Offset(c.x - sz.width / 2f, c.y - sz.height / 2f)
-            drawRoundRect(fill, tl, sz, CornerRadius(sz.height / 2f))
-            drawRoundRect(Line, tl, sz, CornerRadius(sz.height / 2f), style = Stroke(1.5f))
-            label(b.label, c, ink, s * 0.32f, measurer)
-        }
-        Shape.STICK -> {
-            // The stick itself can't be seen moving; its press (L3/R3) lights the cap.
-            drawCircle(ButtonDark.copy(alpha = 0.6f), s / 2f, c)
-            drawCircle(Line, s / 2f, c, style = Stroke(1.5f))
-            drawCircle(fill, s * 0.32f, c)
-            drawCircle(Line, s * 0.32f, c, style = Stroke(1.5f))
-        }
-        Shape.DPAD -> {
-            val arm = s / 3f
-            drawRect(ButtonDark, Offset(c.x - arm / 2f, c.y - arm / 2f), Size(arm, arm))
-            listOf(
-                KeyEvent.KEYCODE_DPAD_UP to Offset(0f, -arm),
-                KeyEvent.KEYCODE_DPAD_DOWN to Offset(0f, arm),
-                KeyEvent.KEYCODE_DPAD_LEFT to Offset(-arm, 0f),
-                KeyEvent.KEYCODE_DPAD_RIGHT to Offset(arm, 0f),
-            ).forEach { (code, d) ->
-                val tl = Offset(c.x + d.x - arm / 2f, c.y + d.y - arm / 2f)
-                drawRoundRect(if (code in pressed) Color.White else ButtonDark, tl, Size(arm, arm), CornerRadius(arm * 0.18f))
+/** Plain outline shapes for the PlayStation-style buttons (no colours). */
+private fun DrawScope.drawSymbol(kind: String, c: Offset, s: Float, color: Color) {
+    val w = s * 0.2f
+    when (kind) {
+        "triangle" -> {
+            val p = Path().apply {
+                moveTo(c.x, c.y - s * 0.95f)
+                lineTo(c.x + s * 0.95f, c.y + s * 0.7f)
+                lineTo(c.x - s * 0.95f, c.y + s * 0.7f)
+                close()
             }
-            val path = Path().apply {
-                moveTo(c.x - arm / 2f, c.y - arm * 1.5f); lineTo(c.x + arm / 2f, c.y - arm * 1.5f)
-                lineTo(c.x + arm / 2f, c.y - arm / 2f); lineTo(c.x + arm * 1.5f, c.y - arm / 2f)
-                lineTo(c.x + arm * 1.5f, c.y + arm / 2f); lineTo(c.x + arm / 2f, c.y + arm / 2f)
-                lineTo(c.x + arm / 2f, c.y + arm * 1.5f); lineTo(c.x - arm / 2f, c.y + arm * 1.5f)
-                lineTo(c.x - arm / 2f, c.y + arm / 2f); lineTo(c.x - arm * 1.5f, c.y + arm / 2f)
-                lineTo(c.x - arm * 1.5f, c.y - arm / 2f); lineTo(c.x - arm / 2f, c.y - arm / 2f); close()
-            }
-            drawPath(path, Line, style = Stroke(1.5f))
+            drawPath(p, color, style = Stroke(w))
+        }
+        "circle" -> drawCircle(color, s * 0.85f, c, style = Stroke(w))
+        "cross" -> {
+            val d = s * 0.75f
+            drawLine(color, Offset(c.x - d, c.y - d), Offset(c.x + d, c.y + d), w, StrokeCap.Round)
+            drawLine(color, Offset(c.x + d, c.y - d), Offset(c.x - d, c.y + d), w, StrokeCap.Round)
+        }
+        "square" -> {
+            val d = s * 0.75f
+            drawRect(color, Offset(c.x - d, c.y - d), Size(d * 2, d * 2), style = Stroke(w))
         }
     }
-}
-
-private fun DrawScope.label(text: String, c: Offset, color: Color, px: Float, measurer: TextMeasurer) {
-    if (text.isBlank()) return
-    val layout = measurer.measure(text, TextStyle(color = color, fontSize = px.toSp(), fontWeight = FontWeight.SemiBold))
-    drawText(layout, topLeft = Offset(c.x - layout.size.width / 2f, c.y - layout.size.height / 2f))
 }

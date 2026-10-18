@@ -135,8 +135,9 @@ fun SetupGuideDialog(
                         "tap All to see them side by side. Android asks for permission each time you start it."
                 )
                 Para(
-                    "Controls (also on Now playing and the dimmed screen) shows the Thor's buttons. Turn on " +
-                        "Show presses to see them light up as you press them.")
+                    "Controls (also on Now playing and the dimmed screen) shows the face buttons the way the game's " +
+                        "system labels them (△ ○ × □, or letters), each where its Thor button is. Turn on Show " +
+                        "presses to see them light up.")
 
                 Heading("Reading a guide")
                 Bullet("Turn pages with L1 / R1 or the D-pad, by tapping the outer edges, or by dragging a page.")

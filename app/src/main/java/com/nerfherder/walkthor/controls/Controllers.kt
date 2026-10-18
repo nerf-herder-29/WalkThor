@@ -73,6 +73,38 @@ object ThorPad {
     val FACE_ORDER = listOf("top", "right", "bottom", "left")
 }
 
+/**
+ * How the four face buttons are labelled for the system being played, top/right/bottom/left.
+ * Generic: plain monochrome letters and shapes, no brand colours or logos.
+ */
+enum class FaceStyle(val title: String, val labels: List<String>?) {
+    /** The Thor's own letters, as it reports them. */
+    THOR("Thor", null),
+    PLAYSTATION("PlayStation-style", listOf("triangle", "circle", "cross", "square")),
+    XBOX("Xbox-style", listOf("Y", "B", "A", "X")),
+    NINTENDO("Nintendo-style", listOf("X", "A", "B", "Y"));
+
+    companion object {
+        fun byName(name: String?) = entries.firstOrNull { it.name == name }
+
+        /** A guess from the emulator's name and the game file's extension. */
+        fun detect(player: String?, file: String?): FaceStyle {
+            val p = player?.lowercase().orEmpty()
+            val ext = file?.substringAfterLast('.', "")?.lowercase().orEmpty()
+            return when {
+                listOf("aethersx2", "nethersx2", "pcsx2", "armsx2", "duckstation", "swanstation", "epsxe", "fpse", "ppsspp", "beetle psx", "pcsx").any { it in p } -> PLAYSTATION
+                listOf("ax360", "xenia", "x360").any { it in p } -> XBOX
+                listOf("dolphin", "eden", "citron", "yuzu", "sudachi", "suyu", "ryujinx", "torzu", "citra", "lime3ds", "azahar",
+                    "melonds", "drastic", "mupen", "snes", "mgba", "nestopia", "fceumm").any { it in p } -> NINTENDO
+                ext in setOf("iso", "chd", "cue", "pbp", "cso") && "retroarch" in p -> PLAYSTATION
+                ext in setOf("sfc", "smc", "nes", "gba", "gb", "gbc", "nds", "3ds", "z64", "n64", "v64", "nsp", "xci", "rvz", "gcz", "wbfs") -> NINTENDO
+                ext == "xex" -> XBOX
+                else -> THOR
+            }
+        }
+    }
+}
+
 /** Your choices for the Controls screen. */
 object ControlPrefs {
     private const val PREFS = "controls"
@@ -96,6 +128,15 @@ object ControlPrefs {
     })
 
     fun setFaceCode(context: Context, position: String, code: Int) = prefs(context).edit().putInt("face/$position", code).apply()
+
+    /** The face-button style for an emulator: your pick, else a guess. */
+    fun faceStyle(context: Context, player: String?, file: String?): FaceStyle =
+        FaceStyle.byName(prefs(context).getString("style/" + emu(player), null)) ?: FaceStyle.detect(player, file)
+
+    fun setFaceStyle(context: Context, player: String?, style: FaceStyle) =
+        prefs(context).edit().putString("style/" + emu(player), style.name).apply()
+
+    private fun emu(player: String?) = player?.substringBefore(" (")?.trim()?.lowercase()?.ifEmpty { null } ?: "unknown"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
