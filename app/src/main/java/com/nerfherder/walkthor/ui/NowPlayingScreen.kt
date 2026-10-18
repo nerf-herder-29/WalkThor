@@ -405,20 +405,41 @@ private fun SecondaryButtons(
     val items = listOfNotNull(first, onMirror?.let { "Mirror" to it })
     if (items.isEmpty()) return
     Spacer(Modifier.height(8.dp))
-    if (compact || items.size == 1) {
+    // Side by side only when every label fits its half without being cut off.
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val labelStyle = androidx.compose.material3.MaterialTheme.typography.labelLarge
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val widest = items.maxOf { (label, _) -> measurer.measure(label, labelStyle).size.width }
+    val half = (maxWidth - 8.dp) / 2
+    val textWidth = with(density) { widest.toDp() } + 4.dp
+    // Normal padding if it fits, else tighter padding, else stack them.
+    val sidePad = when {
+        half >= textWidth + 16.dp * 2 -> 16.dp
+        half >= textWidth + 6.dp * 2 -> 6.dp
+        else -> null
+    }
+    if (compact || items.size == 1 || sidePad == null) {
+        Column {
         items.forEachIndexed { i, (label, action) ->
             if (i > 0) Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = action, colors = colors, border = border, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
                 Text(label, maxLines = 1, softWrap = false)
             }
         }
+        }
     } else {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items.forEach { (label, action) ->
-                OutlinedButton(onClick = action, colors = colors, border = border, contentPadding = pad, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = action, colors = colors, border = border,
+                    contentPadding = PaddingValues(horizontal = sidePad, vertical = pad.calculateTopPadding()),
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(label, maxLines = 1, softWrap = false)
                 }
             }
         }
+    }
     }
 }
