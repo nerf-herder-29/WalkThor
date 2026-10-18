@@ -415,23 +415,31 @@ private fun SecondaryButtons(
     val labelStyle = androidx.compose.material3.MaterialTheme.typography.labelLarge
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-    val widest = items.maxOf { (label, _) -> measurer.measure(label, labelStyle).size.width }
-    val textWidth = with(density) { widest.toDp() } + 4.dp
-    // As many to a row as fit without cutting a label off (tightening the padding first).
-    fun padFor(cols: Int): androidx.compose.ui.unit.Dp? {
-        val cell = (maxWidth - 8.dp * (cols - 1)) / cols
+    val widths = items.map { (label, _) -> with(density) { measurer.measure(label, labelStyle).size.width.toDp() } + 4.dp }
+    // Padding that lets every label in a row of [n] fit, or null if they don't fit at all.
+    fun padFor(labels: List<androidx.compose.ui.unit.Dp>, n: Int): androidx.compose.ui.unit.Dp? {
+        val cell = (maxWidth - 8.dp * (n - 1)) / n
+        val widest = labels.maxOf { it }
         return when {
-            cell >= textWidth + 16.dp * 2 -> 16.dp
-            cell >= textWidth + 6.dp * 2 -> 6.dp
+            cell >= widest + 16.dp * 2 -> 16.dp
+            cell >= widest + 6.dp * 2 -> 6.dp
             else -> null
         }
     }
-    val cols = (items.size downTo 1).firstOrNull { padFor(it) != null } ?: 1
-    val sidePad = padFor(cols) ?: 16.dp
+    // Fill rows left to right with as many buttons as fit side by side.
+    val rows = mutableListOf<List<Int>>()
+    var current = mutableListOf<Int>()
+    items.indices.forEach { i ->
+        val trial = current + i
+        if (current.isEmpty() || padFor(trial.map { widths[it] }, trial.size) != null) current.add(i)
+        else { rows.add(current); current = mutableListOf(i) }
+    }
+    if (current.isNotEmpty()) rows.add(current)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.chunked(cols).forEach { row ->
+        rows.forEach { row ->
+            val sidePad = padFor(row.map { widths[it] }, row.size) ?: 6.dp
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { (label, action) ->
+                row.map { items[it] }.forEach { (label, action) ->
                     OutlinedButton(
                         onClick = action, colors = colors, border = border,
                         contentPadding = PaddingValues(horizontal = sidePad, vertical = pad.calculateTopPadding()),
