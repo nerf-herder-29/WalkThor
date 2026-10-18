@@ -78,6 +78,10 @@ object AutoDim {
     val openMirror = MutableStateFlow<(() -> Unit)?>(null)
     /** Set by the Now playing screen: the dimmed screen offers the Controls screen. */
     val openControls = MutableStateFlow<(() -> Unit)?>(null)
+    /** What [openGuide] says: "Open guide", or "Add guide" when the game has none yet. */
+    val primaryLabel = MutableStateFlow("Open guide")
+    /** The small link under the Now playing buttons, so the dimmed layout leaves the same space. */
+    val linkLabel = MutableStateFlow<String?>(null)
     const val REST_AFTER_MS = 30_000L
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
@@ -195,11 +199,17 @@ fun AutoDimOverlay() {
         val game by PlaySession.current.collectAsState()
         val g = game
         if (g != null && !previewing) {
-            Column(
+            // Exactly the Now playing screen's layout (same name, emulator and buttons in the same
+            // places), so nothing moves when the screen dims or wakes. Buttons act on touch down,
+            // since that same touch also wakes the screen.
+            val open by AutoDim.openGuide.collectAsState()
+            val primaryLabel by AutoDim.primaryLabel.collectAsState()
+            val mirror by AutoDim.openMirror.collectAsState()
+            val controlsAction by AutoDim.openControls.collectAsState()
+            val linkLabel by AutoDim.linkLabel.collectAsState()
+            Box(
                 Modifier
                     .align(Alignment.Center)
-                    .widthIn(max = 560.dp)
-                    .padding(horizontal = 32.dp)
                     .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) }
                     // A soft pool of black so the dimmed page doesn't show through the letters.
                     .drawBehind {
@@ -212,38 +222,20 @@ fun AutoDimOverlay() {
                             topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.25f, -size.height * 0.6f),
                             size = androidx.compose.ui.geometry.Size(size.width * 1.5f, size.height * 2.2f),
                         )
-                    }
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    },
             ) {
-                Text("NOW PLAYING", style = EyebrowStyle.copy(color = BookColors.Brass.copy(alpha = 0.7f)))
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    displayTitle(g.title),
-                    color = BookColors.Text.copy(alpha = 0.85f),
-                    fontFamily = SerifDisplay,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 26.sp,
-                    lineHeight = 32.sp,
-                    textAlign = TextAlign.Center,
+                NowPlayingStack(
+                    title = g.title,
+                    player = g.player,
+                    buttons = listOfNotNull(
+                        open?.let { StackButton(primaryLabel, filled = true, action = it) },
+                        mirror?.let { StackButton("Mirror", filled = false, action = it) },
+                        controlsAction?.let { StackButton("Face Buttons", filled = false, action = it) },
+                    ),
+                    link = linkLabel?.let { it to {} },
+                    linkVisible = false,
+                    actOnDown = true,
                 )
-                g.player?.let {
-                    Spacer(Modifier.height(6.dp))
-                    Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 14.sp)
-                }
-                // Open the game's guide, or mirror part of the top screen, straight from the dimmed
-                // screen. They act on touch down, since that same touch also wakes the screen.
-                val open by AutoDim.openGuide.collectAsState()
-                val mirror by AutoDim.openMirror.collectAsState()
-                val controlsAction by AutoDim.openControls.collectAsState()
-                if (open != null || mirror != null || controlsAction != null) {
-                    Spacer(Modifier.height(22.dp))
-                    androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
-                        open?.let { DimButton("Open guide", filled = true, action = it) }
-                        mirror?.let { DimButton("Mirror", filled = open == null, action = it) }
-                        controlsAction?.let { DimButton("Face Buttons", filled = open == null && mirror == null, action = it) }
-                    }
-                }
             }
         }
         // Performance check readout (⋮ → Performance check).

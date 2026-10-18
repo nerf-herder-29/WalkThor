@@ -108,12 +108,15 @@ fun NowPlayingScreen(
     // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is);
     // with a guide, the dimmed screen offers to open it.
     val openGuide by androidx.compose.runtime.rememberUpdatedState(onOpenGuide)
+    val addGuide by androidx.compose.runtime.rememberUpdatedState(onAddGuide)
     val mirror by androidx.compose.runtime.rememberUpdatedState(onMirror)
     val controls by androidx.compose.runtime.rememberUpdatedState(onControls)
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
         AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
-        AutoDim.openGuide.value = if (guide != null) ({ openGuide() }) else null
+        AutoDim.openGuide.value = if (guide != null) ({ openGuide() }) else ({ addGuide() })
+        AutoDim.primaryLabel.value = if (guide != null) "Open guide" else "Add guide"
+        AutoDim.linkLabel.value = linkLabelFor(guide, books)
         AutoDim.openMirror.value = if (onMirror != null) ({ mirror?.invoke() }) else null
         AutoDim.openControls.value = if (onControls != null) ({ controls?.invoke() }) else null
         onDispose {
@@ -121,6 +124,7 @@ fun NowPlayingScreen(
             AutoDim.screenDelayMs.value = null
             AutoDim.openGuide.value = null
             AutoDim.openMirror.value = null
+            AutoDim.linkLabel.value = null
         }
     }
     // The Thor's bottom screen is short; at denser display settings tighten everything up.
@@ -135,7 +139,7 @@ fun NowPlayingScreen(
     val fill = BookColors.Ink
 
     Box(Modifier.fillMaxSize().background(BookColors.Ink)) {
-        // ---- the game's wide art across the whole screen ----
+        // ---- the game's wide art across the whole screen, sharp ----
         if (banner != null && !resting) {
             AsyncImage(
                 model = Uri.parse(banner),
@@ -144,185 +148,49 @@ fun NowPlayingScreen(
                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = enter.value },
             )
         }
-        // Gentle shading at the top and bottom, for the bar icons, the logo and the status corner.
+        // Shading so white text reads on any art: darker in the middle (behind the name and
+        // buttons) and at the top and bottom (the bar and the status corner).
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.radialGradient(
+                    0f to Color.Black.copy(alpha = 0.72f),
+                    0.6f to Color.Black.copy(alpha = 0.45f),
+                    1f to Color.Black.copy(alpha = 0.25f),
+                )
+            )
+        )
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     0f to Color.Black.copy(alpha = 0.45f),
-                    0.22f to Color.Transparent,
-                    0.62f to Color.Transparent,
-                    1f to Color.Black.copy(alpha = 0.7f),
+                    0.2f to Color.Transparent,
+                    0.8f to Color.Transparent,
+                    1f to Color.Black.copy(alpha = 0.6f),
                 )
             )
         )
-        // ---- frosted glass that eases in toward the right, for the guide ----
-        // A blurred, darkened copy of the art, faded in with a soft mask across the middle, so
-        // the art goes from sharp on the left to frosted on the right with no hard edge.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha = enter.value
-                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(
-                        Brush.horizontalGradient(
-                            0f to Color.Transparent,
-                            0.36f to Color.Transparent,
-                            0.62f to Color.Black,
-                            1f to Color.Black,
-                        ),
-                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
-                    )
-                },
-        ) {
-            if (banner != null && !resting) {
-                // The same art, gently blurred. (Android 12+; older versions just get the tint.)
-                AsyncImage(
-                    model = Uri.parse(banner),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(14.dp) else Modifier),
-                )
-            }
-            // Smoky tint so white text reads on any art.
-            Box(Modifier.fillMaxSize().background(Color(0xFF0B0B10).copy(alpha = 0.62f)))
-        }
-        Row(Modifier.fillMaxSize()) {
-            // ---- left half: the logo over the art ----
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .graphicsLayer { alpha = enter.value },
-            ) {
-                // The logo, or the title when there's no logo.
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = if (compact) 18.dp else 28.dp)
-                        .padding(bottom = if (compact) 22.dp else 36.dp)
-                        .graphicsLayer { translationY = (1f - enter.value) * 16.dp.toPx() },
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    if (art.logo != null && !resting) {
-                        AsyncImage(
-                            model = Uri.parse(art.logo),
-                            contentDescription = displayTitle(game.title),
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .heightIn(max = if (compact) 80.dp else 130.dp),
-                        )
-                    } else {
-                        Text(
-                            displayTitle(game.title),
-                            color = Color.White,
-                            fontFamily = SerifDisplay,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = if (compact) 22.sp else 30.sp,
-                            lineHeight = if (compact) 26.sp else 36.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            style = androidx.compose.ui.text.TextStyle(
-                                shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.6f), blurRadius = 12f),
-                            ),
-                        )
-                    }
-                }
-            }
-
-            // ---- right half: the guide ----
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(horizontal = if (compact) 22.dp else 40.dp)
-                    .padding(top = 52.dp, bottom = 40.dp)
-                    .verticalScroll(rememberScrollState())
-                    .graphicsLayer {
-                        alpha = enter.value
-                        translationX = (1f - enter.value) * 24.dp.toPx()
-                    },
-                verticalArrangement = Arrangement.Center,
-            ) {
-                game.player?.let {
-                    Text(emulatorName(it).uppercase(), style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.7f)))
-                    Spacer(Modifier.height(if (compact) 10.dp else 16.dp))
-                }
-                val primary = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = fill)
-                val secondary = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                val outline = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
-                val pad = PaddingValues(horizontal = 16.dp, vertical = if (compact) 6.dp else 10.dp)
-                if (guide != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        GuideTile(guide, if (resting) null else guideCover, Modifier.size(if (compact) 44.dp else 60.dp))
-                        Spacer(Modifier.width(14.dp))
-                        Column {
-                            Text("YOUR GUIDE", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.7f)))
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                guide.title,
-                                color = Color.White,
-                                fontFamily = SerifDisplay,
-                                fontSize = if (compact) 16.sp else 19.sp,
-                                lineHeight = if (compact) 20.sp else 24.sp,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
-                    Button(onClick = onOpenGuide, colors = primary, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
-                        Text("Open guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
-                    }
-                    SecondaryButtons(
-                        first = if (books.size > 1) ("Other guide" to { picking = true }) else null,
-                        onMirror = onMirror, onControls = onControls, compact = compact, colors = secondary, border = outline, pad = pad,
-                    )
-                } else {
-                    Text(
-                        "No guide yet",
-                        color = Color.White,
-                        fontFamily = SerifDisplay,
-                        fontSize = if (compact) 20.sp else 26.sp,
-                    )
-                    if (!compact) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "Add one, or pick one from your shelf, and WalkThor will open it for this game from now on.",
-                            color = Color.White.copy(alpha = 0.75f),
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                        )
-                    }
-                    Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
-                    Button(onClick = onAddGuide, colors = primary, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
-                    }
-                    SecondaryButtons(
-                        first = if (books.isNotEmpty()) ("From my shelf" to { picking = true }) else null,
-                        onMirror = onMirror, onControls = onControls, compact = compact, colors = secondary, border = outline, pad = pad,
-                    )
-                }
-            }
-        }
+        // ---- the game, its emulator and the buttons: the same layout as the dimmed screen ----
+        val link = linkLabelFor(guide, books)?.let { it to { picking = true } }
+        NowPlayingStack(
+            title = game.title,
+            player = game.player,
+            buttons = listOfNotNull(
+                if (guide != null) StackButton("Open guide", filled = true, action = onOpenGuide)
+                else StackButton("Add guide", filled = true, action = onAddGuide),
+                onMirror?.let { StackButton("Mirror", filled = false, action = it) },
+                onControls?.let { StackButton("Face Buttons", filled = false, action = it) },
+            ),
+            link = link,
+            linkVisible = true,
+            actOnDown = false,
+            modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = enter.value },
+        )
 
         // ---- over everything: back and close at the top, the status corner at the bottom ----
         Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(top = 6.dp)) {
             IconButton(onClick = onLibrary, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = Color.White.copy(alpha = 0.85f))
             }
-            // Beside the back arrow, clear of the glass edge in the middle.
-            Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)), modifier = Modifier.align(Alignment.CenterStart).padding(start = 52.dp))
             IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
             }
@@ -452,4 +320,11 @@ private fun SecondaryButtons(
         }
     }
     }
+}
+
+/** The small link under the buttons: pick another guide, or one from the shelf; null if there's none to pick. */
+private fun linkLabelFor(guide: Book?, books: List<Book>): String? = when {
+    guide != null && books.size > 1 -> "Other guide"
+    guide == null && books.isNotEmpty() -> "From my shelf"
+    else -> null
 }
