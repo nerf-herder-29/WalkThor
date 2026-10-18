@@ -29,8 +29,8 @@ enum class ThorInput(val label: String, val short: String, val keys: IntArray) {
     DPAD("D-pad", "D-pad", intArrayOf(
         KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
     )),
-    LEFT_STICK("Left stick", "Left stick", intArrayOf()),
-    RIGHT_STICK("Right stick", "Right stick", intArrayOf()),
+    LEFT_STICK("Left stick", "LS", intArrayOf()),
+    RIGHT_STICK("Right stick", "RS", intArrayOf()),
     NONE("Not mapped", "—", intArrayOf());
 
     val isFace get() = this == SOUTH || this == EAST || this == WEST || this == NORTH

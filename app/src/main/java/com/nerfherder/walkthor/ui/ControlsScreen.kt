@@ -404,36 +404,65 @@ private fun DrawScope.label(text: String, c: Offset, color: Color, px: Float, me
     drawText(layout, topLeft = Offset(c.x - layout.size.width / 2f, c.y - layout.size.height / 2f))
 }
 
-/** The Thor equivalent beside each button: a little diamond for face buttons, else a name. */
+/**
+ * The Thor equivalent of each button. Face buttons get a small diamond tucked against the
+ * button's lower-right edge; other inputs get a name tag on the button's [Side]. Tags that would
+ * just repeat the button's own name ("Start" on Start) are left out.
+ */
 private fun DrawScope.drawBadge(b: PadButton, box: Rect, input: ThorInput, measurer: TextMeasurer) {
     val c = centerOf(b, box)
     val s = b.size * box.width
-    val reach = when (b.shape) {
-        Shape.SHOULDER, Shape.TRIGGER -> s * 0.5f
-        Shape.PILL -> s * 0.75f
-        Shape.SMALL -> s * 0.9f
-        else -> s * 0.5f
-    } + 6.dp.toPx()
+    if (input == ThorInput.NONE) return
+    if (input.isFace) {
+        val g = 15.dp.toPx()
+        val r = when (b.shape) {
+            Shape.PILL -> Offset(s * 0.62f, s * 0.3f)
+            Shape.STICK -> Offset(s * 0.36f, s * 0.36f)
+            Shape.SHOULDER, Shape.TRIGGER, Shape.SMALL -> Offset(s * 0.5f, s * 0.15f)
+            else -> Offset(s * 0.36f, s * 0.36f)
+        }
+        val center = c + r
+        drawCircle(Color(0xFF0B0B0D), g * 0.72f, center)
+        drawCircle(BookColors.Hairline, g * 0.72f, center, style = Stroke(1f))
+        faceGlyph(center, g, input)
+        return
+    }
+    if (input.short.equals(b.label, ignoreCase = true) || input.label.equals(b.label, ignoreCase = true)) return
     val textStyle = TextStyle(color = BookColors.Text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-    val text = if (input.isFace) null else measurer.measure(input.short, textStyle)
-    val glyph = 14.dp.toPx()
+    val text = measurer.measure(input.short, textStyle)
+    // How far the button reaches from its centre towards the tag.
+    val halfW = when (b.shape) {
+        Shape.SHOULDER -> s * 0.5f
+        Shape.TRIGGER -> s * 0.4f
+        Shape.PILL -> s * 0.75f
+        Shape.SMALL -> {
+            val t = measurer.measure(b.label, TextStyle(fontSize = (s * 0.32f).toSp(), fontWeight = FontWeight.SemiBold))
+            max(s * 1.4f, t.size.width + s * 0.5f) / 2f
+        }
+        Shape.DPAD -> s * 0.5f
+        else -> s * 0.5f
+    }
+    val halfH = when (b.shape) {
+        Shape.SHOULDER -> s * 0.15f
+        Shape.TRIGGER -> s * 0.18f
+        Shape.SMALL -> s * 0.28f
+        Shape.PILL -> s * 0.38f
+        else -> s * 0.5f
+    }
+    val gap = 6.dp.toPx()
     val pad = 5.dp.toPx()
-    val bw = (text?.size?.width?.toFloat() ?: glyph) + pad * 2
-    val bh = max(text?.size?.height?.toFloat() ?: 0f, glyph) + pad
+    val bw = text.size.width + pad * 2
+    val bh = text.size.height + pad
     val center = when (b.side) {
-        Side.LEFT -> Offset(c.x - reach - bw / 2f, c.y)
-        Side.RIGHT -> Offset(c.x + reach + bw / 2f, c.y)
-        Side.TOP -> Offset(c.x, c.y - (if (b.shape == Shape.SMALL) s * 0.3f else s / 2f) - 6.dp.toPx() - bh / 2f)
-        Side.BOTTOM -> Offset(c.x, c.y + (if (b.shape == Shape.SMALL) s * 0.3f else s / 2f) + 6.dp.toPx() + bh / 2f)
+        Side.LEFT -> Offset(c.x - halfW - gap - bw / 2f, c.y)
+        Side.RIGHT -> Offset(c.x + halfW + gap + bw / 2f, c.y)
+        Side.TOP -> Offset(c.x, c.y - halfH - gap - bh / 2f)
+        Side.BOTTOM -> Offset(c.x, c.y + halfH + gap + bh / 2f)
     }
     val tl = Offset(center.x - bw / 2f, center.y - bh / 2f)
     drawRoundRect(Color(0xFF0B0B0D), tl, Size(bw, bh), CornerRadius(bh / 2f))
     drawRoundRect(BookColors.Hairline, tl, Size(bw, bh), CornerRadius(bh / 2f), style = Stroke(1f))
-    if (text != null) {
-        drawText(text, topLeft = Offset(center.x - text.size.width / 2f, center.y - text.size.height / 2f))
-    } else {
-        faceGlyph(center, glyph, input)
-    }
+    drawText(text, topLeft = Offset(center.x - text.size.width / 2f, center.y - text.size.height / 2f))
 }
 
 /** Four dots in a diamond with the Thor face button's position filled in. */
