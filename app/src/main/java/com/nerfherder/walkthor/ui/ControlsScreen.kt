@@ -173,7 +173,7 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
                         agreed = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
-                ) { Text("Agree & turn on", fontWeight = FontWeight.SemiBold) }
+                ) { Text("Agree", fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = { TextButton(onClick = onBack) { Text("Not now", color = BookColors.TextMuted) } },
         )
