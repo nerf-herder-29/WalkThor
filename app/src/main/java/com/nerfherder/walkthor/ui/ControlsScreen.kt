@@ -76,6 +76,22 @@ fun ControlsScreen(onBack: () -> Unit) {
     var watchProblem by remember { mutableStateOf<String?>(null) }
     val pressed by ControllerInput.pressed.collectAsState()
     val last by ControllerInput.last.collectAsState()
+    // Which key code each face button position sends (Nintendo-style unless set up otherwise).
+    var faceCodes by remember { mutableStateOf(ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) }) }
+    // "Set up face buttons": which position we're asking for next (index into FACE_ORDER), or null.
+    var settingUp by remember { mutableStateOf<Int?>(null) }
+    val count by ControllerInput.count.collectAsState()
+    var countAtStep by remember { mutableStateOf(0) }
+    LaunchedEffect(count) {
+        val step = settingUp ?: return@LaunchedEffect
+        if (count == countAtStep) return@LaunchedEffect
+        val code = ControllerInput.last.value ?: return@LaunchedEffect
+        val pos = ThorPad.FACE_ORDER[step]
+        ControlPrefs.setFaceCode(context, pos, code)
+        faceCodes = faceCodes + (pos to code)
+        countAtStep = count
+        settingUp = if (step + 1 < ThorPad.FACE_ORDER.size) step + 1 else null
+    }
 
     // Watch presses only while this screen is open with the option on; the screen stays bright
     // then, since you're looking at it while you play.
@@ -118,6 +134,12 @@ fun ControlsScreen(onBack: () -> Unit) {
                     Text("CONTROLS", style = EyebrowStyle)
                     Text("Thor buttons", color = BookColors.Text, fontSize = 15.sp, maxLines = 1)
                 }
+                if (showPresses && watchProblem == null) {
+                    TextButton(onClick = {
+                        countAtStep = ControllerInput.count.value
+                        settingUp = if (settingUp == null) 0 else null
+                    }) { Text(if (settingUp == null) "Set up face buttons" else "Cancel", color = BookColors.TextMuted) }
+                }
                 Toggle("Show presses", showPresses) { on ->
                     if (on && !ControlPrefs.keysConsent(context)) askConsent = true
                     else { showPresses = on; ControlPrefs.setShowPresses(context, on) }
@@ -125,16 +147,17 @@ fun ControlsScreen(onBack: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
             }
             Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp)) {
-                PadDiagram(pressed)
+                PadDiagram(pressed, faceCodes, settingUp?.let { ThorPad.FACE_ORDER[it] })
             }
             val message = when {
                 watchProblem != null -> watchProblem!!
+                settingUp != null -> "Press the ${ThorPad.FACE_ORDER[settingUp!!]} face button (the one outlined)."
                 showPresses && last != null -> {
                     val code = last!!
                     val known = ControllerInput.inputFor(code)
                     "You pressed ${known?.label ?: keyName(code)} · sent as ${keyName(code)}"
                 }
-                showPresses -> "Press any button. Sticks can't be shown (Android doesn't share them), and on some devices neither can the D-pad."
+                showPresses -> "Press any button. The sticks and the analog L2/R2 triggers can't be shown (Android doesn't share them), and on some devices neither can the D-pad."
                 else -> "Turn on Show presses to see the buttons light up as you play."
             }
             Text(
@@ -194,7 +217,7 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
 
 /** The Thor's buttons in a generic body, each lit while held. */
 @Composable
-private fun PadDiagram(pressed: Set<Int>) {
+private fun PadDiagram(pressed: Set<Int>, faceCodes: Map<String, Int>, asking: String?) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -207,7 +230,17 @@ private fun PadDiagram(pressed: Set<Int>) {
         Canvas(Modifier.fillMaxSize()) {
             drawBody(box)
             ThorPad.BUTTONS.forEach { b ->
-                drawButton(b, box, b.input.keys.any { it in pressed }, pressed, measurer)
+                val faceCode = b.face?.let { faceCodes[it] }
+                if (faceCode != null) {
+                    // Face buttons: labelled with what the Thor sends from that position.
+                    val shown = b.copy(label = keyName(faceCode).removePrefix("BUTTON_"))
+                    drawButton(shown, box, faceCode in pressed, pressed, measurer)
+                    if (b.face == asking) {
+                        drawCircle(Color.White, b.size * box.width * 0.68f, centerOf(b, box), style = Stroke(3.dp.toPx()))
+                    }
+                } else {
+                    drawButton(b, box, b.input.keys.any { it in pressed }, pressed, measurer)
+                }
             }
         }
     }

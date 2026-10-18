@@ -44,6 +44,8 @@ data class PadButton(
     val x: Float,
     val y: Float,
     val size: Float,
+    /** For the four face buttons: which position this is ("top", "right", "bottom", "left"). */
+    val face: String? = null,
 )
 
 object ThorPad {
@@ -61,11 +63,14 @@ object ThorPad {
         PadButton(ThorInput.R3, "", Shape.STICK, 0.64f, 0.66f, 0.11f),
         PadButton(ThorInput.SELECT, "Select", Shape.SMALL, 0.42f, 0.38f, 0.045f),
         PadButton(ThorInput.START, "Start", Shape.SMALL, 0.58f, 0.38f, 0.045f),
-        PadButton(ThorInput.Y, "Y", Shape.FACE, 0.78f, 0.27f, F),
-        PadButton(ThorInput.B, "B", Shape.FACE, 0.86f, 0.38f, F),
-        PadButton(ThorInput.A, "A", Shape.FACE, 0.78f, 0.49f, F),
-        PadButton(ThorInput.X, "X", Shape.FACE, 0.70f, 0.38f, F),
+        // Face buttons by position; which button sits where comes from [ControlPrefs.faceCode].
+        PadButton(ThorInput.X, "", Shape.FACE, 0.78f, 0.27f, F, face = "top"),
+        PadButton(ThorInput.A, "", Shape.FACE, 0.86f, 0.38f, F, face = "right"),
+        PadButton(ThorInput.B, "", Shape.FACE, 0.78f, 0.49f, F, face = "bottom"),
+        PadButton(ThorInput.Y, "", Shape.FACE, 0.70f, 0.38f, F, face = "left"),
     )
+
+    val FACE_ORDER = listOf("top", "right", "bottom", "left")
 }
 
 /** Your choices for the Controls screen. */
@@ -77,6 +82,20 @@ object ControlPrefs {
     fun setKeysConsent(context: Context, on: Boolean) = prefs(context).edit().putBoolean("keysConsent", on).apply()
     fun showPresses(context: Context) = prefs(context).getBoolean("showPresses", false)
     fun setShowPresses(context: Context, on: Boolean) = prefs(context).edit().putBoolean("showPresses", on).apply()
+
+    /**
+     * The key code the Thor sends for the face button at [position]. Defaults to the Thor's
+     * Nintendo-style layout (X top, A right, B bottom, Y left); "Set up face buttons" records the
+     * real ones.
+     */
+    fun faceCode(context: Context, position: String): Int = prefs(context).getInt("face/$position", when (position) {
+        "top" -> KeyEvent.KEYCODE_BUTTON_X
+        "right" -> KeyEvent.KEYCODE_BUTTON_A
+        "bottom" -> KeyEvent.KEYCODE_BUTTON_B
+        else -> KeyEvent.KEYCODE_BUTTON_Y
+    })
+
+    fun setFaceCode(context: Context, position: String, code: Int) = prefs(context).edit().putInt("face/$position", code).apply()
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
@@ -94,6 +113,8 @@ object ControllerInput {
     val pressed = MutableStateFlow<Set<Int>>(emptySet())
     /** The last button pressed (a key code), for the "you pressed" line. */
     val last = MutableStateFlow<Int?>(null)
+    /** Counts presses, so the same button pressed twice still registers as a new press. */
+    val count = MutableStateFlow(0)
 
     private val KNOWN = ThorInput.entries.flatMap { it.keys.toList() }.toSet()
     private const val PAD_SOURCES = InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK or InputDevice.SOURCE_DPAD
@@ -108,6 +129,7 @@ object ControllerInput {
             KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
                 pressed.value = pressed.value + code
                 last.value = code
+                count.value = count.value + 1
             }
             KeyEvent.ACTION_UP -> pressed.value = pressed.value - code
         }
