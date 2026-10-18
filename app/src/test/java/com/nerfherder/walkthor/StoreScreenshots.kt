@@ -160,6 +160,35 @@ class StoreScreenshots {
     }
 
     @Test
+    fun controlsGameCube() {
+        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.rvz", "Dolphin Emulator", 0L), onBack = {}) }
+        settle()
+        shot("10-controls-gamecube")
+    }
+
+    @Test
+    fun controlsPlayStation() {
+        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {}) }
+        settle()
+        shot("10-controls-playstation")
+    }
+
+    @Test
+    fun controlsN64() {
+        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.z64", "RetroArch", 0L), onBack = {}) }
+        settle()
+        shot("10-controls-n64")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun controlsDense() {
+        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.xex", "aX360e", 0L), onBack = {}) }
+        settle()
+        shot("10-controls-xbox-dense")
+    }
+
+    @Test
     fun autoDimSettings() {
         AutoDim.delayMs.value = 60_000L
         content { Library() }
@@ -302,7 +331,7 @@ class StoreScreenshots {
                 art = GameArt(cover = art, logo = logo, hero = fakeHero()),
                 books = shelf.drop(1),
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
             )
         }
         settle()
@@ -320,7 +349,7 @@ class StoreScreenshots {
                 art = GameArt(cover = art),
                 books = shelf.drop(1),
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
             )
         }
         settle()
@@ -416,7 +445,7 @@ class StoreScreenshots {
                 art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
                 books = shelf,
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
                 guide = shelf[0],
             )
         }
@@ -434,7 +463,7 @@ class StoreScreenshots {
                     art = GameArt(null),
                     books = shelf,
                     coverFile = { null },
-                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {},
+                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
                     guide = shelf[0],
                 )
                 com.nerfherder.walkthor.ui.AutoDimOverlay()

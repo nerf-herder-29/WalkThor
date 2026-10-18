@@ -76,6 +76,8 @@ object AutoDim {
     val openGuide = MutableStateFlow<(() -> Unit)?>(null)
     /** Set by the Now playing screen: the dimmed screen offers to mirror part of the top screen. */
     val openMirror = MutableStateFlow<(() -> Unit)?>(null)
+    /** Set by the Now playing screen: the dimmed screen offers the Controls screen. */
+    val openControls = MutableStateFlow<(() -> Unit)?>(null)
     const val REST_AFTER_MS = 30_000L
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
@@ -233,11 +235,13 @@ fun AutoDimOverlay() {
                 // screen. They act on touch down, since that same touch also wakes the screen.
                 val open by AutoDim.openGuide.collectAsState()
                 val mirror by AutoDim.openMirror.collectAsState()
-                if (open != null || mirror != null) {
+                val controlsAction by AutoDim.openControls.collectAsState()
+                if (open != null || mirror != null || controlsAction != null) {
                     Spacer(Modifier.height(22.dp))
                     androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
                         open?.let { DimButton("Open guide", filled = true, action = it) }
                         mirror?.let { DimButton("Mirror", filled = open == null, action = it) }
+                        controlsAction?.let { DimButton("Controls", filled = open == null && mirror == null, action = it) }
                     }
                 }
             }

@@ -102,18 +102,22 @@ fun NowPlayingScreen(
     guide: Book? = null,
     onOpenGuide: () -> Unit = {},
     onMirror: (() -> Unit)? = null,
+    onControls: (() -> Unit)? = null,
 ) {
     var picking by remember { mutableStateOf(false) }
     // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is);
     // with a guide, the dimmed screen offers to open it.
     val openGuide by androidx.compose.runtime.rememberUpdatedState(onOpenGuide)
     val mirror by androidx.compose.runtime.rememberUpdatedState(onMirror)
+    val controls by androidx.compose.runtime.rememberUpdatedState(onControls)
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
         AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
         AutoDim.openGuide.value = if (guide != null) ({ openGuide() }) else null
         AutoDim.openMirror.value = if (onMirror != null) ({ mirror?.invoke() }) else null
+        AutoDim.openControls.value = if (onControls != null) ({ controls?.invoke() }) else null
         onDispose {
+            AutoDim.openControls.value = null
             AutoDim.screenDelayMs.value = null
             AutoDim.openGuide.value = null
             AutoDim.openMirror.value = null
@@ -280,7 +284,7 @@ fun NowPlayingScreen(
                     }
                     SecondaryButtons(
                         first = if (books.size > 1) ("Other guide" to { picking = true }) else null,
-                        onMirror = onMirror, compact = compact, colors = secondary, border = outline, pad = pad,
+                        onMirror = onMirror, onControls = onControls, compact = compact, colors = secondary, border = outline, pad = pad,
                     )
                 } else {
                     Text(
@@ -306,7 +310,7 @@ fun NowPlayingScreen(
                     }
                     SecondaryButtons(
                         first = if (books.isNotEmpty()) ("From my shelf" to { picking = true }) else null,
-                        onMirror = onMirror, compact = compact, colors = secondary, border = outline, pad = pad,
+                        onMirror = onMirror, onControls = onControls, compact = compact, colors = secondary, border = outline, pad = pad,
                     )
                 }
             }
@@ -397,12 +401,13 @@ private fun NoArtPlaceholder(title: String) {
 private fun SecondaryButtons(
     first: Pair<String, () -> Unit>?,
     onMirror: (() -> Unit)?,
+    onControls: (() -> Unit)?,
     compact: Boolean,
     colors: androidx.compose.material3.ButtonColors,
     border: androidx.compose.foundation.BorderStroke,
     pad: PaddingValues,
 ) {
-    val items = listOfNotNull(first, onMirror?.let { "Mirror" to it })
+    val items = listOfNotNull(first, onMirror?.let { "Mirror" to it }, onControls?.let { "Controls" to it })
     if (items.isEmpty()) return
     Spacer(Modifier.height(8.dp))
     // Side by side only when every label fits its half without being cut off.
@@ -411,32 +416,29 @@ private fun SecondaryButtons(
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
     val widest = items.maxOf { (label, _) -> measurer.measure(label, labelStyle).size.width }
-    val half = (maxWidth - 8.dp) / 2
     val textWidth = with(density) { widest.toDp() } + 4.dp
-    // Normal padding if it fits, else tighter padding, else stack them.
-    val sidePad = when {
-        half >= textWidth + 16.dp * 2 -> 16.dp
-        half >= textWidth + 6.dp * 2 -> 6.dp
-        else -> null
+    // As many to a row as fit without cutting a label off (tightening the padding first).
+    fun padFor(cols: Int): androidx.compose.ui.unit.Dp? {
+        val cell = (maxWidth - 8.dp * (cols - 1)) / cols
+        return when {
+            cell >= textWidth + 16.dp * 2 -> 16.dp
+            cell >= textWidth + 6.dp * 2 -> 6.dp
+            else -> null
+        }
     }
-    if (compact || items.size == 1 || sidePad == null) {
-        Column {
-        items.forEachIndexed { i, (label, action) ->
-            if (i > 0) Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = action, colors = colors, border = border, contentPadding = pad, modifier = Modifier.fillMaxWidth()) {
-                Text(label, maxLines = 1, softWrap = false)
-            }
-        }
-        }
-    } else {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items.forEach { (label, action) ->
-                OutlinedButton(
-                    onClick = action, colors = colors, border = border,
-                    contentPadding = PaddingValues(horizontal = sidePad, vertical = pad.calculateTopPadding()),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(label, maxLines = 1, softWrap = false)
+    val cols = (items.size downTo 1).firstOrNull { padFor(it) != null } ?: 1
+    val sidePad = padFor(cols) ?: 16.dp
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(cols).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (label, action) ->
+                    OutlinedButton(
+                        onClick = action, colors = colors, border = border,
+                        contentPadding = PaddingValues(horizontal = sidePad, vertical = pad.calculateTopPadding()),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(label, maxLines = 1, softWrap = false)
+                    }
                 }
             }
         }

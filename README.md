@@ -34,6 +34,9 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
   up to four areas per game (say, minimap and health bar), switch between them or see them all
   side by side, and WalkThor remembers them. Uses Android's screen capture (it asks each
   time); nothing is recorded or saved.
+- **Controls** — a generic diagram of the controller for the system you're playing (PlayStation-,
+  GameCube-, N64-, Xbox-, Switch-style and more) showing which Thor button is which, worked out
+  from the emulator. Tap to correct a mapping; optionally light up buttons as you press them.
 - **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
 - **Animated book** — pages turn in 3D around the spine. Drag a page and it follows your finger;

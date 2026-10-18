@@ -464,6 +464,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var noGuide by remember { mutableStateOf<Showing?>(null) }
     /** The game whose top screen is being mirrored here, if the mirror screen is open. */
     var mirroring by remember { mutableStateOf<String?>(null) }
+    /** The Controls screen (the original controller and its Thor buttons) is open. */
+    var showingControls by remember { mutableStateOf(false) }
     /** "Add guide" on the no-guide screen: the next imported guide is linked to this game. */
     var linkImportTo by remember { mutableStateOf<LaunchedGame?>(null) }
 
@@ -627,6 +629,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 )
             }
         }
+    } else if (showingControls && noGuide != null) {
+        BackHandler { showingControls = false }
+        com.nerfherder.walkthor.ui.ControlsScreen(game = noGuide!!.game, onBack = { showingControls = false })
     } else if (mirroring != null && noGuide != null) {
         BackHandler { mirroring = null }
         com.nerfherder.walkthor.ui.MirrorScreen(
@@ -655,6 +660,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             },
             onClose = host::closeApp,
             onMirror = { AutoDim.wake(); mirroring = game.title },
+            onControls = { AutoDim.wake(); showingControls = true },
         )
     } else {
         LibraryScreen(

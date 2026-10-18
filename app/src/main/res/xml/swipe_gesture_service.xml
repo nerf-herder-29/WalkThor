@@ -4,4 +4,5 @@
     android:accessibilityEventTypes="typeAnnouncement"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canPerformGestures="true"
+    android:canRequestFilterKeyEvents="true"
     android:notificationTimeout="1000" />

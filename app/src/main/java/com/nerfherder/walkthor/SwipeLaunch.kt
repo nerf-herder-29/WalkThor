@@ -170,9 +170,37 @@ class SwipeGestureService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+
+    /**
+     * Controls screen, "Show presses": while on, Android hands this service each button press
+     * just before the game gets it, so the diagram can light up. Every press is passed straight
+     * on (never kept or blocked). Switched on only while that screen is open with the option on.
+     * Returns false if Android hasn't given the service this ability (switch it off and on again).
+     */
+    fun setKeyWatch(on: Boolean): Boolean {
+        val info = serviceInfo ?: return false
+        val can = (info.capabilities and android.accessibilityservice.AccessibilityServiceInfo.CAPABILITY_CAN_REQUEST_FILTER_KEY_EVENTS) != 0
+        if (on && !can) return false
+        val flag = android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        val wanted = if (on) info.flags or flag else info.flags and flag.inv()
+        if (wanted != info.flags) {
+            info.flags = wanted
+            serviceInfo = info
+        }
+        if (!on) com.nerfherder.walkthor.controls.ControllerInput.clear()
+        return true
+    }
+
+    override fun onKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (com.nerfherder.walkthor.controls.ControllerInput.watching.value) {
+            com.nerfherder.walkthor.controls.ControllerInput.onKey(event)
+        }
+        return false // never consume: the game always gets the press
+    }
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        com.nerfherder.walkthor.controls.ControllerInput.clear()
         if (instance?.get() === this) instance = null
         SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
