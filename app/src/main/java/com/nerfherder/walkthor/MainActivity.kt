@@ -631,7 +631,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         }
     } else if (showingControls && noGuide != null) {
         BackHandler { showingControls = false }
-        com.nerfherder.walkthor.ui.ControlsScreen(game = noGuide!!.game, onBack = { showingControls = false })
+        com.nerfherder.walkthor.ui.ControlsScreen(onBack = { showingControls = false })
     } else if (mirroring != null && noGuide != null) {
         BackHandler { mirroring = null }
         com.nerfherder.walkthor.ui.MirrorScreen(

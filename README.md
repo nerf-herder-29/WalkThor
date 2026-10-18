@@ -18,7 +18,7 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 | ![Now playing: the game's art, its guide and the play time](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after 5 seconds, with Open guide](docs/screenshots/07b-dimmed-open-guide.png) |
 | ![Your shelf of guides](docs/screenshots/02-library.png) | ![A GameFAQs-style text guide in the reader](docs/screenshots/03-reader.png) |
 | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) | ![In-app setup instructions](docs/screenshots/09-setup-guide.png) |
-| ![Controls: a PlayStation-style layout with its Thor buttons](docs/screenshots/10-controls-playstation.png) | ![Controls: an N64-style layout with its Thor buttons](docs/screenshots/10-controls-n64.png) |
+| ![Controls: the Thor's buttons, lit as you press them](docs/screenshots/10-controls.png) | |
 
 ## Features
 
@@ -35,9 +35,8 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
   up to four areas per game (say, minimap and health bar), switch between them or see them all
   side by side, and WalkThor remembers them. Uses Android's screen capture (it asks each
   time); nothing is recorded or saved.
-- **Controls** — a generic diagram of the controller for the system you're playing (PlayStation-,
-  GameCube-, N64-, Xbox-, Switch-style and more) showing which Thor button is which, worked out
-  from the emulator. Tap to correct a mapping; optionally light up buttons as you press them.
+- **Controls** — a live view of the Thor's buttons on the bottom screen that lights up whatever you
+  press (optional; sticks can't be shown).
 - **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
 - **Animated book** — pages turn in 3D around the spine. Drag a page and it follows your finger;

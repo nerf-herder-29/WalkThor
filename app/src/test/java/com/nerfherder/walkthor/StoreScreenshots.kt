@@ -160,32 +160,22 @@ class StoreScreenshots {
     }
 
     @Test
-    fun controlsGameCube() {
-        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.rvz", "Dolphin Emulator", 0L), onBack = {}) }
+    fun controls() {
+        // As if A and R1 are held, to show the lit state.
+        com.nerfherder.walkthor.controls.ControllerInput.pressed.value =
+            setOf(android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_BUTTON_R1)
+        content { com.nerfherder.walkthor.ui.ControlsScreen(onBack = {}) }
         settle()
-        shot("10-controls-gamecube")
-    }
-
-    @Test
-    fun controlsPlayStation() {
-        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {}) }
-        settle()
-        shot("10-controls-playstation")
-    }
-
-    @Test
-    fun controlsN64() {
-        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.z64", "RetroArch", 0L), onBack = {}) }
-        settle()
-        shot("10-controls-n64")
+        shot("10-controls")
+        com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
     }
 
     @Test
     @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
     fun controlsDense() {
-        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.xex", "aX360e", 0L), onBack = {}) }
+        content { com.nerfherder.walkthor.ui.ControlsScreen(onBack = {}) }
         settle()
-        shot("10-controls-xbox-dense")
+        shot("10-controls-dense")
     }
 
     @Test
