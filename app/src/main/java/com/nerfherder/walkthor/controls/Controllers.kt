@@ -101,7 +101,24 @@ object ControlPrefs {
 }
 
 /** Android's short name for a key, e.g. "BUTTON_L1", "DPAD_UP". */
-fun keyName(code: Int): String = KeyEvent.keyCodeToString(code).removePrefix("KEYCODE_")
+fun keyName(code: Int): String = KNOWN_NAMES[code] ?: KeyEvent.keyCodeToString(code).removePrefix("KEYCODE_")
+
+/** The letter or name printed for a button, e.g. "A", "L1". */
+fun buttonLabel(code: Int): String = keyName(code).removePrefix("BUTTON_")
+
+private val KNOWN_NAMES = mapOf(
+    KeyEvent.KEYCODE_BUTTON_A to "BUTTON_A", KeyEvent.KEYCODE_BUTTON_B to "BUTTON_B",
+    KeyEvent.KEYCODE_BUTTON_C to "BUTTON_C", KeyEvent.KEYCODE_BUTTON_X to "BUTTON_X",
+    KeyEvent.KEYCODE_BUTTON_Y to "BUTTON_Y", KeyEvent.KEYCODE_BUTTON_Z to "BUTTON_Z",
+    KeyEvent.KEYCODE_BUTTON_L1 to "BUTTON_L1", KeyEvent.KEYCODE_BUTTON_R1 to "BUTTON_R1",
+    KeyEvent.KEYCODE_BUTTON_L2 to "BUTTON_L2", KeyEvent.KEYCODE_BUTTON_R2 to "BUTTON_R2",
+    KeyEvent.KEYCODE_BUTTON_THUMBL to "BUTTON_THUMBL", KeyEvent.KEYCODE_BUTTON_THUMBR to "BUTTON_THUMBR",
+    KeyEvent.KEYCODE_BUTTON_START to "BUTTON_START", KeyEvent.KEYCODE_BUTTON_SELECT to "BUTTON_SELECT",
+    KeyEvent.KEYCODE_BUTTON_MODE to "BUTTON_MODE",
+    KeyEvent.KEYCODE_DPAD_UP to "DPAD_UP", KeyEvent.KEYCODE_DPAD_DOWN to "DPAD_DOWN",
+    KeyEvent.KEYCODE_DPAD_LEFT to "DPAD_LEFT", KeyEvent.KEYCODE_DPAD_RIGHT to "DPAD_RIGHT",
+    KeyEvent.KEYCODE_BACK to "BACK", KeyEvent.KEYCODE_HOME to "HOME",
+)
 
 /**
  * Buttons being held on the Thor right now, reported by the accessibility service only while the

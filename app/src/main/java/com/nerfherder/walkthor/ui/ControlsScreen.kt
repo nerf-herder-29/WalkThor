@@ -233,7 +233,7 @@ private fun PadDiagram(pressed: Set<Int>, faceCodes: Map<String, Int>, asking: S
                 val faceCode = b.face?.let { faceCodes[it] }
                 if (faceCode != null) {
                     // Face buttons: labelled with what the Thor sends from that position.
-                    val shown = b.copy(label = keyName(faceCode).removePrefix("BUTTON_"))
+                    val shown = b.copy(label = com.nerfherder.walkthor.controls.buttonLabel(faceCode))
                     drawButton(shown, box, faceCode in pressed, pressed, measurer)
                     if (b.face == asking) {
                         drawCircle(Color.White, b.size * box.width * 0.68f, centerOf(b, box), style = Stroke(3.dp.toPx()))
