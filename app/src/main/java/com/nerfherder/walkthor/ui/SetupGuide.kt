@@ -128,6 +128,11 @@ fun SetupGuideDialog(
                         "the game next time. Other guide switches to a different one."
                 )
                 Para("Back from a guide takes you to Now playing, and back again to your shelf.")
+                Para(
+                    "Mirror (on Now playing and the dimmed screen) shows part of the top screen here, like a " +
+                        "minimap or a HUD. The first time for a game, drag a box over the part you want; WalkThor " +
+                        "remembers it. Android asks for permission each time you start it."
+                )
 
                 Heading("Reading a guide")
                 Bullet("Turn pages with L1 / R1 or the D-pad, by tapping the outer edges, or by dragging a page.")

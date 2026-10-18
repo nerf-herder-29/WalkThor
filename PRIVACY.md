@@ -22,6 +22,13 @@ accounts, no analytics and no ads. Everything below stays on your device.
   performance priority to the screen last touched (turning off accessibility access stops it too). It does **not** read the content of your screen or of other apps, and does not
   record what you type.
 
+- **Mirror (screen capture), only when you use it.** The Mirror button shows part of the top
+  screen live on the bottom screen, using Android's screen capture. Android asks for your
+  permission every time it starts, and shows its recording indicator while it runs. Each frame is
+  held in memory just long enough to draw it and is then discarded: nothing is recorded, saved,
+  or sent anywhere. Capture stops as soon as you leave the mirror screen. The only thing stored is
+  which part of the screen you chose for each game.
+
 ## What WalkThor stores (on your device only)
 
 Your library of guides, cover images, reading positions, settings, and which guide you linked to

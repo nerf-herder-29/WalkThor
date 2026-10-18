@@ -30,6 +30,9 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
   priority from it. Tapping and reading on the bottom screen leave the game in charge, and after
   WalkThor opens (or you finish a search) it hands priority back with one tap on the top edge of
   the game's screen.
+- **Mirror** — show part of the top screen, like a minimap or HUD, live on the bottom screen. Pick
+  the area once per game and WalkThor remembers it. Uses Android's screen capture (it asks each
+  time); nothing is recorded or saved.
 - **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
 - **Animated book** — pages turn in 3D around the spine. Drag a page and it follows your finger;

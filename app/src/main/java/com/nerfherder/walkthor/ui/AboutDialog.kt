@@ -144,7 +144,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "It reads only what you point it at: guides you import, an artwork folder you link, and " +
                         "Cocoon's launch_debug.log (to see which game you launched). The accessibility service responds " +
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
-                        "of the game's screen once to hand it back top performance priority. It never reads screen content."
+                        "of the game's screen once to hand it back top performance priority. It never reads screen content. " +
+                        "Mirror shows part of the top screen here only when you start it (Android asks each time); " +
+                        "the picture is never recorded, saved or sent."
                 )
 
                 // A saved crash report, if WalkThor has crashed, for sharing in a bug report.

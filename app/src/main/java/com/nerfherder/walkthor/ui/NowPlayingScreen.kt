@@ -101,18 +101,22 @@ fun NowPlayingScreen(
     onClose: () -> Unit,
     guide: Book? = null,
     onOpenGuide: () -> Unit = {},
+    onMirror: (() -> Unit)? = null,
 ) {
     var picking by remember { mutableStateOf(false) }
     // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is);
     // with a guide, the dimmed screen offers to open it.
     val openGuide by androidx.compose.runtime.rememberUpdatedState(onOpenGuide)
+    val mirror by androidx.compose.runtime.rememberUpdatedState(onMirror)
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
         AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
         AutoDim.openGuide.value = if (guide != null) ({ openGuide() }) else null
+        AutoDim.openMirror.value = if (onMirror != null) ({ mirror?.invoke() }) else null
         onDispose {
             AutoDim.screenDelayMs.value = null
             AutoDim.openGuide.value = null
+            AutoDim.openMirror.value = null
         }
     }
     // The Thor's bottom screen is short; at denser display settings tighten everything up.
@@ -319,8 +323,15 @@ fun NowPlayingScreen(
             }
             // Beside the back arrow, clear of the glass edge in the middle.
             Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)), modifier = Modifier.align(Alignment.CenterStart).padding(start = 52.dp))
-            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
-                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
+            Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                onMirror?.let { m ->
+                    androidx.compose.material3.TextButton(onClick = m) {
+                        Text("Mirror", color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
+                }
             }
         }
         Row(

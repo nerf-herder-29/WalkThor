@@ -18,6 +18,7 @@ import android.os.SystemClock
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -73,6 +74,8 @@ object AutoDim {
     val resting = MutableStateFlow(false)
     /** Set by the Now playing screen when the game has a guide: the dimmed screen offers it. */
     val openGuide = MutableStateFlow<(() -> Unit)?>(null)
+    /** Set by the Now playing screen: the dimmed screen offers to mirror part of the top screen. */
+    val openMirror = MutableStateFlow<(() -> Unit)?>(null)
     const val REST_AFTER_MS = 30_000L
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
@@ -226,24 +229,15 @@ fun AutoDimOverlay() {
                     Spacer(Modifier.height(6.dp))
                     Text(emulatorName(it), color = BookColors.TextMuted, fontSize = 14.sp)
                 }
-                // The game has a guide: open it straight from the dimmed screen. Acts on touch
-                // down, since that same touch also wakes the screen and removes this layer.
+                // Open the game's guide, or mirror part of the top screen, straight from the dimmed
+                // screen. They act on touch down, since that same touch also wakes the screen.
                 val open by AutoDim.openGuide.collectAsState()
-                open?.let { action ->
+                val mirror by AutoDim.openMirror.collectAsState()
+                if (open != null || mirror != null) {
                     Spacer(Modifier.height(22.dp))
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(BookColors.ButtonFill)
-                            .pointerInput(action) {
-                                awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                    action()
-                                }
-                            }
-                            .padding(horizontal = 22.dp, vertical = 10.dp),
-                    ) {
-                        Text("Open guide", color = BookColors.Text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
+                        open?.let { DimButton("Open guide", filled = true, action = it) }
+                        mirror?.let { DimButton("Mirror", filled = open == null, action = it) }
                     }
                 }
             }
@@ -306,5 +300,27 @@ object PlaySession {
     fun setShowTimer(context: Context, on: Boolean) {
         showTimer.value = on
         context.getSharedPreferences("session", Context.MODE_PRIVATE).edit().putBoolean("show", on).apply()
+    }
+}
+
+/** A button on the dimmed screen; acts on touch down (the same touch wakes the screen). */
+@Composable
+private fun DimButton(label: String, filled: Boolean, action: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(22.dp))
+            .then(
+                if (filled) Modifier.background(BookColors.ButtonFill)
+                else Modifier.border(1.dp, BookColors.ButtonFill, RoundedCornerShape(22.dp))
+            )
+            .pointerInput(action) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    action()
+                }
+            }
+            .padding(horizontal = 22.dp, vertical = 10.dp),
+    ) {
+        Text(label, color = BookColors.Text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
     }
 }

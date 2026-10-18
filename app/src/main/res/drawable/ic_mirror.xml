@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification icon while mirroring: two stacked screens. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,2h16a2,2 0,0 1,2 2v6a2,2 0,0 1,-2 2H4a2,2 0,0 1,-2 -2V4A2,2 0,0 1,4 2zM4,4v6h16V4zM6,14h12a2,2 0,0 1,2 2v4a2,2 0,0 1,-2 2H6a2,2 0,0 1,-2 -2v-4a2,2 0,0 1,2 -2zM6,16v4h12v-4z" />
+</vector>

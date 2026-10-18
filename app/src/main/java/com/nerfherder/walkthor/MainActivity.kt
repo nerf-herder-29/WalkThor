@@ -86,6 +86,25 @@ class MainActivity : ComponentActivity() {
         if (uri != null && id != null) pickedCover.value = id to uri
     }
 
+    // Mirror: Android's "start recording or casting?" prompt.
+    private val captureConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val data = result.data
+        if (result.resultCode == RESULT_OK && data != null) Mirror.start(this, result.resultCode, data)
+    }
+
+    /** Asks Android for permission to capture the top screen (it asks every time). */
+    internal fun requestMirror() {
+        val mpm = getSystemService(android.media.projection.MediaProjectionManager::class.java) ?: return
+        val intent = if (Build.VERSION.SDK_INT >= 34) {
+            // The whole top screen, never "a single app".
+            mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
+        } else {
+            mpm.createScreenCaptureIntent()
+        }
+        runCatching { captureConsent.launch(intent) }
+            .onFailure { Mirror.error.value = "Couldn't ask for screen capture (${it.javaClass.simpleName})" }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         openedAt = android.os.SystemClock.elapsedRealtime()
         super.onCreate(savedInstanceState)
@@ -443,6 +462,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var autoOpened by remember { mutableStateOf<String?>(null) }
     /** A launched game with no guide, shown with its artwork until a guide is added or picked. */
     var noGuide by remember { mutableStateOf<Showing?>(null) }
+    /** The game whose top screen is being mirrored here, if the mirror screen is open. */
+    var mirroring by remember { mutableStateOf<String?>(null) }
     /** "Add guide" on the no-guide screen: the next imported guide is linked to this game. */
     var linkImportTo by remember { mutableStateOf<LaunchedGame?>(null) }
 
@@ -606,6 +627,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 )
             }
         }
+    } else if (mirroring != null && noGuide != null) {
+        BackHandler { mirroring = null }
+        com.nerfherder.walkthor.ui.MirrorScreen(
+            game = mirroring!!,
+            onBack = { mirroring = null },
+            onStartCapture = host::requestMirror,
+        )
     } else if (noGuide != null) {
         val (game, art, guide) = noGuide!!
         BackHandler { noGuide = null }
@@ -626,6 +654,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 }
             },
             onClose = host::closeApp,
+            onMirror = { AutoDim.wake(); mirroring = game.title },
         )
     } else {
         LibraryScreen(
