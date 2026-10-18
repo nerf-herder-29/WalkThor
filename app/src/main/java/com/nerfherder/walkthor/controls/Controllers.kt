@@ -80,9 +80,9 @@ object ThorPad {
 enum class FaceStyle(val title: String, val labels: List<String>?) {
     /** The Thor's own letters, as it reports them. */
     THOR("Thor", null),
-    PLAYSTATION("PlayStation-style", listOf("triangle", "circle", "cross", "square")),
-    XBOX("Xbox-style", listOf("Y", "B", "A", "X")),
-    NINTENDO("Nintendo-style", listOf("X", "A", "B", "Y"));
+    PLAYSTATION("PlayStation", listOf("triangle", "circle", "cross", "square")),
+    XBOX("Xbox", listOf("Y", "B", "A", "X")),
+    NINTENDO("Nintendo", listOf("X", "A", "B", "Y"));
 
     companion object {
         fun byName(name: String?) = entries.firstOrNull { it.name == name }

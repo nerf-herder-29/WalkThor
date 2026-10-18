@@ -233,8 +233,8 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
 private fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: Set<Int>, asking: String?) {
     val measurer = rememberTextMeasurer()
     Canvas(Modifier.fillMaxSize()) {
-        val unit = min(size.width, size.height) / 3.4f
-        val r = unit * 0.62f
+        val unit = min(size.width / 4.6f, size.height / 3.6f)
+        val r = unit * 0.6f
         val center = Offset(size.width / 2f, size.height / 2f)
         val spots = mapOf(
             "top" to Offset(0f, -unit), "right" to Offset(unit, 0f),
@@ -261,7 +261,15 @@ private fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: 
                 val thor = buttonLabel(code)
                 if (!thor.equals(label, ignoreCase = true)) {
                     val t = measurer.measure("Thor $thor", TextStyle(color = BookColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
-                    drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y + r + 4.dp.toPx()))
+                    // Outward from the diamond, so it never sits between two buttons.
+                    val gap = 6.dp.toPx()
+                    val tl = when (pos) {
+                        "top" -> Offset(c.x - t.size.width / 2f, c.y - r - gap - t.size.height)
+                        "bottom" -> Offset(c.x - t.size.width / 2f, c.y + r + gap)
+                        "left" -> Offset(c.x - r - gap - t.size.width, c.y - t.size.height / 2f)
+                        else -> Offset(c.x + r + gap, c.y - t.size.height / 2f)
+                    }
+                    drawText(t, topLeft = tl)
                 }
             }
         }
