@@ -436,6 +436,7 @@ class StoreScreenshots {
                     coverFile = { null },
                     onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
                     guide = shelf[0],
+                    onMirror = {},
                 )
                 com.nerfherder.walkthor.ui.AutoDimOverlay()
             }
