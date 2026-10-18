@@ -18,7 +18,7 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 | ![Now playing: the game's art, its guide and the play time](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after 5 seconds, with Open guide](docs/screenshots/07b-dimmed-open-guide.png) |
 | ![Your shelf of guides](docs/screenshots/02-library.png) | ![A GameFAQs-style text guide in the reader](docs/screenshots/03-reader.png) |
 | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) | ![In-app setup instructions](docs/screenshots/09-setup-guide.png) |
-| ![Controls: PlayStation-style face buttons on the Thor's positions](docs/screenshots/10-controls.png) | |
+| ![Controls: shape-style face buttons on the Thor's positions](docs/screenshots/10-controls.png) | |
 
 ## Features
 
@@ -35,8 +35,8 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
   up to four areas per game (say, minimap and health bar), switch between them or see them all
   side by side, and WalkThor remembers them. Uses Android's screen capture (it asks each
   time); nothing is recorded or saved.
-- **Controls** — the four face buttons labelled the way the game's system labels them (PlayStation
-  shapes, Xbox or Nintendo letters), each where its Thor button sits, lighting up as you press
+- **Controls** — the four face buttons labelled the way the game's system labels them (shapes, or
+  letters with A at the bottom or on the right), each where its Thor button sits, lighting up as you press
   (optional).
 - **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
