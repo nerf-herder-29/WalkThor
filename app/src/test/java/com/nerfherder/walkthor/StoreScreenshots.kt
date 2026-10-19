@@ -232,6 +232,15 @@ class StoreScreenshots {
     }
 
     @Test
+    fun mirrorPick() {
+        // First time for a game: a box in the bottom screen's shape to drag over the picture.
+        val frame = fakeGameFrame()
+        content { com.nerfherder.walkthor.ui.MirrorScreen("Lanterns of Emberfall", onBack = {}, onStartCapture = {}, preview = frame) }
+        settle()
+        shot("11c-mirror-pick")
+    }
+
+    @Test
     fun mirrorAll() {
         val game = "Lanterns of Emberfall"
         com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(

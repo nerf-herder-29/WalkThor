@@ -105,6 +105,10 @@ fun MirrorScreen(
     var editingIndex by remember(game) { mutableStateOf<Int?>(if (areas.isEmpty()) 0 else null) }
     val editing = editingIndex != null
     var draft by remember(game) { mutableStateOf(floatArrayOf(0f, 0f, 1f, 1f)) }
+    // Whether the box keeps the bottom screen's shape while you resize it, so the mirror fills it.
+    var keepShape by remember(game) { mutableStateOf(true) }
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenAspect = config.screenWidthDp.toFloat() / config.screenHeightDp.coerceAtLeast(1)
     fun save(newAreas: List<FloatArray>, newSelected: Int) {
         areas = newAreas
         selected = newSelected
@@ -194,12 +198,21 @@ fun MirrorScreen(
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         val img = preview ?: frame
         val live = projection != null || preview != null
+        // The box's width over its height in the 0..1 coordinates the areas use, for the
+        // bottom screen's shape on this capture.
+        val shape = if (img != null) screenAspect * img.height / img.width.coerceAtLeast(1) else screenAspect
+        // A fresh box in the bottom screen's shape (new areas start with one).
+        fun startBox() { keepShape = true; draft = shaped(floatArrayOf(0.25f, 0.25f, 0.75f, 0.75f), shape) }
+        // The first time, once the picture arrives, start with a box in the right shape.
+        LaunchedEffect(img != null) {
+            if (img != null && editing && draft.contentEquals(floatArrayOf(0f, 0f, 1f, 1f)) && areas.isEmpty()) startBox()
+        }
         when {
             Build.VERSION.SDK_INT < 29 -> Message("Mirroring needs Android 10 or newer.")
             onMainDisplay -> Message("WalkThor is on the main screen, so there's nothing else to mirror.")
             !live -> StartPanel(error, onStartCapture)
             img == null -> Message("Starting the mirror…")
-            editing -> AreaPicker(img, draft, onChange = { draft = it })
+            editing -> AreaPicker(img, draft, if (keepShape) shape else null, onChange = { draft = it })
             areas.isEmpty() -> MirrorView(img, listOf(floatArrayOf(0f, 0f, 1f, 1f)))
             selected == Mirror.ALL -> MirrorView(img, areas)
             else -> MirrorView(img, listOf(areas[selected.coerceIn(0, areas.lastIndex)]))
@@ -239,7 +252,7 @@ fun MirrorScreen(
             }
             if (ready) {
                 if (editing) {
-                    TextButton(onClick = { draft = floatArrayOf(0f, 0f, 1f, 1f) }) { Text("Whole screen", color = BookColors.TextMuted) }
+                    TextButton(onClick = { keepShape = false; draft = floatArrayOf(0f, 0f, 1f, 1f) }) { Text("Whole screen", color = BookColors.TextMuted) }
                     if (areas.isNotEmpty()) {
                         TextButton(onClick = { editingIndex = null }) { Text("Cancel", color = BookColors.TextMuted) }
                     }
@@ -256,7 +269,13 @@ fun MirrorScreen(
                 } else {
                     val one = selected != Mirror.ALL && areas.isNotEmpty()
                     if (one) {
-                        IconButton(onClick = { draft = areas[selected].copyOf(); editingIndex = selected }) {
+                        IconButton(onClick = {
+                            draft = areas[selected].copyOf()
+                            // Keep the shape locked if this area already has the bottom screen's shape.
+                            val d = draft
+                            keepShape = kotlin.math.abs((d[2] - d[0]) / (d[3] - d[1]).coerceAtLeast(0.001f) / shape - 1f) < 0.03f
+                            editingIndex = selected
+                        }) {
                             Icon(Icons.Filled.Edit, contentDescription = "Change this area", tint = Color.White.copy(alpha = 0.85f))
                         }
                     }
@@ -265,13 +284,13 @@ fun MirrorScreen(
                             val list = areas.toMutableList().also { it.removeAt(selected) }
                             save(list, (selected - 1).coerceAtLeast(0))
                             // Removed the only one: pick a new area straight away.
-                            if (list.isEmpty()) { draft = floatArrayOf(0f, 0f, 1f, 1f); editingIndex = 0 }
+                            if (list.isEmpty()) { startBox(); editingIndex = 0 }
                         }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Remove this area", tint = Color.White.copy(alpha = 0.85f))
                         }
                     }
                     if (areas.size < Mirror.MAX_AREAS) {
-                        IconButton(onClick = { draft = floatArrayOf(0.25f, 0.25f, 0.75f, 0.75f); editingIndex = areas.size }) {
+                        IconButton(onClick = { startBox(); editingIndex = areas.size }) {
                             Icon(Icons.Filled.Add, contentDescription = "Add another area", tint = Color.White.copy(alpha = 0.85f))
                         }
                     }
@@ -279,17 +298,31 @@ fun MirrorScreen(
             }
         }
         if (editing && img != null && live) {
-            Text(
-                "Drag the box over what you want to see here, like a minimap. Drag a corner to resize it.",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
+            Row(
+                Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp, start = 24.dp, end = 24.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            )
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp, start = 16.dp, end = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (keepShape) "Drag the box over what you want to see here. Drag a corner to resize; it keeps this screen's shape."
+                    else "Drag the box over what you want to see here. Drag a corner to resize it.",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+                // Off: resize freely. On again: back to this screen's shape.
+                AreaChip(if (keepShape) "Don't keep aspect ratio" else "Keep aspect ratio", selected = !keepShape) {
+                    keepShape = !keepShape
+                    if (keepShape) draft = shaped(draft, shape)
+                }
+            }
         }
     }
 }
@@ -407,7 +440,7 @@ private fun AreaChip(label: String, selected: Boolean, onClick: () -> Unit) {
 
 /** The whole top screen with a box to drag and resize over the part to mirror. */
 @Composable
-private fun AreaPicker(img: ImageBitmap, r: FloatArray, onChange: (FloatArray) -> Unit) {
+private fun AreaPicker(img: ImageBitmap, r: FloatArray, shape: Float?, onChange: (FloatArray) -> Unit) {
     val handle = with(LocalDensity.current) { 28.dp.toPx() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val area = with(LocalDensity.current) { Size(maxWidth.toPx(), maxHeight.toPx()) }
@@ -416,6 +449,7 @@ private fun AreaPicker(img: ImageBitmap, r: FloatArray, onChange: (FloatArray) -
         val fit = fitRect(img.width.toFloat(), img.height.toFloat(), Size(area.width, area.height - pad * 2)).translate(0f, pad)
         var mode by remember { mutableStateOf(-1) } // 0..3 = a corner, 4 = move
         val current by androidx.compose.runtime.rememberUpdatedState(r)
+        val currentShape by androidx.compose.runtime.rememberUpdatedState(shape)
         Canvas(
             Modifier
                 .fillMaxSize()
@@ -434,6 +468,11 @@ private fun AreaPicker(img: ImageBitmap, r: FloatArray, onChange: (FloatArray) -
                             val dy = d.y / fit.height
                             val c = current.copyOf()
                             val minSize = 0.05f
+                            val k = currentShape
+                            if (k != null && mode in 0..3) {
+                                onChange(resizeShaped(c, mode, dx, dy, k))
+                                return@detectDragGestures
+                            }
                             when (mode) {
                                 4 -> {
                                     val w = c[2] - c[0]; val h = c[3] - c[1]
@@ -470,6 +509,44 @@ private fun AreaPicker(img: ImageBitmap, r: FloatArray, onChange: (FloatArray) -
             }
         }
     }
+}
+
+/**
+ * [r] reshaped to width/height [k] (in 0..1 coordinates): about the same size, around the same
+ * centre, kept inside the picture.
+ */
+internal fun shaped(r: FloatArray, k: Float): FloatArray {
+    val area = ((r[2] - r[0]) * (r[3] - r[1])).coerceAtLeast(0.0025f)
+    var w = kotlin.math.sqrt(area * k)
+    var h = w / k
+    if (w > 1f) { w = 1f; h = w / k }
+    if (h > 1f) { h = 1f; w = h * k }
+    val cx = ((r[0] + r[2]) / 2f).coerceIn(w / 2f, 1f - w / 2f)
+    val cy = ((r[1] + r[3]) / 2f).coerceIn(h / 2f, 1f - h / 2f)
+    return floatArrayOf(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
+}
+
+/**
+ * Drags corner [corner] (0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right) of [r] by
+ * [dx], [dy], keeping width/height [k]; the opposite corner stays put.
+ */
+internal fun resizeShaped(r: FloatArray, corner: Int, dx: Float, dy: Float, k: Float): FloatArray {
+    val right = corner == 1 || corner == 3
+    val down = corner == 2 || corner == 3
+    val ax = if (right) r[0] else r[2]
+    val ay = if (down) r[1] else r[3]
+    val w = r[2] - r[0]
+    // Follow whichever way the finger moved more.
+    val byX = if (right) dx else -dx
+    val byY = (if (down) dy else -dy) * k
+    val grow = if (kotlin.math.abs(byX) >= kotlin.math.abs(byY)) byX else byY
+    val maxW = min(if (right) 1f - ax else ax, (if (down) 1f - ay else ay) * k)
+    val minW = maxOf(0.05f, 0.05f * k).coerceAtMost(maxW)
+    val nw = (w + grow).coerceIn(minW, maxW)
+    val nh = nw / k
+    val left = if (right) ax else ax - nw
+    val top = if (down) ay else ay - nh
+    return floatArrayOf(left, top, left + nw, top + nh)
 }
 
 private fun boxIn(r: FloatArray, fit: Rect) = Rect(
