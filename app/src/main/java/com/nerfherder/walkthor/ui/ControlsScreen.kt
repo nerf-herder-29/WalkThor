@@ -74,6 +74,7 @@ private val ButtonDark = Color(0xFF26262B)
 @Composable
 fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
     val context = LocalContext.current
+    val inspection = androidx.compose.ui.platform.LocalInspectionMode.current
     var style by remember(game?.player, game?.file) { mutableStateOf(ControlPrefs.faceStyle(context, game?.player, game?.file)) }
     // Presses are always shown here, once you've agreed to the explanation (asked on first open).
     var agreed by remember { mutableStateOf(ControlPrefs.keysConsent(context)) }
@@ -90,7 +91,8 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
         if (showPresses) {
             ControllerInput.watching.value = true
             AutoDim.screenDelayMs.value = 0L
-            val ok = SwipeGestureService.instance?.get()?.setKeyWatch(true)
+            // (In screenshots there's no accessibility service; don't show its warning there.)
+            val ok = if (inspection) true else SwipeGestureService.instance?.get()?.setKeyWatch(true)
             watchProblem = when (ok) {
                 null -> "Button presses need Accessibility access switched on (⋮ menu)."
                 false -> "Switch WalkThor off and on in Android's Accessibility settings to let it see button presses."

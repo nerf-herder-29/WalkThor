@@ -7,6 +7,7 @@ import android.os.BatteryManager
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -168,6 +169,96 @@ class StoreScreenshots {
         content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {}) }
         settle()
         shot("10-controls")
+        com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
+    }
+
+    /** A made-up top-screen frame for the fictional game: a scene with a health bar, minimap and item box. */
+    private fun fakeGameFrame(): androidx.compose.ui.graphics.ImageBitmap {
+        val w = 960; val h = 540
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0xFF1B2A55.toInt(), 0xFFB0603A.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p); p.shader = null
+        p.color = 0xFF2A2238.toInt()
+        c.drawPath(android.graphics.Path().apply { moveTo(0f, 330f); cubicTo(220f, 260f, 380f, 360f, 560f, 300f); cubicTo(740f, 240f, 860f, 340f, 960f, 290f); lineTo(960f, 540f); lineTo(0f, 540f); close() }, p)
+        p.color = 0xFF1A1622.toInt()
+        c.drawPath(android.graphics.Path().apply { moveTo(0f, 420f); cubicTo(300f, 380f, 600f, 450f, 960f, 400f); lineTo(960f, 540f); lineTo(0f, 540f); close() }, p)
+        val rnd = java.util.Random(3)
+        repeat(18) {
+            val x = rnd.nextFloat() * w; val y = 60f + rnd.nextFloat() * 240f; val r = 4f + rnd.nextFloat() * 6f
+            p.shader = android.graphics.RadialGradient(x, y, r * 4, 0xAAFFC56B.toInt(), 0x00FFC56B, android.graphics.Shader.TileMode.CLAMP)
+            c.drawCircle(x, y, r * 4, p); p.shader = null
+            p.color = 0xFFFFE2A8.toInt(); c.drawRect(x - r * 0.5f, y - r * 0.7f, x + r * 0.5f, y + r * 0.7f, p)
+        }
+        // the hero, a simple cloaked figure
+        p.color = 0xFF0E0C14.toInt()
+        c.drawPath(android.graphics.Path().apply { moveTo(470f, 470f); lineTo(500f, 370f); lineTo(530f, 470f); close() }, p)
+        c.drawCircle(500f, 362f, 14f, p)
+        p.color = 0xFFFFD27A.toInt(); c.drawCircle(540f, 400f, 7f, p)
+        // HUD: health and stamina, top left
+        p.color = 0xAA000000.toInt(); c.drawRoundRect(20f, 20f, 300f, 92f, 12f, 12f, p)
+        p.color = 0xFF3A1A1A.toInt(); c.drawRoundRect(36f, 34f, 284f, 54f, 8f, 8f, p)
+        p.color = 0xFFD9443A.toInt(); c.drawRoundRect(36f, 34f, 220f, 54f, 8f, 8f, p)
+        p.color = 0xFF1A2A1A.toInt(); c.drawRoundRect(36f, 64f, 284f, 78f, 6f, 6f, p)
+        p.color = 0xFF6CC46A.toInt(); c.drawRoundRect(36f, 64f, 180f, 78f, 6f, 6f, p)
+        // minimap, top right
+        val cx = 870f; val cy = 92f; val mr = 70f
+        p.color = 0xDD101418.toInt(); c.drawCircle(cx, cy, mr, p)
+        p.style = android.graphics.Paint.Style.STROKE; p.strokeWidth = 3f; p.color = 0xFFBFC4CC.toInt(); c.drawCircle(cx, cy, mr, p)
+        p.strokeWidth = 6f; p.color = 0xFF5A6A7A.toInt()
+        c.drawPath(android.graphics.Path().apply { moveTo(cx - 60f, cy + 20f); lineTo(cx - 10f, cy + 10f); lineTo(cx + 10f, cy - 40f); moveTo(cx - 10f, cy + 10f); lineTo(cx + 50f, cy + 35f) }, p)
+        p.style = android.graphics.Paint.Style.FILL
+        p.color = 0xFF3D6E9A.toInt(); c.drawCircle(cx + 30f, cy - 25f, 14f, p)
+        p.color = 0xFFFFD27A.toInt(); c.drawCircle(cx + 10f, cy - 40f, 6f, p)
+        p.color = 0xFFFFFFFF.toInt()
+        c.drawPath(android.graphics.Path().apply { moveTo(cx - 10f, cy - 2f); lineTo(cx - 18f, cy + 18f); lineTo(cx - 10f, cy + 13f); lineTo(cx - 2f, cy + 18f); close() }, p)
+        // item box, bottom right
+        p.color = 0xAA000000.toInt(); c.drawRoundRect(830f, 440f, 940f, 520f, 12f, 12f, p)
+        p.color = 0xFF6FB8E0.toInt(); c.drawCircle(865f, 480f, 18f, p)
+        p.color = 0xFFFFFFFF.toInt(); p.textSize = 26f; p.isFakeBoldText = true; c.drawText("x3", 893f, 490f, p)
+        return bmp.asImageBitmap()
+    }
+
+    @Test
+    fun mirrorMinimap() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))
+        com.nerfherder.walkthor.Mirror.setSelected(app, game, 0)
+        val frame = fakeGameFrame()
+        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, preview = frame) }
+        settle()
+        shot("11-mirror")
+    }
+
+    @Test
+    fun mirrorAll() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(
+            floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540),
+            floatArrayOf(14f / 960, 14f / 540, 306f / 960, 98f / 540),
+            floatArrayOf(822f / 960, 432f / 540, 948f / 960, 528f / 540),
+        ))
+        com.nerfherder.walkthor.Mirror.setSelected(app, game, com.nerfherder.walkthor.Mirror.ALL)
+        val frame = fakeGameFrame()
+        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, preview = frame) }
+        settle()
+        shot("11b-mirror-all")
+    }
+
+    @Test
+    fun controlsShapes() {
+        // PlayStation-style shapes, as if the right face button (circle) is held.
+        com.nerfherder.walkthor.controls.ControllerInput.pressed.value = setOf(android.view.KeyEvent.KEYCODE_BUTTON_A)
+        com.nerfherder.walkthor.controls.ControllerInput.last.value = android.view.KeyEvent.KEYCODE_BUTTON_A
+        com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
+        content {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalInspectionMode provides true) {
+                com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {})
+            }
+        }
+        settle()
+        shot("12-face-buttons-shapes")
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
     }
 
