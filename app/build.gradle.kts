@@ -13,8 +13,8 @@ android {
         // AYN Thor ships with Android 13 (API 33); 26 keeps it usable on other handhelds too.
         minSdk = 26
         targetSdk = 35
-        versionCode = 70
-        versionName = "1.36.0"
+        versionCode = 71
+        versionName = "1.36.1"
     }
 
     // One permanent key for every release, so new APKs install as updates over old ones.

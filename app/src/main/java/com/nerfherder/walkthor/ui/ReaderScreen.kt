@@ -267,8 +267,9 @@ fun ReaderScreen(
 
         // The reading lens — the big readability control, so it gets its own button.
         @Composable
-        fun LensButton() {
+        fun LensButton(modifier: Modifier = Modifier) {
             IconButton(
+                modifier = modifier,
                 onClick = { if (lensOn) lensPage = null else openLens(bookState.current) },
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = if (lensOn) BookColors.ButtonFill else androidx.compose.ui.graphics.Color.Transparent,
@@ -280,9 +281,8 @@ fun ReaderScreen(
         }
 
         if (tabs != null) {
-            // During a game: the game's tab bar, with search, the lens and ⋮ in its right-hand slots
-            // (on a narrow screen the lens moves into ⋮); the page-layout switch is in ⋮.
-            val roomForLens = tabBarRightSlots() >= 3
+            // During a game: the game's tab bar, centred, with back on the left and ⋮ on the right.
+            // Search and the lens are in the bottom bar; the page-layout switch is in ⋮.
             TabBarFrame(
                 overlay = false,
                 start = {
@@ -298,16 +298,6 @@ fun ReaderScreen(
                     }
                 },
                 end = {
-                    if (!showSearch) {
-                        IconButton(onClick = {
-                            // Typing needs WalkThor's window to take focus from the game for a moment.
-                            com.nerfherder.walkthor.GameFocus.wantFocus.value = true
-                            searchOpen = true
-                        }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search this guide", tint = BookColors.TextMuted)
-                        }
-                    }
-                    if (roomForLens || lensOn) LensButton()
                     ReaderMenu(
                         isTxt = isTxt,
                         onSmaller = { vm.changeFontSize(bigger = false) },
@@ -316,7 +306,6 @@ fun ReaderScreen(
                         onClose = onClose,
                         onToggleLayout = if (!lensOn) ({ vm.toggleLayout() }) else null,
                         spread = spread,
-                        onLens = if (!roomForLens && !lensOn) ({ openLens(bookState.current) }) else null,
                     )
                 },
             )
@@ -425,7 +414,19 @@ fun ReaderScreen(
         }
 
         // ---- page position, time and battery ------------------------------------------------
-        Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(if (tabs != null) 40.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (tabs != null) {
+                // During a game, search and the reading lens live down here, keeping the tab bar even.
+                Spacer(Modifier.width(4.dp))
+                IconButton(modifier = Modifier.size(40.dp), onClick = {
+                    // Typing needs WalkThor's window to take focus from the game for a moment.
+                    com.nerfherder.walkthor.GameFocus.wantFocus.value = true
+                    searchOpen = true
+                }) {
+                    Icon(Icons.Filled.Search, contentDescription = "Search this guide", tint = BookColors.TextMuted)
+                }
+                LensButton(Modifier.size(40.dp))
+            }
             Box(Modifier.weight(1f)) {
                 if (lensPage == null) {
                     PageScrubber(

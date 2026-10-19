@@ -65,12 +65,11 @@ val TabBarHeight = 64.dp
 val TabBarSlot = 48.dp
 
 /**
- * How many icon slots the right end of the bar keeps, on every screen, so the tabs are the same
- * size and in the same place whichever tab is open: three (the guide's search, lens and ⋮), or
- * two on a narrow screen (search and ⋮; the lens moves into ⋮).
+ * How many icon slots the right end of the bar keeps: one, the same as the left (back), so the
+ * tabs sit exactly in the middle, the same size and in the same place on every screen.
  */
 @Composable
-fun tabBarRightSlots(): Int = if (LocalConfiguration.current.screenWidthDp < 560) 2 else 3
+fun tabBarRightSlots(): Int = 1
 
 /**
  * The three tabs, sharing the width they're given equally: an icon over a label, with corner

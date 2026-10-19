@@ -143,7 +143,7 @@ fun SetupGuideDialog(
 
                 Heading("Reading a guide")
                 Bullet("Turn pages with L1 / R1 or the D-pad, by tapping the outer edges, or by dragging a page.")
-                Bullet("Search from the top bar (during a game, tap the magnifying glass next to the tabs). Results show every matching page, and ▲ / ▼ step through matches.")
+                Bullet("Search from the top bar (during a game, tap the magnifying glass at the bottom left, next to the lens). Results show every matching page, and ▲ / ▼ step through matches.")
                 Bullet("Tap the middle of a page (or the magnifying glass) for a zoomable, full-width view.")
                 Bullet("Press and hold on a page for a magnifier you can slide around.")
                 Bullet("WalkThor remembers your place in every guide.")
