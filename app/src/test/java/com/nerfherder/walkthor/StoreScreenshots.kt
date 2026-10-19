@@ -639,4 +639,33 @@ class StoreScreenshots {
         AutoDim.dimmed.value = false
         AutoDim.delayMs.value = 0L
     }
+
+    /** Half-strength dim over Now playing: the whole screen evenly darker, nothing patchy. */
+    @Test
+    fun dimmedHalf() {
+        AutoDim.delayMs.value = 60_000L
+        AutoDim.level.value = 0.5f
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(null) {}
+        content {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                NowPlayingScreen(
+                    game = noGuideGame,
+                    art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
+                    books = shelf,
+                    coverFile = { null },
+                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                    guide = shelf[0],
+                )
+                com.nerfherder.walkthor.ui.AutoDimOverlay()
+            }
+        }
+        settle()
+        AutoDim.dimmed.value = true
+        settle()
+        shot("check-dimmed-half")
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
+        AutoDim.dimmed.value = false
+        AutoDim.level.value = AutoDim.DEFAULT_LEVEL
+        AutoDim.delayMs.value = 0L
+    }
 }

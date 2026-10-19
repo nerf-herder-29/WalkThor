@@ -109,7 +109,9 @@ fun NowPlayingScreen(
         AutoDim.wake()
         AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
         AutoDim.linkLabel.value = linkLabelFor(guide, books)
+        AutoDim.nowPlayingShown.value = true
         onDispose {
+            AutoDim.nowPlayingShown.value = false
             AutoDim.screenDelayMs.value = null
             AutoDim.linkLabel.value = null
         }

@@ -75,6 +75,8 @@ object AutoDim {
     /** The small link under the Now playing buttons, so the dimmed layout leaves the same space. */
     val linkLabel = MutableStateFlow<String?>(null)
     const val REST_AFTER_MS = 30_000L
+    /** True while the Now playing screen is under the dim (its name and tabs are already in place). */
+    val nowPlayingShown = MutableStateFlow(false)
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
     fun label(ms: Long) = when (ms) {
@@ -196,6 +198,18 @@ fun AutoDimOverlay() {
             // since that same touch also wakes the screen.
             val linkLabel by AutoDim.linkLabel.collectAsState()
             val tabs by GameTabs.state.collectAsState()
+            val nowPlayingUnder by AutoDim.nowPlayingShown.collectAsState()
+            // Over a guide page, the game's name would sit on top of the page's text, so darken
+            // the whole screen evenly a little more (to at least READABLE_DIM). Over Now playing
+            // the name is already in the same place underneath, so the dim stays as you set it.
+            if (!nowPlayingUnder && level < READABLE_DIM) {
+                val extra = 1f - (1f - READABLE_DIM) / (1f - level)
+                Box(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        this.alpha = extra * (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f)
+                    }.background(Color.Black)
+                )
+            }
             // The game's tabs, exactly where the tab bar has them; a tab opens on touch down.
             tabs?.let { t ->
                 GameTabPillInBarPosition(
@@ -207,19 +221,7 @@ fun AutoDimOverlay() {
             Box(
                 Modifier
                     .align(Alignment.Center)
-                    .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) }
-                    // A soft pool of black so the dimmed page doesn't show through the letters.
-                    .drawBehind {
-                        drawRect(
-                            androidx.compose.ui.graphics.Brush.radialGradient(
-                                listOf(Color.Black, Color.Black.copy(alpha = 0.85f), Color.Transparent),
-                                center = center,
-                                radius = size.maxDimension * 0.75f,
-                            ),
-                            topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.25f, -size.height * 0.6f),
-                            size = androidx.compose.ui.geometry.Size(size.width * 1.5f, size.height * 2.2f),
-                        )
-                    },
+                    .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
             ) {
                 NowPlayingStack(
                     title = g.title,
@@ -313,3 +315,6 @@ private fun DimButton(label: String, filled: Boolean, action: () -> Unit) {
         Text(label, color = BookColors.Text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
     }
 }
+
+/** How dark the screen gets, at least, when the game's name is drawn over a guide page. */
+private const val READABLE_DIM = 0.85f
