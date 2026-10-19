@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -228,42 +229,24 @@ fun ReaderScreen(
 
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- top bar ----------------------------------------------------------------------
-        Row(
-            Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.TextMuted)
-            }
-            // Narrow screen with tabs: slimmer buttons, and the page-layout switch moves to ⋮.
-            val narrowTabs = tabs != null && LocalConfiguration.current.screenWidthDp < 560
-            val slim = if (narrowTabs) Modifier.size(40.dp) else Modifier
-            // With tabs, search hides behind a button until you use it, and the tabs give way to it.
-            val showSearch = tabs == null || searchOpen || query.isNotEmpty() || applied.isNotEmpty()
-            if (showSearch) {
-                SearchField(
-                    value = query,
-                    onValueChange = { vm.query.value = it; showResults = it.isNotBlank() },
-                    onSearch = { showResults = true },
-                    onFocusChanged = { focused ->
-                        KeyBus.textFieldFocused = focused
-                        if (focused && query.isNotBlank()) showResults = true
-                        if (!focused && query.isEmpty()) searchOpen = false
-                    },
-                    focusRequester = if (tabs != null) searchFocus else null,
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                GameTabPill(tabs!!.selected, tabs.onSelect)
-                Spacer(Modifier.weight(1f))
-                IconButton(modifier = slim, onClick = {
-                    // Typing needs WalkThor's window to take focus from the game for a moment.
-                    com.nerfherder.walkthor.GameFocus.wantFocus.value = true
-                    searchOpen = true
-                }) {
-                    Icon(Icons.Filled.Search, contentDescription = "Search this guide", tint = BookColors.TextMuted)
-                }
-            }
+        val lensOn = lensPage != null
+        // With tabs, search hides behind a button until you use it, and the tabs give way to it.
+        val showSearch = tabs == null || searchOpen || query.isNotEmpty() || applied.isNotEmpty()
+
+        @Composable
+        fun RowScope.SearchWithHits() {
+            SearchField(
+                value = query,
+                onValueChange = { vm.query.value = it; showResults = it.isNotBlank() },
+                onSearch = { showResults = true },
+                onFocusChanged = { focused ->
+                    KeyBus.textFieldFocused = focused
+                    if (focused && query.isNotBlank()) showResults = true
+                    if (!focused && query.isEmpty()) searchOpen = false
+                },
+                focusRequester = if (tabs != null) searchFocus else null,
+                modifier = Modifier.weight(1f),
+            )
             if (applied.isNotEmpty()) {
                 val shownFrom = lensPage ?: bookState.current
                 val pos = vm.hitPosition(hits, shownFrom, if (lensPage != null) PageLayout.SINGLE else layout)
@@ -280,10 +263,12 @@ fun ReaderScreen(
                     Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Next match")
                 }
             }
-            // The reading lens — the big readability control, so it gets its own button.
-            val lensOn = lensPage != null
+        }
+
+        // The reading lens — the big readability control, so it gets its own button.
+        @Composable
+        fun LensButton() {
             IconButton(
-                modifier = slim,
                 onClick = { if (lensOn) lensPage = null else openLens(bookState.current) },
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = if (lensOn) BookColors.ButtonFill else androidx.compose.ui.graphics.Color.Transparent,
@@ -292,7 +277,59 @@ fun ReaderScreen(
             ) {
                 Icon(AppIcons.ZoomIn, contentDescription = if (lensOn) "Close reading lens" else "Reading lens")
             }
-            if (!lensOn && !narrowTabs) {
+        }
+
+        if (tabs != null) {
+            // During a game: the game's tab bar, with search, the lens and ⋮ in its right-hand slots
+            // (on a narrow screen the lens moves into ⋮); the page-layout switch is in ⋮.
+            val roomForLens = tabBarRightSlots() >= 3
+            TabBarFrame(
+                overlay = false,
+                start = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.TextMuted)
+                    }
+                },
+                middle = {
+                    if (showSearch) {
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { SearchWithHits() }
+                    } else {
+                        GameTabsRow(tabs.selected, tabs.onSelect, Modifier.weight(1f))
+                    }
+                },
+                end = {
+                    if (!showSearch) {
+                        IconButton(onClick = {
+                            // Typing needs WalkThor's window to take focus from the game for a moment.
+                            com.nerfherder.walkthor.GameFocus.wantFocus.value = true
+                            searchOpen = true
+                        }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search this guide", tint = BookColors.TextMuted)
+                        }
+                    }
+                    if (roomForLens || lensOn) LensButton()
+                    ReaderMenu(
+                        isTxt = isTxt,
+                        onSmaller = { vm.changeFontSize(bigger = false) },
+                        onBigger = { vm.changeFontSize(bigger = true) },
+                        onSwapScreen = onSwapScreen,
+                        onClose = onClose,
+                        onToggleLayout = if (!lensOn) ({ vm.toggleLayout() }) else null,
+                        spread = spread,
+                        onLens = if (!roomForLens && !lensOn) ({ openLens(bookState.current) }) else null,
+                    )
+                },
+            )
+        } else Row(
+            Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.TextMuted)
+            }
+            SearchWithHits()
+            LensButton()
+            if (!lensOn) {
                 IconButton(onClick = vm::toggleLayout) {
                     Icon(
                         if (spread) AppIcons.Page else AppIcons.Spread,
@@ -307,9 +344,6 @@ fun ReaderScreen(
                 onBigger = { vm.changeFontSize(bigger = true) },
                 onSwapScreen = onSwapScreen,
                 onClose = onClose,
-                onToggleLayout = if (narrowTabs && !lensOn) ({ vm.toggleLayout() }) else null,
-                spread = spread,
-                buttonModifier = slim,
             )
         }
 
@@ -573,13 +607,13 @@ private fun ReaderMenu(
     onClose: () -> Unit,
     onToggleLayout: (() -> Unit)? = null,
     spread: Boolean = false,
-    buttonModifier: Modifier = Modifier,
+    onLens: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val darkPages by PageStyle.dark.collectAsState()
     Box {
-        IconButton(onClick = { open = true }, modifier = buttonModifier) {
+        IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = BookColors.TextMuted)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -587,6 +621,9 @@ private fun ReaderMenu(
                 text = { Text(if (darkPages) "Light pages" else "Dark pages") },
                 onClick = { open = false; PageStyle.setDark(context, !darkPages) },
             )
+            if (onLens != null) {
+                DropdownMenuItem(text = { Text("Reading lens") }, onClick = { open = false; onLens() })
+            }
             if (onToggleLayout != null) {
                 DropdownMenuItem(
                     text = { Text(if (spread) "Single page" else "Two-page spread") },
