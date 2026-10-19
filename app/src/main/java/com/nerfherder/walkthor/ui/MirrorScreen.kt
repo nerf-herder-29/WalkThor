@@ -87,7 +87,13 @@ private const val CAPTURE_SCALE = 2
  * box over the part you want (a minimap, a HUD); it's remembered for that game.
  */
 @Composable
-fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
+fun MirrorScreen(
+    game: String,
+    onBack: () -> Unit,
+    onStartCapture: () -> Unit,
+    /** A still picture to show instead of a live capture (for store screenshots). */
+    preview: ImageBitmap? = null,
+) {
     val context = LocalContext.current
     val projection by Mirror.projection.collectAsState()
     val error by Mirror.error.collectAsState()
@@ -116,7 +122,7 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
     }
 
     // Ask Android to start capturing as soon as the screen opens (it shows its own prompt).
-    LaunchedEffect(Unit) { if (Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
+    LaunchedEffect(Unit) { if (preview == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
 
     // No dimming while you're watching the mirror; capture ends when you leave it or put WalkThor away.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -186,11 +192,12 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        val img = frame
+        val img = preview ?: frame
+        val live = projection != null || preview != null
         when {
             Build.VERSION.SDK_INT < 29 -> Message("Mirroring needs Android 10 or newer.")
             onMainDisplay -> Message("WalkThor is on the main screen, so there's nothing else to mirror.")
-            projection == null -> StartPanel(error, onStartCapture)
+            !live -> StartPanel(error, onStartCapture)
             img == null -> Message("Starting the mirror…")
             editing -> AreaPicker(img, draft, onChange = { draft = it })
             areas.isEmpty() -> MirrorView(img, listOf(floatArrayOf(0f, 0f, 1f, 1f)))
@@ -206,7 +213,7 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White.copy(alpha = 0.85f))
             }
-            val ready = projection != null && img != null
+            val ready = live && img != null
             if (editing || !ready || areas.size <= 1) {
                 Text(
                     when {
@@ -271,7 +278,7 @@ fun MirrorScreen(game: String, onBack: () -> Unit, onStartCapture: () -> Unit) {
                 }
             }
         }
-        if (editing && img != null && projection != null) {
+        if (editing && img != null && live) {
             Text(
                 "Drag the box over what you want to see here, like a minimap. Drag a corner to resize it.",
                 color = Color.White.copy(alpha = 0.8f),
