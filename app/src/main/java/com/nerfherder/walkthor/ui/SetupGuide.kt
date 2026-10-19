@@ -120,7 +120,7 @@ fun SetupGuideDialog(
                 Heading("When you play")
                 Para(
                     "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
-                        "after 5 seconds to save power. Tap anywhere to wake it. The tabs at the top (Guide, Mirror " +
+                        "to save power after the time set in ⋮ → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror " +
                         "and Face Buttons) switch between the game's screens, even while it's dimmed."
                 )
                 Para(
@@ -147,7 +147,7 @@ fun SetupGuideDialog(
                 Bullet("Tap the middle of a page (or the magnifying glass) for a zoomable, full-width view.")
                 Bullet("Press and hold on a page for a magnifier you can slide around.")
                 Bullet("WalkThor remembers your place in every guide.")
-                Bullet("Inside a guide, the screen dims on its own after the time set in ⋮ → Auto-dim.")
+                Bullet("The screen dims on its own after the time set in ⋮ → Auto-dim, to the strength you choose there.")
 
                 Heading("Good to know")
                 Bullet("Tapping WalkThor never slows your game: the game keeps top priority while you read.")

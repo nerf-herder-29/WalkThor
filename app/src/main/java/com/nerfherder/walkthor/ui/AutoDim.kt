@@ -50,12 +50,10 @@ object AutoDim {
 
     val delayMs = MutableStateFlow(0L)
     /**
-     * A screen-specific delay that replaces [delayMs] while that screen is up. The Now playing
-     * screen (a game with no guide) uses a short one, since there's nothing on it to read.
+     * A screen-specific delay that replaces [delayMs] while that screen is up (0 = never dim,
+     * for Mirror and Face Buttons, which you watch while you play).
      */
     val screenDelayMs = MutableStateFlow<Long?>(null)
-    /** How long the Now playing screen (no guide) stays bright. */
-    const val NO_GUIDE_DELAY_MS = 5_000L
     /** How dark the dimming gets: 0.5 = half, 1.0 = fully black (the status readout always stays bright). */
     val level = MutableStateFlow(DEFAULT_LEVEL)
     /** True while the user is adjusting [level], to show it live. */
@@ -134,10 +132,14 @@ fun AutoDimOverlay() {
     val delayMs = screenDelay ?: settingDelay
     val dimmed by AutoDim.dimmed.collectAsState()
 
-    // After a while dimmed, free the memory held by what's under the dim, for the game's benefit.
+    // After a while dimmed fully black, free the memory held by what's under the dim, for the
+    // game's benefit. Only when nothing shows through: at a lighter dim the screen stays exactly
+    // as it dimmed (no going black later).
     val context = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(dimmed) {
-        if (!dimmed) { AutoDim.resting.value = false; return@LaunchedEffect }
+    val dimLevel by AutoDim.level.collectAsState()
+    val fullyBlack = dimLevel >= 0.99f
+    LaunchedEffect(dimmed, fullyBlack) {
+        if (!dimmed || !fullyBlack) { AutoDim.resting.value = false; return@LaunchedEffect }
         delay(AutoDim.REST_AFTER_MS)
         AutoDim.resting.value = true
         delay(500) // let pages and covers drop their images first
