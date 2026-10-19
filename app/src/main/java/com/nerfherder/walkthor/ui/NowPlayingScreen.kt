@@ -195,6 +195,21 @@ fun NowPlayingScreen(
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
             }
         }
+        // The game's logo (marquee) in the bottom-left corner; the dimmed screen leaves it out.
+        if (art.logo != null && !resting) {
+            AsyncImage(
+                model = Uri.parse(art.logo),
+                contentDescription = displayTitle(game.title),
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.BottomStart,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 12.dp)
+                    .widthIn(max = if (compact) 130.dp else 180.dp)
+                    .heightIn(max = if (compact) 44.dp else 64.dp)
+                    .graphicsLayer { alpha = enter.value },
+            )
+        }
         Row(
             Modifier.align(Alignment.BottomEnd).height(34.dp),
             verticalAlignment = Alignment.CenterVertically,
