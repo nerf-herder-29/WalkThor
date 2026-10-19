@@ -120,28 +120,30 @@ fun SetupGuideDialog(
                 Heading("When you play")
                 Para(
                     "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
-                        "after 5 seconds to save power. Tap anywhere to wake it, or tap Open guide."
+                        "after 5 seconds to save power. Tap anywhere to wake it. The tabs at the top (Guide, Mirror " +
+                        "and Face Buttons) switch between the game's screens, even while it's dimmed."
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
-                        "doesn't find one, tap Add guide or From my shelf, and WalkThor remembers that guide for " +
-                        "the game next time. Other guide switches to a different one."
+                        "doesn't find one, the Guide tab offers Add guide or From my shelf, and WalkThor remembers " +
+                        "that guide for the game next time. Other guide (on Now playing) switches to a different one."
                 )
-                Para("Back from a guide takes you to Now playing, and back again to your shelf.")
+                Para("Back from any tab takes you to Now playing, and back again to your shelf. Switching tabs keeps your place.")
                 Para(
-                    "Mirror (on Now playing and the dimmed screen) shows part of the top screen here, like a " +
+                    "Mirror shows part of the top screen here, like a " +
                         "minimap or a HUD. The first time for a game, drag a box over the part you want; it keeps this " +
                         "screen's shape so the mirror fills it (tap Don't keep aspect ratio to resize freely). WalkThor remembers it. Add up to four areas with +, switch between them with the numbers at the top, or " +
-                        "tap All to see them side by side. Android asks for permission each time you start it."
+                        "tap All to see them side by side. Android asks for permission the first time you open it for a " +
+                        "game; the mirror pauses while you're on another tab."
                 )
                 Para(
-                    "Face Buttons (also on Now playing and the dimmed screen) shows the four face buttons the way " +
+                    "Face Buttons shows the four face buttons the way " +
                         "the game's system labels them (△ ○ × □, or letters), each where its Thor button is, and " +
                         "lights up the one you press.")
 
                 Heading("Reading a guide")
                 Bullet("Turn pages with L1 / R1 or the D-pad, by tapping the outer edges, or by dragging a page.")
-                Bullet("Search from the top bar. Results show every matching page, and ▲ / ▼ step through matches.")
+                Bullet("Search from the top bar (during a game, tap the magnifying glass next to the tabs). Results show every matching page, and ▲ / ▼ step through matches.")
                 Bullet("Tap the middle of a page (or the magnifying glass) for a zoomable, full-width view.")
                 Bullet("Press and hold on a page for a magnifier you can slide around.")
                 Bullet("WalkThor remembers your place in every guide.")

@@ -226,7 +226,7 @@ class StoreScreenshots {
         com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))
         com.nerfherder.walkthor.Mirror.setSelected(app, game, 0)
         val frame = fakeGameFrame()
-        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, preview = frame) }
+        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
         settle()
         shot("11-mirror")
     }
@@ -235,7 +235,7 @@ class StoreScreenshots {
     fun mirrorPick() {
         // First time for a game: a box in the bottom screen's shape to drag over the picture.
         val frame = fakeGameFrame()
-        content { com.nerfherder.walkthor.ui.MirrorScreen("Lanterns of Emberfall", onBack = {}, onStartCapture = {}, preview = frame) }
+        content { com.nerfherder.walkthor.ui.MirrorScreen("Lanterns of Emberfall", onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
         settle()
         shot("11c-mirror-pick")
     }
@@ -250,7 +250,7 @@ class StoreScreenshots {
         ))
         com.nerfherder.walkthor.Mirror.setSelected(app, game, com.nerfherder.walkthor.Mirror.ALL)
         val frame = fakeGameFrame()
-        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, preview = frame) }
+        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
         settle()
         shot("11b-mirror-all")
     }
@@ -263,7 +263,10 @@ class StoreScreenshots {
         com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
         content {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalInspectionMode provides true) {
-                com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {})
+                com.nerfherder.walkthor.ui.ControlsScreen(
+                    game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {},
+                    topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.FACE) },
+                )
             }
         }
         settle()
@@ -332,6 +335,72 @@ class StoreScreenshots {
         compose.onNodeWithText("p. 2").performClick()
         settle()
         shot("04b-search-highlights")
+    }
+
+    /** The game's tab bar, as the app shows it above a tab. */
+    @Composable
+    private fun tabBar(selected: com.nerfherder.walkthor.ui.GameTab?) =
+        com.nerfherder.walkthor.ui.GameTabBar(selected, onSelect = {}, onBack = {}, onClose = {})
+
+    private fun importSample(): Book {
+        val sample = File(app.cacheDir, "Lanterns of Emberfall - Complete Walkthrough.txt")
+        javaClass.classLoader!!.getResourceAsStream("sample-guide.txt")!!.use { input ->
+            sample.outputStream().use { input.copyTo(it) }
+        }
+        return runBlocking { BookRepository.get(app).importGuide(Uri.fromFile(sample)) {} }
+    }
+
+    @Test
+    fun readerTabs() {
+        val book = importSample()
+        content {
+            ReaderScreen(
+                bookId = book.id, onBack = {}, onClose = {}, onSwapScreen = {},
+                tabs = com.nerfherder.walkthor.ui.TabsState(com.nerfherder.walkthor.ui.GameTab.GUIDE) {},
+            )
+        }
+        compose.waitUntil(20_000) { compose.onAllNodesWithText("— 1 —").fetchSemanticsNodes().isNotEmpty() }
+        shot("03b-reader-tabs")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun readerTabsDense() {
+        val book = importSample()
+        content {
+            ReaderScreen(
+                bookId = book.id, onBack = {}, onClose = {}, onSwapScreen = {},
+                tabs = com.nerfherder.walkthor.ui.TabsState(com.nerfherder.walkthor.ui.GameTab.GUIDE) {},
+            )
+        }
+        compose.waitUntil(20_000) { compose.onAllNodesWithText("— 1 —").fetchSemanticsNodes().isNotEmpty() }
+        shot("check-reader-tabs-dense")
+    }
+
+    @Test
+    fun guideTabEmpty() {
+        content {
+            androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize()) {
+                tabBar(com.nerfherder.walkthor.ui.GameTab.GUIDE)
+                com.nerfherder.walkthor.ui.NoGuidePanel(
+                    game = noGuideGame, books = shelf, coverFile = { null }, onAddGuide = {}, onPickGuide = {},
+                    modifier = androidx.compose.ui.Modifier.weight(1f),
+                )
+            }
+        }
+        settle()
+        shot("06c-guide-tab-empty")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun mirrorTabsDense() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))
+        val frame = fakeGameFrame()
+        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
+        settle()
+        shot("check-mirror-tabs-dense")
     }
 
     /** A made-up box-art image for the fictional game, drawn on the fly. */
@@ -423,7 +492,7 @@ class StoreScreenshots {
                 art = GameArt(cover = art, logo = logo, hero = fakeHero()),
                 books = shelf.drop(1),
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
             )
         }
         settle()
@@ -441,7 +510,7 @@ class StoreScreenshots {
                 art = GameArt(cover = art),
                 books = shelf.drop(1),
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
             )
         }
         settle()
@@ -537,7 +606,7 @@ class StoreScreenshots {
                 art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
                 books = shelf,
                 coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
                 guide = shelf[0],
             )
         }
@@ -548,6 +617,7 @@ class StoreScreenshots {
     @Test
     fun dimmedWithGuide() {
         AutoDim.delayMs.value = 60_000L
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(null) {}
         content {
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
                 NowPlayingScreen(
@@ -555,7 +625,7 @@ class StoreScreenshots {
                     art = GameArt(null),
                     books = shelf,
                     coverFile = { null },
-                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {}, onMirror = {}, onControls = {},
+                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
                     guide = shelf[0],
                 )
                 com.nerfherder.walkthor.ui.AutoDimOverlay()
@@ -565,6 +635,7 @@ class StoreScreenshots {
         AutoDim.dimmed.value = true
         settle()
         shot("07b-dimmed-open-guide")
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
         AutoDim.dimmed.value = false
         AutoDim.delayMs.value = 0L
     }

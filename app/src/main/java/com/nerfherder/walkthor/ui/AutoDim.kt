@@ -72,14 +72,6 @@ object AutoDim {
      * are let go (nothing can be seen under the dim anyway) and come back when you wake it.
      */
     val resting = MutableStateFlow(false)
-    /** Set by the Now playing screen when the game has a guide: the dimmed screen offers it. */
-    val openGuide = MutableStateFlow<(() -> Unit)?>(null)
-    /** Set by the Now playing screen: the dimmed screen offers to mirror part of the top screen. */
-    val openMirror = MutableStateFlow<(() -> Unit)?>(null)
-    /** Set by the Now playing screen: the dimmed screen offers the Controls screen. */
-    val openControls = MutableStateFlow<(() -> Unit)?>(null)
-    /** What [openGuide] says: "Open guide", or "Add guide" when the game has none yet. */
-    val primaryLabel = MutableStateFlow("Open guide")
     /** The small link under the Now playing buttons, so the dimmed layout leaves the same space. */
     val linkLabel = MutableStateFlow<String?>(null)
     const val REST_AFTER_MS = 30_000L
@@ -199,14 +191,19 @@ fun AutoDimOverlay() {
         val game by PlaySession.current.collectAsState()
         val g = game
         if (g != null && !previewing) {
-            // Exactly the Now playing screen's layout (same name, emulator and buttons in the same
-            // places), so nothing moves when the screen dims or wakes. Buttons act on touch down,
+            // Exactly the Now playing screen's layout (same name, emulator and tabs in the same
+            // places), so nothing moves when the screen dims or wakes. Tabs act on touch down,
             // since that same touch also wakes the screen.
-            val open by AutoDim.openGuide.collectAsState()
-            val primaryLabel by AutoDim.primaryLabel.collectAsState()
-            val mirror by AutoDim.openMirror.collectAsState()
-            val controlsAction by AutoDim.openControls.collectAsState()
             val linkLabel by AutoDim.linkLabel.collectAsState()
+            val tabs by GameTabs.state.collectAsState()
+            // The game's tabs, exactly where the tab bar has them; a tab opens on touch down.
+            tabs?.let { t ->
+                GameTabPillInBarPosition(
+                    t.selected, t.onSelect,
+                    Modifier.align(Alignment.TopStart)
+                        .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
+                )
+            }
             Box(
                 Modifier
                     .align(Alignment.Center)
@@ -227,11 +224,7 @@ fun AutoDimOverlay() {
                 NowPlayingStack(
                     title = g.title,
                     player = g.player,
-                    buttons = listOfNotNull(
-                        open?.let { StackButton(primaryLabel, filled = true, action = it) },
-                        mirror?.let { StackButton("Mirror", filled = false, action = it) },
-                        controlsAction?.let { StackButton("Face Buttons", filled = false, action = it) },
-                    ),
+                    buttons = emptyList(),
                     link = linkLabel?.let { it to {} },
                     linkVisible = false,
                     actOnDown = true,

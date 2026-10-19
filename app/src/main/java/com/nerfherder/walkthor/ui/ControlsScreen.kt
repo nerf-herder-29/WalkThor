@@ -72,7 +72,12 @@ private val ButtonDark = Color(0xFF26262B)
  * presses it. With Show presses on, the one you press lights up.
  */
 @Composable
-fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
+fun ControlsScreen(
+    game: LaunchedGame?,
+    onBack: () -> Unit,
+    /** The game's tab bar, in place of this screen's own header. */
+    topBar: (@Composable () -> Unit)? = null,
+) {
     val context = LocalContext.current
     val inspection = androidx.compose.ui.platform.LocalInspectionMode.current
     var style by remember(game?.player, game?.file) { mutableStateOf(ControlPrefs.faceStyle(context, game?.player, game?.file)) }
@@ -115,7 +120,10 @@ fun ControlsScreen(game: LaunchedGame?, onBack: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(BookColors.Ink)) {
         Column(Modifier.fillMaxSize()) {
-            Row(
+            if (topBar != null) {
+                topBar()
+                Spacer(Modifier.height(10.dp))
+            } else Row(
                 Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

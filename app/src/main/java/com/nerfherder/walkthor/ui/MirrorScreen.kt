@@ -83,61 +83,25 @@ private const val FRAME_MS = 33L
 private const val CAPTURE_SCALE = 2
 
 /**
- * Shows part of the top screen live on the bottom screen. The first time for a game you drag a
- * box over the part you want (a minimap, a HUD); it's remembered for that game.
+ * The live picture of the top screen while a capture is running. Lives as long as the game's
+ * screens do, so switching tabs doesn't end the capture (Android would ask permission again);
+ * while [active] is false (another tab is showing) the capture is paused and costs nothing.
+ * The capture ends when this leaves the screen or WalkThor is put away.
  */
 @Composable
-fun MirrorScreen(
-    game: String,
-    onBack: () -> Unit,
-    onStartCapture: () -> Unit,
-    /** A still picture to show instead of a live capture (for store screenshots). */
-    preview: ImageBitmap? = null,
-) {
+fun rememberMirrorFrame(active: Boolean): ImageBitmap? {
     val context = LocalContext.current
     val projection by Mirror.projection.collectAsState()
-    val error by Mirror.error.collectAsState()
-    var areas by remember(game) { mutableStateOf(Mirror.areas(context, game)) }
-    var selected by remember(game) {
-        mutableStateOf(Mirror.selected(context, game).let { if (it == Mirror.ALL || it in areas.indices) it else 0 })
-    }
-    // The area being edited: an index into [areas], or areas.size for a new one; null = not editing.
-    var editingIndex by remember(game) { mutableStateOf<Int?>(if (areas.isEmpty()) 0 else null) }
-    val editing = editingIndex != null
-    var draft by remember(game) { mutableStateOf(floatArrayOf(0f, 0f, 1f, 1f)) }
-    // Whether the box keeps the bottom screen's shape while you resize it, so the mirror fills it.
-    var keepShape by remember(game) { mutableStateOf(true) }
-    val config = androidx.compose.ui.platform.LocalConfiguration.current
-    val screenAspect = config.screenWidthDp.toFloat() / config.screenHeightDp.coerceAtLeast(1)
-    fun save(newAreas: List<FloatArray>, newSelected: Int) {
-        areas = newAreas
-        selected = newSelected
-        Mirror.setAreas(context, game, newAreas)
-        Mirror.setSelected(context, game, newSelected)
-    }
     var frame by remember { mutableStateOf<ImageBitmap?>(null) }
     var reader by remember { mutableStateOf<ImageReader?>(null) }
-    // Android mirrors its main display (the Thor's top screen). If WalkThor itself is there, the
-    // mirror would just show itself.
-    val onMainDisplay = remember {
-        (com.nerfherder.walkthor.AppState.activityDisplayId ?: Display.DEFAULT_DISPLAY) == Display.DEFAULT_DISPLAY &&
-            com.nerfherder.walkthor.DisplayHelper.bottomDisplay(context)?.displayId != Display.DEFAULT_DISPLAY &&
-            com.nerfherder.walkthor.AppState.activityDisplayId != null
-    }
+    var display by remember { mutableStateOf<VirtualDisplay?>(null) }
 
-    // Ask Android to start capturing as soon as the screen opens (it shows its own prompt).
-    LaunchedEffect(Unit) { if (preview == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
-
-    // No dimming while you're watching the mirror; capture ends when you leave it or put WalkThor away.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(Unit) {
-        AutoDim.wake()
-        AutoDim.screenDelayMs.value = 0L
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) Mirror.stop(context) }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
-            AutoDim.screenDelayMs.value = null
             Mirror.stop(context)
         }
     }
@@ -145,7 +109,7 @@ fun MirrorScreen(
     // The capture: the top screen mirrored at reduced size into an image queue.
     DisposableEffect(projection) {
         val p = projection
-        var display: VirtualDisplay? = null
+        var d: VirtualDisplay? = null
         var images: ImageReader? = null
         if (p != null && Build.VERSION.SDK_INT >= 29) {
             runCatching {
@@ -157,26 +121,35 @@ fun MirrorScreen(
                 val h = max(2, size.y / CAPTURE_SCALE) and 1.inv()
                 val dpi = max(80, context.resources.displayMetrics.densityDpi / CAPTURE_SCALE)
                 images = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 4, HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE)
-                display = p.createVirtualDisplay(
+                d = p.createVirtualDisplay(
                     "WalkThor mirror", w, h, dpi,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     images!!.surface, null, null,
                 )
                 reader = images
+                display = d
             }.onFailure { Mirror.error.value = "Couldn't capture the top screen (${it.javaClass.simpleName})" }
         }
         onDispose {
             reader = null
+            display = null
             frame = null
-            runCatching { display?.release() }
+            runCatching { d?.release() }
             runCatching { images?.close() }
         }
     }
 
+    // Paused on another tab: the virtual display stops drawing until it has somewhere to draw again.
+    LaunchedEffect(display, reader, active) {
+        val d = display ?: return@LaunchedEffect
+        runCatching { d.surface = if (active) reader?.surface else null }
+    }
+
     // Pull the newest frame about 30 times a second. Frames are shown straight from the GPU buffer
     // (no copying); the last two are kept open so the one on screen is never reused mid-draw.
-    LaunchedEffect(reader) {
-        val r = reader ?: return@LaunchedEffect
+    LaunchedEffect(reader, active) {
+        val r = reader
+        if (r == null || !active) { frame = null; return@LaunchedEffect }
         val held = ArrayDeque<Image>()
         try {
             while (isActive) {
@@ -194,10 +167,68 @@ fun MirrorScreen(
             held.forEach { runCatching { it.close() } }
         }
     }
+    return frame
+}
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        val img = preview ?: frame
-        val live = projection != null || preview != null
+/**
+ * Shows part of the top screen live on the bottom screen. The first time for a game you drag a
+ * box over the part you want (a minimap, a HUD); it's remembered for that game.
+ *
+ * [frame] is the live picture from [rememberMirrorFrame] (or a still, for screenshots).
+ * [topBar] is the game's tab bar, drawn above the mirror.
+ */
+@Composable
+fun MirrorScreen(
+    game: String,
+    onBack: () -> Unit,
+    onStartCapture: () -> Unit,
+    frame: ImageBitmap?,
+    topBar: (@Composable () -> Unit)? = null,
+) {
+    val context = LocalContext.current
+    val projection by Mirror.projection.collectAsState()
+    val error by Mirror.error.collectAsState()
+    var areas by remember(game) { mutableStateOf(Mirror.areas(context, game)) }
+    var selected by remember(game) {
+        mutableStateOf(Mirror.selected(context, game).let { if (it == Mirror.ALL || it in areas.indices) it else 0 })
+    }
+    // The area being edited: an index into [areas], or areas.size for a new one; null = not editing.
+    var editingIndex by remember(game) { mutableStateOf<Int?>(if (areas.isEmpty()) 0 else null) }
+    val editing = editingIndex != null
+    var draft by remember(game) { mutableStateOf(floatArrayOf(0f, 0f, 1f, 1f)) }
+    // Whether the box keeps the shape of the space the mirror fills, so the mirror fills it.
+    var keepShape by remember(game) { mutableStateOf(true) }
+    fun save(newAreas: List<FloatArray>, newSelected: Int) {
+        areas = newAreas
+        selected = newSelected
+        Mirror.setAreas(context, game, newAreas)
+        Mirror.setSelected(context, game, newSelected)
+    }
+    // Android mirrors its main display (the Thor's top screen). If WalkThor itself is there, the
+    // mirror would just show itself.
+    val onMainDisplay = remember {
+        (com.nerfherder.walkthor.AppState.activityDisplayId ?: Display.DEFAULT_DISPLAY) == Display.DEFAULT_DISPLAY &&
+            com.nerfherder.walkthor.DisplayHelper.bottomDisplay(context)?.displayId != Display.DEFAULT_DISPLAY &&
+            com.nerfherder.walkthor.AppState.activityDisplayId != null
+    }
+
+    // Ask Android to start capturing as soon as the screen opens (it shows its own prompt).
+    LaunchedEffect(Unit) { if (frame == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
+
+    // No dimming while you're watching the mirror.
+    DisposableEffect(Unit) {
+        AutoDim.wake()
+        AutoDim.screenDelayMs.value = 0L
+        onDispose { AutoDim.screenDelayMs.value = null }
+    }
+
+    Column(Modifier.fillMaxSize().background(Color.Black)) {
+    topBar?.invoke()
+    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).background(Color.Black)) {
+        // The shape of the space the mirror fills here.
+        val screenAspect = maxWidth.value / maxHeight.value.coerceAtLeast(1f)
+        val img = frame
+        val live = projection != null || frame != null
         // The box's width over its height in the 0..1 coordinates the areas use, for the
         // bottom screen's shape on this capture.
         val shape = if (img != null) screenAspect * img.height / img.width.coerceAtLeast(1) else screenAspect
@@ -220,14 +251,20 @@ fun MirrorScreen(
 
         // ---- top bar ----
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)
+                .then(if (topBar != null) Modifier.padding(start = 8.dp) else Modifier),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White.copy(alpha = 0.85f))
+            // With the tab bar above, back lives there.
+            if (topBar == null) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White.copy(alpha = 0.85f))
+                }
             }
             val ready = live && img != null
-            if (editing || !ready || areas.size <= 1) {
+            if (topBar != null && !editing && (!ready || areas.size <= 1)) {
+                Spacer(Modifier.weight(1f))
+            } else if (editing || !ready || areas.size <= 1) {
                 Text(
                     when {
                         editing && (editingIndex ?: 0) >= areas.size && areas.isNotEmpty() -> "PICK A NEW AREA"
@@ -324,6 +361,7 @@ fun MirrorScreen(
                 }
             }
         }
+    }
     }
 }
 

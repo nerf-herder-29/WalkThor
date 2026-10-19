@@ -15,16 +15,17 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 
 | | |
 |---|---|
-| ![Now playing: the game's art, its guide and the play time](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after 5 seconds, with Open guide](docs/screenshots/07b-dimmed-open-guide.png) |
+| ![Now playing: the game's art, its guide and the play time](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after 5 seconds, with the tabs still there](docs/screenshots/07b-dimmed-open-guide.png) |
 | ![Your shelf of guides](docs/screenshots/02-library.png) | ![A GameFAQs-style text guide in the reader](docs/screenshots/03-reader.png) |
 | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) | ![In-app setup instructions](docs/screenshots/09-setup-guide.png) |
-| ![Face Buttons: shape-style face buttons on the Thor's positions](docs/screenshots/10-controls.png) | |
+| ![Mirror: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) | ![Face Buttons: shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) |
 
 ## Features
 
 - **Now playing** — start a game in Cocoon (with WalkThor as its companion app) and the bottom
-  screen shows the game's hero art and logo, the emulator, and your guide for it. After 5 seconds
-  it dims to near-black, with the game's name and an **Open guide** button.
+  screen shows the game's hero art and logo and the emulator, with tabs across the top for the
+  game's **Guide**, **Mirror** and **Face Buttons**. After 5 seconds it dims to near-black, with
+  the game's name and the tabs still there. Switching tabs keeps your place in each.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app

@@ -100,30 +100,17 @@ fun NowPlayingScreen(
     onLibrary: () -> Unit,
     onClose: () -> Unit,
     guide: Book? = null,
-    onOpenGuide: () -> Unit = {},
-    onMirror: (() -> Unit)? = null,
-    onControls: (() -> Unit)? = null,
+    /** Opens one of the game's tabs (Guide, Mirror, Face Buttons). */
+    onTab: (GameTab) -> Unit = {},
 ) {
     var picking by remember { mutableStateOf(false) }
-    // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is);
-    // with a guide, the dimmed screen offers to open it.
-    val openGuide by androidx.compose.runtime.rememberUpdatedState(onOpenGuide)
-    val addGuide by androidx.compose.runtime.rememberUpdatedState(onAddGuide)
-    val mirror by androidx.compose.runtime.rememberUpdatedState(onMirror)
-    val controls by androidx.compose.runtime.rememberUpdatedState(onControls)
+    // Nothing to read here, so dim after a few seconds (whatever the Auto-dim setting is).
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
         AutoDim.screenDelayMs.value = AutoDim.NO_GUIDE_DELAY_MS
-        AutoDim.openGuide.value = if (guide != null) ({ openGuide() }) else ({ addGuide() })
-        AutoDim.primaryLabel.value = if (guide != null) "Open guide" else "Add guide"
         AutoDim.linkLabel.value = linkLabelFor(guide, books)
-        AutoDim.openMirror.value = if (onMirror != null) ({ mirror?.invoke() }) else null
-        AutoDim.openControls.value = if (onControls != null) ({ controls?.invoke() }) else null
         onDispose {
-            AutoDim.openControls.value = null
             AutoDim.screenDelayMs.value = null
-            AutoDim.openGuide.value = null
-            AutoDim.openMirror.value = null
             AutoDim.linkLabel.value = null
         }
     }
@@ -174,27 +161,15 @@ fun NowPlayingScreen(
         NowPlayingStack(
             title = game.title,
             player = game.player,
-            buttons = listOfNotNull(
-                if (guide != null) StackButton("Open guide", filled = true, action = onOpenGuide)
-                else StackButton("Add guide", filled = true, action = onAddGuide),
-                onMirror?.let { StackButton("Mirror", filled = false, action = it) },
-                onControls?.let { StackButton("Face Buttons", filled = false, action = it) },
-            ),
+            buttons = emptyList(),
             link = link,
             linkVisible = true,
             actOnDown = false,
             modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = enter.value },
         )
 
-        // ---- over everything: back and close at the top, the status corner at the bottom ----
-        Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(top = 6.dp)) {
-            IconButton(onClick = onLibrary, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Library", tint = Color.White.copy(alpha = 0.85f))
-            }
-            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
-                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = Color.White.copy(alpha = 0.85f))
-            }
-        }
+        // ---- over everything: the tabs at the top, the status corner at the bottom ----
+        GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         // The game's logo (marquee) in the bottom-left corner; the dimmed screen leaves it out.
         if (art.logo != null && !resting) {
             AsyncImage(
@@ -219,35 +194,7 @@ fun NowPlayingScreen(
     }
 
     if (picking) {
-        // Closest titles first, so the right guide is usually at the top.
-        val ranked = remember(books, game) {
-            val names = listOfNotNull(game.title, game.file?.substringBeforeLast('.'))
-            books.sortedByDescending { b -> names.maxOf { Matcher.gameScore(b.title, it) } }
-        }
-        AlertDialog(
-            onDismissRequest = { picking = false },
-            containerColor = BookColors.Surface,
-            title = { Text("Which guide is for this game?", fontFamily = SerifDisplay) },
-            text = {
-                LazyColumn(Modifier.heightIn(max = 340.dp)) {
-                    items(ranked, key = { it.id }) { book ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { picking = false; onPickGuide(book) }
-                                .padding(vertical = 6.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            GuideTile(book, remember(book.id, book.cover) { coverFile(book) }, Modifier.size(44.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text(book.title, color = BookColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
-        )
+        GuidePickerDialog(game, books, coverFile, onPick = { picking = false; onPickGuide(it) }, onDismiss = { picking = false })
     }
 }
 
@@ -342,4 +289,95 @@ private fun linkLabelFor(guide: Book?, books: List<Book>): String? = when {
     guide != null && books.size > 1 -> "Other guide"
     guide == null && books.isNotEmpty() -> "From my shelf"
     else -> null
+}
+
+/** Pick a guide from the shelf for [game]; closest titles first. */
+@Composable
+fun GuidePickerDialog(
+    game: LaunchedGame,
+    books: List<Book>,
+    coverFile: (Book) -> File?,
+    onPick: (Book) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val ranked = remember(books, game) {
+        val names = listOfNotNull(game.title, game.file?.substringBeforeLast('.'))
+        books.sortedByDescending { b -> names.maxOf { Matcher.gameScore(b.title, it) } }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = BookColors.Surface,
+        title = { Text("Which guide is for this game?", fontFamily = SerifDisplay) },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 340.dp)) {
+                items(ranked, key = { it.id }) { book ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onPick(book) }
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        GuideTile(book, remember(book.id, book.cover) { coverFile(book) }, Modifier.size(44.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(book.title, color = BookColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** The Guide tab when the game has no guide yet: add one, or pick one from the shelf. */
+@Composable
+fun NoGuidePanel(
+    game: LaunchedGame,
+    books: List<Book>,
+    coverFile: (Book) -> File?,
+    onAddGuide: () -> Unit,
+    onPickGuide: (Book) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var picking by remember { mutableStateOf(false) }
+    Box(modifier.fillMaxSize().background(BookColors.Ink), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.layout.Column(
+            Modifier.padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("NO GUIDE YET", style = EyebrowStyle)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Add a guide for ${displayTitle(game.title)}",
+                color = BookColors.Text,
+                fontFamily = SerifDisplay,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 22.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "WalkThor will open it for this game from now on.",
+                color = BookColors.TextMuted,
+                fontSize = 14.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onAddGuide,
+                    colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
+                if (books.isNotEmpty()) {
+                    androidx.compose.material3.OutlinedButton(onClick = { picking = true }) {
+                        Text("From my shelf", color = BookColors.Text, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+    if (picking) {
+        GuidePickerDialog(game, books, coverFile, onPick = { picking = false; onPickGuide(it) }, onDismiss = { picking = false })
+    }
 }

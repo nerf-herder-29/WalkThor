@@ -26,6 +26,19 @@ import com.nerfherder.walkthor.data.CocoonLaunchLog
 import com.nerfherder.walkthor.data.GameGuides
 import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.ui.GuideIntro
+import com.nerfherder.walkthor.ui.BookColors
+import com.nerfherder.walkthor.ui.ControlsScreen
+import com.nerfherder.walkthor.ui.GameTab
+import com.nerfherder.walkthor.ui.GameTabBar
+import com.nerfherder.walkthor.ui.GameTabs
+import com.nerfherder.walkthor.ui.MirrorScreen
+import com.nerfherder.walkthor.ui.NoGuidePanel
+import com.nerfherder.walkthor.ui.TabsState
+import com.nerfherder.walkthor.ui.rememberMirrorFrame
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import com.nerfherder.walkthor.ui.BootScreen
 import com.nerfherder.walkthor.ui.NowPlayingScreen
 import com.nerfherder.walkthor.data.ArtworkRepository
@@ -462,10 +475,11 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var autoOpened by remember { mutableStateOf<String?>(null) }
     /** A launched game with no guide, shown with its artwork until a guide is added or picked. */
     var noGuide by remember { mutableStateOf<Showing?>(null) }
-    /** The game whose top screen is being mirrored here, if the mirror screen is open. */
-    var mirroring by remember { mutableStateOf<String?>(null) }
-    /** The Controls screen (the original controller and its Thor buttons) is open. */
-    var showingControls by remember { mutableStateOf(false) }
+    /**
+     * The game's open tab other than a guide being read (that's [openId]): Mirror, Face Buttons,
+     * or Guide when the game has no guide yet. Null with no guide open = Now playing.
+     */
+    var gameTab by remember { mutableStateOf<GameTab?>(null) }
     /** "Add guide" on the no-guide screen: the next imported guide is linked to this game. */
     var linkImportTo by remember { mutableStateOf<LaunchedGame?>(null) }
 
@@ -527,14 +541,19 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val book = withContext(Dispatchers.Default) { GameGuides.pick(context, booksNow, game) }
         autoOpened = book?.id
         if (book != null && book.id == openId) {
-            // Already reading this game's guide (e.g. swiped back in): stay on the page.
-            noGuide = null
+            // Already reading this game's guide (e.g. swiped back in): stay on the page, with the
+            // game's tabs.
+            if (noGuide?.game?.title != game.title) {
+                noGuide = Showing(game, ArtworkRepository.get(context).gameArt(game.title, game.file), book)
+            }
+            gameTab = null
             Acted(game, book, null)
         } else {
             // Every launch lands on the Now playing screen, which dims after a few seconds;
             // with a guide it offers Open guide, without one the game's artwork and ways to add one.
             val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
             openId = null
+            gameTab = null
             noGuide = Showing(game, art, book)
             AutoDim.wake()
             Acted(game, book, art)
@@ -610,14 +629,16 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         if (openId != null && openId != lastOpened && !booting) introFor = openId
         lastOpened = openId
     }
-    val current = openId
-    if (current != null) {
+    /** A guide, with its opening flourish playing over it the first time it opens. */
+    @Composable
+    fun Reader(id: String, onBack: () -> Unit, tabs: TabsState?) {
         Box(Modifier.fillMaxSize()) {
             ReaderScreen(
-                bookId = current,
-                onBack = { openId = null },
+                bookId = id,
+                onBack = onBack,
                 onClose = host::closeApp,
-                onSwapScreen = if (canSwap) ({ host.swapScreen(current) }) else null,
+                onSwapScreen = if (canSwap) ({ host.swapScreen(id) }) else null,
+                tabs = tabs,
             )
             // The opening flourish; the guide loads underneath while it plays.
             val introBook = books.firstOrNull { it.id == introFor }
@@ -629,39 +650,83 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 )
             }
         }
-    } else if (showingControls && noGuide != null) {
-        BackHandler { showingControls = false }
-        com.nerfherder.walkthor.ui.ControlsScreen(game = noGuide!!.game, onBack = { showingControls = false })
-    } else if (mirroring != null && noGuide != null) {
-        BackHandler { mirroring = null }
-        com.nerfherder.walkthor.ui.MirrorScreen(
-            game = mirroring!!,
-            onBack = { mirroring = null },
-            onStartCapture = host::requestMirror,
-        )
-    } else if (noGuide != null) {
-        val (game, art, guide) = noGuide!!
-        BackHandler { noGuide = null }
-        NowPlayingScreen(
-            game = game,
-            art = art,
-            books = books,
-            coverFile = library::coverFile,
-            onAddGuide = { linkImportTo = game; host.pickGuide() },
-            onPickGuide = { linkGuide(game, it.id); openId = it.id },
-            onLibrary = { noGuide = null },
-            guide = guide,
-            onOpenGuide = {
-                if (guide != null) {
-                    AutoDim.wake()
-                    lastOpened = guide.id // the tile was just on screen; skip the opening flourish
-                    openId = guide.id
+    }
+
+    val current = openId
+    val showing = noGuide
+    if (showing != null) {
+        // ---- a game is playing: Now playing, and its Guide, Mirror and Face Buttons tabs ----
+        val (game, art, guide) = showing
+        val selectedTab = if (current != null) GameTab.GUIDE else gameTab
+        fun selectTab(tab: GameTab) {
+            AutoDim.wake()
+            if (tab == selectedTab) return
+            if (tab == GameTab.GUIDE && guide != null) {
+                lastOpened = guide.id // switching tabs, not opening anew: skip the opening flourish
+                gameTab = null
+                openId = guide.id
+            } else {
+                openId = null
+                gameTab = tab
+            }
+        }
+        val tabs = TabsState(selectedTab, ::selectTab)
+        SideEffect { GameTabs.state.value = tabs }
+        DisposableEffect(Unit) { onDispose { GameTabs.state.value = null } }
+        // The mirror's capture keeps running (paused) while you're on other tabs.
+        val mirrorFrame = rememberMirrorFrame(active = current == null && gameTab == GameTab.MIRROR)
+        val toNowPlaying = { openId = null; gameTab = null }
+        val bar: @Composable () -> Unit = {
+            GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp)
+        }
+        when {
+            current != null -> Reader(current, onBack = toNowPlaying, tabs = tabs)
+            gameTab == GameTab.GUIDE -> {
+                BackHandler { gameTab = null }
+                Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+                    bar()
+                    NoGuidePanel(
+                        game = game,
+                        books = books,
+                        coverFile = library::coverFile,
+                        onAddGuide = { linkImportTo = game; host.pickGuide() },
+                        onPickGuide = { linkGuide(game, it.id); gameTab = null; openId = it.id },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-            },
-            onClose = host::closeApp,
-            onMirror = { AutoDim.wake(); mirroring = game.title },
-            onControls = { AutoDim.wake(); showingControls = true },
-        )
+            }
+            gameTab == GameTab.MIRROR -> {
+                BackHandler { gameTab = null }
+                MirrorScreen(
+                    game = game.title,
+                    onBack = { gameTab = null },
+                    onStartCapture = host::requestMirror,
+                    frame = mirrorFrame,
+                    topBar = bar,
+                )
+            }
+            gameTab == GameTab.FACE -> {
+                BackHandler { gameTab = null }
+                ControlsScreen(game = game, onBack = { gameTab = null }, topBar = bar)
+            }
+            else -> {
+                BackHandler { noGuide = null }
+                NowPlayingScreen(
+                    game = game,
+                    art = art,
+                    books = books,
+                    coverFile = library::coverFile,
+                    onAddGuide = { linkImportTo = game; host.pickGuide() },
+                    onPickGuide = { linkGuide(game, it.id); openId = it.id },
+                    onLibrary = { noGuide = null },
+                    guide = guide,
+                    onClose = host::closeApp,
+                    onTab = ::selectTab,
+                )
+            }
+        }
+    } else if (current != null) {
+        Reader(current, onBack = { openId = null }, tabs = null)
     } else {
         LibraryScreen(
             books = books,
