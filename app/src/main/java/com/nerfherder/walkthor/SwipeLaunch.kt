@@ -167,6 +167,8 @@ class SwipeGestureService : AccessibilityService() {
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
+        // If Android closed WalkThor mid-game to free memory, bring it back (see Revive).
+        Revive.onServiceStart(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit

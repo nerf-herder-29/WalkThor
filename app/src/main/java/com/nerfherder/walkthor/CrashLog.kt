@@ -42,6 +42,25 @@ object CrashLog {
         }
     }
 
+    /** Saves what Android reports about a crash in native code (which the handler above can't catch). */
+    fun recordExit(context: Context, exit: android.app.ApplicationExitInfo) {
+        if (Build.VERSION.SDK_INT < 30) return
+        runCatching {
+            val trace = exit.traceInputStream?.use { it.readBytes().decodeToString().take(60_000) }
+            val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
+            File(context.filesDir, FILE).writeText(
+                buildString {
+                    appendLine("WalkThor $version crash report (native)")
+                    appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(exit.timestamp))}")
+                    appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                    appendLine("Reason: ${exit.description ?: exit.reason}")
+                    appendLine()
+                    append(trace ?: "(no trace)")
+                }
+            )
+        }
+    }
+
     fun file(context: Context): File? = File(context.filesDir, FILE).takeIf { it.exists() }
 
     /** Opens the share sheet with the report as plain text. */

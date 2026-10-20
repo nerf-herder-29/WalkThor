@@ -171,6 +171,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
                 // Diagnostics: the performance check readout (moved here from the ⋮ menu).
                 Section("DIAGNOSTICS")
+                // If Android has closed WalkThor to free memory (heavy games), what happened.
+                remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }
                 val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
                 Body(
                     "Performance check shows on the dimmed screen whether WalkThor or your game has Android's " +

@@ -185,6 +185,16 @@ class MainActivity : ComponentActivity() {
                 PerfCheck.recentFrames.value = PerfCheck.frameCounter.getAndSet(0)
             }
         }
+        // While WalkThor is on screen during a game, note that it's up, so if Android closes it
+        // to free memory for the game, it can come back (see Revive).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    if (GameFocus.gameRunning.value) Revive.heartbeat(this@MainActivity)
+                    delay(5_000)
+                }
+            }
+        }
 
         setContent {
             WalkThorTheme {
@@ -282,11 +292,14 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /** Android is short of memory, or WalkThor went to the background: let go of what can be rebuilt. */
+    /**
+     * Android is short of memory (often a heavy game loading), or WalkThor went to the background:
+     * let go of what can be rebuilt, so Android has less reason to close WalkThor.
+     */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         @Suppress("DEPRECATION")
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE) {
             com.nerfherder.walkthor.data.PdfSource.trimAll()
             runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
         }
@@ -330,6 +343,12 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         AppState.resumedDisplayId = null
         super.onPause()
+    }
+
+    override fun onStop() {
+        // Closed on purpose (close, swipe away, back out): stays closed.
+        if (isFinishing) Revive.closedOnPurpose(this)
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -551,6 +570,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         } else {
             // Every launch lands on the Now playing screen, which dims after a few seconds;
             // with a guide it offers Open guide, without one the game's artwork and ways to add one.
+            // A new game is starting and may need a lot of memory: let go of cached pages and
+            // covers first, so Android has less reason to close WalkThor while it loads.
+            com.nerfherder.walkthor.data.PdfSource.trimAll()
+            runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
             val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
             openId = null
             gameTab = null
