@@ -27,9 +27,9 @@ import java.util.Date
 object Revive {
     private const val PREFS = "revive"
     /** WalkThor reopens this long after the service comes back, so the game can finish loading. */
-    private const val REOPEN_DELAY_MS = 8_000L
+    private const val REOPEN_DELAY_MS = 2_000L
     /** At most this many reopens in [LIMIT_WINDOW_MS]. */
-    private const val MAX_REOPENS = 3
+    private const val MAX_REOPENS = 5
     private const val LIMIT_WINDOW_MS = 10 * 60_000L
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
