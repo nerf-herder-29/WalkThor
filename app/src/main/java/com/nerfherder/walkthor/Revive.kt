@@ -24,12 +24,15 @@ import java.util.Date
  * loading, and WalkThor then hands the game its priority back as usual. It never reopens WalkThor
  * after you closed it yourself, and gives up after a few tries so it can't loop.
  */
+/** Set on the intent when WalkThor reopens itself after Android closed it. */
+const val EXTRA_REVIVED = "walkthor.revived"
+
 object Revive {
     private const val PREFS = "revive"
-    /** WalkThor reopens this long after the service comes back, so the game can finish loading. */
-    private const val REOPEN_DELAY_MS = 2_000L
+    /** WalkThor reopens this soon after its service comes back (just long enough for the service to settle). */
+    private const val REOPEN_DELAY_MS = 250L
     /** At most this many reopens in [LIMIT_WINDOW_MS]. */
-    private const val MAX_REOPENS = 5
+    private const val MAX_REOPENS = 10
     private const val LIMIT_WINDOW_MS = 10 * 60_000L
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -96,6 +99,8 @@ object Revive {
                 .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
                 // Like a swipe: go straight to the running game's Now playing.
                 .putExtra(EXTRA_FROM_SWIPE, true)
+                // Coming back, not opening fresh: no startup animation, and a quicker hand-back.
+                .putExtra(EXTRA_REVIVED, true)
             runCatching { context.startActivity(intent, ActivityOptions.makeBasic().setLaunchDisplayId(bottom).toBundle()) }
         }, REOPEN_DELAY_MS)
     }

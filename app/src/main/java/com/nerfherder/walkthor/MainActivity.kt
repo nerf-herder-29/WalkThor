@@ -157,7 +157,9 @@ class MainActivity : ComponentActivity() {
         val initialBook = intent.getStringExtra(DisplayHelper.EXTRA_BOOK)
         // The boot screen plays on a fresh open, but not when moving screens with a guide open
         // or when opening a file handed over from another app.
-        val boot = savedInstanceState == null && initialBook == null && incoming.value == null
+        // Nor when WalkThor reopens itself after Android closed it mid-game: get back fast.
+        revived = savedInstanceState == null && intent.getBooleanExtra(EXTRA_REVIVED, false)
+        val boot = savedInstanceState == null && initialBook == null && incoming.value == null && !revived
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -214,6 +216,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private var yielding: Boolean? = null
+    /** Reopened by [Revive]: the first hand-back comes sooner (nothing is loading). */
+    private var revived = false
 
     // ---- performance check: is WalkThor Android's top app, and is it drawing? ----
     override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
@@ -241,7 +245,9 @@ class MainActivity : ComponentActivity() {
     private fun scheduleHandBack() {
         handBackJob?.cancel()
         handBackJob = lifecycleScope.launch {
-            delay(HAND_BACK_DELAY_MS) // let the launch (and boot screen) settle first
+            // Let the launch (and boot screen) settle first; after reopening itself there's no boot screen.
+            delay(if (revived) REVIVED_HAND_BACK_DELAY_MS else HAND_BACK_DELAY_MS)
+            revived = false
             // Only tap the game's screen just after WalkThor opens, never in the middle of play.
             if (android.os.SystemClock.elapsedRealtime() - openedAt > HAND_BACK_WINDOW_MS) {
                 PerfCheck.handBack.value = "skipped (WalkThor wasn't just opened)"
@@ -818,6 +824,8 @@ private data class Acted(val game: LaunchedGame, val guide: com.nerfherder.walkt
 
 /** How long after WalkThor becomes the top app before it hands priority back to the game. */
 private const val HAND_BACK_DELAY_MS = 2_500L
+/** The same, when WalkThor has just reopened itself (no boot screen to wait for). */
+private const val REVIVED_HAND_BACK_DELAY_MS = 1_000L
 /** The hand-back tap only happens this soon after WalkThor opens. */
 private const val HAND_BACK_WINDOW_MS = 20_000L
 
