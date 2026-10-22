@@ -1,6 +1,6 @@
 # WalkThor privacy policy
 
-_Last updated: October 14, 2026_
+_Last updated: October 22, 2026_
 
 **WalkThor does not collect, send or share any data.** It has no internet permission, no
 accounts, no analytics and no ads. Everything below stays on your device.
@@ -22,24 +22,31 @@ accounts, no analytics and no ads. Everything below stays on your device.
   performance priority to the screen last touched (turning off accessibility access stops it too). It does **not** read the content of your screen or of other apps, and does not
   record what you type.
 
-- **Mirror (screen capture), only when you use it.** The Mirror button shows part of the top
+- **Mirror (screen capture), only when you use it.** The Mirror tab shows part of the top
   screen live on the bottom screen, using Android's screen capture. Android asks for your
-  permission every time it starts, and shows its recording indicator while it runs. Each frame is
+  permission when capture starts, and shows its recording indicator while it runs. Each frame is
   held in memory just long enough to draw it and is then discarded: nothing is recorded, saved,
-  or sent anywhere. Capture stops as soon as you leave the mirror screen. The only thing stored is
-  which part of the screen you chose for each game.
+  or sent anywhere. Capture pauses while you're on another of the game's tabs and stops when you
+  leave the game's screens or put WalkThor away. The only thing stored is which parts of the
+  screen you chose for each game.
 
 - **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
   buttons you press. After you agree to the explanation shown the first time you open it,
   the accessibility service sees each controller button press just before your game does, and
   passes it straight on. This happens only while the Face Buttons screen is open; nothing is recorded,
-  stored or sent, and keyboard text elsewhere is never read. Your button mappings for each emulator
-  are stored on the device.
+  stored or sent, and keyboard text elsewhere is never read. The button layout you pick for each
+  emulator is stored on the device.
+
+- **Reopening after Android closes WalkThor.** While WalkThor is on screen during a game, it notes
+  the time every few seconds. If Android closes it (for example to free memory for a heavy game),
+  WalkThor asks Android why it last closed, so it can reopen on the bottom screen when that
+  happened during a game, and never when you closed it yourself. Only the time and the reason are
+  kept, on the device.
 
 ## What WalkThor stores (on your device only)
 
 Your library of guides, cover images, reading positions, settings, and which guide you linked to
-which game, and — only if WalkThor crashes — a crash report (the error and device model) that you
+which game, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
 can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 accessibility access at any time from the library's ⋮ menu or Android's Accessibility settings.
 

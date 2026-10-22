@@ -160,18 +160,6 @@ class StoreScreenshots {
         shot("09-setup-guide-dense")
     }
 
-    @Test
-    fun controls() {
-        // As if A and R1 are held, to show the lit state.
-        com.nerfherder.walkthor.controls.ControllerInput.pressed.value =
-            setOf(android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_BUTTON_R1)
-        com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
-        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {}) }
-        settle()
-        shot("10-controls")
-        com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
-    }
-
     /** A made-up top-screen frame for the fictional game: a scene with a health bar, minimap and item box. */
     private fun fakeGameFrame(): androidx.compose.ui.graphics.ImageBitmap {
         val w = 960; val h = 540
@@ -272,15 +260,6 @@ class StoreScreenshots {
         settle()
         shot("12-face-buttons-shapes")
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
-    }
-
-    @Test
-    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
-    fun controlsDense() {
-        com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
-        content { com.nerfherder.walkthor.ui.ControlsScreen(game = LaunchedGame("Lanterns of Emberfall", "lanterns.xex", "aX360e", 0L), onBack = {}) }
-        settle()
-        shot("10-controls-dense")
     }
 
     @Test

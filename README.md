@@ -1,9 +1,9 @@
 # WalkThor
 
-A walkthrough reader for the **AYN Thor**'s bottom screen. Import a PDF or TXT guide and it
-becomes an animated book you can flip through and search while you play on the top screen.
-Link Cocoon and WalkThor knows which game you just started, so that game's guide
-is one tap away.
+A companion app for the **AYN Thor**'s bottom screen. Start a game in Cocoon and the bottom
+screen becomes that game's companion: its guide, a live mirror of part of the top screen (like a
+minimap), and its face buttons the way the game labels them, all one tab away, while the game
+keeps full speed on the top screen.
 
 > **WalkThor is an independent, unofficial project.** It is not affiliated with, endorsed by or
 > supported by Cocoon or its developer, AYN, or any game publisher. It works alongside Cocoon by
@@ -15,59 +15,83 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 
 | | |
 |---|---|
-| ![Now playing: the game's art, its guide and the play time](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after the Auto-dim time, with the tabs still there](docs/screenshots/07b-dimmed-open-guide.png) |
-| ![Your shelf of guides](docs/screenshots/02-library.png) | ![A GameFAQs-style text guide in the reader](docs/screenshots/03-reader.png) |
-| ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) | ![In-app setup instructions](docs/screenshots/09-setup-guide.png) |
-| ![Mirror: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) | ![Face Buttons: shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) |
+| ![Now playing: the game's art and logo, with its tabs across the top](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after the Auto-dim time, with the tabs still there](docs/screenshots/07b-dimmed-open-guide.png) |
+| ![Guide tab: a GameFAQs-style text guide during a game](docs/screenshots/03b-reader-tabs.png) | ![Mirror tab: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) |
+| ![Face Buttons tab: shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) | ![Picking the part of the top screen to mirror](docs/screenshots/11c-mirror-pick.png) |
+| ![Your shelf of guides](docs/screenshots/02-library.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
+
+## Quick start
+
+1. **Install** the APK from the [latest release](https://github.com/nerf-herder-29/WalkThor/releases/latest)
+   (allow "Install unknown apps" for your browser or file manager).
+2. **Add a guide:** *Add guide* on the shelf, or *Open with* / *Share* a PDF or TXT from a file manager.
+3. **Link Cocoon's folder** (the one with `launch_debug.log`) so WalkThor knows which game you started.
+4. **In Cocoon, choose WalkThor as the companion app** for the bottom screen.
+5. **Allow accessibility access** when WalkThor asks. It's what keeps the game at full priority
+   (and lets you swipe WalkThor up and down).
+
+Optional: link your artwork folder (Cocoon's media folder works) for game art, logos and guide
+covers. Every step is also in the app under ⋮ → *How to set up WalkThor*, with a tick for each
+step that's done.
 
 ## Features
 
-- **Now playing** — start a game in Cocoon (with WalkThor as its companion app) and the bottom
-  screen shows the game's hero art and logo and the emulator, with tabs across the top for the
-  game's **Guide**, **Mirror** and **Face Buttons**. After the Auto-dim time it dims to the strength you set, with
-  the game's name and the tabs still there. Switching tabs keeps your place in each.
+- **Now playing** — start a game in Cocoon and the bottom screen shows the game's hero art and
+  logo, the emulator, and tabs across the top for the game's **Guide**, **Mirror** and
+  **Face Buttons**. Switching tabs keeps your place in each, and Back takes you to Now playing.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app
   priority from it. Tapping and reading on the bottom screen leave the game in charge, and after
   WalkThor opens (or you finish a search) it hands priority back with one tap on the top edge of
   the game's screen.
-- **Mirror** — show part of the top screen, like a minimap or HUD, live on the bottom screen. Pick
-  up to four areas per game (say, minimap and health bar), switch between them or see them all
-  side by side, and WalkThor remembers them. Uses Android's screen capture (it asks each
-  time); nothing is recorded or saved.
+- **Comes back if a heavy game pushes it out** — some demanding games make Android close other
+  apps to free memory while they load. If that closes WalkThor during a game, it reopens on the
+  bottom screen right away and hands the game its priority back (⋮ → *About & licences* →
+  Diagnostics shows when this happened).
+- **Mirror** — show part of the top screen, like a minimap or HUD, live on the bottom screen. The
+  picking box keeps the bottom screen's shape so the mirror fills it (or resize it freely). Pick
+  up to four areas per game, switch between them or see them all side by side, and WalkThor
+  remembers them. Uses Android's screen capture (it asks the first time you open Mirror for a
+  game, and pauses while you're on another tab); nothing is recorded or saved.
 - **Face Buttons** — the four face buttons labelled the way the game's system labels them
-  (shapes, or letters with A at the bottom or on the right), each where its Thor button sits,
-  lighting up as you press them.
+  (shapes, or letters with A at the bottom or on the right), picked automatically from the
+  emulator, each where its Thor button sits and lighting up as you press it.
 - **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
 - **Animated book** — pages turn in 3D around the spine. Drag a page and it follows your finger;
-  tap the outer edges to turn. Single page or two-page spread from the top bar.
+  tap the outer edges to turn. Single page or two-page spread (top bar, or ⋮ during a game).
   - PDFs default to a two-page spread; TXT guides to a single wide page sized to 80 columns so
     GameFAQs-style ASCII tables stay aligned. Text size is adjustable.
-- **Reading lens** — the magnifying-glass button (or tapping the middle of a page) shows the page
-  fit to the full width, zoomable to 500% with − / +, pinch or double-tap.
+- **Reading lens** — the magnifying-glass-with-plus button (or tapping the middle of a page) shows
+  the page fit to the full width, zoomable to 500% with − / +, pinch or double-tap.
 - **Magnifier loupe** — press and hold on a page, then slide.
 - **Search** — results as you type, a list of every matching page with snippets, ▲/▼ to step
-  through matches, and highlights on the page (PDFs included).
-- **Artwork from your folders** — link your artwork folder (Cocoon's media folder works) for guide
-  covers, Now playing backgrounds (hero, fan art or screenshots) and game logos.
+  through matches, and highlights on the page (PDFs included). During a game, search and the lens
+  sit at the bottom left, so the tab bar stays centred.
+- **Artwork from your folders** — link your artwork folder for guide covers, Now playing
+  backgrounds (hero, fan art or screenshots) and game logos.
 - **Swipe down to open** — swipe from the top edge of the bottom screen to bring WalkThor up or
-  put it away (*Accessibility access* in the ⋮ menu).
-- **OLED-friendly** — true black, auto-dim with adjustable delay and darkness, and a status bar
-  with the time, battery and how long you've been playing.
+  put it away.
+- **OLED-friendly** — true black, auto-dim after the time you choose to the darkness you choose,
+  and a status bar with the time, battery and how long you've been playing.
 - **Controller support** — L1/R1 (or D-pad left/right) turn pages, in the book and in the lens.
 - **Remembers your place** in every guide, with a page scrubber for big jumps.
-- **Setup instructions built in** — ⋮ → *How to set up WalkThor* walks through every step, with
-  a tick for what's done and a button for what isn't.
 
 ## Getting the APK
 
-Every push to `main` is built by GitHub Actions (`.github/workflows/build.yml`).
-Open the latest run under **Actions → Build APK** and download the `WalkThor-apk` artifact.
-Pushing a tag like `v0.1.0` also attaches the APK to a GitHub Release.
+Download `app-release.apk` from the [latest release](https://github.com/nerf-herder-29/WalkThor/releases/latest)
+and sideload it. To get updates automatically, add this repository to
+[Obtainium](https://github.com/ImranR98/Obtainium), which installs straight from GitHub releases.
 
-Install by sideloading (enable "Install unknown apps" for your file manager on the Thor).
+Every push to `main` is also built by GitHub Actions (`.github/workflows/build.yml`); pushing a
+tag like `v1.2.3` builds a release with that version's notes from `release-notes/`.
+
+## How it was made
+
+WalkThor was built with a lot of help from AI (Claude). The features, design decisions and
+testing on a real Thor are the author's; most of the code was written with AI assistance. All of
+it is here to read.
 
 ## Building locally
 
@@ -88,18 +112,25 @@ Requires JDK 17 and the Android SDK (API 35).
 | TXT pages | `StaticLayout` pagination in the background; the same layout settings draw each page, so pages never overflow. Reading position is stored as a character offset, so it survives font/layout changes |
 | Page turn | `graphicsLayer` `rotationY` around the spine with camera perspective, front/back faces and shading |
 | Bottom screen | The smaller of the device's displays; the activity relaunches there with `ActivityOptions.setLaunchDisplayId` |
+| Game priority | The window is non-focusable while a game runs; after WalkThor opens, the accessibility service taps the game's screen once (`dispatchGesture` on that display) so Android gives the game top priority back |
+| Mirror | `MediaProjection` into a half-size `VirtualDisplay` + `ImageReader`, frames drawn straight from their `HardwareBuffer`; the virtual display is paused while another tab is open |
 | Cover art | Images under the linked folder are indexed (no assumed layout) and matched to guide titles by normalized word overlap; covers are copied into the app, loaded with Coil |
 
 Source layout:
 
 ```
 app/src/main/java/com/nerfherder/walkthor/
-  MainActivity.kt        intents, controller keys, app navigation
+  MainActivity.kt        intents, app navigation, the game's tabs, keeping the game's priority
+  SwipeLaunch.kt         accessibility service: swipe to open, the hand-back tap, button presses
+  Revive.kt              reopening WalkThor if Android closes it mid-game
+  Mirror.kt              screen-capture session for Mirror
   DisplayHelper.kt       moving between the Thor's screens
   LibraryViewModel.kt    import + shelf
   ReaderViewModel.kt     pagination, search, reading position
-  data/                  Book, BookRepository, TxtPaginator, PdfSource, Search
-  ui/                    BookView (flip animation), ReaderScreen, LibraryScreen, PageContent, Theme
+  controls/              Face Buttons: layouts per system, button presses
+  data/                  Book, BookRepository, TxtPaginator, PdfSource, Search, artwork, Cocoon's log
+  ui/                    GameTabs, NowPlayingScreen, ReaderScreen, MirrorScreen, ControlsScreen,
+                         BookView (flip animation), LibraryScreen, AutoDim, Theme
 ```
 
 ## Notes / known limits
@@ -123,7 +154,7 @@ store listing.
 - **Cocoon:** WalkThor is not affiliated with Cocoon. It reads Cocoon's `launch_debug.log` from a folder the user links. It's not an
   official API, so a Cocoon update could change it. Describe this as "works with Cocoon" without
   using Cocoon's logo or implying endorsement.
-- **Google Play:** Accessibility access (swipe to open, and the hand-back tap) uses an accessibility service without being an accessibility tool.
+- **Google Play:** Accessibility access (swipe to open, the hand-back tap, and button presses for Face Buttons) uses an accessibility service without being an accessibility tool.
   The app shows the required in-app disclosure with Agree / No thanks before the service can run.
   You'd also need to fill in Play Console's accessibility declaration (including a short screen
   recording of that disclosure and the swipe feature) and link PRIVACY.md as the privacy policy.
