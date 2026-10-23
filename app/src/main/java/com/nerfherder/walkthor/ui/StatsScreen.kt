@@ -254,12 +254,13 @@ fun StatsScreen(
                             "BATTERY",
                             when {
                                 s?.charging == true -> "Charging"
-                                watts != null -> "%.1f W".format(watts)
+                                watts != null -> "%.1f".format(watts)
                                 else -> "—"
                             },
+                            if (s?.charging != true && watts != null) "W" else "",
                             when {
                                 s?.charging == true -> "plugged in"
-                                minutesLeft != null -> "${hoursMinutes(minutesLeft)} left at this rate"
+                                minutesLeft != null -> "${hoursMinutes(minutesLeft)} left"
                                 else -> "power use"
                             },
                             meter = null,
@@ -269,6 +270,7 @@ fun StatsScreen(
                         StatTile(
                             "HEAT",
                             s?.heatWord ?: "—",
+                            "",
                             s?.batteryTempC?.let { "battery %.0f°C".format(it) } ?: "",
                             meter = s?.heatFraction,
                             compact = compact,
@@ -278,15 +280,17 @@ fun StatsScreen(
                     Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
                             "MEMORY",
-                            s?.let { "%.1f GB".format(it.memFree / 1e9) } ?: "—",
-                            s?.let { "free of %.0f GB".format(it.memTotal / 1e9) } ?: "",
+                            s?.let { "%.1f".format(it.memFree / 1e9) } ?: "—",
+                            if (s != null) "GB" else "",
+                            s?.let { "free of %.0f".format(it.memTotal / 1e9) } ?: "",
                             meter = s?.takeIf { it.memTotal > 0 }?.let { 1f - it.memFree.toFloat() / it.memTotal },
                             compact = compact,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
                         StatTile(
                             "CPU",
-                            s?.cpuGhz?.let { "%.2f GHz".format(it) } ?: "—",
+                            s?.cpuGhz?.let { "%.2f".format(it) } ?: "—",
+                            if (s?.cpuGhz != null) "GHz" else "",
                             if (s != null && s.cpuGhz == null) "not shown on this device" else "fastest core",
                             meter = null,
                             compact = compact,
@@ -299,8 +303,10 @@ fun StatsScreen(
             val session = ((System.currentTimeMillis() - game.at) / 60_000L).toInt().takeIf { game.at > 0 && it >= 0 }
             val parts = listOfNotNull(
                 session?.let { "This session  ${hoursMinutes(it)}" },
-                usualHours?.let { "${displayTitle(game.title)} usually lasts about ${hoursMinutes((it * 60).roundToInt())} on a full charge" }
-                    ?: "Learning how long ${displayTitle(game.title)} lasts on a charge",
+                usualHours?.let {
+                    if (compact) "Usually lasts ${hoursMinutes((it * 60).roundToInt())} on a full charge"
+                    else "${displayTitle(game.title)} usually lasts about ${hoursMinutes((it * 60).roundToInt())} on a full charge"
+                } ?: if (compact) "Learning this game's battery life" else "Learning how long ${displayTitle(game.title)} lasts on a charge",
             )
             Box(
                 Modifier.fillMaxWidth().height(if (compact) 36.dp else 44.dp).brackets(false, 10.dp).padding(horizontal = 14.dp),
@@ -405,6 +411,7 @@ private fun FpsGraph(fps: List<Int>, modifier: Modifier) {
 private fun StatTile(
     title: String,
     value: String,
+    unit: String,
     sub: String,
     meter: Float?,
     compact: Boolean,
@@ -413,18 +420,33 @@ private fun StatTile(
     Column(modifier.brackets(false, 10.dp).padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp)) {
         Text(title, style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 9.sp else 11.sp))
         Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
-        Text(
-            value,
-            color = BookColors.Text,
-            fontWeight = FontWeight.Bold,
-            fontSize = if (compact) 18.sp else 26.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                value,
+                color = BookColors.Text,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (compact) 16.sp else 24.sp,
+                lineHeight = if (compact) 18.sp else 28.sp,
+                maxLines = 1,
+                softWrap = false,
+            )
+            if (unit.isNotEmpty()) {
+                Text(
+                    " $unit",
+                    color = BookColors.Text.copy(alpha = 0.75f),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (compact) 10.sp else 13.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(bottom = if (compact) 2.dp else 3.dp),
+                )
+            }
+        }
         Text(
             sub,
             color = BookColors.Text.copy(alpha = 0.7f),
             fontSize = if (compact) 10.sp else 12.sp,
+            lineHeight = if (compact) 12.sp else 15.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
