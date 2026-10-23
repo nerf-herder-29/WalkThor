@@ -136,8 +136,8 @@ class MirrorService : Service() {
         else @Suppress("DEPRECATION") Notification.Builder(this)
         return builder
             .setSmallIcon(R.drawable.ic_mirror)
-            .setContentTitle("WalkThor is mirroring the top screen")
-            .setContentText("Only on this device. Leave the mirror screen to stop.")
+            .setContentTitle("WalkThor is using the top screen's picture")
+            .setContentText("For Mirror or the FPS meter, only on this device. Leave the game's screens to stop.")
             .setOngoing(true)
             .build()
     }

@@ -191,8 +191,16 @@ class MainActivity : ComponentActivity() {
         // to free memory for the game, it can come back (see Revive).
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                var beats = 0
                 while (true) {
-                    if (GameFocus.gameRunning.value) Revive.heartbeat(this@MainActivity)
+                    if (GameFocus.gameRunning.value) {
+                        Revive.heartbeat(this@MainActivity)
+                        // Every half minute, note the game's power draw (for the Stats tab's
+                        // "usually lasts about …").
+                        if (++beats % 6 == 0) {
+                            PlaySession.current.value?.title?.let { com.nerfherder.walkthor.ui.PlayStats.record(this@MainActivity, it) }
+                        }
+                    }
                     delay(5_000)
                 }
             }
@@ -703,7 +711,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         SideEffect { GameTabs.state.value = tabs }
         DisposableEffect(Unit) { onDispose { GameTabs.state.value = null } }
         // The mirror's capture keeps running (paused) while you're on other tabs.
-        val mirrorFrame = rememberMirrorFrame(active = current == null && gameTab == GameTab.MIRROR)
+        val mirrorFrame = rememberMirrorFrame(
+            active = current == null && gameTab == GameTab.MIRROR,
+            counting = current == null && gameTab == GameTab.STATS,
+        )
         val toNowPlaying = { openId = null; gameTab = null }
         val bar: @Composable () -> Unit = {
             GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp)
@@ -733,6 +744,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                     frame = mirrorFrame,
                     topBar = bar,
                 )
+            }
+            gameTab == GameTab.STATS -> {
+                BackHandler { gameTab = null }
+                com.nerfherder.walkthor.ui.StatsScreen(game = game, onStartCapture = host::requestMirror, topBar = bar)
             }
             gameTab == GameTab.FACE -> {
                 BackHandler { gameTab = null }

@@ -647,4 +647,45 @@ class StoreScreenshots {
         AutoDim.level.value = AutoDim.DEFAULT_LEVEL
         AutoDim.delayMs.value = 0L
     }
+
+    private fun statsPreview(): com.nerfherder.walkthor.ui.StatsPreview {
+        val rnd = java.util.Random(4)
+        val fps = MutableList(60) { 60 - (if (rnd.nextFloat() < 0.08f) 4 + rnd.nextInt(10) else 0) - rnd.nextInt(2) }
+        listOf(47, 44, 49, 55, 58).forEachIndexed { i, v -> fps[38 + i] = v }
+        return com.nerfherder.walkthor.ui.StatsPreview(
+            fps = fps,
+            snapshot = com.nerfherder.walkthor.ui.StatsSnapshot(
+                watts = 9.8f, charging = false, minutesLeft = 160, heatWord = "Normal", heatFraction = 0.35f,
+                batteryTempC = 34f, memFree = 3_100_000_000L, memTotal = 12_000_000_000L, cpuGhz = 2.84f,
+            ),
+            fullChargeHours = 3.1f,
+        )
+    }
+
+    @Test
+    fun statsTab() {
+        val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
+        content {
+            com.nerfherder.walkthor.ui.StatsScreen(
+                game = game, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.STATS) },
+                preview = statsPreview(),
+            )
+        }
+        settle()
+        shot("13-stats")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun statsTabDense() {
+        val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
+        content {
+            com.nerfherder.walkthor.ui.StatsScreen(
+                game = game, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.STATS) },
+                preview = statsPreview(),
+            )
+        }
+        settle()
+        shot("check-stats-dense")
+    }
 }

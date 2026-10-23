@@ -2,8 +2,8 @@
 
 A companion app for the **AYN Thor**'s bottom screen. Start a game in Cocoon and the bottom
 screen becomes that game's companion: its guide, a live mirror of part of the top screen (like a
-minimap), and its face buttons the way the game labels them, all one tab away, while the game
-keeps full speed on the top screen.
+minimap), its face buttons the way the game labels them, and a live FPS and battery monitor, all
+one tab away, while the game keeps full speed on the top screen.
 
 > **WalkThor is an independent, unofficial project.** It is not affiliated with, endorsed by or
 > supported by Cocoon or its developer, AYN, or any game publisher. It works alongside Cocoon by
@@ -18,7 +18,8 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 | ![Now playing: the game's art and logo, with its tabs across the top](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after the Auto-dim time, with the tabs still there](docs/screenshots/07b-dimmed-open-guide.png) |
 | ![Guide tab: a GameFAQs-style text guide during a game](docs/screenshots/03b-reader-tabs.png) | ![Mirror tab: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) |
 | ![Face Buttons tab: shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) | ![Picking the part of the top screen to mirror](docs/screenshots/11c-mirror-pick.png) |
-| ![Your shelf of guides](docs/screenshots/02-library.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
+| ![Stats tab: the top screen's FPS, battery, heat, memory and CPU](docs/screenshots/13-stats.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
+| ![Your shelf of guides](docs/screenshots/02-library.png) | |
 
 ## Quick start
 
@@ -37,8 +38,8 @@ step that's done.
 ## Features
 
 - **Now playing** — start a game in Cocoon and the bottom screen shows the game's hero art and
-  logo, the emulator, and tabs across the top for the game's **Guide**, **Mirror** and
-  **Face Buttons**. Switching tabs keeps your place in each, and Back takes you to Now playing.
+  logo, the emulator, and tabs across the top for the game's **Guide**, **Mirror**,
+  **Face Buttons** and **Stats**. Switching tabs keeps your place in each, and Back takes you to Now playing.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app
@@ -57,6 +58,10 @@ step that's done.
 - **Face Buttons** — the four face buttons labelled the way the game's system labels them
   (shapes, or letters with A at the bottom or on the right), picked automatically from the
   emulator, each where its Thor button sits and lighting up as you press it.
+- **Stats** — the top screen's frame rate with a graph of the last minute (counted from the same
+  screen capture as Mirror, so no root or extra apps), the battery's power draw and time left at
+  that rate, heat, free memory and CPU speed. It learns how much power each game uses and tells
+  you how long that game usually lasts on a full charge.
 - **Import PDF or TXT guides** — from *Add guide*, a file manager's *Open with*, or *Share*.
   Guides are copied into the app, so the original file can be moved or deleted.
 - **Animated book** — pages turn in 3D around the spine. Drag a page and it follows your finger;

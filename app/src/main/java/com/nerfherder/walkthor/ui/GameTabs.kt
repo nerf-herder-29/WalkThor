@@ -44,10 +44,11 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** The tabs across the top of the bottom screen while a game is playing. */
-enum class GameTab(val label: String) {
+enum class GameTab(val label: String, val shortLabel: String = label) {
     GUIDE("Guide"),
     MIRROR("Mirror"),
-    FACE("Face Buttons"),
+    FACE("Face Buttons", "Buttons"),
+    STATS("Stats"),
 }
 
 /** What the tab bar shows right now, so the dimmed screen can draw the same tabs in the same place. */
@@ -112,7 +113,7 @@ fun GameTabsRow(
                 TabIcon(tab, tint)
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    tab.label,
+                    if (narrow) tab.shortLabel else tab.label,
                     color = tint,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = if (narrow) 11.sp else 12.sp,
@@ -125,8 +126,8 @@ fun GameTabsRow(
 }
 
 /** Corner brackets around a tab, like a game's HUD: faint, or bold with a light wash when open. */
-private fun Modifier.brackets(on: Boolean): Modifier = drawBehind {
-    val len = 13.dp.toPx()
+fun Modifier.brackets(on: Boolean, length: androidx.compose.ui.unit.Dp = 13.dp): Modifier = drawBehind {
+    val len = length.toPx()
     val w = (if (on) 2.dp else 1.dp).toPx()
     val c = if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.25f)
     val h = w / 2
@@ -147,6 +148,19 @@ private fun TabIcon(tab: GameTab, tint: Color) {
     when (tab) {
         GameTab.GUIDE -> Icon(AppIcons.Spread, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
         GameTab.MIRROR -> Icon(PictureInPicture, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        GameTab.STATS -> Canvas(Modifier.size(20.dp)) {
+            // Three bars, like a small chart.
+            val w = size.width * 0.18f
+            listOf(0.45f, 0.9f, 0.65f).forEachIndexed { i, h ->
+                val x = size.width * (0.2f + 0.3f * i) - w / 2
+                drawRoundRect(
+                    tint,
+                    topLeft = Offset(x, size.height * (0.95f - h)),
+                    size = androidx.compose.ui.geometry.Size(w, size.height * h),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 3),
+                )
+            }
+        }
         GameTab.FACE -> Canvas(Modifier.size(20.dp)) {
             val r = size.minDimension * 0.15f
             val d = size.minDimension * 0.32f

@@ -1,6 +1,6 @@
 # WalkThor privacy policy
 
-_Last updated: October 22, 2026_
+_Last updated: October 23, 2026_
 
 **WalkThor does not collect, send or share any data.** It has no internet permission, no
 accounts, no analytics and no ads. Everything below stays on your device.
@@ -29,6 +29,13 @@ accounts, no analytics and no ads. Everything below stays on your device.
   or sent anywhere. Capture pauses while you're on another of the game's tabs and stops when you
   leave the game's screens or put WalkThor away. The only thing stored is which parts of the
   screen you chose for each game.
+
+- **Stats.** The Stats tab counts how often the top screen changes (its frame rate) using the
+  same screen capture as Mirror, with the same permission and the same rules: nothing is recorded,
+  saved or sent. It also reads the battery's power draw, the device's heat status, free memory and
+  CPU speed from Android. While a game is played with WalkThor open, it notes the power draw every
+  half minute to learn how long that game usually lasts on a charge; only that average is kept,
+  on the device.
 
 - **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
   buttons you press. After you agree to the explanation shown the first time you open it,

@@ -120,8 +120,8 @@ fun SetupGuideDialog(
                 Heading("When you play")
                 Para(
                     "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
-                        "to save power after the time set in ⋮ → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror " +
-                        "and Face Buttons) switch between the game's screens, even while it's dimmed."
+                        "to save power after the time set in ⋮ → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror, " +
+                        "Face Buttons and Stats) switch between the game's screens, even while it's dimmed."
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
@@ -140,6 +140,12 @@ fun SetupGuideDialog(
                     "Face Buttons shows the four face buttons the way " +
                         "the game's system labels them (△ ○ × □, or letters), each where its Thor button is, and " +
                         "lights up the one you press.")
+
+                Para(
+                    "Stats shows the top screen's frame rate (FPS) with a graph of the last minute, using the same screen " +
+                        "capture as Mirror, plus the battery's power draw and time left, heat, free memory and CPU speed. " +
+                        "After you've played a game for a while, it also says how long that game usually lasts on a charge."
+                )
 
                 Heading("Reading a guide")
                 Bullet("Turn pages with L1 / R1 or the D-pad, by tapping the outer edges, or by dragging a page.")

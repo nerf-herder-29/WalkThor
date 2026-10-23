@@ -86,10 +86,11 @@ private const val CAPTURE_SCALE = 2
  * The live picture of the top screen while a capture is running. Lives as long as the game's
  * screens do, so switching tabs doesn't end the capture (Android would ask permission again);
  * while [active] is false (another tab is showing) the capture is paused and costs nothing.
+ * With [counting] (the Stats tab), frames aren't drawn, just counted for the FPS meter.
  * The capture ends when this leaves the screen or WalkThor is put away.
  */
 @Composable
-fun rememberMirrorFrame(active: Boolean): ImageBitmap? {
+fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap? {
     val context = LocalContext.current
     val projection by Mirror.projection.collectAsState()
     var frame by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -140,9 +141,33 @@ fun rememberMirrorFrame(active: Boolean): ImageBitmap? {
     }
 
     // Paused on another tab: the virtual display stops drawing until it has somewhere to draw again.
-    LaunchedEffect(display, reader, active) {
+    LaunchedEffect(display, reader, active, counting) {
         val d = display ?: return@LaunchedEffect
-        runCatching { d.surface = if (active) reader?.surface else null }
+        runCatching { d.surface = if (active || counting) reader?.surface else null }
+    }
+
+    // Stats: count every new picture of the top screen, once a second, on a thread of its own.
+    LaunchedEffect(reader, counting) {
+        val r = reader
+        if (r == null || !counting) return@LaunchedEffect
+        val thread = android.os.HandlerThread("WalkThor FPS").apply { start() }
+        FpsMeter.reset()
+        r.setOnImageAvailableListener({ ir ->
+            while (true) {
+                val img = runCatching { ir.acquireNextImage() }.getOrNull() ?: break
+                img.close()
+                FpsMeter.counter.incrementAndGet()
+            }
+        }, android.os.Handler(thread.looper))
+        try {
+            while (isActive) {
+                delay(1_000)
+                FpsMeter.push(FpsMeter.counter.getAndSet(0))
+            }
+        } finally {
+            runCatching { r.setOnImageAvailableListener(null, null) }
+            thread.quitSafely()
+        }
     }
 
     // Pull the newest frame about 30 times a second. Frames are shown straight from the GPU buffer

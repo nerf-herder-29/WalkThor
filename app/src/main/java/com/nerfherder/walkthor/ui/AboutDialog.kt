@@ -147,8 +147,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "Cocoon's launch_debug.log (to see which game you launched). The accessibility service responds " +
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority. It never reads screen content. " +
-                        "Mirror shows part of the top screen here only when you start it (Android asks each time); " +
-                        "the picture is never recorded, saved or sent. Face Buttons can light up the buttons you press, only " +
+                        "Mirror and the Stats tab's FPS meter use the top screen's picture only while you use them (Android " +
+                        "asks first); the picture is never recorded, saved or sent. The Stats tab reads the battery, heat, memory " +
+                        "and CPU speed from Android, on the device only. Face Buttons can light up the buttons you press, only " +
                         "while that screen is open; presses go straight on to the game and aren't kept."
                 )
 
