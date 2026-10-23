@@ -282,7 +282,7 @@ fun StatsScreen(
                             "MEMORY",
                             s?.let { "%.1f".format(it.memFree / 1e9) } ?: "—",
                             if (s != null) "GB" else "",
-                            s?.let { "free of %.0f".format(it.memTotal / 1e9) } ?: "",
+                            s?.let { "free of %.0f".format(it.memTotal / 1e9) + if (compact) "" else " GB" } ?: "",
                             meter = s?.takeIf { it.memTotal > 0 }?.let { 1f - it.memFree.toFloat() / it.memTotal },
                             compact = compact,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
