@@ -222,8 +222,9 @@ private fun TabIcon(tab: GameTab, tint: Color) {
         GameTab.MIRROR -> Icon(PictureInPicture, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
         GameTab.ALL -> Canvas(Modifier.size(20.dp)) {
             // Four small squares: everything at once.
-            val s = size.minDimension * 0.36f
-            val g = size.minDimension * 0.12f
+            // A touch smaller than the box, like the other tabs' icons, so it doesn't crowd the border.
+            val s = size.minDimension * 0.3f
+            val g = size.minDimension * 0.1f
             val o = (size.minDimension - 2 * s - g) / 2
             for (i in 0..1) for (j in 0..1) {
                 drawRoundRect(
