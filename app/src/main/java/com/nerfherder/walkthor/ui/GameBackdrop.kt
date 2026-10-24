@@ -37,7 +37,7 @@ val LocalBackdrop = compositionLocalOf { false }
 fun backdropOr(color: Color): Color = if (LocalBackdrop.current) Color.Transparent else color
 
 /**
- * The game's wide art in a strip behind the tab bar, fading into black below it; the rest of the
+ * The game's wide art in a strip behind the tab bar only, fading to black by its bottom edge; the rest of the
  * screen stays OLED black. It's decoded once at about the screen's size (so it costs nothing while
  * you play). Without wide art, it's plain black.
  */
@@ -49,13 +49,13 @@ fun GameBackdrop(heroUri: String?, modifier: Modifier = Modifier) {
     }
     Box(modifier.fillMaxSize().background(BookColors.Ink)) {
         val image = art ?: return@Box
-        Box(Modifier.fillMaxWidth().height(96.dp).clipToBounds()) {
+        Box(Modifier.fillMaxWidth().height(TabBarHeight).clipToBounds()) {
             ArtImage(image, Modifier.fillMaxSize())
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
                         0f to Color.Black.copy(alpha = 0.5f),
-                        0.62f to Color.Black.copy(alpha = 0.6f),
+                        0.55f to Color.Black.copy(alpha = 0.62f),
                         1f to Color.Black,
                     )
                 )
