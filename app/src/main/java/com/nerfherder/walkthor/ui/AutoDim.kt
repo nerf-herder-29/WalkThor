@@ -54,6 +54,16 @@ object AutoDim {
      * for Mirror and Face Buttons, which you watch while you play).
      */
     val screenDelayMs = MutableStateFlow<Long?>(null)
+    private val brightHolders = mutableSetOf<Any>()
+
+    /**
+     * Keeps the screen from dimming ([on]) on behalf of [holder], or lets go. It stays bright while
+     * any holder wants it, so a tab fading out can't undo the one fading in.
+     */
+    fun holdBright(holder: Any, on: Boolean) = synchronized(brightHolders) {
+        if (on) brightHolders.add(holder) else brightHolders.remove(holder)
+        screenDelayMs.value = if (brightHolders.isEmpty()) null else 0L
+    }
     /** How dark the dimming gets: 0.5 = half, 1.0 = fully black (the status readout always stays bright). */
     val level = MutableStateFlow(DEFAULT_LEVEL)
     /** True while the user is adjusting [level], to show it live. */

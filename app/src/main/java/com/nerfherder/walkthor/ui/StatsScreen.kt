@@ -215,9 +215,10 @@ fun StatsScreen(
     LaunchedEffect(Unit) { if (preview == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
     // Stays bright while you watch it.
     DisposableEffect(Unit) {
+        val holder = Any()
         AutoDim.wake()
-        AutoDim.screenDelayMs.value = 0L
-        onDispose { AutoDim.screenDelayMs.value = null }
+        AutoDim.holdBright(holder, true)
+        onDispose { AutoDim.holdBright(holder, false) }
     }
 
     var snap by remember { mutableStateOf(preview?.snapshot) }

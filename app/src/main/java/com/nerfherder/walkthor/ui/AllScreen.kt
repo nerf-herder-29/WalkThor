@@ -97,9 +97,10 @@ fun AllScreen(
     LaunchedEffect(Unit) { if (preview == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
     // Stays bright while you watch it.
     DisposableEffect(Unit) {
+        val holder = Any()
         AutoDim.wake()
-        AutoDim.screenDelayMs.value = 0L
-        onDispose { AutoDim.screenDelayMs.value = null }
+        AutoDim.holdBright(holder, true)
+        onDispose { AutoDim.holdBright(holder, false) }
     }
 
     Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
@@ -304,13 +305,13 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
     val agreed = remember { ControlPrefs.keysConsent(context) }
     // Watch presses while this tab is open, once you've agreed on the Face Buttons tab.
     DisposableEffect(agreed) {
+        val holder = Any()
         if (agreed && !still) {
-            ControllerInput.watching.value = true
+            ControllerInput.hold(holder, true)
             SwipeGestureService.instance?.get()?.setKeyWatch(true)
         }
         onDispose {
-            if (agreed && !still) {
-                ControllerInput.watching.value = false
+            if (agreed && !still && !ControllerInput.hold(holder, false)) {
                 SwipeGestureService.instance?.get()?.setKeyWatch(false)
             }
         }

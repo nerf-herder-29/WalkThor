@@ -274,9 +274,10 @@ fun MirrorScreen(
 
     // No dimming while you're watching the mirror.
     DisposableEffect(Unit) {
+        val holder = Any()
         AutoDim.wake()
-        AutoDim.screenDelayMs.value = 0L
-        onDispose { AutoDim.screenDelayMs.value = null }
+        AutoDim.holdBright(holder, true)
+        onDispose { AutoDim.holdBright(holder, false) }
     }
 
     Column(Modifier.fillMaxSize().background(backdropOr(Color.Black))) {

@@ -168,8 +168,20 @@ private val KNOWN_NAMES = mapOf(
  * Controls screen is open with "Show presses" on. Presses always pass straight on to the game.
  */
 object ControllerInput {
-    /** Whether the Controls screen wants presses right now. */
+    /** Whether any screen wants presses right now (see [hold]). */
     val watching = MutableStateFlow(false)
+    private val holders = mutableSetOf<Any>()
+
+    /**
+     * Starts ([on]) or stops watching presses on behalf of [holder]. Presses are watched while any
+     * holder wants them, so two screens overlapping as tabs crossfade can't switch each other off.
+     * Returns whether anyone is still watching.
+     */
+    fun hold(holder: Any, on: Boolean): Boolean = synchronized(holders) {
+        if (on) holders.add(holder) else holders.remove(holder)
+        watching.value = holders.isNotEmpty()
+        watching.value
+    }
     val pressed = MutableStateFlow<Set<Int>>(emptySet())
     /** The last button pressed (a key code), for the "you pressed" line. */
     val last = MutableStateFlow<Int?>(null)

@@ -91,11 +91,12 @@ fun ControlsScreen(
 
     // Watch presses only while this screen is open with the option on; the screen stays bright
     // then, since you're looking at it while you play.
+    val holder = remember { Any() }
     LaunchedEffect(showPresses) {
         AutoDim.wake()
         if (showPresses) {
-            ControllerInput.watching.value = true
-            AutoDim.screenDelayMs.value = 0L
+            ControllerInput.hold(holder, true)
+            AutoDim.holdBright(holder, true)
             // (In screenshots there's no accessibility service; don't show its warning there.)
             val ok = if (inspection) true else SwipeGestureService.instance?.get()?.setKeyWatch(true)
             watchProblem = when (ok) {
@@ -104,17 +105,15 @@ fun ControlsScreen(
                 else -> null
             }
         } else {
-            ControllerInput.watching.value = false
-            AutoDim.screenDelayMs.value = null
-            SwipeGestureService.instance?.get()?.setKeyWatch(false)
+            AutoDim.holdBright(holder, false)
+            if (!ControllerInput.hold(holder, false)) SwipeGestureService.instance?.get()?.setKeyWatch(false)
             watchProblem = null
         }
     }
     DisposableEffect(Unit) {
         onDispose {
-            ControllerInput.watching.value = false
-            SwipeGestureService.instance?.get()?.setKeyWatch(false)
-            AutoDim.screenDelayMs.value = null
+            AutoDim.holdBright(holder, false)
+            if (!ControllerInput.hold(holder, false)) SwipeGestureService.instance?.get()?.setKeyWatch(false)
         }
     }
 
