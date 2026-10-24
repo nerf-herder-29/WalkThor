@@ -303,8 +303,8 @@ private fun DimButton(label: String, filled: Boolean, action: () -> Unit) {
         Modifier
             .clip(RoundedCornerShape(22.dp))
             .then(
-                if (filled) Modifier.background(BookColors.ButtonFill)
-                else Modifier.border(1.dp, BookColors.ButtonFill, RoundedCornerShape(22.dp))
+                if (filled) Modifier.background(BookColors.ButtonFill).border(1.dp, BookColors.ButtonEdge, RoundedCornerShape(22.dp))
+                else Modifier.border(1.dp, BookColors.ButtonEdge, RoundedCornerShape(22.dp))
             )
             .pointerInput(action) {
                 awaitEachGesture {

@@ -108,6 +108,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
             Button(
                 onClick = onAgree,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
             ) { Text("Agree & continue", fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(onClick = onDecline) { Text("No thanks", color = BookColors.TextMuted) } },

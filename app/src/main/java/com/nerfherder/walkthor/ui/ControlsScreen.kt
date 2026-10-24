@@ -64,7 +64,7 @@ import com.nerfherder.walkthor.data.LaunchedGame
 import kotlin.math.min
 
 private val Line = Color.White.copy(alpha = 0.55f)
-private val ButtonDark = Color(0xFF26262B)
+private val ButtonDark = Color(0xFF000000)
 
 /**
  * Face Buttons: the four face buttons, labelled the way the game's system labels them (shapes for
@@ -183,6 +183,7 @@ fun ControlsScreen(
                         agreed = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 ) { Text("Agree", fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = { TextButton(onClick = onBack) { Text("Not now", color = BookColors.TextMuted) } },
@@ -196,7 +197,7 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
         Modifier
             .height(32.dp)
             .background(if (on) BookColors.ButtonFill else Color.Transparent, RoundedCornerShape(16.dp))
-            .border(1.dp, if (on) BookColors.ButtonFill else BookColors.Hairline, RoundedCornerShape(16.dp))
+            .border(1.dp, if (on) BookColors.ButtonEdge else BookColors.Hairline, RoundedCornerShape(16.dp))
             .clickable { onChange(!on) }
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,

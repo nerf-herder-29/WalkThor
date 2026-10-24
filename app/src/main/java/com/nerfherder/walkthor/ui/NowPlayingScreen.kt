@@ -368,6 +368,7 @@ fun NoGuidePanel(
                 Button(
                     onClick = onAddGuide,
                     colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
                 if (books.isNotEmpty()) {
                     androidx.compose.material3.OutlinedButton(onClick = { picking = true }) {

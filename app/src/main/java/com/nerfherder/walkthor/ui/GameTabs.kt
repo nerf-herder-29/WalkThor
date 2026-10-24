@@ -194,7 +194,7 @@ fun Modifier.brackets(on: Boolean, length: androidx.compose.ui.unit.Dp = 13.dp):
     val w = (if (on) 2.dp else 1.dp).toPx()
     val c = if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.25f)
     val h = w / 2
-    if (on) drawRect(Color.White.copy(alpha = 0.06f), Offset(3.dp.toPx(), 3.dp.toPx()), size.copy(size.width - 6.dp.toPx(), size.height - 6.dp.toPx()))
+    if (on) drawRect(Color.Black.copy(alpha = 0.6f), Offset(3.dp.toPx(), 3.dp.toPx()), size.copy(size.width - 6.dp.toPx(), size.height - 6.dp.toPx()))
     fun corner(x: Float, y: Float, sx: Float, sy: Float) {
         drawLine(c, Offset(x, y), Offset(x + sx * len, y), w, StrokeCap.Square)
         drawLine(c, Offset(x, y), Offset(x, y + sy * len), w, StrokeCap.Square)

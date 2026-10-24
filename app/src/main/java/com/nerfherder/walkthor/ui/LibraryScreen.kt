@@ -184,6 +184,7 @@ fun LibraryScreen(
             Button(
                 onClick = actions.onImport,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 contentPadding = if (narrowHeader) PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                 else PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
@@ -466,7 +467,13 @@ private fun SettingsMenu(
                                     selectedContainerColor = BookColors.ButtonFill,
                                     selectedLabelColor = BookColors.Text,
                                 ),
-                                border = null,
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = dimDelay == ms,
+                                    borderColor = Color.Transparent,
+                                    selectedBorderColor = BookColors.ButtonEdge,
+                                    selectedBorderWidth = 1.dp,
+                                ),
                             )
                         }
                     }
@@ -479,9 +486,9 @@ private fun SettingsMenu(
                             onValueChangeFinished = { AutoDim.previewing.value = false },
                             valueRange = AutoDim.MIN_LEVEL..1f,
                             colors = SliderDefaults.colors(
-                                thumbColor = BookColors.Brass,
-                                activeTrackColor = BookColors.Brass,
-                                inactiveTrackColor = BookColors.Hairline,
+                                thumbColor = BookColors.Text,
+                                activeTrackColor = BookColors.Text,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.18f),
                             ),
                             modifier = Modifier.weight(1f),
                         )
@@ -527,6 +534,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
             Button(
                 onClick = onImport,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
             ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
             if (!artLinked) {
                 OutlinedButton(onClick = onLinkArt) { Text("Link Cocoon artwork", color = BookColors.Text) }

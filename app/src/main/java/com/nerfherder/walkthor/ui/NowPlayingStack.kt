@@ -108,7 +108,7 @@ private fun StackButtonView(b: StackButton, actOnDown: Boolean) {
         Modifier
             .clip(shape)
             .then(
-                if (b.filled) Modifier.background(BookColors.ButtonFill)
+                if (b.filled) Modifier.background(BookColors.ButtonFill).border(1.dp, BookColors.ButtonEdge, shape)
                 else Modifier.background(Color.Black.copy(alpha = 0.35f)).border(1.dp, Color.White.copy(alpha = 0.45f), shape)
             )
             .then(

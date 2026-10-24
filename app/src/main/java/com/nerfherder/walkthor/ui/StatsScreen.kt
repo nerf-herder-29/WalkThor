@@ -10,6 +10,7 @@ import android.os.PowerManager
 import android.view.Display
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -354,6 +355,7 @@ private fun FpsPanel(
                 Button(
                     onClick = onStart,
                     colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 ) { Text("Start FPS meter", fontWeight = FontWeight.SemiBold) }
             }
             else -> {
@@ -396,7 +398,12 @@ private fun PanelNote(text: String) {
 /** The last minute of frame rates: a line over a light fill, with guides at 0, 30 and 60. */
 @Composable
 internal fun FpsGraph(fps: List<Int>, modifier: Modifier) {
-    Canvas(modifier.clip(RoundedCornerShape(2.dp))) {
+    Canvas(
+        modifier
+            .clip(RoundedCornerShape(2.dp))
+            .background(Color.Black)
+            .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(2.dp))
+    ) {
         val top = maxOf(60, fps.maxOrNull() ?: 60).toFloat()
         val guide = Color.White.copy(alpha = 0.08f)
         listOf(0f, 0.5f, 1f).forEach { f ->
@@ -460,7 +467,12 @@ private fun StatTile(
         Spacer(Modifier.weight(1f))
         if (meter != null) {
             Box(
-                Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.12f))
+                Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color.Black)
+                    .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(3.dp))
             ) {
                 Box(Modifier.fillMaxWidth(meter.coerceIn(0.02f, 1f)).fillMaxHeight().background(Color(0xFFEDEDF2)))
             }

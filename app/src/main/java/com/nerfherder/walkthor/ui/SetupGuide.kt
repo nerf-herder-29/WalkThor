@@ -224,6 +224,7 @@ private fun Step(
                     Button(
                         onClick = onAction,
                         colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp),
                     ) { Text(actionLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false) }

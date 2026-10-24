@@ -359,6 +359,7 @@ fun MirrorScreen(
                             editingIndex = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                     ) { Text("Done", fontWeight = FontWeight.SemiBold) }
                 } else {
                     val one = selected != Mirror.ALL && areas.isNotEmpty()
@@ -455,6 +456,7 @@ private fun StartPanel(error: String?, onStart: () -> Unit) {
             Button(
                 onClick = onStart,
                 colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
             ) { Text("Start mirroring", fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -524,7 +526,7 @@ private fun AreaChip(label: String, selected: Boolean, onClick: () -> Unit) {
         Modifier
             .height(30.dp)
             .background(if (selected) BookColors.ButtonFill else Color.Black.copy(alpha = 0.4f), RoundedCornerShape(15.dp))
-            .border(1.dp, if (selected) BookColors.ButtonFill else Color.White.copy(alpha = 0.3f), RoundedCornerShape(15.dp))
+            .border(1.dp, if (selected) BookColors.ButtonEdge else Color.White.copy(alpha = 0.3f), RoundedCornerShape(15.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,

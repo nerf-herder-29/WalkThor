@@ -269,7 +269,9 @@ fun ReaderScreen(
         @Composable
         fun LensButton(modifier: Modifier = Modifier) {
             IconButton(
-                modifier = modifier,
+                modifier = modifier.then(
+                    if (lensOn) Modifier.border(1.dp, BookColors.ButtonEdge, androidx.compose.foundation.shape.CircleShape) else Modifier
+                ),
                 onClick = { if (lensOn) lensPage = null else openLens(bookState.current) },
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = if (lensOn) BookColors.ButtonFill else androidx.compose.ui.graphics.Color.Transparent,
@@ -673,9 +675,9 @@ private fun PageScrubber(current: Int, pageCount: Int, spread: Boolean, onScrubb
                 onValueChangeFinished = { dragging = false; onScrubbed(value.roundToInt()) },
                 valueRange = 0f..(pageCount - 1).toFloat(),
                 colors = SliderDefaults.colors(
-                    thumbColor = BookColors.Brass,
-                    activeTrackColor = BookColors.Brass,
-                    inactiveTrackColor = BookColors.Hairline,
+                    thumbColor = BookColors.Text,
+                    activeTrackColor = BookColors.Text,
+                    inactiveTrackColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f),
                 ),
                 modifier = Modifier.weight(1f),
             )

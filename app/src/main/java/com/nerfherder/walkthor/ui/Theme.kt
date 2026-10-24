@@ -30,7 +30,9 @@ object BookColors {
     val Brass = Color(0xFF85858B)
     val BrassSoft = Color(0xFFB4B4B9)
     /** Fill for buttons and selected chips: a medium-dark grey, with light text on it. */
-    val ButtonFill = Color(0xFF48484D)
+    /** Buttons, chips and highlights: OLED black, with a thin light edge ([ButtonEdge]) to show them. */
+    val ButtonFill = Color(0xFF000000)
+    val ButtonEdge = Color(0x99FFFFFF)
 
     // pages
     val Paper = Color(0xFFF4ECDD)
