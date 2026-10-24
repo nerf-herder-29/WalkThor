@@ -51,7 +51,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 /** The tabs across the top of the bottom screen while a game is playing. */
 enum class GameTab(val label: String, val shortLabel: String = label) {
     /** Everything at a glance: Mirror, the guide, Face Buttons and Stats together. */
-    ALL("All", ""),
+    ALL("All"),
     GUIDE("Guide"),
     MIRROR("Mirror"),
     FACE("Face Buttons", "Buttons"),
@@ -132,11 +132,13 @@ fun GameTabsRow(
             val hubShape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
             Column(
                 Modifier
-                    .weight(if (hub) (if (narrow) 0.55f else 0.72f) else 1f)
+                    .weight(if (hub) (if (narrow) 0.72f else 0.8f) else 1f)
                     .fillMaxHeight()
                     .then(
+                        // Inset the same as the open tab's light wash, so All's top and bottom line
+                        // up with the other tabs and its icon and label sit at the same height.
                         if (hub) Modifier
-                            .padding(vertical = 2.dp)
+                            .padding(3.dp)
                             .background(Color.White.copy(alpha = if (on) 0.18f else 0.07f), hubShape)
                             .border(if (on) 2.dp else 1.dp, if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.45f), hubShape)
                         else Modifier.brackets(on)
