@@ -130,7 +130,7 @@ fun ControlsScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.Text)
                 }
-                Text("FACE BUTTONS", style = EyebrowStyle, modifier = Modifier.weight(1f))
+                Text("Face buttons", style = EyebrowStyle, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
             }
             // Which system's labels: guessed from the emulator, remembered if you change it.
@@ -167,7 +167,7 @@ fun ControlsScreen(
         AlertDialog(
             onDismissRequest = onBack,
             containerColor = BookColors.Surface,
-            title = { Text("Light up button presses?", fontFamily = SerifDisplay) },
+            title = { Text("Light up button presses?", fontFamily = DisplayFont) },
             text = {
                 Text(
                     "To light up the buttons you press, WalkThor's accessibility service briefly sees each controller " +

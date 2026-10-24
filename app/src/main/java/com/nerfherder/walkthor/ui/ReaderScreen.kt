@@ -220,8 +220,7 @@ fun ReaderScreen(
                 modifier = Modifier.fillMaxWidth().height(FOOTER),
                 textAlign = TextAlign.Center,
                 fontSize = 10.sp,
-                fontFamily = SerifDisplay,
-                fontStyle = FontStyle.Italic,
+                fontFamily = DisplayFont,
                 color = LocalPageColors.current.inkFaint,
             )
         }
@@ -512,8 +511,7 @@ private fun SearchField(
                             "Search this guide",
                             color = BookColors.TextMuted.copy(alpha = 0.8f),
                             fontSize = 15.sp,
-                            fontFamily = SerifDisplay,
-                            fontStyle = FontStyle.Italic,
+                            fontFamily = DisplayFont,
                         )
                     }
                     inner()
@@ -545,8 +543,7 @@ private fun SearchResults(hits: List<SearchHit>, onPick: (SearchHit) -> Unit, mo
                 "No matches",
                 modifier = Modifier.padding(16.dp),
                 color = BookColors.TextMuted,
-                fontFamily = SerifDisplay,
-                fontStyle = FontStyle.Italic,
+                fontFamily = DisplayFont,
             )
         } else LazyColumn {
             item {
@@ -568,7 +565,7 @@ private fun SearchResults(hits: List<SearchHit>, onPick: (SearchHit) -> Unit, mo
                     Text(
                         "p. ${hit.page + 1}",
                         color = BookColors.Brass,
-                        fontFamily = SerifDisplay,
+                        fontFamily = DisplayFont,
                         fontSize = 14.sp,
                         modifier = Modifier.width(60.dp),
                     )
@@ -662,8 +659,7 @@ private fun PageScrubber(current: Int, pageCount: Int, spread: Boolean, onScrubb
     ) {
         Text(
             label,
-            fontFamily = SerifDisplay,
-            fontStyle = FontStyle.Italic,
+            fontFamily = DisplayFont,
             fontSize = 13.sp,
             color = BookColors.TextMuted,
             modifier = Modifier.width(130.dp),

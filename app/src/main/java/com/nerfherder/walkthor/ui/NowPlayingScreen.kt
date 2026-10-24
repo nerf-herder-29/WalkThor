@@ -214,8 +214,7 @@ private fun NoArtPlaceholder(title: String) {
         Text(
             title,
             color = BookColors.TextMuted,
-            fontFamily = SerifDisplay,
-            fontStyle = FontStyle.Italic,
+            fontFamily = DisplayFont,
             fontSize = 20.sp,
             maxLines = 5,
             overflow = TextOverflow.Ellipsis,
@@ -307,7 +306,7 @@ fun GuidePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = BookColors.Surface,
-        title = { Text("Which guide is for this game?", fontFamily = SerifDisplay) },
+        title = { Text("Which guide is for this game?", fontFamily = DisplayFont) },
         text = {
             LazyColumn(Modifier.heightIn(max = 340.dp)) {
                 items(ranked, key = { it.id }) { book ->
@@ -346,12 +345,12 @@ fun NoGuidePanel(
             Modifier.padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("NO GUIDE YET", style = EyebrowStyle)
+            Text("No guide yet", style = EyebrowStyle)
             Spacer(Modifier.height(8.dp))
             Text(
                 "Add a guide for ${displayTitle(game.title)}",
                 color = BookColors.Text,
-                fontFamily = SerifDisplay,
+                fontFamily = DisplayFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 22.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,

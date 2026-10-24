@@ -256,7 +256,7 @@ fun BootScreen(
             Text(
                 "WalkThor",
                 color = BookColors.Text,
-                fontFamily = SerifDisplay,
+                fontFamily = DisplayFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 34.sp,
                 modifier = Modifier.graphicsLayer {
@@ -279,12 +279,12 @@ fun BootScreen(
                             modifier = Modifier.graphicsLayer { alpha = word.value * (0.55f + 0.45f * pulse(t)) },
                         )
                         is BootStatus.Playing -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("NOW PLAYING", style = EyebrowStyle)
+                            Text("Now playing", style = EyebrowStyle)
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 displayTitle(s.title), // always the game, never the guide
                                 color = BookColors.Text,
-                                fontFamily = SerifDisplay,
+                                fontFamily = DisplayFont,
                                 fontSize = 17.sp,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,

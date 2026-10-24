@@ -261,7 +261,7 @@ fun StatsScreen(
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
-                            "BATTERY",
+                            "Battery",
                             when {
                                 s?.charging == true -> "Charging"
                                 watts != null -> "%.1f".format(watts)
@@ -278,7 +278,7 @@ fun StatsScreen(
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
                         StatTile(
-                            "HEAT",
+                            "Heat",
                             s?.heatWord ?: "—",
                             "",
                             s?.batteryTempC?.let { "battery %.0f°C".format(it) } ?: "",
@@ -289,7 +289,7 @@ fun StatsScreen(
                     }
                     Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
-                            "MEMORY",
+                            "Memory",
                             s?.let { "%.1f".format(it.memFree / 1e9) } ?: "—",
                             if (s != null) "GB" else "",
                             s?.let { "free of %.0f".format(it.memTotal / 1e9) + if (compact) "" else " GB" } ?: "",
@@ -315,7 +315,7 @@ fun StatsScreen(
                 else "${displayTitle(game.title)} usually lasts about ${hoursMinutes((it * 60).roundToInt())} on a full charge"
             } ?: if (compact) "Learning battery life" else "Learning how long ${displayTitle(game.title)} lasts on a charge"
             Row(
-                Modifier.fillMaxWidth().height(if (compact) 36.dp else 44.dp).brackets(false, 10.dp).padding(start = 14.dp),
+                Modifier.fillMaxWidth().height(if (compact) 36.dp else 44.dp).padding(start = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -342,8 +342,8 @@ private fun FpsPanel(
     compact: Boolean,
     modifier: Modifier,
 ) {
-    Column(modifier.brackets(false, 12.dp).padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp)) {
-        Text("TOP SCREEN", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f)))
+    Column(modifier.padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp)) {
+        Text("Top screen", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f)))
         when {
             onMainDisplay -> PanelNote("WalkThor is on the main screen, so there's no other screen to measure.")
             !capturing -> {
@@ -364,7 +364,8 @@ private fun FpsPanel(
                     Text(
                         now?.toString() ?: "—",
                         color = BookColors.Text,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
+                        fontFeatureSettings = "tnum",
                         fontSize = if (compact) 52.sp else 84.sp,
                         lineHeight = if (compact) 54.sp else 86.sp,
                     )
@@ -395,29 +396,27 @@ private fun PanelNote(text: String) {
     Text(text, color = BookColors.TextMuted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 8.dp))
 }
 
-/** The last minute of frame rates: a line over a light fill, with guides at 0, 30 and 60. */
+/** The last minute of frame rates: a line over a soft fade, on a faint baseline. */
 @Composable
 internal fun FpsGraph(fps: List<Int>, modifier: Modifier) {
-    Canvas(
-        modifier
-            .clip(RoundedCornerShape(2.dp))
-            .background(Color.Black)
-            .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(2.dp))
-    ) {
+    Canvas(modifier) {
         val top = maxOf(60, fps.maxOrNull() ?: 60).toFloat()
-        val guide = Color.White.copy(alpha = 0.08f)
-        listOf(0f, 0.5f, 1f).forEach { f ->
-            val y = size.height * (1f - f) - if (f == 0f) 1f else 0f
-            drawLine(guide, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
-        }
+        // Just a faint baseline: the line itself does the talking.
+        drawLine(Color.White.copy(alpha = 0.12f), Offset(0f, size.height - 0.5f), Offset(size.width, size.height - 0.5f), 1.dp.toPx())
         if (fps.size < 2) return@Canvas
         val step = size.width / 59f
         val x0 = size.width - step * (fps.size - 1)
         fun pt(i: Int) = Offset(x0 + step * i, size.height * (1f - (fps[i] / top).coerceIn(0f, 1f)))
         val line = Path().apply { moveTo(pt(0).x, pt(0).y); for (i in 1 until fps.size) lineTo(pt(i).x, pt(i).y) }
         val fill = Path().apply { addPath(line); lineTo(pt(fps.size - 1).x, size.height); lineTo(x0, size.height); close() }
-        drawPath(fill, Color.White.copy(alpha = 0.09f))
-        drawPath(line, Color(0xFFEDEDF2), style = Stroke(2.dp.toPx(), join = StrokeJoin.Round))
+        val peak = (0 until fps.size).minOf { pt(it).y }
+        drawPath(
+            fill,
+            androidx.compose.ui.graphics.Brush.verticalGradient(
+                listOf(Color.White.copy(alpha = 0.16f), Color.Transparent), startY = peak, endY = size.height,
+            ),
+        )
+        drawPath(line, Color(0xFFEDEDF2), style = Stroke(2.dp.toPx(), join = StrokeJoin.Round, cap = androidx.compose.ui.graphics.StrokeCap.Round))
     }
 }
 
@@ -431,14 +430,15 @@ private fun StatTile(
     compact: Boolean,
     modifier: Modifier,
 ) {
-    Column(modifier.brackets(false, 10.dp).padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp)) {
-        Text(title, style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 9.sp else 11.sp))
+    Column(modifier.padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp)) {
+        Text(title, style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 10.sp else 12.sp))
         Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 value,
                 color = BookColors.Text,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
+                fontFeatureSettings = "tnum",
                 fontSize = if (compact) 16.sp else 24.sp,
                 lineHeight = if (compact) 18.sp else 28.sp,
                 maxLines = 1,

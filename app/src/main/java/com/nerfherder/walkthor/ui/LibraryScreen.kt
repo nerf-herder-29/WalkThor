@@ -165,14 +165,14 @@ fun LibraryScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (books.isEmpty() || narrowHeader) "YOUR SHELF" else "YOUR SHELF · ${books.size} GUIDE${if (books.size == 1) "" else "S"}",
+                    if (books.isEmpty() || narrowHeader) "Your shelf" else "Your shelf · ${books.size} guide${if (books.size == 1) "" else "s"}",
                     style = EyebrowStyle,
                     maxLines = 1,
                     softWrap = false,
                 )
                 Text(
                     "WalkThor",
-                    fontFamily = SerifDisplay,
+                    fontFamily = DisplayFont,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 26.sp,
                     color = BookColors.Text,
@@ -291,7 +291,7 @@ fun LibraryScreen(
         AlertDialog(
             onDismissRequest = { explainSwipe = false },
             containerColor = BookColors.Surface,
-            title = { Text("Allow accessibility access", fontFamily = SerifDisplay) },
+            title = { Text("Allow accessibility access", fontFamily = DisplayFont) },
             text = {
                 Column {
                     Text(
@@ -444,7 +444,7 @@ private fun SettingsMenu(
         AlertDialog(
             onDismissRequest = { pickDim = false; AutoDim.previewing.value = false },
             containerColor = BookColors.Surface,
-            title = { Text("Auto-dim", fontFamily = SerifDisplay) },
+            title = { Text("Auto-dim", fontFamily = DisplayFont) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     Text(
@@ -453,7 +453,7 @@ private fun SettingsMenu(
                         fontSize = 13.sp,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
-                    Text("DIM AFTER", style = EyebrowStyle, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+                    Text("Dim after", style = EyebrowStyle, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
                     // One compact row of choices, so the whole dialog fits the short bottom screen.
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AutoDim.OPTIONS.forEach { ms ->
@@ -478,7 +478,7 @@ private fun SettingsMenu(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Text("HOW DARK", style = EyebrowStyle)
+                    Text("How dark", style = EyebrowStyle)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Slider(
                             value = dimLevel,
@@ -521,7 +521,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
     ) {
         Text("❦", fontSize = 28.sp, color = BookColors.Brass)
         Spacer(Modifier.height(6.dp))
-        Text("An empty shelf", fontFamily = SerifDisplay, fontSize = 22.sp, color = BookColors.Text)
+        Text("An empty shelf", fontFamily = DisplayFont, fontSize = 22.sp, color = BookColors.Text)
         Spacer(Modifier.height(6.dp))
         Text(
             "Add a PDF or TXT walkthrough and it becomes a book you can flip through and search.",
@@ -577,8 +577,7 @@ private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> 
                         if (book.pageCount > 0) "$kind · p. ${book.lastPage + 1} of ${book.pageCount}" else kind,
                         color = BookColors.TextMuted,
                         fontSize = 11.sp,
-                        fontFamily = SerifDisplay,
-                        fontStyle = FontStyle.Italic,
+                        fontFamily = DisplayFont,
                     )
                 }
             }
@@ -676,7 +675,7 @@ internal fun GuideTile(book: Book, cover: File?, modifier: Modifier = Modifier) 
                     letterSpacing = 3.sp * k,
                     maxLines = 1,
                     softWrap = false,
-                    fontFamily = SerifDisplay,
+                    fontFamily = DisplayFont,
                 )
             }
             Box(
@@ -738,7 +737,7 @@ private fun GeneratedCover(book: Book) {
         Text(
             book.title,
             color = BookColors.BrassSoft,
-            fontFamily = SerifDisplay,
+            fontFamily = DisplayFont,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             lineHeight = 16.sp,
@@ -773,10 +772,10 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
                 .border(1.dp, BookColors.Hairline, RoundedCornerShape(16.dp))
                 .padding(16.dp)
         ) {
-            Text("COVER", style = EyebrowStyle)
+            Text("Cover", style = EyebrowStyle)
             Text(
                 book.title,
-                fontFamily = SerifDisplay,
+                fontFamily = DisplayFont,
                 fontSize = 18.sp,
                 color = BookColors.Text,
                 maxLines = 1,
@@ -910,7 +909,7 @@ fun ImportDialogs(
         is ImportState.Working -> AlertDialog(
             onDismissRequest = {},
             containerColor = BookColors.Surface,
-            title = { Text(workingTitle, fontFamily = SerifDisplay) },
+            title = { Text(workingTitle, fontFamily = DisplayFont) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(color = BookColors.Brass, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
@@ -924,7 +923,7 @@ fun ImportDialogs(
         is ImportState.Failed -> AlertDialog(
             onDismissRequest = onDismissError,
             containerColor = BookColors.Surface,
-            title = { Text(failedTitle, fontFamily = SerifDisplay) },
+            title = { Text(failedTitle, fontFamily = DisplayFont) },
             text = { Text(state.message, color = BookColors.TextMuted) },
             confirmButton = { TextButton(onClick = onDismissError) { Text("OK") } },
         )

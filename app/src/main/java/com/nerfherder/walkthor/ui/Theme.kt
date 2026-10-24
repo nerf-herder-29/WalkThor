@@ -42,7 +42,8 @@ object BookColors {
     val Highlight = Color(0xFFFFD65C)
 }
 
-val SerifDisplay = FontFamily.Serif
+/** Headings use the same clean sans as everything else. */
+val DisplayFont = FontFamily.SansSerif
 
 /** Colours of the pages themselves (as opposed to the app chrome). */
 @Immutable
@@ -106,17 +107,17 @@ private val scheme = darkColorScheme(
 
 private val base = Typography()
 private val typography = base.copy(
-    headlineSmall = base.headlineSmall.copy(fontFamily = SerifDisplay, fontWeight = FontWeight.SemiBold),
-    titleLarge = base.titleLarge.copy(fontFamily = SerifDisplay, fontWeight = FontWeight.SemiBold),
-    titleMedium = base.titleMedium.copy(fontFamily = SerifDisplay, fontWeight = FontWeight.SemiBold),
+    headlineSmall = base.headlineSmall.copy(fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold),
+    titleLarge = base.titleLarge.copy(fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold),
+    titleMedium = base.titleMedium.copy(fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold),
 )
 
-/** Small-caps-style label used for section headers ("YOUR SHELF"). */
+/** Quiet label used for section headers ("Your shelf"): small, dim, normal case. */
 val EyebrowStyle = TextStyle(
-    fontSize = 11.sp,
+    fontSize = 12.sp,
     fontWeight = FontWeight.Medium,
-    letterSpacing = 2.sp,
-    color = BookColors.Brass,
+    letterSpacing = 0.2.sp,
+    color = BookColors.TextMuted,
 )
 
 @Composable

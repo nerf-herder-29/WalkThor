@@ -363,8 +363,7 @@ private fun BoxScope.BlankPage(isEnd: Boolean) {
             "❦  fin  ❦",
             modifier = Modifier.align(Alignment.Center),
             color = LocalPageColors.current.inkFaint,
-            fontFamily = FontFamily.Serif,
-            fontStyle = FontStyle.Italic,
+            fontFamily = DisplayFont,
             fontSize = 16.sp,
         )
     }

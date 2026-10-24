@@ -158,12 +158,12 @@ fun AllScreen(
                     }
                 }
             when (tab) {
-                GameTab.MIRROR -> Panel("MIRROR", compact, m) { MirrorPanel(game, frame, preview != null) }
-                GameTab.GUIDE -> Panel("GUIDE" + (guide?.let { "  ·  p. ${it.lastPage + 1}" } ?: ""), compact, m) {
+                GameTab.MIRROR -> Panel("Mirror", compact, m) { MirrorPanel(game, frame, preview != null) }
+                GameTab.GUIDE -> Panel("Guide" + (guide?.let { "  ·  p. ${it.lastPage + 1}" } ?: ""), compact, m) {
                     GuidePanel(guide, preview?.guideText)
                 }
-                GameTab.FACE -> Panel("FACE BUTTONS", compact, m) { FacePanel(game, preview != null) }
-                else -> Panel("STATS", compact, m) { StatsPanel(preview?.stats, compact) }
+                GameTab.FACE -> Panel("Face buttons", compact, m) { FacePanel(game, preview != null) }
+                else -> Panel("Stats", compact, m) { StatsPanel(preview?.stats, compact) }
             }
         }
         Column(
@@ -197,13 +197,12 @@ private fun Panel(
     Column(
         modifier
             .fillMaxHeight()
-            .brackets(false, 10.dp)
             .padding(horizontal = 10.dp, vertical = if (compact) 5.dp else 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 title,
-                style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 9.sp else 11.sp),
+                style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 10.sp else 12.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -364,7 +363,8 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
             Text(
                 fps.lastOrNull()?.toString() ?: "—",
                 color = BookColors.Text,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
+                        fontFeatureSettings = "tnum",
                 fontSize = if (compact) 34.sp else 52.sp,
                 lineHeight = if (compact) 36.sp else 54.sp,
             )

@@ -248,7 +248,7 @@ fun AutoDimOverlay() {
                 null -> "TOP APP: unknown yet" to BookColors.TextMuted
             }
             Column(Modifier.align(Alignment.TopStart).padding(16.dp)) {
-                Text("PERFORMANCE CHECK", style = EyebrowStyle.copy(color = BookColors.TextMuted))
+                Text("Performance check", style = EyebrowStyle.copy(color = BookColors.TextMuted))
                 Spacer(Modifier.height(4.dp))
                 Text(label, color = color, fontSize = 13.sp)
                 Text("for ${secs / 60}m ${secs % 60}s · as of this readout", color = BookColors.TextMuted, fontSize = 11.sp)

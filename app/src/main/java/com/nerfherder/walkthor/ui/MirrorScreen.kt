@@ -324,9 +324,9 @@ fun MirrorScreen(
             } else if (editing || !ready || areas.size <= 1) {
                 Text(
                     when {
-                        editing && (editingIndex ?: 0) >= areas.size && areas.isNotEmpty() -> "PICK A NEW AREA"
-                        editing -> "PICK THE AREA TO MIRROR"
-                        else -> "MIRROR"
+                        editing && (editingIndex ?: 0) >= areas.size && areas.isNotEmpty() -> "Pick a new area"
+                        editing -> "Pick the area to mirror"
+                        else -> "Mirror"
                     },
                     style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)),
                     modifier = Modifier.weight(1f),
@@ -438,7 +438,7 @@ private fun StartPanel(error: String?, onStart: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("Mirror the top screen", fontFamily = SerifDisplay, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = BookColors.Text)
+            Text("Mirror the top screen", fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = BookColors.Text)
             Spacer(Modifier.height(8.dp))
             Text(
                 "Show part of the game, like a minimap or a HUD, here on the bottom screen. Android asks " +

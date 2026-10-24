@@ -120,7 +120,7 @@ fun GuideIntro(book: Book, cover: File?, onDone: () -> Unit, start: Boolean = tr
             Text(
                 book.title,
                 color = BookColors.Text,
-                fontFamily = SerifDisplay,
+                fontFamily = DisplayFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 20.sp,
                 textAlign = TextAlign.Center,

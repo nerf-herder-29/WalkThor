@@ -33,6 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -100,8 +103,8 @@ val TabBarSlot = 48.dp
 fun tabBarRightSlots(): Int = 1
 
 /**
- * The three tabs, sharing the width they're given equally: an icon over a label, with corner
- * brackets (bold on the open tab). [actOnDown] makes a tab act on touch down (the dimmed screen,
+ * The tabs, sharing the width they're given: an icon over a label, with a short line gliding
+ * under the open one. [actOnDown] makes a tab act on touch down (the dimmed screen,
  * where the same touch also wakes it).
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -118,8 +121,28 @@ fun GameTabsRow(
     val pinned = state?.pinned
     val onPin = state?.onPin
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    // A short line under the open tab, gliding to whichever tab you pick.
+    val bounds = remember { androidx.compose.runtime.mutableStateMapOf<GameTab, Pair<Float, Float>>() }
+    val indicator = remember { androidx.compose.animation.core.Animatable(Float.NaN) }
+    val target = selected?.let { bounds[it] }?.let { (x, w) -> x + w / 2 }
+    androidx.compose.runtime.LaunchedEffect(target) {
+        if (target == null) return@LaunchedEffect
+        if (indicator.value.isNaN()) indicator.snapTo(target)
+        else indicator.animateTo(target, androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 420f))
+    }
     Row(
-        modifier.fillMaxHeight().padding(vertical = 6.dp),
+        modifier
+            .fillMaxHeight()
+            .padding(vertical = 6.dp)
+            .drawWithContent {
+                drawContent()
+                val cx = indicator.value
+                if (selected != null && !cx.isNaN()) {
+                    val half = 14.dp.toPx()
+                    val y = size.height - 2.dp.toPx()
+                    drawLine(Color(0xFFF5F5FA), Offset(cx - half, y), Offset(cx + half, y), 3.dp.toPx(), StrokeCap.Round)
+                }
+            },
         horizontalArrangement = Arrangement.spacedBy(if (narrow) 4.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -127,13 +150,12 @@ fun GameTabsRow(
             val on = tab == selected
             val interaction = remember { MutableInteractionSource() }
             val hub = tab == GameTab.ALL
-            // All is the game's home: no frame of its own (just its icon and a bold label, set
-            // apart by a thin line), with the usual brackets only while it's open.
+            // All is the game's home, set apart from the others by a thin line.
             Column(
                 Modifier
                     .weight(if (hub) 0.65f else 1f)
                     .fillMaxHeight()
-                    .then(if (hub && !on) Modifier else Modifier.brackets(on))
+                    .onGloballyPositioned { c -> bounds[tab] = c.positionInParent().x to c.size.width.toFloat() }
                     .then(
                         if (actOnDown) Modifier.pointerInput(tab) {
                             awaitEachGesture {
@@ -154,7 +176,7 @@ fun GameTabsRow(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                val tint = if (on) BookColors.Text else Color.White.copy(alpha = 0.72f)
+                val tint = if (on) BookColors.Text else Color.White.copy(alpha = 0.55f)
                 Box {
                     TabIcon(tab, tint)
                     if (tab == pinned) {
@@ -174,7 +196,7 @@ fun GameTabsRow(
                     Text(
                         label,
                         color = tint,
-                        fontWeight = if (hub) FontWeight.Bold else FontWeight.SemiBold,
+                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
                         fontSize = if (narrow) 11.sp else 12.sp,
                         maxLines = 1,
                         softWrap = false,
@@ -186,23 +208,6 @@ fun GameTabsRow(
             }
         }
     }
-}
-
-/** Corner brackets around a tab, like a game's HUD: faint, or bold with a light wash when open. */
-fun Modifier.brackets(on: Boolean, length: androidx.compose.ui.unit.Dp = 13.dp): Modifier = drawBehind {
-    val len = length.toPx()
-    val w = (if (on) 2.dp else 1.dp).toPx()
-    val c = if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.25f)
-    val h = w / 2
-    if (on) drawRect(Color.Black.copy(alpha = 0.6f), Offset(3.dp.toPx(), 3.dp.toPx()), size.copy(size.width - 6.dp.toPx(), size.height - 6.dp.toPx()))
-    fun corner(x: Float, y: Float, sx: Float, sy: Float) {
-        drawLine(c, Offset(x, y), Offset(x + sx * len, y), w, StrokeCap.Square)
-        drawLine(c, Offset(x, y), Offset(x, y + sy * len), w, StrokeCap.Square)
-    }
-    corner(h, h, 1f, 1f)
-    corner(size.width - h, h, -1f, 1f)
-    corner(h, size.height - h, 1f, -1f)
-    corner(size.width - h, size.height - h, -1f, -1f)
 }
 
 /** Each tab's small icon: an open book, a picture-in-picture, the four face buttons. */

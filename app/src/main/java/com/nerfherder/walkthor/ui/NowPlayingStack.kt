@@ -58,12 +58,12 @@ fun NowPlayingStack(
         modifier.widthIn(max = 620.dp).padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("NOW PLAYING", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.7f)))
+        Text("Now playing", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.7f)))
         Spacer(Modifier.height(8.dp))
         Text(
             displayTitle(title),
             color = Color.White.copy(alpha = 0.92f),
-            fontFamily = SerifDisplay,
+            fontFamily = DisplayFont,
             fontWeight = FontWeight.SemiBold,
             fontSize = 26.sp,
             lineHeight = 32.sp,

@@ -68,10 +68,10 @@ fun SetupGuideDialog(
                 .padding(horizontal = if (compact) 14.dp else 18.dp, vertical = if (compact) 10.dp else 18.dp)
         ) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                Text("INSTRUCTIONS", style = EyebrowStyle)
+                Text("Instructions", style = EyebrowStyle)
                 Text(
                     "How to set up WalkThor",
-                    fontFamily = SerifDisplay,
+                    fontFamily = DisplayFont,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = if (compact) 19.sp else 24.sp,
                     color = BookColors.Text,
@@ -237,7 +237,7 @@ private fun Step(
 
 @Composable
 private fun Heading(text: String) {
-    Text(text.uppercase(), style = EyebrowStyle, modifier = Modifier.padding(top = 18.dp, bottom = 2.dp))
+    Text(text, style = EyebrowStyle, modifier = Modifier.padding(top = 18.dp, bottom = 2.dp))
 }
 
 @Composable

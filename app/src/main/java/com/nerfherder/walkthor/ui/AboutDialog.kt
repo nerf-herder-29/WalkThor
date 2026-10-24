@@ -57,7 +57,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = BookColors.Surface,
-        title = { Text("Before you allow accessibility access", fontFamily = SerifDisplay) },
+        title = { Text("Before you allow accessibility access", fontFamily = DisplayFont) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
@@ -79,7 +79,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 Spacer(Modifier.height(12.dp))
-                Text("WHAT IT ACCESSES", style = EyebrowStyle)
+                Text("What it accesses", style = EyebrowStyle)
                 Text(
                     "Touches that begin in a thin strip along the top edge of the bottom screen. And, only if you " +
                         "agree on the Face Buttons screen, and only while that screen is open, your " +
@@ -136,11 +136,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 .padding(18.dp)
         ) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                Text("ABOUT", style = EyebrowStyle)
-                Text("WalkThor", fontFamily = SerifDisplay, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = BookColors.Text)
+                Text("About", style = EyebrowStyle)
+                Text("WalkThor", fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = BookColors.Text)
                 Text("Version $version · MIT License · © 2026 nerf-herder-29", color = BookColors.TextMuted, fontSize = 12.sp)
 
-                Section("PRIVACY")
+                Section("Privacy")
                 Body(
                     "WalkThor doesn't collect, send or share any data, and has no internet access. Guides, covers, " +
                         "reading positions and game links stay on this device and are removed if you uninstall. " +
@@ -157,7 +157,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 // A saved crash report, if WalkThor has crashed, for sharing in a bug report.
                 var crash by remember { mutableStateOf(com.nerfherder.walkthor.CrashLog.file(context)?.lastModified()) }
                 crash?.let { at ->
-                    Section("LAST CRASH")
+                    Section("Last crash")
                     Body(
                         "WalkThor crashed on " +
                             java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(at)) +
@@ -172,7 +172,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 }
 
                 // Diagnostics: the performance check readout (moved here from the ⋮ menu).
-                Section("DIAGNOSTICS")
+                Section("Diagnostics")
                 // If Android has closed WalkThor to free memory (heavy games), what happened.
                 remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }
                 val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
@@ -185,7 +185,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     Text(if (perfOn) "Turn off performance check" else "Turn on performance check")
                 }
 
-                Section("OPEN-SOURCE SOFTWARE")
+                Section("Open-source software")
                 COMPONENTS.forEach { c ->
                     Text(c.name, color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
                     Text("${c.use} · ${c.license}", color = BookColors.TextMuted, fontSize = 12.sp)
@@ -195,7 +195,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "developed at The Apache Software Foundation (https://www.apache.org/)."
                 )
 
-                Section("TRADEMARKS")
+                Section("Trademarks")
                 Body(
                     "AYN and Thor are trademarks of their respective owners; Cocoon is the work of its developer. " +
                         "WalkThor is an independent project, not affiliated with or endorsed by AYN, Cocoon or any " +
