@@ -255,7 +255,8 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
             }
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    // Room around the diamond for the "Thor X" labels drawn outside it.
+    Box(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 14.dp)) {
         FaceDiagram(style, faceCodes, if (agreed || still) pressed else emptySet(), null)
         if (!agreed && !still) {
             Text(
@@ -292,6 +293,11 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
         s?.minutesLeft != null && s.watts != null && watts != null -> (s.minutesLeft * s.watts / watts).roundToInt()
         else -> null
     }
+    val power = when {
+        s?.charging == true -> "Charging"
+        watts != null -> "%.1f W".format(watts) + (minutesLeft?.let { " · ${hoursMinutes(it)}" } ?: "")
+        else -> ""
+    }
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
@@ -309,22 +315,25 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
                 fontSize = if (compact) 12.sp else 16.sp,
                 modifier = Modifier.padding(bottom = if (compact) 4.dp else 8.dp),
             )
+            // On a short screen the power reading sits up here, beside the FPS.
+            if (compact) {
+                Spacer(Modifier.weight(1f))
+                Text(power, color = BookColors.Text.copy(alpha = 0.8f), fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(bottom = 6.dp))
+            }
         }
         Spacer(Modifier.height(4.dp))
         FpsGraph(fps, Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when {
-                    s?.charging == true -> "Charging"
-                    watts != null -> "%.1f W".format(watts) + (minutesLeft?.let { " · ${hoursMinutes(it)}" } ?: "")
-                    else -> ""
-                },
-                color = BookColors.Text.copy(alpha = 0.8f),
-                fontSize = if (compact) 10.sp else 12.sp,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
-            )
+            if (!compact) {
+                Text(
+                    power,
+                    color = BookColors.Text.copy(alpha = 0.8f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+            } else Spacer(Modifier.weight(1f))
             StatusClock(anchor = false)
         }
     }
