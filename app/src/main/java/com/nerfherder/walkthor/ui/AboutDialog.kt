@@ -45,6 +45,7 @@ private val COMPONENTS = listOf(
     Component("Coil", "Showing cover artwork", "Apache License 2.0"),
     Component("Jetpack Compose & AndroidX", "Interface and app framework", "Apache License 2.0"),
     Component("Kotlin & kotlinx.coroutines", "Language runtime, background work", "Apache License 2.0"),
+    Component("Space Grotesk", "The app's typeface", "SIL Open Font License 1.1"),
 )
 
 /**
@@ -192,7 +193,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 }
                 Body(
                     "Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0. PdfBox-Android includes software " +
-                        "developed at The Apache Software Foundation (https://www.apache.org/)."
+                        "developed at The Apache Software Foundation (https://www.apache.org/). Space Grotesk is " +
+                        "copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk); " +
+                        "SIL Open Font License 1.1: https://openfontlicense.org."
                 )
 
                 Section("Trademarks")

@@ -13,6 +13,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -45,9 +46,17 @@ object BookColors {
     val Highlight = Color(0xFFFFD65C)
 }
 
+/** Space Grotesk, bundled with the app (SIL Open Font License 1.1). */
+val SpaceGrotesk = FontFamily(
+    Font(com.nerfherder.walkthor.R.font.space_grotesk_400, FontWeight.Normal),
+    Font(com.nerfherder.walkthor.R.font.space_grotesk_500, FontWeight.Medium),
+    Font(com.nerfherder.walkthor.R.font.space_grotesk_600, FontWeight.SemiBold),
+    Font(com.nerfherder.walkthor.R.font.space_grotesk_700, FontWeight.Bold),
+)
+
 /** The app's one typeface, used for every heading, label and number. */
 object AppFont {
-    var family: FontFamily by mutableStateOf(FontFamily.SansSerif)
+    var family: FontFamily by mutableStateOf(SpaceGrotesk)
 }
 
 /** Headings use the same typeface as everything else. */

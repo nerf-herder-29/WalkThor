@@ -1,7 +1,7 @@
 # Third-party notices
 
 WalkThor is built with the following open-source software. Each is used unmodified under the
-license shown. The full Apache License 2.0 text is at https://www.apache.org/licenses/LICENSE-2.0.
+license shown, except Space Grotesk, which is included as fixed-weight instances made from its variable font. The full Apache License 2.0 text is at https://www.apache.org/licenses/LICENSE-2.0.
 
 | Component | Used for | License |
 |---|---|---|
@@ -9,6 +9,7 @@ license shown. The full Apache License 2.0 text is at https://www.apache.org/lic
 | [Coil](https://github.com/coil-kt/coil) | Showing cover artwork | Apache License 2.0 |
 | [Jetpack Compose & AndroidX](https://developer.android.com/jetpack/androidx) (Activity, Core, Lifecycle, Material 3, Material Icons) | User interface and app framework | Apache License 2.0 |
 | [Kotlin](https://kotlinlang.org/) standard library & [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Language runtime and background work | Apache License 2.0 |
+| [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | The app's typeface (bundled as fixed-weight instances) | SIL Open Font License 1.1 ([full text](licenses/SpaceGrotesk-OFL.txt)) |
 
 PdfBox-Android includes software developed at The Apache Software Foundation
 (https://www.apache.org/). See the NOTICE file distributed with
