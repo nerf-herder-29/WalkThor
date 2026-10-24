@@ -127,22 +127,13 @@ fun GameTabsRow(
             val on = tab == selected
             val interaction = remember { MutableInteractionSource() }
             val hub = tab == GameTab.ALL
-            // All is the game's home: a solid rounded button instead of brackets, a little
-            // narrower, set apart from the other tabs by a thin line.
-            val hubShape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+            // All is the game's home: no frame of its own (just its icon and a bold label, set
+            // apart by a thin line), with the usual brackets only while it's open.
             Column(
                 Modifier
-                    .weight(if (hub) (if (narrow) 0.72f else 0.8f) else 1f)
+                    .weight(if (hub) 0.65f else 1f)
                     .fillMaxHeight()
-                    .then(
-                        // Full height, so All's top and bottom line up with the other tabs' corner
-                        // brackets, with room around its icon and label.
-                        if (hub) Modifier
-                            .padding(horizontal = 2.dp)
-                            .background(Color.White.copy(alpha = if (on) 0.18f else 0.07f), hubShape)
-                            .border(if (on) 2.dp else 1.dp, if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.45f), hubShape)
-                        else Modifier.brackets(on)
-                    )
+                    .then(if (hub && !on) Modifier else Modifier.brackets(on))
                     .then(
                         if (actOnDown) Modifier.pointerInput(tab) {
                             awaitEachGesture {
