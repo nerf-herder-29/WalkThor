@@ -756,7 +756,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val bar: @Composable () -> Unit = {
             GameTabBar(selectedTab, ::selectTab, onBack = back, onClose = host::closeApp)
         }
-        // The game's tabs sit over its blurred art; Now playing draws its own art.
+        // The game's tabs sit over its dimmed art; Now playing draws its own art.
         val onTab = current != null || gameTab != null
         Box(Modifier.fillMaxSize()) {
             if (onTab) com.nerfherder.walkthor.ui.GameBackdrop(art.hero)

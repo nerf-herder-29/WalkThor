@@ -95,7 +95,7 @@ class StoreScreenshots {
         PlaySession.showTimer.value = true
     }
 
-    /** With [hero], the screen sits over the game's blurred art, as the game's tabs do in the app. */
+    /** With [hero], the screen sits over the game's dimmed art, as the game's tabs do in the app. */
     private fun content(hero: String? = null, body: @Composable () -> Unit) = compose.setContent {
         WalkThorTheme {
             CompositionLocalProvider(LocalPageColors provides DarkPages) {
