@@ -25,11 +25,8 @@ jobs:
           pip install fonttools
           mkdir -p fontsrc
           base=https://raw.githubusercontent.com/google/fonts/main/ofl
-          curl -fsSLo fontsrc/inter.ttf "$base/inter/Inter%5Bopsz,wght%5D.ttf"
-          curl -fsSLo fontsrc/manrope.ttf "$base/manrope/Manrope%5Bwght%5D.ttf"
-          curl -fsSLo fontsrc/dmsans.ttf "$base/dmsans/DMSans%5Bopsz,wght%5D.ttf"
           curl -fsSLo fontsrc/spacegrotesk.ttf "$base/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf"
-          curl -fsSLo fontsrc/outfit.ttf "$base/outfit/Outfit%5Bwght%5D.ttf"
+          mkdir -p app/build/fonts && curl -fsSLo app/build/fonts/OFL.txt "$base/spacegrotesk/OFL.txt"
           python3 - <<'PY'
           import os
           from fontTools.ttLib import TTFont
@@ -70,6 +67,6 @@ jobs:
           cp app/build/screenshots/*.txt docs/screenshots/ 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/screenshots
+          git add docs/screenshots docs/fonts
           git commit -m "Rendered screenshots [skip ci]" || echo "No changes"
           git push
