@@ -299,26 +299,24 @@ fun StatsScreen(
                     }
                 }
             }
-            // This session, and how long this game usually lasts on a charge.
-            val session = ((System.currentTimeMillis() - game.at) / 60_000L).toInt().takeIf { game.at > 0 && it >= 0 }
-            val parts = listOfNotNull(
-                session?.let { "This session  ${hoursMinutes(it)}" },
-                usualHours?.let {
-                    if (compact) "Usually lasts ${hoursMinutes((it * 60).roundToInt())} on a full charge"
-                    else "${displayTitle(game.title)} usually lasts about ${hoursMinutes((it * 60).roundToInt())} on a full charge"
-                } ?: if (compact) "Learning this game's battery life" else "Learning how long ${displayTitle(game.title)} lasts on a charge",
-            )
-            Box(
-                Modifier.fillMaxWidth().height(if (compact) 36.dp else 44.dp).brackets(false, 10.dp).padding(horizontal = 14.dp),
-                contentAlignment = Alignment.CenterStart,
+            // How long this game usually lasts on a charge, then play time, the time and battery.
+            val lasts = usualHours?.let {
+                if (compact) "Lasts ~${hoursMinutes((it * 60).roundToInt())} on a charge"
+                else "${displayTitle(game.title)} usually lasts about ${hoursMinutes((it * 60).roundToInt())} on a full charge"
+            } ?: if (compact) "Learning battery life" else "Learning how long ${displayTitle(game.title)} lasts on a charge"
+            Row(
+                Modifier.fillMaxWidth().height(if (compact) 36.dp else 44.dp).brackets(false, 10.dp).padding(start = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    parts.joinToString("   ·   "),
+                    lasts,
                     color = BookColors.Text.copy(alpha = 0.85f),
                     fontSize = if (compact) 11.sp else 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                StatusClock(Modifier.padding(start = 8.dp, end = 10.dp), anchor = false)
             }
         }
     }

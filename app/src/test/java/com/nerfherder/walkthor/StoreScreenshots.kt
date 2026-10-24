@@ -664,6 +664,10 @@ class StoreScreenshots {
 
     @Test
     fun statsTab() {
+        // As if Mirror is this game's opening tab (the small dot).
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(
+            selected = com.nerfherder.walkthor.ui.GameTab.STATS, pinned = com.nerfherder.walkthor.ui.GameTab.MIRROR, onPin = {}, onSelect = {},
+        )
         val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
         content {
             com.nerfherder.walkthor.ui.StatsScreen(
@@ -673,6 +677,7 @@ class StoreScreenshots {
         }
         settle()
         shot("13-stats")
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
     }
 
     @Test

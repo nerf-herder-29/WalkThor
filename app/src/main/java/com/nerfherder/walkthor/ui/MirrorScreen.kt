@@ -151,17 +151,26 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
         val r = reader
         if (r == null || !counting) return@LaunchedEffect
         val thread = android.os.HandlerThread("WalkThor FPS").apply { start() }
-        FpsMeter.reset()
-        r.setOnImageAvailableListener({ ir ->
+        val handler = android.os.Handler(thread.looper)
+        // Takes every waiting picture off the queue, counting each. Pictures left waiting (say,
+        // after Mirror was showing) would fill the queue and stop new ones arriving, so this also
+        // runs once at the start and every second.
+        val drain = Runnable {
             while (true) {
-                val img = runCatching { ir.acquireNextImage() }.getOrNull() ?: break
+                val img = runCatching { r.acquireNextImage() }.getOrNull() ?: break
                 img.close()
                 FpsMeter.counter.incrementAndGet()
             }
-        }, android.os.Handler(thread.looper))
+        }
+        FpsMeter.reset()
+        r.setOnImageAvailableListener({ drain.run() }, handler)
+        handler.post(drain)
+        // The pictures that were already waiting aren't new frames: don't count them.
+        handler.post { FpsMeter.counter.set(0) }
         try {
             while (isActive) {
                 delay(1_000)
+                handler.post(drain)
                 FpsMeter.push(FpsMeter.counter.getAndSet(0))
             }
         } finally {

@@ -142,6 +142,11 @@ fun SetupGuideDialog(
                         "lights up the one you press.")
 
                 Para(
+                    "To have a game open straight on one tab (say, Mirror or the guide), press and hold that tab. A small " +
+                        "dot marks it, and next time you start the game WalkThor opens on it after the launch animation. " +
+                        "Press and hold it again to go back to opening on Now playing."
+                )
+                Para(
                     "Stats shows the top screen's frame rate (FPS) with a graph of the last minute, using the same screen " +
                         "capture as Mirror, plus the battery's power draw and time left, heat, free memory and CPU speed. " +
                         "After you've played a game for a while, it also says how long that game usually lasts on a charge."

@@ -3,6 +3,10 @@ package com.nerfherder.walkthor.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -51,12 +55,32 @@ enum class GameTab(val label: String, val shortLabel: String = label) {
     STATS("Stats"),
 }
 
-/** What the tab bar shows right now, so the dimmed screen can draw the same tabs in the same place. */
-data class TabsState(val selected: GameTab?, val onSelect: (GameTab) -> Unit)
+/**
+ * What the tab bar shows right now, so the dimmed screen can draw the same tabs in the same place.
+ * [pinned] is the tab this game opens on; [onPin] (long-press a tab) sets or clears it.
+ */
+data class TabsState(
+    val selected: GameTab?,
+    val pinned: GameTab? = null,
+    val onPin: ((GameTab) -> Unit)? = null,
+    val onSelect: (GameTab) -> Unit,
+)
 
 object GameTabs {
     /** Set while a game's tabs are on screen; null otherwise. */
     val state = MutableStateFlow<TabsState?>(null)
+
+    private fun prefs(context: android.content.Context) =
+        context.getSharedPreferences("tabs", android.content.Context.MODE_PRIVATE)
+    private fun key(title: String) = "open/" + title.trim().lowercase()
+
+    /** The tab a game opens on (after the launch animation), or null for Now playing. */
+    fun openOn(context: android.content.Context, title: String): GameTab? =
+        GameTab.entries.firstOrNull { it.name == prefs(context).getString(key(title), null) }
+
+    fun setOpenOn(context: android.content.Context, title: String, tab: GameTab?) {
+        prefs(context).edit().apply { if (tab == null) remove(key(title)) else putString(key(title), tab.name) }.apply()
+    }
 }
 
 /** Height of the bar the tabs sit in, the same everywhere so the tabs never move. */
@@ -77,6 +101,7 @@ fun tabBarRightSlots(): Int = 1
  * brackets (bold on the open tab). [actOnDown] makes a tab act on touch down (the dimmed screen,
  * where the same touch also wakes it).
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun GameTabsRow(
     selected: GameTab?,
@@ -85,6 +110,11 @@ fun GameTabsRow(
     actOnDown: Boolean = false,
 ) {
     val narrow = LocalConfiguration.current.screenWidthDp < 480
+    // Which tab this game opens on (marked with a small dot); long-press a tab to choose it.
+    val state by GameTabs.state.collectAsState()
+    val pinned = state?.pinned
+    val onPin = state?.onPin
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Row(
         modifier.fillMaxHeight().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(if (narrow) 4.dp else 8.dp),
@@ -104,13 +134,34 @@ fun GameTabsRow(
                                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                                 onSelect(tab)
                             }
-                        } else Modifier.clickable(interactionSource = interaction, indication = null) { onSelect(tab) }
+                        } else Modifier.combinedClickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            onLongClick = onPin?.let { pin ->
+                                {
+                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    pin(tab)
+                                }
+                            },
+                        ) { onSelect(tab) }
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
                 val tint = if (on) BookColors.Text else Color.White.copy(alpha = 0.72f)
-                TabIcon(tab, tint)
+                Box {
+                    TabIcon(tab, tint)
+                    if (tab == pinned) {
+                        // This game opens on this tab.
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 7.dp, y = (-2).dp)
+                                .size(6.dp)
+                                .background(Color(0xFFF5F5FA), androidx.compose.foundation.shape.CircleShape)
+                        )
+                    }
+                }
                 Spacer(Modifier.height(3.dp))
                 Text(
                     if (narrow) tab.shortLabel else tab.label,

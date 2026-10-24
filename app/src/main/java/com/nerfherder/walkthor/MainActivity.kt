@@ -31,6 +31,7 @@ import com.nerfherder.walkthor.ui.ControlsScreen
 import com.nerfherder.walkthor.ui.GameTab
 import com.nerfherder.walkthor.ui.GameTabBar
 import com.nerfherder.walkthor.ui.GameTabs
+import com.nerfherder.walkthor.ui.displayTitle
 import com.nerfherder.walkthor.ui.MirrorScreen
 import com.nerfherder.walkthor.ui.NoGuidePanel
 import com.nerfherder.walkthor.ui.TabsState
@@ -513,6 +514,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
      * or Guide when the game has no guide yet. Null with no guide open = Now playing.
      */
     var gameTab by remember { mutableStateOf<GameTab?>(null) }
+    /** The guide whose opening flourish is playing, and the last guide opened (no flourish again). */
+    var introFor by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
     /** "Add guide" on the no-guide screen: the next imported guide is linked to this game. */
     var linkImportTo by remember { mutableStateOf<LaunchedGame?>(null) }
 
@@ -592,6 +596,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             openId = null
             gameTab = null
             noGuide = Showing(game, art, book)
+            // Opens straight on the tab you chose for this game (long-press a tab), if any.
+            when (val first = GameTabs.openOn(context, game.title)) {
+                null -> Unit
+                GameTab.GUIDE -> if (book != null) { lastOpened = book.id; openId = book.id } else gameTab = GameTab.GUIDE
+                else -> gameTab = first
+            }
             AutoDim.wake()
             Acted(game, book, art)
         }
@@ -658,9 +668,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             Toast.makeText(context, "Linked this guide to ${game.title}", Toast.LENGTH_SHORT).show()
         }
     }
-    // Each time a guide is opened, play its intro.
-    var introFor by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
+    // Each time a guide is opened, play its intro (see introFor / lastOpened above).
     LaunchedEffect(openId) {
         // A guide opened by the boot screen already got its flourish there.
         if (openId != null && openId != lastOpened && !booting) introFor = openId
@@ -707,7 +715,23 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 gameTab = tab
             }
         }
-        val tabs = TabsState(selectedTab, ::selectTab)
+        var pinned by remember(game.title) { mutableStateOf(GameTabs.openOn(context, game.title)) }
+        val tabs = TabsState(
+            selected = selectedTab,
+            pinned = pinned,
+            onPin = { tab ->
+                // Long-press a tab: this game opens on it from now on (again to go back to Now playing).
+                val next = if (pinned == tab) null else tab
+                GameTabs.setOpenOn(context, game.title, next)
+                pinned = next
+                Toast.makeText(
+                    context,
+                    "${displayTitle(game.title)} will open on ${next?.label ?: "Now playing"}",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            },
+            onSelect = ::selectTab,
+        )
         SideEffect { GameTabs.state.value = tabs }
         DisposableEffect(Unit) { onDispose { GameTabs.state.value = null } }
         // The mirror's capture keeps running (paused) while you're on other tabs.

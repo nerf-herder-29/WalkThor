@@ -40,6 +40,7 @@ step that's done.
 - **Now playing** — start a game in Cocoon and the bottom screen shows the game's hero art and
   logo, the emulator, and tabs across the top for the game's **Guide**, **Mirror**,
   **Face Buttons** and **Stats**. Switching tabs keeps your place in each, and Back takes you to Now playing.
+  Press and hold a tab to have that game open straight on it next time.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app
