@@ -461,6 +461,8 @@ private fun StatTile(
             sub,
             color = BookColors.Text.copy(alpha = 0.7f),
             fontSize = if (compact) 10.sp else 12.sp,
+            // Space Grotesk runs a little wide: tighten it on a crowded screen so "2h 40m left" fits.
+            letterSpacing = if (compact) (-0.5).sp else 0.sp,
             lineHeight = if (compact) 12.sp else 15.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
