@@ -93,7 +93,7 @@ fun AllScreen(
         onDispose { AutoDim.screenDelayMs.value = null }
     }
 
-    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+    Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
         Column(
             Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp),

@@ -320,7 +320,7 @@ fun TabBarFrame(
             .then(
                 if (bare) Modifier
                 else if (overlay) Modifier.background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)))
-                else Modifier.background(BookColors.Ink)
+                else Modifier.background(backdropOr(BookColors.Ink))
             )
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,

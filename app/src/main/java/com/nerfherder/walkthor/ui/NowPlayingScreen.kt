@@ -341,7 +341,7 @@ fun NoGuidePanel(
     modifier: Modifier = Modifier,
 ) {
     var picking by remember { mutableStateOf(false) }
-    Box(modifier.fillMaxSize().background(BookColors.Ink), contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxSize().background(backdropOr(BookColors.Ink)), contentAlignment = Alignment.Center) {
         androidx.compose.foundation.layout.Column(
             Modifier.padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

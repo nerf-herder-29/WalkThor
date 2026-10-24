@@ -756,65 +756,72 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val bar: @Composable () -> Unit = {
             GameTabBar(selectedTab, ::selectTab, onBack = back, onClose = host::closeApp)
         }
-        when {
-            current != null -> Reader(current, onBack = back, tabs = tabs)
-            gameTab == GameTab.ALL -> {
-                BackHandler { toNowPlaying() }
-                com.nerfherder.walkthor.ui.AllScreen(
-                    game = game,
-                    guide = guide?.let { g -> books.firstOrNull { it.id == g.id } ?: g },
-                    frame = mirrorFrame,
-                    onOpen = ::selectTab,
-                    onStartCapture = host::requestMirror,
-                    topBar = { GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp) },
-                )
-            }
-            gameTab == GameTab.GUIDE -> {
-                BackHandler { back() }
-                Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
-                    bar()
-                    NoGuidePanel(
-                        game = game,
-                        books = books,
-                        coverFile = library::coverFile,
-                        onAddGuide = { linkImportTo = game; host.pickGuide() },
-                        onPickGuide = { linkGuide(game, it.id); gameTab = null; openId = it.id },
-                        modifier = Modifier.weight(1f),
-                    )
+        // The game's tabs sit over its blurred art; Now playing draws its own art.
+        val onTab = current != null || gameTab != null
+        Box(Modifier.fillMaxSize()) {
+            if (onTab) com.nerfherder.walkthor.ui.GameBackdrop(art.hero)
+            androidx.compose.runtime.CompositionLocalProvider(com.nerfherder.walkthor.ui.LocalBackdrop provides onTab) {
+                when {
+                    current != null -> Reader(current, onBack = back, tabs = tabs)
+                    gameTab == GameTab.ALL -> {
+                        BackHandler { toNowPlaying() }
+                        com.nerfherder.walkthor.ui.AllScreen(
+                            game = game,
+                            guide = guide?.let { g -> books.firstOrNull { it.id == g.id } ?: g },
+                            frame = mirrorFrame,
+                            onOpen = ::selectTab,
+                            onStartCapture = host::requestMirror,
+                            topBar = { GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp) },
+                        )
+                    }
+                    gameTab == GameTab.GUIDE -> {
+                        BackHandler { back() }
+                        Column(Modifier.fillMaxSize()) {
+                            bar()
+                            NoGuidePanel(
+                                game = game,
+                                books = books,
+                                coverFile = library::coverFile,
+                                onAddGuide = { linkImportTo = game; host.pickGuide() },
+                                onPickGuide = { linkGuide(game, it.id); gameTab = null; openId = it.id },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    gameTab == GameTab.MIRROR -> {
+                        BackHandler { back() }
+                        MirrorScreen(
+                            game = game.title,
+                            onBack = back,
+                            onStartCapture = host::requestMirror,
+                            frame = mirrorFrame,
+                            topBar = bar,
+                        )
+                    }
+                    gameTab == GameTab.STATS -> {
+                        BackHandler { back() }
+                        com.nerfherder.walkthor.ui.StatsScreen(game = game, onStartCapture = host::requestMirror, topBar = bar)
+                    }
+                    gameTab == GameTab.FACE -> {
+                        BackHandler { back() }
+                        ControlsScreen(game = game, onBack = back, topBar = bar)
+                    }
+                    else -> {
+                        BackHandler { noGuide = null }
+                        NowPlayingScreen(
+                            game = game,
+                            art = art,
+                            books = books,
+                            coverFile = library::coverFile,
+                            onAddGuide = { linkImportTo = game; host.pickGuide() },
+                            onPickGuide = { linkGuide(game, it.id); openId = it.id },
+                            onLibrary = { noGuide = null },
+                            guide = guide,
+                            onClose = host::closeApp,
+                            onTab = ::selectTab,
+                        )
+                    }
                 }
-            }
-            gameTab == GameTab.MIRROR -> {
-                BackHandler { back() }
-                MirrorScreen(
-                    game = game.title,
-                    onBack = back,
-                    onStartCapture = host::requestMirror,
-                    frame = mirrorFrame,
-                    topBar = bar,
-                )
-            }
-            gameTab == GameTab.STATS -> {
-                BackHandler { back() }
-                com.nerfherder.walkthor.ui.StatsScreen(game = game, onStartCapture = host::requestMirror, topBar = bar)
-            }
-            gameTab == GameTab.FACE -> {
-                BackHandler { back() }
-                ControlsScreen(game = game, onBack = back, topBar = bar)
-            }
-            else -> {
-                BackHandler { noGuide = null }
-                NowPlayingScreen(
-                    game = game,
-                    art = art,
-                    books = books,
-                    coverFile = library::coverFile,
-                    onAddGuide = { linkImportTo = game; host.pickGuide() },
-                    onPickGuide = { linkGuide(game, it.id); openId = it.id },
-                    onLibrary = { noGuide = null },
-                    guide = guide,
-                    onClose = host::closeApp,
-                    onTab = ::selectTab,
-                )
             }
         }
     } else if (current != null) {

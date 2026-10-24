@@ -227,7 +227,7 @@ fun ReaderScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+    Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         // ---- top bar ----------------------------------------------------------------------
         val lensOn = lensPage != null
         // With tabs, search hides behind a button until you use it, and the tabs give way to it.

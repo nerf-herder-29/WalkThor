@@ -279,9 +279,9 @@ fun MirrorScreen(
         onDispose { AutoDim.screenDelayMs.value = null }
     }
 
-    Column(Modifier.fillMaxSize().background(Color.Black)) {
+    Column(Modifier.fillMaxSize().background(backdropOr(Color.Black))) {
     topBar?.invoke()
-    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).background(Color.Black)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).background(backdropOr(Color.Black))) {
         // The shape of the space the mirror fills here.
         val screenAspect = maxWidth.value / maxHeight.value.coerceAtLeast(1f)
         val img = frame

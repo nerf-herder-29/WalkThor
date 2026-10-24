@@ -118,7 +118,7 @@ fun ControlsScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(BookColors.Ink)) {
+    Box(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         Column(Modifier.fillMaxSize()) {
             if (topBar != null) {
                 topBar()

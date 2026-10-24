@@ -95,9 +95,16 @@ class StoreScreenshots {
         PlaySession.showTimer.value = true
     }
 
-    private fun content(body: @Composable () -> Unit) = compose.setContent {
+    /** With [hero], the screen sits over the game's blurred art, as the game's tabs do in the app. */
+    private fun content(hero: String? = null, body: @Composable () -> Unit) = compose.setContent {
         WalkThorTheme {
-            CompositionLocalProvider(LocalPageColors provides DarkPages) { body() }
+            CompositionLocalProvider(LocalPageColors provides DarkPages) {
+                if (hero == null) body()
+                else androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                    com.nerfherder.walkthor.ui.GameBackdrop(hero)
+                    CompositionLocalProvider(com.nerfherder.walkthor.ui.LocalBackdrop provides true) { body() }
+                }
+            }
         }
     }
 
@@ -214,7 +221,7 @@ class StoreScreenshots {
         com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))
         com.nerfherder.walkthor.Mirror.setSelected(app, game, 0)
         val frame = fakeGameFrame()
-        content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
+        content(hero = fakeHero()) { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
         settle()
         shot("11-mirror")
     }
@@ -249,7 +256,7 @@ class StoreScreenshots {
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = setOf(android.view.KeyEvent.KEYCODE_BUTTON_A)
         com.nerfherder.walkthor.controls.ControllerInput.last.value = android.view.KeyEvent.KEYCODE_BUTTON_A
         com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
-        content {
+        content(hero = fakeHero()) {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalInspectionMode provides true) {
                 com.nerfherder.walkthor.ui.ControlsScreen(
                     game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {},
@@ -332,7 +339,7 @@ class StoreScreenshots {
     @Test
     fun readerTabs() {
         val book = importSample()
-        content {
+        content(hero = fakeHero()) {
             ReaderScreen(
                 bookId = book.id, onBack = {}, onClose = {}, onSwapScreen = {},
                 tabs = com.nerfherder.walkthor.ui.TabsState(com.nerfherder.walkthor.ui.GameTab.GUIDE) {},
@@ -669,7 +676,7 @@ class StoreScreenshots {
             selected = com.nerfherder.walkthor.ui.GameTab.STATS, pinned = com.nerfherder.walkthor.ui.GameTab.MIRROR, onPin = {}, onSelect = {},
         )
         val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
-        content {
+        content(hero = fakeHero()) {
             com.nerfherder.walkthor.ui.StatsScreen(
                 game = game, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.STATS) },
                 preview = statsPreview(),
@@ -704,7 +711,7 @@ class StoreScreenshots {
         val text = javaClass.classLoader!!.getResourceAsStream("sample-guide.txt")!!.bufferedReader().readText()
         val frame = fakeGameFrame()
         val game = LaunchedGame(title, "lanterns.iso", "NetherSX2", System.currentTimeMillis() - 47 * 60_000L)
-        content {
+        content(hero = fakeHero()) {
             com.nerfherder.walkthor.ui.AllScreen(
                 game = game, guide = null, frame = frame, onOpen = {}, onStartCapture = {},
                 topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.ALL) },

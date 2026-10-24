@@ -241,7 +241,7 @@ fun StatsScreen(
     val usualHours = preview?.fullChargeHours
         ?: PlayStats.usualWatts(context, game.title)?.let { StatsReader.fullChargeHours(context, it) }
 
-    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+    Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
         Column(
             Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = if (compact) 8.dp else 12.dp),
