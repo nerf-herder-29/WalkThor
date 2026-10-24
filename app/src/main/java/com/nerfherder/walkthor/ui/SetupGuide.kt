@@ -121,7 +121,7 @@ fun SetupGuideDialog(
                 Para(
                     "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
                         "to save power after the time set in ⋮ → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror, " +
-                        "Face Buttons and Stats) switch between the game's screens, even while it's dimmed."
+                        "Face Buttons and Stats, plus All) switch between the game's screens, even while it's dimmed."
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
@@ -141,6 +141,10 @@ fun SetupGuideDialog(
                         "the game's system labels them (△ ○ × □, or letters), each where its Thor button is, and " +
                         "lights up the one you press.")
 
+                Para(
+                    "All shows Mirror, your guide where you left off, Face Buttons and Stats together. Tap any of them " +
+                        "to open that tab; Back (or the All button) brings you back."
+                )
                 Para(
                     "To have a game open straight on one tab (say, Mirror or the guide), press and hold that tab. A small " +
                         "dot marks it, and next time you start the game WalkThor opens on it after the launch animation. " +

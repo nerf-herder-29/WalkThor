@@ -514,6 +514,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
      * or Guide when the game has no guide yet. Null with no guide open = Now playing.
      */
     var gameTab by remember { mutableStateOf<GameTab?>(null) }
+    /** The open tab was reached from All, so Back goes back there. */
+    var fromAll by remember { mutableStateOf(false) }
     /** The guide whose opening flourish is playing, and the last guide opened (no flourish again). */
     var introFor by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
@@ -584,6 +586,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 noGuide = Showing(game, ArtworkRepository.get(context).gameArt(game.title, game.file), book)
             }
             gameTab = null
+            fromAll = false
             Acted(game, book, null)
         } else {
             // Every launch lands on the Now playing screen, which dims after a few seconds;
@@ -595,6 +598,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             val art = ArtworkRepository.get(context).gameArt(game.title, game.file)
             openId = null
             gameTab = null
+            fromAll = false
             noGuide = Showing(game, art, book)
             // Opens straight on the tab you chose for this game (long-press a tab), if any.
             when (val first = GameTabs.openOn(context, game.title)) {
@@ -706,6 +710,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         fun selectTab(tab: GameTab) {
             AutoDim.wake()
             if (tab == selectedTab) return
+            // Opened from All (or moving between tabs after that): Back returns to All.
+            fromAll = when {
+                tab == GameTab.ALL -> false
+                selectedTab == GameTab.ALL -> true
+                selectedTab == null -> false
+                else -> fromAll
+            }
             if (tab == GameTab.GUIDE && guide != null) {
                 lastOpened = guide.id // switching tabs, not opening anew: skip the opening flourish
                 gameTab = null
@@ -736,17 +747,30 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         DisposableEffect(Unit) { onDispose { GameTabs.state.value = null } }
         // The mirror's capture keeps running (paused) while you're on other tabs.
         val mirrorFrame = rememberMirrorFrame(
-            active = current == null && gameTab == GameTab.MIRROR,
-            counting = current == null && gameTab == GameTab.STATS,
+            active = current == null && (gameTab == GameTab.MIRROR || gameTab == GameTab.ALL),
+            counting = current == null && (gameTab == GameTab.STATS || gameTab == GameTab.ALL),
         )
-        val toNowPlaying = { openId = null; gameTab = null }
+        val toNowPlaying = { openId = null; gameTab = null; fromAll = false }
+        // Back from a tab: to All if that's where you came from, else to Now playing.
+        val back = { if (fromAll) { openId = null; gameTab = GameTab.ALL; fromAll = false } else toNowPlaying() }
         val bar: @Composable () -> Unit = {
-            GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp)
+            GameTabBar(selectedTab, ::selectTab, onBack = back, onClose = host::closeApp)
         }
         when {
-            current != null -> Reader(current, onBack = toNowPlaying, tabs = tabs)
+            current != null -> Reader(current, onBack = back, tabs = tabs)
+            gameTab == GameTab.ALL -> {
+                BackHandler { toNowPlaying() }
+                com.nerfherder.walkthor.ui.AllScreen(
+                    game = game,
+                    guide = guide?.let { g -> books.firstOrNull { it.id == g.id } ?: g },
+                    frame = mirrorFrame,
+                    onOpen = ::selectTab,
+                    onStartCapture = host::requestMirror,
+                    topBar = { GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp) },
+                )
+            }
             gameTab == GameTab.GUIDE -> {
-                BackHandler { gameTab = null }
+                BackHandler { back() }
                 Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
                     bar()
                     NoGuidePanel(
@@ -760,22 +784,22 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 }
             }
             gameTab == GameTab.MIRROR -> {
-                BackHandler { gameTab = null }
+                BackHandler { back() }
                 MirrorScreen(
                     game = game.title,
-                    onBack = { gameTab = null },
+                    onBack = back,
                     onStartCapture = host::requestMirror,
                     frame = mirrorFrame,
                     topBar = bar,
                 )
             }
             gameTab == GameTab.STATS -> {
-                BackHandler { gameTab = null }
+                BackHandler { back() }
                 com.nerfherder.walkthor.ui.StatsScreen(game = game, onStartCapture = host::requestMirror, topBar = bar)
             }
             gameTab == GameTab.FACE -> {
-                BackHandler { gameTab = null }
-                ControlsScreen(game = game, onBack = { gameTab = null }, topBar = bar)
+                BackHandler { back() }
+                ControlsScreen(game = game, onBack = back, topBar = bar)
             }
             else -> {
                 BackHandler { noGuide = null }

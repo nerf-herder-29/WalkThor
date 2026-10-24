@@ -693,4 +693,34 @@ class StoreScreenshots {
         settle()
         shot("check-stats-dense")
     }
+
+    private fun allTab(name: String) {
+        val title = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.Mirror.setAreas(app, title, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))
+        com.nerfherder.walkthor.controls.ControllerInput.pressed.value = setOf(android.view.KeyEvent.KEYCODE_BUTTON_A)
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(
+            selected = com.nerfherder.walkthor.ui.GameTab.ALL, onSelect = {},
+        )
+        val text = javaClass.classLoader!!.getResourceAsStream("sample-guide.txt")!!.bufferedReader().readText()
+        val frame = fakeGameFrame()
+        val game = LaunchedGame(title, "lanterns.iso", "NetherSX2", System.currentTimeMillis() - 47 * 60_000L)
+        content {
+            com.nerfherder.walkthor.ui.AllScreen(
+                game = game, guide = null, frame = frame, onOpen = {}, onStartCapture = {},
+                topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.ALL) },
+                preview = com.nerfherder.walkthor.ui.AllPreview(text.substring(text.indexOf("1. CONTROLS") - 82), statsPreview()),
+            )
+        }
+        settle()
+        shot(name)
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
+        com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
+    }
+
+    @Test
+    fun allTabShot() = allTab("14-all")
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun allTabDense() = allTab("check-all-dense")
 }

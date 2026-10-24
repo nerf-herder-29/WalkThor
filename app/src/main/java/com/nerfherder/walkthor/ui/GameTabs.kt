@@ -3,6 +3,7 @@ package com.nerfherder.walkthor.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.collectAsState
@@ -49,6 +50,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /** The tabs across the top of the bottom screen while a game is playing. */
 enum class GameTab(val label: String, val shortLabel: String = label) {
+    /** Everything at a glance: Mirror, the guide, Face Buttons and Stats together. */
+    ALL("All", ""),
     GUIDE("Guide"),
     MIRROR("Mirror"),
     FACE("Face Buttons", "Buttons"),
@@ -123,11 +126,21 @@ fun GameTabsRow(
         GameTab.entries.forEach { tab ->
             val on = tab == selected
             val interaction = remember { MutableInteractionSource() }
+            val hub = tab == GameTab.ALL
+            // All is the game's home: a solid rounded button instead of brackets, a little
+            // narrower, set apart from the other tabs by a thin line.
+            val hubShape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
             Column(
                 Modifier
-                    .weight(1f)
+                    .weight(if (hub) (if (narrow) 0.55f else 0.72f) else 1f)
                     .fillMaxHeight()
-                    .brackets(on)
+                    .then(
+                        if (hub) Modifier
+                            .padding(vertical = 2.dp)
+                            .background(Color.White.copy(alpha = if (on) 0.18f else 0.07f), hubShape)
+                            .border(if (on) 2.dp else 1.dp, if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.45f), hubShape)
+                        else Modifier.brackets(on)
+                    )
                     .then(
                         if (actOnDown) Modifier.pointerInput(tab) {
                             awaitEachGesture {
@@ -162,15 +175,21 @@ fun GameTabsRow(
                         )
                     }
                 }
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    if (narrow) tab.shortLabel else tab.label,
-                    color = tint,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = if (narrow) 11.sp else 12.sp,
-                    maxLines = 1,
-                    softWrap = false,
-                )
+                val label = if (narrow) tab.shortLabel else tab.label
+                if (label.isNotEmpty()) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        label,
+                        color = tint,
+                        fontWeight = if (hub) FontWeight.Bold else FontWeight.SemiBold,
+                        fontSize = if (narrow) 11.sp else 12.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+            if (hub) {
+                Box(Modifier.width(1.dp).fillMaxHeight(0.6f).background(Color.White.copy(alpha = 0.25f)))
             }
         }
     }
@@ -199,6 +218,21 @@ private fun TabIcon(tab: GameTab, tint: Color) {
     when (tab) {
         GameTab.GUIDE -> Icon(AppIcons.Spread, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
         GameTab.MIRROR -> Icon(PictureInPicture, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        GameTab.ALL -> Canvas(Modifier.size(20.dp)) {
+            // Four small squares: everything at once.
+            val s = size.minDimension * 0.36f
+            val g = size.minDimension * 0.12f
+            val o = (size.minDimension - 2 * s - g) / 2
+            for (i in 0..1) for (j in 0..1) {
+                drawRoundRect(
+                    tint,
+                    topLeft = Offset(o + i * (s + g), o + j * (s + g)),
+                    size = androidx.compose.ui.geometry.Size(s, s),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(s / 4),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()),
+                )
+            }
+        }
         GameTab.STATS -> Canvas(Modifier.size(20.dp)) {
             // Three bars, like a small chart.
             val w = size.width * 0.18f

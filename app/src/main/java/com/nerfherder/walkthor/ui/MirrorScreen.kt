@@ -146,23 +146,42 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
         runCatching { d.surface = if (active || counting) reader?.surface else null }
     }
 
-    // Stats: count every new picture of the top screen, once a second, on a thread of its own.
-    LaunchedEffect(reader, counting) {
+    // Counting (Stats, or All): every new picture of the top screen is taken off the queue on a
+    // thread of its own and counted for the FPS meter. When the picture is also shown (All),
+    // the newest one is handed over about 30 times a second; the last two shown are kept open so
+    // the one on screen is never reused mid-draw.
+    LaunchedEffect(reader, counting, active) {
         val r = reader
         if (r == null || !counting) return@LaunchedEffect
         val thread = android.os.HandlerThread("WalkThor FPS").apply { start() }
         val handler = android.os.Handler(thread.looper)
-        // Takes every waiting picture off the queue, counting each. Pictures left waiting (say,
-        // after Mirror was showing) would fill the queue and stop new ones arriving, so this also
-        // runs once at the start and every second.
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        val held = ArrayDeque<Image>()
+        var lastShown = 0L
+        val show = active
+        // Pictures left waiting (say, after Mirror was showing) would fill the queue and stop new
+        // ones arriving, so this also runs once at the start and every second.
         val drain = Runnable {
             while (true) {
                 val img = runCatching { r.acquireNextImage() }.getOrNull() ?: break
-                img.close()
                 FpsMeter.counter.incrementAndGet()
+                val now = android.os.SystemClock.uptimeMillis()
+                if (show && now - lastShown >= FRAME_MS) {
+                    val buffer = img.hardwareBuffer
+                    val bitmap = buffer?.let { Bitmap.wrapHardwareBuffer(it, ColorSpace.get(ColorSpace.Named.SRGB)) }
+                    buffer?.close()
+                    if (bitmap == null) { img.close(); continue }
+                    lastShown = now
+                    held.addLast(img)
+                    while (held.size > 2) held.removeFirst().close()
+                    val shown = bitmap.asImageBitmap()
+                    main.post { frame = shown }
+                } else {
+                    img.close()
+                }
             }
         }
-        FpsMeter.reset()
+        FpsMeter.resetIfStale()
         r.setOnImageAvailableListener({ drain.run() }, handler)
         handler.post(drain)
         // The pictures that were already waiting aren't new frames: don't count them.
@@ -175,15 +194,19 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
             }
         } finally {
             runCatching { r.setOnImageAvailableListener(null, null) }
+            if (show) frame = null
+            handler.post { held.forEach { runCatching { it.close() } }; held.clear() }
             thread.quitSafely()
         }
     }
 
-    // Pull the newest frame about 30 times a second. Frames are shown straight from the GPU buffer
-    // (no copying); the last two are kept open so the one on screen is never reused mid-draw.
-    LaunchedEffect(reader, active) {
+    // Pull the newest frame about 30 times a second when only showing it (Mirror). Frames are shown
+    // straight from the GPU buffer (no copying); the last two are kept open so the one on screen
+    // is never reused mid-draw.
+    LaunchedEffect(reader, active, counting) {
         val r = reader
-        if (r == null || !active) { frame = null; return@LaunchedEffect }
+        if (r == null || !active) { if (!counting) frame = null; return@LaunchedEffect }
+        if (counting) return@LaunchedEffect // the counting thread shows the frames too
         val held = ArrayDeque<Image>()
         try {
             while (isActive) {
@@ -442,7 +465,7 @@ private fun StartPanel(error: String?, onStart: () -> Unit) {
  * laid out in whichever grid (one row, two rows…) makes them biggest.
  */
 @Composable
-private fun MirrorView(img: ImageBitmap, areas: List<FloatArray>) {
+internal fun MirrorView(img: ImageBitmap, areas: List<FloatArray>) {
     Canvas(Modifier.fillMaxSize()) {
         val gap = 8.dp.toPx()
         val srcs = areas.map { r ->

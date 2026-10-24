@@ -60,8 +60,17 @@ import kotlin.math.roundToInt
 object FpsMeter {
     val counter = AtomicInteger(0)
     val history = MutableStateFlow<List<Int>>(emptyList())
-    fun push(n: Int) { history.value = (history.value + n).takeLast(60) }
+    @Volatile private var lastPush = 0L
+    fun push(n: Int) {
+        lastPush = android.os.SystemClock.elapsedRealtime()
+        history.value = (history.value + n).takeLast(60)
+    }
     fun reset() { counter.set(0); history.value = emptyList() }
+    /** Starts a fresh graph unless counting just paused for a moment (switching between All and Stats). */
+    fun resetIfStale() {
+        counter.set(0)
+        if (android.os.SystemClock.elapsedRealtime() - lastPush > 5_000L) history.value = emptyList()
+    }
 }
 
 /** One reading of the Thor's battery, heat, memory and CPU. Any value can be missing. */
@@ -386,7 +395,7 @@ private fun PanelNote(text: String) {
 
 /** The last minute of frame rates: a line over a light fill, with guides at 0, 30 and 60. */
 @Composable
-private fun FpsGraph(fps: List<Int>, modifier: Modifier) {
+internal fun FpsGraph(fps: List<Int>, modifier: Modifier) {
     Canvas(modifier.clip(RoundedCornerShape(2.dp))) {
         val top = maxOf(60, fps.maxOrNull() ?: 60).toFloat()
         val guide = Color.White.copy(alpha = 0.08f)
@@ -459,5 +468,5 @@ private fun StatTile(
     }
 }
 
-private fun hoursMinutes(minutes: Int): String =
+internal fun hoursMinutes(minutes: Int): String =
     if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"

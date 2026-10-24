@@ -210,7 +210,7 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
  * lights when the Thor button at that position is held, and names that Thor button underneath.
  */
 @Composable
-private fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: Set<Int>, asking: String?) {
+internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: Set<Int>, asking: String?) {
     val measurer = rememberTextMeasurer()
     Canvas(Modifier.fillMaxSize()) {
         val unit = min(size.width / 4.6f, size.height / 3.6f)
