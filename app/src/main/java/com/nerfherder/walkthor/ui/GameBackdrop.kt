@@ -54,10 +54,10 @@ fun GameBackdrop(heroUri: String?, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxSize(),
             )
             // Darkened so text and the brackets stay easy to read, a little more at the edges.
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.48f)))
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)))
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.3f)))
+                    Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.4f)))
                 )
             )
         }

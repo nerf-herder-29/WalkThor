@@ -60,7 +60,7 @@ step that's done.
   (shapes, or letters with A at the bottom or on the right), picked automatically from the
   emulator, each where its Thor button sits and lighting up as you press it.
 - **All** — Mirror, your guide where you left off, Face Buttons and Stats together on one screen.
-  Tap any of them to open that tab; Back returns to All.
+  Tap any of them to open that tab; Back returns to All. Press and hold a panel and drag it to rearrange them.
 - **Stats** — the top screen's frame rate with a graph of the last minute (counted from the same
   screen capture as Mirror, so no root or extra apps), the battery's power draw and time left at
   that rate, heat, free memory and CPU speed. It learns how much power each game uses and tells

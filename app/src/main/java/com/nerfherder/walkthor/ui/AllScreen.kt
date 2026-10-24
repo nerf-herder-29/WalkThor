@@ -33,6 +33,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -95,39 +104,92 @@ fun AllScreen(
 
     Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
-        Column(
-            Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Panel("MIRROR", GameTab.MIRROR, onOpen, compact, Modifier.weight(1f)) {
-                    MirrorPanel(game, frame, preview != null)
-                }
-                Panel(
-                    "GUIDE" + (guide?.let { "  ·  p. ${it.lastPage + 1}" } ?: ""),
-                    GameTab.GUIDE, onOpen, compact, Modifier.weight(1f),
-                ) {
-                    GuidePanel(guide, preview?.guideText)
+        // The panels, in your order: press and hold one and drag it onto another to swap them.
+        val order = remember { androidx.compose.runtime.mutableStateListOf(*AllLayout.order(context).toTypedArray()) }
+        var dragging by remember { mutableStateOf<GameTab?>(null) }
+        var dragOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+        var grid by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+        val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val open by androidx.compose.runtime.rememberUpdatedState(onOpen)
+        fun drop(tab: GameTab) {
+            val from = order.indexOf(tab)
+            if (from >= 0 && grid.width > 0 && grid.height > 0) {
+                // Where the middle of the dragged panel ended up decides the slot it lands in.
+                val cx = ((from % 2) + 0.5f) * grid.width / 2f + dragOffset.x
+                val cy = ((from / 2) + 0.5f) * grid.height / 2f + dragOffset.y
+                val to = (if (cy < grid.height / 2f) 0 else 2) + (if (cx < grid.width / 2f) 0 else 1)
+                if (to != from) {
+                    order[from] = order[to].also { order[to] = tab }
+                    AllLayout.setOrder(context, order.toList())
                 }
             }
-            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Panel("FACE BUTTONS", GameTab.FACE, onOpen, compact, Modifier.weight(1f)) {
-                    FacePanel(game, preview != null)
+            dragging = null
+            dragOffset = androidx.compose.ui.geometry.Offset.Zero
+        }
+        @Composable
+        fun PanelFor(tab: GameTab, modifier: Modifier) {
+            val lifted = dragging == tab
+            val m = modifier
+                .zIndex(if (lifted) 1f else 0f)
+                .graphicsLayer {
+                    if (lifted) {
+                        translationX = dragOffset.x; translationY = dragOffset.y
+                        scaleX = 1.03f; scaleY = 1.03f; alpha = 0.92f
+                    }
                 }
-                Panel("STATS", GameTab.STATS, onOpen, compact, Modifier.weight(1f)) {
-                    StatsPanel(preview?.stats, compact)
+                .pointerInput(tab) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        var cancelled = false
+                        val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            waitForUpOrCancellation().also { if (it == null) cancelled = true }
+                        }
+                        if (up != null) { open(tab); return@awaitEachGesture }
+                        if (cancelled) return@awaitEachGesture
+                        // Held: pick the panel up and follow the finger until it's let go.
+                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        dragging = tab
+                        dragOffset = androidx.compose.ui.geometry.Offset.Zero
+                        drag(down.id) { change ->
+                            dragOffset += change.positionChange()
+                            change.consume()
+                        }
+                        drop(tab)
+                    }
+                }
+            when (tab) {
+                GameTab.MIRROR -> Panel("MIRROR", compact, m) { MirrorPanel(game, frame, preview != null) }
+                GameTab.GUIDE -> Panel("GUIDE" + (guide?.let { "  ·  p. ${it.lastPage + 1}" } ?: ""), compact, m) {
+                    GuidePanel(guide, preview?.guideText)
+                }
+                GameTab.FACE -> Panel("FACE BUTTONS", compact, m) { FacePanel(game, preview != null) }
+                else -> Panel("STATS", compact, m) { StatsPanel(preview?.stats, compact) }
+            }
+        }
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp)
+                .onSizeChanged { grid = it },
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            for (row in 0..1) {
+                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (col in 0..1) {
+                        val tab = order[row * 2 + col]
+                        androidx.compose.runtime.key(tab) { PanelFor(tab, Modifier.weight(1f)) }
+                    }
                 }
             }
         }
     }
 }
 
-/** One bracketed panel with its name and "Open ›"; tapping anywhere on it opens [tab]. */
+/** One bracketed panel with its name and "Open ›" (tapping and dragging are handled by its caller). */
 @Composable
 private fun Panel(
     title: String,
-    tab: GameTab,
-    onOpen: (GameTab) -> Unit,
     compact: Boolean,
     modifier: Modifier,
     content: @Composable () -> Unit,
@@ -136,7 +198,6 @@ private fun Panel(
         modifier
             .fillMaxHeight()
             .brackets(false, 10.dp)
-            .clickable { onOpen(tab) }
             .padding(horizontal = 10.dp, vertical = if (compact) 5.dp else 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -336,5 +397,22 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
             } else Spacer(Modifier.weight(1f))
             StatusClock(anchor = false)
         }
+    }
+}
+
+/** The order of the panels on the All tab (the same for every game), as you arranged them. */
+object AllLayout {
+    private val DEFAULT = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS)
+    private fun prefs(context: android.content.Context) =
+        context.getSharedPreferences("tabs", android.content.Context.MODE_PRIVATE)
+
+    fun order(context: android.content.Context): List<GameTab> {
+        val saved = prefs(context).getString("allOrder", null)?.split(',')
+            ?.mapNotNull { n -> GameTab.entries.firstOrNull { it.name == n } }
+        return if (saved != null && saved.toSet() == DEFAULT.toSet() && saved.size == 4) saved else DEFAULT
+    }
+
+    fun setOrder(context: android.content.Context, order: List<GameTab>) {
+        prefs(context).edit().putString("allOrder", order.joinToString(",") { it.name }).apply()
     }
 }

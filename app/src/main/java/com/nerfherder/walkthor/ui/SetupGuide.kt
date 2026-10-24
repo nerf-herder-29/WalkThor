@@ -143,7 +143,8 @@ fun SetupGuideDialog(
 
                 Para(
                     "All shows Mirror, your guide where you left off, Face Buttons and Stats together. Tap any of them " +
-                        "to open that tab; Back (or the All button) brings you back."
+                        "to open that tab; Back (or the All button) brings you back. To rearrange them, press and hold a panel and " +
+                        "drag it onto another."
                 )
                 Para(
                     "To have a game open straight on one tab (say, Mirror or the guide), press and hold that tab. A small " +
