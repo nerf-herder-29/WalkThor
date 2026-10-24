@@ -472,7 +472,7 @@ private fun SearchField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = TextStyle(color = BookColors.Text, fontSize = 15.sp),
+        textStyle = TextStyle(fontFamily = AppFont.family, color = BookColors.Text, fontSize = 15.sp),
         cursorBrush = SolidColor(BookColors.Brass),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch(); focusManager.clearFocus() }),

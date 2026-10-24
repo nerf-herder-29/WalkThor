@@ -675,6 +675,67 @@ class StoreScreenshots {
         )
     }
 
+    /**
+     * Font candidates side by side: the shelf, the Stats tab and the splash in each typeface found
+     * under build/fonts/<name>/<weight>.ttf (fetched by the screenshots workflow), plus Roboto.
+     */
+    @Test
+    fun fontOptions() {
+        val root = File("build/fonts")
+        org.junit.Assume.assumeTrue(root.isDirectory)
+        val fonts = listOf("roboto" to androidx.compose.ui.text.font.FontFamily.SansSerif) +
+            root.listFiles()!!.filter { it.isDirectory }.sortedBy { it.name }.map { dir ->
+                dir.name to androidx.compose.ui.text.font.FontFamily(
+                    listOf(400, 500, 600, 700).map { w ->
+                        androidx.compose.ui.text.font.Font(File(dir, "$w.ttf"), androidx.compose.ui.text.font.FontWeight(w))
+                    }
+                )
+            }
+        val hero = fakeHero()
+        val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(
+            selected = com.nerfherder.walkthor.ui.GameTab.STATS, pinned = null, onPin = {}, onSelect = {},
+        )
+        val screen = androidx.compose.runtime.mutableStateOf("shelf")
+        compose.setContent {
+            com.nerfherder.walkthor.ui.GameTabs.indicatorX = Float.NaN
+            WalkThorTheme {
+                CompositionLocalProvider(LocalPageColors provides DarkPages) {
+                    when (screen.value) {
+                        "shelf" -> Library()
+                        "stats" -> androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                            com.nerfherder.walkthor.ui.GameBackdrop(hero)
+                            CompositionLocalProvider(com.nerfherder.walkthor.ui.LocalBackdrop provides true) {
+                                com.nerfherder.walkthor.ui.StatsScreen(
+                                    game = game, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.STATS) },
+                                    preview = statsPreview(),
+                                )
+                            }
+                        }
+                        else -> BootScreen(
+                            BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator", hero = hero),
+                            finished = false, onSkip = {}, onGone = {}, light = true,
+                        )
+                    }
+                }
+            }
+        }
+        fonts.forEach { (name, family) ->
+            com.nerfherder.walkthor.ui.AppFont.family = family
+            listOf("shelf", "stats", "splash").forEach { s ->
+                screen.value = s
+                repeat(20) {
+                    compose.mainClock.advanceTimeBy(100)
+                    Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+                    Thread.sleep(30)
+                }
+                shot("font-$name-$s")
+            }
+        }
+        com.nerfherder.walkthor.ui.AppFont.family = androidx.compose.ui.text.font.FontFamily.SansSerif
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
+    }
+
     @Test
     fun statsTab() {
         // As if Mirror is this game's opening tab (the small dot).

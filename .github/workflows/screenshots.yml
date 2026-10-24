@@ -20,6 +20,32 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Fetch font candidates (preview only)
+        run: |
+          pip install fonttools
+          mkdir -p fontsrc
+          base=https://raw.githubusercontent.com/google/fonts/main/ofl
+          curl -fsSLo fontsrc/inter.ttf "$base/inter/Inter%5Bopsz,wght%5D.ttf"
+          curl -fsSLo fontsrc/manrope.ttf "$base/manrope/Manrope%5Bwght%5D.ttf"
+          curl -fsSLo fontsrc/dmsans.ttf "$base/dmsans/DMSans%5Bopsz,wght%5D.ttf"
+          curl -fsSLo fontsrc/spacegrotesk.ttf "$base/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf"
+          curl -fsSLo fontsrc/outfit.ttf "$base/outfit/Outfit%5Bwght%5D.ttf"
+          python3 - <<'PY'
+          import os
+          from fontTools.ttLib import TTFont
+          from fontTools.varLib.instancer import instantiateVariableFont
+          for f in sorted(os.listdir("fontsrc")):
+              name = f[:-4]
+              os.makedirs(f"app/build/fonts/{name}", exist_ok=True)
+              for w in (400, 500, 600, 700):
+                  font = TTFont(f"fontsrc/{f}")
+                  axes = {a.axisTag: a.defaultValue for a in font["fvar"].axes}
+                  lo, hi = [(a.minValue, a.maxValue) for a in font["fvar"].axes if a.axisTag == "wght"][0]
+                  axes["wght"] = max(lo, min(hi, w))
+                  instantiateVariableFont(font, axes, inplace=True, updateFontNames=False)
+                  font.save(f"app/build/fonts/{name}/{w}.ttf")
+          PY
+          ls -R app/build/fonts
       - name: Render screenshots
         run: |
           set -o pipefail
@@ -40,6 +66,7 @@ jobs:
         run: |
           mkdir -p docs/screenshots
           cp app/build/screenshots/*.png docs/screenshots/
+          mkdir -p docs/fonts && cp -r app/build/fonts/* docs/fonts/
           cp app/build/screenshots/*.txt docs/screenshots/ 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

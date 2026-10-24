@@ -231,7 +231,7 @@ internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed:
             when (label) {
                 "triangle", "circle", "cross", "square" -> drawSymbol(label, c, r * 0.46f, ink)
                 else -> {
-                    val t = measurer.measure(label, TextStyle(color = ink, fontSize = (r * 0.85f).toSp(), fontWeight = FontWeight.SemiBold))
+                    val t = measurer.measure(label, TextStyle(fontFamily = AppFont.family, color = ink, fontSize = (r * 0.85f).toSp(), fontWeight = FontWeight.SemiBold))
                     drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y - t.size.height / 2f))
                 }
             }
@@ -240,7 +240,7 @@ internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed:
             if (style != FaceStyle.THOR && code != null) {
                 val thor = buttonLabel(code)
                 if (!thor.equals(label, ignoreCase = true)) {
-                    val t = measurer.measure("Thor $thor", TextStyle(color = BookColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
+                    val t = measurer.measure("Thor $thor", TextStyle(fontFamily = AppFont.family, color = BookColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
                     // Outward from the diamond, so it never sits between two buttons.
                     val gap = 6.dp.toPx()
                     val tl = when (pos) {

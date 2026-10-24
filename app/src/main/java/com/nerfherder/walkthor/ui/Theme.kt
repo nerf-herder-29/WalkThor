@@ -1,5 +1,8 @@
 package com.nerfherder.walkthor.ui
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Immutable
@@ -42,8 +45,13 @@ object BookColors {
     val Highlight = Color(0xFFFFD65C)
 }
 
-/** Headings use the same clean sans as everything else. */
-val DisplayFont = FontFamily.SansSerif
+/** The app's one typeface, used for every heading, label and number. */
+object AppFont {
+    var family: FontFamily by mutableStateOf(FontFamily.SansSerif)
+}
+
+/** Headings use the same typeface as everything else. */
+val DisplayFont: FontFamily get() = AppFont.family
 
 /** Colours of the pages themselves (as opposed to the app chrome). */
 @Immutable
@@ -106,14 +114,29 @@ private val scheme = darkColorScheme(
 )
 
 private val base = Typography()
-private val typography = base.copy(
-    headlineSmall = base.headlineSmall.copy(fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold),
-    titleLarge = base.titleLarge.copy(fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold),
-    titleMedium = base.titleMedium.copy(fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold),
+
+/** Every Material text style in [f], with semibold headings and titles. */
+private fun typographyFor(f: FontFamily) = Typography(
+    displayLarge = base.displayLarge.copy(fontFamily = f),
+    displayMedium = base.displayMedium.copy(fontFamily = f),
+    displaySmall = base.displaySmall.copy(fontFamily = f),
+    headlineLarge = base.headlineLarge.copy(fontFamily = f),
+    headlineMedium = base.headlineMedium.copy(fontFamily = f),
+    headlineSmall = base.headlineSmall.copy(fontFamily = f, fontWeight = FontWeight.SemiBold),
+    titleLarge = base.titleLarge.copy(fontFamily = f, fontWeight = FontWeight.SemiBold),
+    titleMedium = base.titleMedium.copy(fontFamily = f, fontWeight = FontWeight.SemiBold),
+    titleSmall = base.titleSmall.copy(fontFamily = f),
+    bodyLarge = base.bodyLarge.copy(fontFamily = f),
+    bodyMedium = base.bodyMedium.copy(fontFamily = f),
+    bodySmall = base.bodySmall.copy(fontFamily = f),
+    labelLarge = base.labelLarge.copy(fontFamily = f),
+    labelMedium = base.labelMedium.copy(fontFamily = f),
+    labelSmall = base.labelSmall.copy(fontFamily = f),
 )
 
 /** Quiet label used for section headers ("Your shelf"): small, dim, normal case. */
-val EyebrowStyle = TextStyle(
+val EyebrowStyle: TextStyle get() = TextStyle(
+    fontFamily = AppFont.family,
     fontSize = 12.sp,
     fontWeight = FontWeight.Medium,
     letterSpacing = 0.2.sp,
@@ -122,5 +145,7 @@ val EyebrowStyle = TextStyle(
 
 @Composable
 fun WalkThorTheme(content: @Composable () -> Unit) {
+    val f = AppFont.family
+    val typography = androidx.compose.runtime.remember(f) { typographyFor(f) }
     MaterialTheme(colorScheme = scheme, typography = typography, content = content)
 }

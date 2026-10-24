@@ -365,7 +365,7 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
                 rollingNumber(fps.lastOrNull())?.toString() ?: "—",
                 color = BookColors.Text,
                 fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+                        style = androidx.compose.ui.text.TextStyle(fontFamily = AppFont.family, fontFeatureSettings = "tnum"),
                 fontSize = if (compact) 34.sp else 52.sp,
                 lineHeight = if (compact) 36.sp else 54.sp,
             )

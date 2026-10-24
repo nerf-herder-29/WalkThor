@@ -787,7 +787,7 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
                     value = query,
                     onValueChange = { query = it },
                     singleLine = true,
-                    textStyle = TextStyle(color = BookColors.Text, fontSize = 14.sp),
+                    textStyle = TextStyle(fontFamily = AppFont.family, color = BookColors.Text, fontSize = 14.sp),
                     cursorBrush = SolidColor(BookColors.Brass),
                     decorationBox = { inner ->
                         Row(
