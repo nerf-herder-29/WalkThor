@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -587,7 +588,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             }
             gameTab = null
             fromAll = false
-            Acted(game, book, null)
+            Acted(game, book, noGuide?.art)
         } else {
             // Every launch lands on the Now playing screen, which dims after a few seconds;
             // with a guide it offers Open guide, without one the game's artwork and ways to add one.
@@ -645,10 +646,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 if (game != null) found = Acted(game, guide, noGuide?.art)
             }
             found?.let { (game, guide, art) ->
-                // A guide: flip into its tile (no separate intro). No guide: flip into the game's art.
+                // The game's title card: its wide art (or box art) fades in behind its name.
                 val cover = art?.cover
-                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover, game.player)
-                delay(if (guide != null || cover != null) 1_150 else 800)
+                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover, game.player, hero = art?.hero)
+                delay(if (art?.hero != null || cover != null) 1_300 else 900)
             }
         } else {
             checkGame(force = false) // just refreshes the play-time readout
@@ -761,9 +762,18 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         Box(Modifier.fillMaxSize()) {
             if (onTab) com.nerfherder.walkthor.ui.GameBackdrop(art.hero)
             androidx.compose.runtime.CompositionLocalProvider(com.nerfherder.walkthor.ui.LocalBackdrop provides onTab) {
+              // Switching tabs: a quick crossfade (the tab line glides across at the same time).
+              androidx.compose.animation.AnimatedContent(
+                targetState = current to gameTab,
+                transitionSpec = {
+                    androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) togetherWith
+                        androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160))
+                },
+                label = "gameTab",
+              ) { (shownBook, shownTab) ->
                 when {
-                    current != null -> Reader(current, onBack = back, tabs = tabs)
-                    gameTab == GameTab.ALL -> {
+                    shownBook != null -> Reader(shownBook, onBack = back, tabs = tabs)
+                    shownTab == GameTab.ALL -> {
                         BackHandler { toNowPlaying() }
                         com.nerfherder.walkthor.ui.AllScreen(
                             game = game,
@@ -774,7 +784,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                             topBar = { GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp) },
                         )
                     }
-                    gameTab == GameTab.GUIDE -> {
+                    shownTab == GameTab.GUIDE -> {
                         BackHandler { back() }
                         Column(Modifier.fillMaxSize()) {
                             bar()
@@ -788,7 +798,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                             )
                         }
                     }
-                    gameTab == GameTab.MIRROR -> {
+                    shownTab == GameTab.MIRROR -> {
                         BackHandler { back() }
                         MirrorScreen(
                             game = game.title,
@@ -798,11 +808,11 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                             topBar = bar,
                         )
                     }
-                    gameTab == GameTab.STATS -> {
+                    shownTab == GameTab.STATS -> {
                         BackHandler { back() }
                         com.nerfherder.walkthor.ui.StatsScreen(game = game, onStartCapture = host::requestMirror, topBar = bar)
                     }
-                    gameTab == GameTab.FACE -> {
+                    shownTab == GameTab.FACE -> {
                         BackHandler { back() }
                         ControlsScreen(game = game, onBack = back, topBar = bar)
                     }
@@ -822,6 +832,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                         )
                     }
                 }
+              }
             }
         }
     } else if (current != null) {

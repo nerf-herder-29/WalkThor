@@ -100,6 +100,7 @@ class StoreScreenshots {
         hero: String? = null,
         body: @Composable () -> Unit,
     ) = compose.setContent {
+        com.nerfherder.walkthor.ui.GameTabs.indicatorX = Float.NaN
         WalkThorTheme {
             CompositionLocalProvider(LocalPageColors provides DarkPages) {
                 if (hero == null) body()
@@ -293,10 +294,11 @@ class StoreScreenshots {
 
     @Test
     fun bootIntoGuide() {
+        val hero = fakeHero()
         compose.mainClock.autoAdvance = false
         content {
             BootScreen(
-                BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator"),
+                BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator", hero = hero),
                 finished = false, onSkip = {}, onGone = {},
             )
         }
@@ -545,9 +547,10 @@ class StoreScreenshots {
     @Test
     @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
     fun bootDense() {
+        val hero = fakeHero()
         compose.mainClock.autoAdvance = false
         content {
-            BootScreen(BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator"), finished = false, onSkip = {}, onGone = {})
+            BootScreen(BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator", hero = hero), finished = false, onSkip = {}, onGone = {})
         }
         compose.mainClock.advanceTimeBy(2_000)
         shot("check-boot-dense")

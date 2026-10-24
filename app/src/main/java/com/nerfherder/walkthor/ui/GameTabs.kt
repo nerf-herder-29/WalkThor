@@ -73,6 +73,9 @@ data class TabsState(
 )
 
 object GameTabs {
+    /** Where the open tab's line was last drawn, so the next tab bar can glide it from there. */
+    internal var indicatorX = Float.NaN
+
     /** Set while a game's tabs are on screen; null otherwise. */
     val state = MutableStateFlow<TabsState?>(null)
 
@@ -123,11 +126,13 @@ fun GameTabsRow(
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     // A short line under the open tab, gliding to whichever tab you pick.
     val bounds = remember { androidx.compose.runtime.mutableStateMapOf<GameTab, Pair<Float, Float>>() }
-    val indicator = remember { androidx.compose.animation.core.Animatable(Float.NaN) }
+    // Starts where the last tab bar left it, so it glides across when you switch tabs.
+    val indicator = remember { androidx.compose.animation.core.Animatable(GameTabs.indicatorX) }
     val target = selected?.let { bounds[it] }?.let { (x, w) -> x + w / 2 }
     androidx.compose.runtime.LaunchedEffect(target) {
         if (target == null) return@LaunchedEffect
-        if (indicator.value.isNaN()) indicator.snapTo(target)
+        GameTabs.indicatorX = target
+        if (indicator.value.isNaN() || actOnDown) indicator.snapTo(target)
         else indicator.animateTo(target, androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 420f))
     }
     Row(

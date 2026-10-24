@@ -361,7 +361,7 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                fps.lastOrNull()?.toString() ?: "—",
+                rollingNumber(fps.lastOrNull())?.toString() ?: "—",
                 color = BookColors.Text,
                 fontWeight = FontWeight.Medium,
                         style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),

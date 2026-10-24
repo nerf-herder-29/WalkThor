@@ -362,7 +362,7 @@ private fun FpsPanel(
                 val now = fps.lastOrNull()
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        now?.toString() ?: "—",
+                        rollingNumber(now)?.toString() ?: "—",
                         color = BookColors.Text,
                         fontWeight = FontWeight.Medium,
                         style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
@@ -482,3 +482,13 @@ private fun StatTile(
 
 internal fun hoursMinutes(minutes: Int): String =
     if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
+
+/** [value], counting smoothly to each new reading instead of jumping (null stays null). */
+@Composable
+internal fun rollingNumber(value: Int?): Int? {
+    if (value == null) return null
+    val shown by androidx.compose.animation.core.animateIntAsState(
+        value, androidx.compose.animation.core.tween(450, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "fps",
+    )
+    return shown
+}
