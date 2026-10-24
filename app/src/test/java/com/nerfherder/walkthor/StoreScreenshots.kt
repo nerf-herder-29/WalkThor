@@ -95,7 +95,7 @@ class StoreScreenshots {
         PlaySession.showTimer.value = true
     }
 
-    /** With [hero], the screen sits over the game's dimmed art, as the game's tabs do in the app. */
+    /** With [hero], the screen sits over the game's art strip, as the game's tabs do in the app. */
     private fun content(
         hero: String? = null,
         body: @Composable () -> Unit,
@@ -251,45 +251,6 @@ class StoreScreenshots {
         content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
         settle()
         shot("11b-mirror-all")
-    }
-
-    /** The background options: the Face Buttons and Stats tabs over each style. */
-    @Test
-    fun backdropOptions() {
-        com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
-        val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
-        val hero = fakeHero()
-        val style = androidx.compose.runtime.mutableStateOf(com.nerfherder.walkthor.ui.BackdropStyle.DIMMED)
-        val stats = androidx.compose.runtime.mutableStateOf(false)
-        compose.setContent {
-            WalkThorTheme {
-                CompositionLocalProvider(LocalPageColors provides DarkPages) {
-                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                        com.nerfherder.walkthor.ui.GameBackdrop(hero, style = style.value)
-                        CompositionLocalProvider(
-                            com.nerfherder.walkthor.ui.LocalBackdrop provides true,
-                            androidx.compose.ui.platform.LocalInspectionMode provides true,
-                        ) {
-                            if (stats.value) com.nerfherder.walkthor.ui.StatsScreen(
-                                game = game, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.STATS) },
-                                preview = statsPreview(),
-                            ) else com.nerfherder.walkthor.ui.ControlsScreen(
-                                game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {},
-                                topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.FACE) },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        listOf(false, true).forEach { s ->
-            stats.value = s
-            com.nerfherder.walkthor.ui.BackdropStyle.values().forEach { st ->
-                style.value = st
-                settle()
-                shot("bg-${st.name.lowercase()}-${if (s) "stats" else "face"}")
-            }
-        }
     }
 
     @Test

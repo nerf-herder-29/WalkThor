@@ -28,7 +28,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * True while a game's tabs sit over [GameBackdrop]: their screens then leave their background
- * see-through, so the game's dimmed art shows behind them.
+ * see-through, so the game's art strip shows behind the tab bar.
  */
 val LocalBackdrop = compositionLocalOf { false }
 
@@ -36,75 +36,30 @@ val LocalBackdrop = compositionLocalOf { false }
 @Composable
 fun backdropOr(color: Color): Color = if (LocalBackdrop.current) Color.Transparent else color
 
-/** How the game's art sits behind its tabs. */
-enum class BackdropStyle {
-    /** The whole art, sharp but heavily dimmed. */
-    DIMMED,
-    /** A band of art across the top, fading into black. */
-    RIBBON,
-    /** The art only behind the tab bar, with a short fade below it. */
-    BAR,
-    /** No picture: the art's main colour as a faint glow from the top. */
-    TINT,
-    /** Plain black. */
-    PLAIN,
-}
-
-private class Art(val image: ImageBitmap, val average: Color)
-
 /**
- * The game's wide art behind its tabs, drawn as [style]. It's decoded once at about the screen's
- * size (so it costs nothing while you play). Without wide art, it's plain black.
+ * The game's wide art in a strip behind the tab bar, fading into black below it; the rest of the
+ * screen stays OLED black. It's decoded once at about the screen's size (so it costs nothing while
+ * you play). Without wide art, it's plain black.
  */
 @Composable
-fun GameBackdrop(heroUri: String?, modifier: Modifier = Modifier, style: BackdropStyle = BackdropStyle.DIMMED) {
+fun GameBackdrop(heroUri: String?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val art by produceState<Art?>(null, heroUri, style) {
-        value = if (style == BackdropStyle.PLAIN) null
-        else heroUri?.let { uri -> withContext(Dispatchers.IO) { runCatching { screenSizedArt(context, uri) }.getOrNull() } }
+    val art by produceState<ImageBitmap?>(null, heroUri) {
+        value = heroUri?.let { uri -> withContext(Dispatchers.IO) { runCatching { screenSizedArt(context, uri) }.getOrNull() } }
     }
     Box(modifier.fillMaxSize().background(BookColors.Ink)) {
-        val a = art ?: return@Box
-        when (style) {
-            BackdropStyle.DIMMED -> {
-                ArtImage(a.image, Modifier.fillMaxSize())
-                // Dimmed well down so text and the brackets stay easy to read, a little more at the edges.
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f)))
-                Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))))
-            }
-            BackdropStyle.RIBBON -> Box(Modifier.fillMaxWidth().height(190.dp).clipToBounds()) {
-                ArtImage(a.image, Modifier.fillMaxSize())
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.55f),
-                            0.35f to Color.Black.copy(alpha = 0.65f),
-                            1f to Color.Black,
-                        )
-                    )
-                )
-            }
-            BackdropStyle.BAR -> Box(Modifier.fillMaxWidth().height(96.dp).clipToBounds()) {
-                ArtImage(a.image, Modifier.fillMaxSize())
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.5f),
-                            0.62f to Color.Black.copy(alpha = 0.6f),
-                            1f to Color.Black,
-                        )
-                    )
-                )
-            }
-            BackdropStyle.TINT -> Box(
+        val image = art ?: return@Box
+        Box(Modifier.fillMaxWidth().height(96.dp).clipToBounds()) {
+            ArtImage(image, Modifier.fillMaxSize())
+            Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        0f to a.average.copy(alpha = 0.32f),
-                        0.55f to Color.Transparent,
+                        0f to Color.Black.copy(alpha = 0.5f),
+                        0.62f to Color.Black.copy(alpha = 0.6f),
+                        1f to Color.Black,
                     )
                 )
             )
-            BackdropStyle.PLAIN -> Unit
         }
     }
 }
@@ -118,8 +73,8 @@ private fun ArtImage(image: ImageBitmap, modifier: Modifier) = Image(
     modifier = modifier,
 )
 
-/** The picture at [uri], decoded no bigger than it needs to be to fill the screen, and its average colour. */
-private fun screenSizedArt(context: Context, uri: String): Art? {
+/** The picture at [uri], decoded no bigger than it needs to be to fill the screen's width. */
+private fun screenSizedArt(context: Context, uri: String): ImageBitmap? {
     val parsed = Uri.parse(uri)
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     context.contentResolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, bounds) }
@@ -128,13 +83,5 @@ private fun screenSizedArt(context: Context, uri: String): Art? {
     var sample = 1
     while (bounds.outWidth / (sample * 2) >= target) sample *= 2
     val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-    val bmp = context.contentResolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, opts) } ?: return null
-    val dot = android.graphics.Bitmap.createScaledBitmap(bmp, 1, 1, true)
-    val c = dot.getPixel(0, 0)
-    if (dot !== bmp) dot.recycle()
-    // Brighten the average a little so the glow reads as the game's colour, not mud.
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(c, hsv)
-    hsv[1] = (hsv[1] * 1.3f).coerceAtMost(1f); hsv[2] = hsv[2].coerceAtLeast(0.55f)
-    return Art(bmp.asImageBitmap(), Color(android.graphics.Color.HSVToColor(hsv)))
+    return context.contentResolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, opts) }?.asImageBitmap()
 }
