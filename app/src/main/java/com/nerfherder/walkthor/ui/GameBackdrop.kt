@@ -54,10 +54,10 @@ fun GameBackdrop(heroUri: String?, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxSize(),
             )
             // Darkened so text and the brackets stay easy to read, a little more at the edges.
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)))
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.48f)))
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))
+                    Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.3f)))
                 )
             )
         }
@@ -72,16 +72,16 @@ private fun blurredArt(context: Context, uri: String): ImageBitmap? {
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
     // Decode small to start with: only a few dozen pixels survive the blur anyway.
     var sample = 1
-    while (bounds.outWidth / (sample * 2) >= 128) sample *= 2
+    while (bounds.outWidth / (sample * 2) >= 192) sample *= 2
     val opts = BitmapFactory.Options().apply { inSampleSize = sample }
     val src = context.contentResolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, opts) } ?: return null
-    val w = 64
-    val h = (64f * src.height / src.width).toInt().coerceIn(8, 128)
+    val w = 96
+    val h = (96f * src.height / src.width).toInt().coerceIn(8, 192)
     val small = Bitmap.createScaledBitmap(src, w, h, true)
     if (small !== src) src.recycle()
     val px = IntArray(w * h)
     small.getPixels(px, 0, w, 0, 0, w, h)
-    repeat(3) { boxBlur(px, w, h, 3) }
+    repeat(2) { boxBlur(px, w, h, 2) }
     val out = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
     small.recycle()
     return out.asImageBitmap()
