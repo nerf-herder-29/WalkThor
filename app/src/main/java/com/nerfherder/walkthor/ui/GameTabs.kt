@@ -135,10 +135,10 @@ fun GameTabsRow(
                     .weight(if (hub) (if (narrow) 0.72f else 0.8f) else 1f)
                     .fillMaxHeight()
                     .then(
-                        // Inset the same as the open tab's light wash, so All's top and bottom line
-                        // up with the other tabs and its icon and label sit at the same height.
+                        // Full height, so All's top and bottom line up with the other tabs' corner
+                        // brackets, with room around its icon and label.
                         if (hub) Modifier
-                            .padding(3.dp)
+                            .padding(horizontal = 2.dp)
                             .background(Color.White.copy(alpha = if (on) 0.18f else 0.07f), hubShape)
                             .border(if (on) 2.dp else 1.dp, if (on) Color(0xFFF5F5FA) else Color.White.copy(alpha = 0.45f), hubShape)
                         else Modifier.brackets(on)
