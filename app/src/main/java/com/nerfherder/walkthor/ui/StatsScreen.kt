@@ -365,7 +365,7 @@ private fun FpsPanel(
                         now?.toString() ?: "—",
                         color = BookColors.Text,
                         fontWeight = FontWeight.Medium,
-                        fontFeatureSettings = "tnum",
+                        style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
                         fontSize = if (compact) 52.sp else 84.sp,
                         lineHeight = if (compact) 54.sp else 86.sp,
                     )
@@ -438,7 +438,7 @@ private fun StatTile(
                 value,
                 color = BookColors.Text,
                 fontWeight = FontWeight.SemiBold,
-                fontFeatureSettings = "tnum",
+                style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
                 fontSize = if (compact) 16.sp else 24.sp,
                 lineHeight = if (compact) 18.sp else 28.sp,
                 maxLines = 1,
