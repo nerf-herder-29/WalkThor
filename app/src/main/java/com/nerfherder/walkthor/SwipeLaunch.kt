@@ -115,7 +115,7 @@ const val EXTRA_FROM_SWIPE = "walkthor.fromSwipe"
 /** Set (to the emulator's package) when WalkThor is opened because an emulator started a game. */
 const val EXTRA_FROM_EMULATOR = "walkthor.fromEmulator"
 /** How long WalkThor waits before opening over a dual-screen frontend's bottom screen. */
-private const val FRONTEND_DELAY_MS = 5_000L
+private const val FRONTEND_DELAY_MS = 2_000L
 
 /** Where WalkThor's activity currently is, so the gesture can bring it to (or take it off) the right screen. */
 object AppState {
@@ -204,7 +204,9 @@ class SwipeGestureService : AccessibilityService() {
                 AccessibilityEvent.TYPE_VIEW_HOVER_ENTER or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
                 AccessibilityEvent.TYPE_VIEW_SCROLLED else 0)
         // Icons are often marked "not important" for accessibility; include them so their names come through.
-        val notImportant = android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+        // And see every window, on both screens (a dual-screen frontend lists its games on one).
+        val notImportant = android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
+            android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         val flags = if (picking) info.flags or notImportant else info.flags and notImportant.inv()
         // While detecting, every app switch counts: don't let Android merge quick ones together
         // (a fast emulator launch could otherwise be missed).

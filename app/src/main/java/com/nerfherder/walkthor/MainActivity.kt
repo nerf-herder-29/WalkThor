@@ -617,6 +617,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 }
             }
         }
+        // Your frontend's screen was read but showed none of your games: ask, rather than
+        // guessing the last game you played here (which is often a different one).
+        if (EmulatorWatch.pickActive.value) return null
         return EmulatorWatch.recentEntries(context, s.pkg).firstNotNullOfOrNull { e ->
             if (e.startsWith("r:")) romsNow.firstOrNull { it.id == e.drop(2) }?.let { romPick(s, it) }
             else books.firstOrNull { it.id == e.drop(2) }?.let { b -> EmuPick(gameTitleOf(b.title), null, b, null) }

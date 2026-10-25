@@ -363,7 +363,7 @@ fun HeardReadout() {
                     sc.texts.mapNotNull { com.nerfherder.walkthor.data.RomLibrary.matchLabel(it, roms)?.title }.distinct()
                 }
                 Text(
-                    "Read ${sc.app}'s screen: ${sc.items} items · " + sc.texts.take(4).joinToString(", ") { "“$it”" },
+                    "Read ${sc.app}'s screen" + (if (sc.windows > 1) "s (${sc.windows} windows)" else "") + ": ${sc.items} items · " + sc.texts.take(4).joinToString(", ") { "“$it”" },
                     color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 2,
                 )
                 Text(

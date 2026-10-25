@@ -194,7 +194,7 @@ object EmulatorWatch {
     }
 
     /** What WalkThor last read from your frontend's screen (for the readout). */
-    data class Scan(val app: String, val items: Int, val texts: List<String>, val at: Long)
+    data class Scan(val app: String, val items: Int, val texts: List<String>, val at: Long, val windows: Int = 1)
     val scan = MutableStateFlow<Scan?>(null)
     /** Each text on the frontend's screen and when it last appeared there (newest last). */
     private val appeared = LinkedHashMap<String, Long>()
@@ -251,9 +251,22 @@ object EmulatorWatch {
                 .map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
             if (t.isNotEmpty()) synchronized(appeared) { focusedTexts = t; focusedAt = now }
         }
-        val root = runCatching { source?.window?.root }.getOrNull()
-            ?: runCatching { (context as? android.accessibilityservice.AccessibilityService)?.rootInActiveWindow }.getOrNull()
-        val (texts, count) = if (root != null) screenTexts(root) else emptyList<String>() to 0
+        // Every window the frontend has, on both screens: a dual-screen frontend (iiSU) shows its
+        // menu on one screen and the games on the other, and either can be the one that changed.
+        val roots = frontendRoots(context, pkg).ifEmpty {
+            listOfNotNull(
+                runCatching { source?.window?.root }.getOrNull()
+                    ?: runCatching { (context as? android.accessibilityservice.AccessibilityService)?.rootInActiveWindow }.getOrNull()
+            )
+        }
+        var count = 0
+        val texts = ArrayList<String>()
+        for (r in roots) {
+            val (t, c) = screenTexts(r, 500 - count)
+            texts += t
+            count += c
+            if (count >= 500) break
+        }
         val clean = texts.map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
         val newest = synchronized(appeared) {
             val before = onScreen.toSet()
@@ -264,7 +277,7 @@ object EmulatorWatch {
         }
         // Turned off while reading: keep nothing.
         if (!pickActive.value) return
-        scan.value = Scan(name, count, clean.take(10), now)
+        scan.value = Scan(name, count, clean.take(10), now, roots.size)
         (synchronized(appeared) { focusedTexts.firstOrNull() } ?: newest)?.let { heard.value = Heard(pkg, name, it, now) }
     }
 
@@ -276,12 +289,26 @@ object EmulatorWatch {
     }
 
     /** All the text on a screen (a few hundred items at most). */
-    private fun screenTexts(root: android.view.accessibility.AccessibilityNodeInfo): Pair<List<String>, Int> {
+    /** The roots of all of [pkg]'s windows, on every screen (Android 11 and later). */
+    private fun frontendRoots(context: Context, pkg: String): List<android.view.accessibility.AccessibilityNodeInfo> {
+        if (android.os.Build.VERSION.SDK_INT < 30) return emptyList()
+        val service = context as? android.accessibilityservice.AccessibilityService ?: return emptyList()
+        val all = runCatching { service.windowsOnAllDisplays }.getOrNull() ?: return emptyList()
+        val out = ArrayList<android.view.accessibility.AccessibilityNodeInfo>()
+        for (i in 0 until all.size()) {
+            all.valueAt(i).orEmpty().forEach { w ->
+                runCatching { w.root }.getOrNull()?.takeIf { it.packageName?.toString() == pkg }?.let(out::add)
+            }
+        }
+        return out
+    }
+
+    private fun screenTexts(root: android.view.accessibility.AccessibilityNodeInfo, budget: Int = 300): Pair<List<String>, Int> {
         val out = ArrayList<String>()
         val queue = ArrayDeque<android.view.accessibility.AccessibilityNodeInfo>()
         queue.add(root)
         var count = 0
-        while (queue.isNotEmpty() && count < 300) {
+        while (queue.isNotEmpty() && count < budget) {
             val n = queue.removeFirst()
             count++
             n.text?.toString()?.let(out::add)
