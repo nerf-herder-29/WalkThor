@@ -8,9 +8,9 @@ jobs:
     steps:
       - name: Call jeuInfos without developer credentials
         run: |
-          echo "--- no devid, no user"
-          curl -s -m 30 "https://api.screenscraper.fr/api2/jeuInfos.php?softname=WalkThor&output=json&systemeid=12&romtype=rom&romnom=Golden%20Sun%20(USA).gba" | head -c 400; echo
-          echo "--- empty devid, fake user"
-          curl -s -m 30 "https://api.screenscraper.fr/api2/jeuInfos.php?devid=&devpassword=&softname=WalkThor&ssid=walkthorprobe&sspassword=x&output=json&systemeid=12&romtype=rom&romnom=Golden%20Sun%20(USA).gba" | head -c 400; echo
-          echo "--- systemesListe no devid"
-          curl -s -m 30 "https://api.screenscraper.fr/api2/systemesListe.php?softname=WalkThor&output=json" | head -c 300; echo
+          a=$(curl -s -m 30 -w ' [HTTP %{http_code}]' "https://api.screenscraper.fr/api2/jeuInfos.php?softname=WalkThor&output=json&systemeid=12&romtype=rom&romnom=Golden%20Sun%20(USA).gba" | head -c 300 | tr '\n' ' ')
+          echo "::notice title=No dev creds, no user::$a"
+          b=$(curl -s -m 30 -w ' [HTTP %{http_code}]' "https://api.screenscraper.fr/api2/jeuInfos.php?softname=WalkThor&ssid=walkthorprobe&sspassword=x&output=json&systemeid=12&romtype=rom&romnom=Golden%20Sun%20(USA).gba" | head -c 300 | tr '\n' ' ')
+          echo "::notice title=No dev creds, a user::$b"
+          c=$(curl -s -m 30 -w ' [HTTP %{http_code}]' "https://api.screenscraper.fr/api2/ssuserInfos.php?softname=WalkThor&ssid=walkthorprobe&sspassword=x&output=json" | head -c 300 | tr '\n' ' ')
+          echo "::notice title=User info, no dev creds::$c"
