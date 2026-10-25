@@ -85,8 +85,8 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                     "Touches that begin in a thin strip along the top edge of the bottom screen. And, only if you " +
                         "agree on the Face Buttons screen, and only while that screen is open, your " +
                         "controller button presses, to light up the matching buttons. Every press is passed straight " +
-                        "on to your game; none is recorded or stored. And, only if you turn on Detect games from any " +
-                        "emulator (for when you don't use Cocoon), which app is in front, plus the running emulator's " +
+                        "on to your game; none is recorded or stored. And, only if you turn on Open when an " +
+                        "emulator starts, which app is in front, plus the running emulator's " +
                         "own window title and notifications, to tell which game you're playing.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
@@ -118,19 +118,19 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
     )
 }
 
-/** Explains "Detect games from any emulator" before it's switched on. */
+/** Explains "Open when an emulator starts" before it's switched on. */
 @Composable
 fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = BookColors.Surface,
-        title = { Text("Detect games from any emulator", fontFamily = DisplayFont) },
+        title = { Text("Open when an emulator starts", fontFamily = DisplayFont) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Without Cocoon, WalkThor can still tell when you start a game: when an emulator comes to the " +
-                        "front, WalkThor opens on the bottom screen with the game's tabs. If it can't tell which game " +
-                        "it is, it asks, with the guides you've used in that emulator first, and remembers your pick.",
+                    "Whenever an emulator comes to the front, from any frontend, WalkThor opens on the bottom screen " +
+                        "with the game's tabs. With Cocoon linked, Cocoon tells it which game. Without Cocoon, it " +
+                        "works it out (or asks, with your picks for that emulator first) and remembers your pick.",
                     color = BookColors.Text,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -138,7 +138,7 @@ fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 Text(
                     "Through WalkThor's accessibility service: which app comes to the front. For the emulator that's " +
                         "running, and only that one, also its window title and its own notifications, to spot a game " +
-                        "name that matches one of your guides.",
+                        "name that matches one of your games or guides.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -146,8 +146,8 @@ fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 Text("What it doesn't do", style = EyebrowStyle)
                 Text(
                     "It never reads other apps' notifications or anything on the game's screen. What it sees is kept " +
-                        "in memory only until the game ends; nothing is stored or sent, and WalkThor has no internet " +
-                        "access. Only the guides you pick for each emulator are remembered, on this device.",
+                        "in memory only until the game ends and is never stored or sent. Only the games and guides you " +
+                        "pick for each emulator are remembered, on this device.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )

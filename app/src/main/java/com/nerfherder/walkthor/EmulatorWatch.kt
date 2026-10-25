@@ -2,29 +2,29 @@ package com.nerfherder.walkthor
 
 import android.app.Notification
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * Knows a game is running without Cocoon: "Detect games from any emulator".
+ * "Open when an emulator starts": opens WalkThor whenever an emulator comes to the front.
  *
- * While it's switched on (and Cocoon isn't linked), WalkThor's accessibility service tells this
- * which app comes to the front. When that app is an emulator, a game session starts: WalkThor
- * opens on the bottom screen with the game's tabs, and works out which game it is from
- *  1. any text the emulator shows that matches one of your guides (its window title or its own
- *     notifications; only the running emulator's, kept in memory for this session only), else
- *  2. the guide you used last time with this emulator, else
- *  3. asks you, with the guides you've used with this emulator first.
- * The session ends when your home screen or frontend comes back to the front.
+ * While it's switched on, WalkThor's accessibility service tells this which app comes to the
+ * front. Each time an emulator does (after any other app was in front), a game session starts
+ * and WalkThor opens on the bottom screen with the game's tabs. With Cocoon linked, Cocoon's
+ * launch log names the game as usual. Without it, WalkThor works out which game it is from
+ *  1. any text the emulator shows that matches one of your games or guides (its window title or
+ *     its own notifications; only the running emulator's, kept in memory for this session only),
+ *  2. else the game or guide you picked last time in this emulator,
+ *  3. else it asks, with your picks for this emulator first.
+ * The session ends when another app (your frontend, the home screen) comes to the front; apps
+ * you open from WalkThor's Apps tab don't count.
  */
 object EmulatorWatch {
     /** A game running in [name] (the emulator's app name), since [at]. */
     data class Session(val pkg: String, val name: String, val at: Long)
 
     val session = MutableStateFlow<Session?>(null)
-    /** On, agreed to, and Cocoon isn't linked: the service should listen for apps coming to the front. */
+    /** On and agreed to: the service should listen for apps coming to the front. */
     val active = MutableStateFlow(false)
     /** The setting itself (shown in the ⋮ menu). */
     val on = MutableStateFlow(false)
@@ -35,12 +35,22 @@ object EmulatorWatch {
     private const val KEY_ON = "detect"
     private const val KEY_CONSENT = "consent"
     private const val MAX_SEEN = 24
-    private const val MAX_RECENT = 6
+    private const val MAX_RECENT = 8
 
     private val seen = ArrayDeque<String>()
     private val emulatorCache = HashMap<String, Boolean>()
     private val labelCache = HashMap<String, String>()
-    private var homePackage: String? = null
+    private val appCache = HashMap<String, Boolean>()
+    /** The last app seen coming to the front, so going back to the same emulator counts as a new launch. */
+    private var lastFront: String? = null
+    /** Apps WalkThor opened on its own screen (Apps tab), and when: they don't end or restart a game. */
+    private val openedHere = HashMap<String, Long>()
+
+    /** WalkThor's Apps tab just opened [pkg] on WalkThor's screen. */
+    fun openedByWalkThor(pkg: String) { synchronized(openedHere) { openedHere[pkg] = System.currentTimeMillis() } }
+    private fun isOpenedHere(pkg: String) = synchronized(openedHere) {
+        openedHere[pkg]?.let { System.currentTimeMillis() - it < OPENED_HERE_MS } == true
+    }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -55,8 +65,7 @@ object EmulatorWatch {
 
     /** Re-reads whether detection should run (after a setting or the Cocoon link changes). */
     fun refresh(context: Context) {
-        val now = isOn(context) && hasConsent(context) &&
-            com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) == null
+        val now = isOn(context) && hasConsent(context)
         on.value = isOn(context)
         active.value = now
         if (!now) end()
@@ -81,17 +90,23 @@ object EmulatorWatch {
         if (pkg == context.packageName) return null
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                // System UI, keyboards and overlays aren't apps you switch to; and apps you opened
+                // from WalkThor's Apps tab sit on WalkThor's screen, beside the game.
+                if (!isApp(context, pkg) || isOpenedHere(pkg)) return null
+                val previous = lastFront
+                lastFront = pkg
                 if (isEmulator(context, pkg)) {
                     val current = session.value
-                    val started = if (current?.pkg != pkg) {
+                    // A new launch: a different emulator, or this one again after another app.
+                    val started = if (current?.pkg != pkg || previous != pkg) {
                         end()
                         Session(pkg, label(context, pkg), System.currentTimeMillis()).also { session.value = it }
                     } else null
                     remember(event.text.map { it.toString() } + listOfNotNull(event.contentDescription?.toString()), pkg, context)
                     return started
                 }
-                // Back on the home screen or in a frontend: the game is over.
-                if (session.value != null && isHomeOrFrontend(context, pkg)) end()
+                // Another app came to the front (your frontend, the home screen): the game is over.
+                if (session.value != null) end()
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
                 // Only the running emulator's own notifications; everything else is ignored outright.
@@ -136,16 +151,9 @@ object EmulatorWatch {
             p.split('.', '_').any { it.endsWith("emu") && it.length > 3 }
     }
 
-    private fun isHomeOrFrontend(context: Context, pkg: String): Boolean {
-        val home = homePackage ?: runCatching {
-            context.packageManager.resolveActivity(
-                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY,
-            )?.activityInfo?.packageName
-        }.getOrNull()?.also { homePackage = it }
-        if (pkg == home) return true
-        val p = pkg.lowercase()
-        val l = label(context, pkg).lowercase()
-        return FRONTENDS.any { it in p || it in l }
+    /** An app you can switch to (it has a home-screen icon), or an emulator. */
+    private fun isApp(context: Context, pkg: String): Boolean = appCache.getOrPut(pkg) {
+        isEmulator(context, pkg) || runCatching { context.packageManager.getLaunchIntentForPackage(pkg) != null }.getOrDefault(false)
     }
 
     private fun label(context: Context, pkg: String): String = labelCache.getOrPut(pkg) {
@@ -155,22 +163,37 @@ object EmulatorWatch {
         }.getOrDefault(pkg)
     }
 
-    /** Guides you've picked while playing in [pkg], most recent first. */
-    fun recentGuides(context: Context, pkg: String): List<String> =
-        prefs(context).getString("recent/$pkg", null)?.split(',')?.filter { it.isNotBlank() } ?: emptyList()
+    /**
+     * What you've picked while playing in [pkg], most recent first: "r:<rom id>" for a game from your
+     * ROMs folder, "g:<guide id>" for a guide (older entries without a prefix are guides).
+     */
+    fun recentEntries(context: Context, pkg: String): List<String> =
+        prefs(context).getString("recent/$pkg", null)
+            // Older lists held only guide ids, separated by commas.
+            ?.let { raw -> if ('\u0001' in raw || raw.startsWith("r:") || raw.startsWith("g:")) raw.split('\u0001') else raw.split(',') }
+            ?.filter { it.isNotBlank() }
+            ?.map { if (it.startsWith("r:") || it.startsWith("g:")) it else "g:$it" } ?: emptyList()
 
-    fun noteGuide(context: Context, pkg: String, bookId: String) {
-        val list = (listOf(bookId) + recentGuides(context, pkg).filter { it != bookId }).take(MAX_RECENT)
-        prefs(context).edit().putString("recent/$pkg", list.joinToString(",")).apply()
+    /** Guide ids you've picked in [pkg], most recent first. */
+    fun recentGuides(context: Context, pkg: String): List<String> =
+        recentEntries(context, pkg).filter { it.startsWith("g:") }.map { it.drop(2) }
+
+    fun noteGuide(context: Context, pkg: String, bookId: String) = note(context, pkg, "g:$bookId")
+    fun noteRom(context: Context, pkg: String, romId: String) = note(context, pkg, "r:$romId")
+
+    private fun note(context: Context, pkg: String, entry: String) {
+        val list = (listOf(entry) + recentEntries(context, pkg).filter { it != entry }).take(MAX_RECENT)
+        // ROM file names can contain commas, so entries are separated by an unprintable character.
+        prefs(context).edit().putString("recent/$pkg", list.joinToString("\u0001")).apply()
     }
 
     /** Forget a deleted guide everywhere. */
     fun forgetGuide(context: Context, bookId: String) {
         val p = prefs(context)
         val e = p.edit()
-        p.all.filterKeys { it.startsWith("recent/") }.forEach { (k, v) ->
-            val left = (v as? String)?.split(',')?.filter { it.isNotBlank() && it != bookId } ?: return@forEach
-            e.putString(k, left.joinToString(","))
+        p.all.keys.filter { it.startsWith("recent/") }.forEach { k ->
+            val pkg = k.removePrefix("recent/")
+            e.putString(k, recentEntries(context, pkg).filter { it != "g:$bookId" }.joinToString("\u0001"))
         }
         e.apply()
     }
@@ -182,8 +205,5 @@ object EmulatorWatch {
         "mgba", "snes9x", "nestopia", "fceumm", "epsxe", "fpse", "mame4droid", "scummvm", "dosbox", "yabasanshiro",
         "gearboy", "my boy", "john gba", "pizza boy", "rpcsx", "shadps4", "winlator", "gamehub",
     )
-    private val FRONTENDS = listOf(
-        "cocoon", "es-de", "es_de", "esde", "daijish", "beacon", "console launcher", "consolelauncher", "iisu",
-        "pegasus", "odin", "launcher",
-    )
+    private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
 }

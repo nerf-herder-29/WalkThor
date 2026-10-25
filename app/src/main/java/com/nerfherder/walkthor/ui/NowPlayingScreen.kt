@@ -102,12 +102,17 @@ fun NowPlayingScreen(
     guide: Book? = null,
     /** Opens one of the game's tabs (Guide, Mirror, Face Buttons). */
     onTab: (GameTab) -> Unit = {},
+    /** A game noticed from its emulator: you picked it from your ROMs folder. */
+    onPickRom: (com.nerfherder.walkthor.data.Rom) -> Unit = {},
 ) {
+    val roms by com.nerfherder.walkthor.data.RomLibrary.get(androidx.compose.ui.platform.LocalContext.current).roms.collectAsState()
+    // Without Cocoon there's something to choose from if you have guides or a ROMs folder.
+    val choices = books.isNotEmpty() || (game.emulatorPkg != null && roms.isNotEmpty())
     var picking by remember { mutableStateOf(false) }
     // Dims after the Auto-dim setting's time, like everywhere else.
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
-        AutoDim.linkLabel.value = linkLabelFor(guide, books, game.unknown)
+        AutoDim.linkLabel.value = linkLabelFor(guide, books, game, choices)
         AutoDim.nowPlayingShown.value = true
         onDispose {
             AutoDim.nowPlayingShown.value = false
@@ -157,10 +162,10 @@ fun NowPlayingScreen(
             )
         )
         // ---- the game, its emulator and the buttons: the same layout as the dimmed screen ----
-        val link = linkLabelFor(guide, books, game.unknown)?.let { it to { picking = true } }
+        val link = linkLabelFor(guide, books, game, choices)?.let { it to { picking = true } }
         NowPlayingStack(
             // Noticed from its emulator but not yet known: ask (the emulator shows underneath).
-            title = if (game.unknown && books.isNotEmpty()) "What are you playing?" else game.title,
+            title = if (game.unknown && choices) "What are you playing?" else game.title,
             player = game.player,
             buttons = emptyList(),
             link = link,
@@ -195,7 +200,16 @@ fun NowPlayingScreen(
     }
 
     if (picking) {
-        GuidePickerDialog(game, books, coverFile, onPick = { picking = false; onPickGuide(it) }, onDismiss = { picking = false })
+        if (game.emulatorPkg != null) {
+            GamePickerDialog(
+                game, books, roms, coverFile,
+                onPickGuide = { picking = false; onPickGuide(it) },
+                onPickRom = { picking = false; onPickRom(it) },
+                onDismiss = { picking = false },
+            )
+        } else {
+            GuidePickerDialog(game, books, coverFile, onPick = { picking = false; onPickGuide(it) }, onDismiss = { picking = false })
+        }
     }
 }
 
@@ -285,8 +299,9 @@ private fun SecondaryButtons(
 }
 
 /** The small link under the buttons: pick another guide, or one from the shelf; null if there's none to pick. */
-private fun linkLabelFor(guide: Book?, books: List<Book>, unknown: Boolean = false): String? = when {
-    unknown && books.isNotEmpty() -> "Choose a guide"
+private fun linkLabelFor(guide: Book?, books: List<Book>, game: LaunchedGame? = null, choices: Boolean = books.isNotEmpty()): String? = when {
+    game?.unknown == true && choices -> "Choose game"
+    game?.emulatorPkg != null && choices -> "Change game"
     guide != null && books.size > 1 -> "Other guide"
     guide == null && books.isNotEmpty() -> "From my shelf"
     else -> null

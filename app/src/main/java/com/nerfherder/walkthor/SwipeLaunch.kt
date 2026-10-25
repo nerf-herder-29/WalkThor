@@ -172,7 +172,7 @@ class SwipeGestureService : AccessibilityService() {
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
-        // "Detect games from any emulator": listen for apps coming to the front only while it's on.
+        // "Open when an emulator starts": listen for apps coming to the front only while it's on.
         EmulatorWatch.refresh(this)
         // If Android closed WalkThor mid-game to free memory, bring it back (see Revive).
         Revive.onServiceStart(this)
@@ -180,21 +180,25 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        // Only ever subscribed to while "Detect games from any emulator" is on (see applyEventTypes).
+        // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         val started = EmulatorWatch.onEvent(this, event) ?: return
         openForGame(started)
     }
 
     /**
      * Listens for apps coming to the front (and the running emulator's notifications) only while
-     * "Detect games from any emulator" is on; otherwise just the minimum, as before.
+     * "Open when an emulator starts" is on; otherwise just the minimum, as before.
      */
     fun applyEventTypes() {
         val info = serviceInfo ?: return
         val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or
             if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0
-        if (info.eventTypes != want) {
+        // While detecting, every app switch counts: don't let Android merge quick ones together
+        // (a fast emulator launch could otherwise be missed).
+        val timeout = if (EmulatorWatch.active.value) 0L else 1000L
+        if (info.eventTypes != want || info.notificationTimeout != timeout) {
             info.eventTypes = want
+            info.notificationTimeout = timeout
             serviceInfo = info
         }
     }

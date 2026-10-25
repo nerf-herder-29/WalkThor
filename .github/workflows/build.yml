@@ -41,6 +41,9 @@ jobs:
       - name: Build debug and release APKs
         env:
           WALKTHOR_KEY_PASSWORD: ${{ secrets.WALKTHOR_KEY_PASSWORD }}
+          # Optional: ScreenScraper developer credentials built into release APKs.
+          SCREENSCRAPER_DEV_ID: ${{ secrets.SCREENSCRAPER_DEV_ID }}
+          SCREENSCRAPER_DEV_PASSWORD: ${{ secrets.SCREENSCRAPER_DEV_PASSWORD }}
         run: |
           set -o pipefail
           chmod +x gradlew
@@ -51,8 +54,10 @@ jobs:
           AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           perms=$("$AAPT2" dump permissions app/build/outputs/apk/release/*.apk | grep -i "uses-permission" | sed 's/.*name=//' | tr -d "'" | tr '\n' ' ')
           echo "::notice title=APK permissions::${perms:-none}"
-          if echo "$perms" | grep -q "android.permission.INTERNET"; then
-            echo "::error title=Network permission found::WalkThor promises no internet access"; exit 1
+          # Internet is only for artwork scraping (opt-in); nothing else should ask for more.
+          unexpected=$(echo "$perms" | tr ' ' '\n' | grep -E "READ_CONTACTS|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|RECORD_AUDIO|CAMERA|READ_SMS" || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error title=Unexpected permission::$unexpected"; exit 1
           fi
 
       - name: Report build errors

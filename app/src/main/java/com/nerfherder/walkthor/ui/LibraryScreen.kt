@@ -64,6 +64,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -127,6 +129,8 @@ class LibraryActions(
     val isSwipeServiceOn: () -> Boolean,
     val onOpenAppInfo: () -> Unit,
     val onSwapScreen: (() -> Unit)?,
+    /** Pick your ROMs folder (one folder per system). */
+    val onLinkRoms: () -> Unit = {},
 )
 
 @Composable
@@ -243,6 +247,7 @@ fun LibraryScreen(
                 Text(artScanning, fontSize = 11.sp, color = BookColors.TextMuted, modifier = Modifier.padding(top = 4.dp))
             }
         }
+        ScrapeProgress()
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
         Box(Modifier.weight(1f)) {
@@ -372,6 +377,8 @@ private fun SettingsMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     var pickDim by remember { mutableStateOf(false) }
+    var showAccounts by remember { mutableStateOf(false) }
+    val menuScope = androidx.compose.runtime.rememberCoroutineScope()
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
     val dimLevel by AutoDim.level.collectAsState()
@@ -423,13 +430,16 @@ private fun SettingsMenu(
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
-            if (!cocoonLinked) {
+            run {
                 val detecting by com.nerfherder.walkthor.EmulatorWatch.on.collectAsState()
                 DropdownMenuItem(
                     text = {
                         Column {
-                            Text("Detect games from any emulator")
-                            Text("Opens with your game, without Cocoon", fontSize = 11.sp, color = BookColors.TextMuted)
+                            Text("Open when an emulator starts")
+                            Text(
+                                if (cocoonLinked) "Even when Cocoon doesn't open WalkThor" else "Works without Cocoon",
+                                fontSize = 11.sp, color = BookColors.TextMuted,
+                            )
                         }
                     },
                     trailingIcon = { if (detecting) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
@@ -469,9 +479,47 @@ private fun SettingsMenu(
                 DropdownMenuItem(text = { Text("Unlink artwork folder") }, onClick = { open = false; actions.onUnlinkArt() })
             }
             HorizontalDivider(color = BookColors.Hairline)
+            // Your ROMs folder: for picking which game you're playing, and for scraping artwork.
+            val romLib = remember { com.nerfherder.walkthor.data.RomLibrary.get(context) }
+            val romFolder by romLib.folder.collectAsState()
+            val roms by romLib.roms.collectAsState()
+            LaunchedEffect(Unit) { romLib.load() }
+            if (romFolder == null) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Link ROMs folder…")
+                            Text("One folder per system (3ds, gba, switch…)", fontSize = 11.sp, color = BookColors.TextMuted)
+                        }
+                    },
+                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null) },
+                    onClick = { open = false; actions.onLinkRoms() },
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text("ROMs: ${roms.size} games", color = BookColors.TextMuted) },
+                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null, tint = BookColors.TextMuted) },
+                    onClick = {},
+                    enabled = false,
+                )
+                DropdownMenuItem(
+                    text = { Text("Scrape artwork") },
+                    onClick = {
+                        open = false
+                        if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
+                        else showAccounts = true
+                    },
+                )
+                DropdownMenuItem(text = { Text("Rescan ROMs folder") }, onClick = { open = false; menuScope.launch { romLib.scan() } })
+                DropdownMenuItem(text = { Text("Change ROMs folder…") }, onClick = { open = false; actions.onLinkRoms() })
+                DropdownMenuItem(text = { Text("Unlink ROMs folder") }, onClick = { open = false; romLib.unlink() })
+            }
+            DropdownMenuItem(text = { Text("Scraper accounts…") }, onClick = { open = false; showAccounts = true })
+            HorizontalDivider(color = BookColors.Hairline)
             DropdownMenuItem(text = { Text("About & licences") }, onClick = { open = false; onAbout() })
         }
     }
+    if (showAccounts) ScraperAccountsDialog(onDismiss = { showAccounts = false })
     if (pickDim) {
         AlertDialog(
             onDismissRequest = { pickDim = false; AutoDim.previewing.value = false },

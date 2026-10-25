@@ -36,6 +36,7 @@ import com.nerfherder.walkthor.ui.PlaySession
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
 import kotlinx.coroutines.runBlocking
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -612,14 +613,29 @@ class StoreScreenshots {
         shot("16-emulator-what-playing")
     }
 
+    /** A made-up ROMs folder's games, as if it had been read. */
+    private fun sampleRoms() {
+        File(app.filesDir, "roms.tsv").writeText(
+            listOf(
+                "gc\tLanterns of Emberfall (USA).rvz\tLanterns of Emberfall",
+                "gc\tStarfall Tactics (USA).iso\tStarfall Tactics",
+                "wii\tMoss & Marrow (Europe).wbfs\tMoss & Marrow",
+                "wii\tKingdom of Glass (USA).wbfs\tKingdom of Glass",
+                "gba\tPaper Knights (USA).gba\tPaper Knights",
+            ).joinToString("\n")
+        )
+        runBlocking { com.nerfherder.walkthor.data.RomLibrary.get(app).load() }
+    }
+
     @Test
     fun emulatorPickGuide() {
-        // Guides used before in this emulator come first.
+        sampleRoms()
+        // What you picked before in this emulator comes first.
         com.nerfherder.walkthor.EmulatorWatch.noteGuide(app, "org.dolphinemu.dolphinemu", shelf[3].id)
-        com.nerfherder.walkthor.EmulatorWatch.noteGuide(app, "org.dolphinemu.dolphinemu", shelf[0].id)
+        com.nerfherder.walkthor.EmulatorWatch.noteRom(app, "org.dolphinemu.dolphinemu", "gc/Lanterns of Emberfall (USA).rvz")
         content { EmulatorNowPlaying() }
         settle()
-        compose.onNodeWithText("Choose a guide").performClick()
+        compose.onNodeWithText("Choose game").performClick()
         compose.waitForIdle()
         shot("16b-emulator-pick")
     }
@@ -635,9 +651,19 @@ class StoreScreenshots {
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
         shot("16c-emulator-setting")
-        compose.onNodeWithText("Detect games from any emulator").performClick()
+        compose.onNodeWithText("Open when an emulator starts").performClick()
         compose.waitForIdle()
         shot("16d-emulator-disclosure")
+    }
+
+    @Test
+    fun scraperAccounts() {
+        content { Library() }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Scraper accounts…").performScrollTo().performClick()
+        compose.waitForIdle()
+        shot("17-scraper-accounts")
     }
 
     @Test

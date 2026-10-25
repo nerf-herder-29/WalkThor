@@ -99,6 +99,21 @@ class MainActivity : ComponentActivity() {
     private val cocoonFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedCocoonFolder.value = uri
     }
+    /** Your ROMs folder: read its games, then scrape their artwork if you've added an account. */
+    private val romFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) lifecycleScope.launch {
+            val lib = com.nerfherder.walkthor.data.RomLibrary.get(this@MainActivity)
+            lib.link(uri)
+            val n = lib.roms.value.size
+            if (n == 0) {
+                Toast.makeText(this@MainActivity, "No games found. Pick the folder that holds your system folders (3ds, gba, switch…).", Toast.LENGTH_LONG).show()
+            } else if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(this@MainActivity)) {
+                com.nerfherder.walkthor.data.Scraper.scrapeAll(this@MainActivity)
+            } else {
+                Toast.makeText(this@MainActivity, "Found $n games. Add a scraper account (⋮) to fetch their artwork.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     private val imagePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val id = coverForBookId
         if (uri != null && id != null) pickedCover.value = id to uri
@@ -391,7 +406,10 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
         if (uri != null) incoming.value = uri
-        if (intent?.getBooleanExtra(EXTRA_FROM_SWIPE, false) == true) swipeTick.value = System.currentTimeMillis()
+        // Opened by a swipe, or because an emulator just started a game: look at what's playing now.
+        if (intent?.getBooleanExtra(EXTRA_FROM_SWIPE, false) == true || intent?.getStringExtra(EXTRA_FROM_EMULATOR) != null) {
+            swipeTick.value = System.currentTimeMillis()
+        }
     }
 
     // ---- used by the UI ----------------------------------------------------------------------
@@ -414,6 +432,7 @@ class MainActivity : ComponentActivity() {
 
     internal fun pickArtFolder() = folderPicker.launch(null)
     internal fun pickCocoonFolder() = cocoonFolderPicker.launch(null)
+    internal fun pickRomFolder() = romFolderPicker.launch(null)
 
     internal fun pickCoverImage(bookId: String) {
         coverForBookId = bookId
@@ -552,27 +571,59 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     val gameGuideNow by rememberUpdatedState(gameGuideOn)
     val checkLock = remember { Mutex() }
 
-    // ---- without Cocoon: the game an emulator is running ("Detect games from any emulator") ----
-    /** The emulator session WalkThor last acted on, and whether you picked its guide yourself. */
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // ---- without Cocoon: the game an emulator is running ("Open when an emulator starts") ----
+    /** The emulator session WalkThor last acted on, and whether you picked its game yourself. */
     var emuActedAt by remember { mutableStateOf(0L) }
     var emuPicked by remember { mutableStateOf(false) }
+    val roms by com.nerfherder.walkthor.data.RomLibrary.get(context).roms.collectAsState()
+    LaunchedEffect(Unit) { com.nerfherder.walkthor.data.RomLibrary.get(context).load() }
+    val romsNow by rememberUpdatedState(roms)
 
-    /**
-     * Which game the running emulator has: a guide whose title matches text the emulator showed,
-     * else the guide you last used with this emulator; null if neither (WalkThor asks).
-     */
-    fun identifyFromEmulator(s: EmulatorWatch.Session): Book? {
-        val books = booksNow
-        if (books.isEmpty()) return null
-        EmulatorWatch.seenText().asReversed().forEach { text ->
-            GameGuides.pick(context, books, LaunchedGame(text, null, s.name, s.at))?.let { return it }
-        }
-        return EmulatorWatch.recentGuides(context, s.pkg).firstNotNullOfOrNull { id -> books.firstOrNull { it.id == id } }
+    /** A game from your ROMs folder, and the guide that goes with it (if any). */
+    fun romPick(s: EmulatorWatch.Session, r: com.nerfherder.walkthor.data.Rom): EmuPick {
+        val g = LaunchedGame(r.title, r.file, s.name, s.at, emulatorPkg = s.pkg)
+        return EmuPick(r.title, r.file, GameGuides.pick(context, booksNow, g), r)
     }
 
-    fun emulatorGame(s: EmulatorWatch.Session, book: Book?) =
-        if (book != null) LaunchedGame(gameTitleOf(book.title), null, s.name, s.at, emulatorPkg = s.pkg)
+    /**
+     * Which game the running emulator has: text the emulator showed that matches one of your games
+     * (ROMs folder) or guides, else what you picked last time in this emulator; null if neither
+     * (WalkThor asks).
+     */
+    fun identifyFromEmulator(s: EmulatorWatch.Session): EmuPick? {
+        val books = booksNow
+        val systems = com.nerfherder.walkthor.data.RomLibrary.systemsFor(s.name)
+        val candidates = romsNow.filter { systems.isEmpty() || it.system in systems }
+        EmulatorWatch.seenText().asReversed().forEach { text ->
+            romMatch(text, candidates)?.let { return romPick(s, it) }
+            if (books.isNotEmpty()) {
+                GameGuides.pick(context, books, LaunchedGame(text, null, s.name, s.at))?.let { b ->
+                    return EmuPick(gameTitleOf(b.title), null, b, null)
+                }
+            }
+        }
+        return EmulatorWatch.recentEntries(context, s.pkg).firstNotNullOfOrNull { e ->
+            if (e.startsWith("r:")) romsNow.firstOrNull { it.id == e.drop(2) }?.let { romPick(s, it) }
+            else books.firstOrNull { it.id == e.drop(2) }?.let { b -> EmuPick(gameTitleOf(b.title), null, b, null) }
+        }
+    }
+
+    fun emulatorGame(s: EmulatorWatch.Session, pick: EmuPick?) =
+        if (pick != null) LaunchedGame(pick.title, pick.file, s.name, s.at, emulatorPkg = s.pkg)
         else LaunchedGame(s.name, null, s.name, s.at, emulatorPkg = s.pkg, unknown = true)
+
+    /** No artwork for a game from your ROMs folder yet: scrape it now (if you've added an account), then show it. */
+    fun scrapeIfBare(game: LaunchedGame, art: GameArt, rom: com.nerfherder.walkthor.data.Rom?) {
+        if (rom == null || art.cover != null || art.hero != null) return
+        if (!com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) return
+        scope.launch {
+            if (com.nerfherder.walkthor.data.Scraper.scrapeOne(context, rom)) {
+                val fresh = ArtworkRepository.get(context).gameArt(game.title, game.file)
+                noGuide = noGuide?.let { sh -> if (sh.game == game) sh.copy(art = fresh) else sh }
+            }
+        }
+    }
 
     suspend fun checkEmulator(force: Boolean): Acted? {
         val s = EmulatorWatch.session.value
@@ -584,12 +635,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             PlaySession.current.value = showing ?: PlaySession.current.value
             return null
         }
-        val book = withContext(Dispatchers.Default) { identifyFromEmulator(s) }
-        if (s.at == emuActedAt && book == null && !force) return null
+        val pick = withContext(Dispatchers.Default) { identifyFromEmulator(s) }
+        if (s.at == emuActedAt && pick == null && !force) return null
         val newSession = s.at != emuActedAt
         emuActedAt = s.at
         if (newSession) emuPicked = false
-        val game = emulatorGame(s, book)
+        val game = emulatorGame(s, pick)
+        val book = pick?.book
         PlaySession.current.value = game
         swipeGame = game
         swipeGameAt = System.currentTimeMillis()
@@ -598,13 +650,14 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             com.nerfherder.walkthor.data.PdfSource.trimAll()
             runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
         }
-        val art = if (game.unknown) GameArt(null) else ArtworkRepository.get(context).gameArt(game.title, null)
+        val art = if (game.unknown) GameArt(null) else ArtworkRepository.get(context).gameArt(game.title, game.file)
         if (newSession) {
             openId = null
             gameTab = null
             fromAll = false
         }
         noGuide = Showing(game, art, book)
+        scrapeIfBare(game, art, pick?.rom)
         if (newSession && !game.unknown) {
             when (val first = GameTabs.openOn(context, game.title)) {
                 null -> Unit
@@ -621,12 +674,27 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val pkg = game.emulatorPkg ?: return
         EmulatorWatch.noteGuide(context, pkg, book.id)
         emuPicked = true
-        val named = game.copy(title = gameTitleOf(book.title), unknown = false)
+        val named = game.copy(title = gameTitleOf(book.title), file = null, unknown = false)
         PlaySession.current.value = named
         swipeGame = named
         autoOpened = book.id
         val art = ArtworkRepository.get(context).gameArt(named.title, null)
         noGuide = Showing(named, art, book)
+    }
+
+    /** You picked a game from your ROMs folder: that's the game now, with its guide if one matches. */
+    suspend fun pickRomForEmulator(game: LaunchedGame, rom: com.nerfherder.walkthor.data.Rom) {
+        val pkg = game.emulatorPkg ?: return
+        EmulatorWatch.noteRom(context, pkg, rom.id)
+        emuPicked = true
+        val named = game.copy(title = rom.title, file = rom.file, unknown = false)
+        val book = GameGuides.pick(context, booksNow, named)
+        PlaySession.current.value = named
+        swipeGame = named
+        autoOpened = book?.id
+        val art = ArtworkRepository.get(context).gameArt(named.title, named.file)
+        noGuide = Showing(named, art, book)
+        scrapeIfBare(named, art, rom)
     }
 
     /**
@@ -684,7 +752,6 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             Acted(game, book, art)
         }
     }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
     LaunchedEffect(Unit) {
         library.opened.collect { id ->
             linkImportTo?.let { g ->
@@ -757,7 +824,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     val emuSession by EmulatorWatch.session.collectAsState()
     val emuText by EmulatorWatch.textTick.collectAsState()
     LaunchedEffect(emuSession, emuText) {
-        if (!booting && emuSession != null && CocoonLaunchLog.linkedFolder(context) == null) checkGame(force = false)
+        if (!booting && emuSession != null) checkGame(force = false)
     }
 
     // Opening a different guide soon after swiping in teaches WalkThor which guide goes with the game.
@@ -949,6 +1016,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                                 autoOpened = b.id
                                 openId = b.id
                             },
+                            onPickRom = { r -> scope.launch { pickRomForEmulator(game, r) } },
                             onLibrary = { noGuide = null },
                             guide = guide,
                             onClose = host::closeApp,
@@ -1000,6 +1068,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 isSwipeServiceOn = { SwipeLauncher.isServiceOn(context) },
                 onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
+                onLinkRoms = host::pickRomFolder,
             ),
         )
     }
@@ -1022,6 +1091,25 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
 }
 
 /** The Now playing screen's subject: the launched game, its art, and its guide if it has one. */
+/** A game worked out for an emulator session: its name, ROM file and guide (if any). */
+private data class EmuPick(
+    val title: String,
+    val file: String?,
+    val book: com.nerfherder.walkthor.data.Book?,
+    val rom: com.nerfherder.walkthor.data.Rom?,
+)
+
+/** The game in [roms] whose name [text] clearly is (a close match, well ahead of the next best). */
+private fun romMatch(text: String, roms: List<com.nerfherder.walkthor.data.Rom>): com.nerfherder.walkthor.data.Rom? {
+    val want = com.nerfherder.walkthor.data.Matcher.words(text).toSet()
+    if (want.isEmpty() || roms.isEmpty()) return null
+    val ranked = roms.map { it to com.nerfherder.walkthor.data.Matcher.closeness(want, com.nerfherder.walkthor.data.Matcher.words(it.title).toSet()) }
+        .sortedByDescending { it.second }
+    val (top, score) = ranked.first()
+    val next = ranked.getOrNull(1)?.second ?: 0f
+    return top.takeIf { score >= 0.85f && score - next >= 0.1f }
+}
+
 private data class Showing(val game: LaunchedGame, val art: GameArt, val guide: com.nerfherder.walkthor.data.Book?)
 
 /** What a check of Cocoon's launch log acted on: the game, and its guide or (without one) its art. */

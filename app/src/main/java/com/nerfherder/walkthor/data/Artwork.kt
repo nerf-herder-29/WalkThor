@@ -178,10 +178,28 @@ class ArtworkRepository private constructor(private val context: Context) {
         // The same game is looked up again on every swipe; answer from the last lookup.
         val key = "$title|$file"
         lastGameArt?.let { (k, art) -> if (k == key) return@withContext art }
+        // Artwork WalkThor scraped itself comes first; the linked folder fills any gaps.
+        val scraped = ScrapedArt.lookup(context, title, file)
+        if (scraped != null && scraped.cover != null && scraped.hero != null && scraped.logo != null) {
+            return@withContext scraped.also { lastGameArt = key to it }
+        }
+        val fromFolder = folderGameArt(title, file)
+        val merged = if (scraped == null) fromFolder else GameArt(
+            cover = scraped.cover ?: fromFolder.cover,
+            logo = scraped.logo ?: fromFolder.logo,
+            hero = scraped.hero ?: fromFolder.hero,
+        )
+        merged.also { lastGameArt = key to it }
+    }
+
+    /** Forget the last lookup (after scraping new artwork). */
+    fun forgetGameArt() { lastGameArt = null }
+
+    private suspend fun folderGameArt(title: String, file: String?): GameArt {
         val names = listOfNotNull(title, file?.substringBeforeLast('.'))
             .map { Matcher.words(it).toSet() }
             .filter { it.isNotEmpty() }
-        if (names.isEmpty()) return@withContext GameArt(null)
+        if (names.isEmpty()) return GameArt(null)
         // Cheap pre-check: an image must share at least one word with the game's name.
         val anyWord = names.flatten().toSet()
         var cover: Pair<ArtImage, Float>? = null
@@ -222,7 +240,7 @@ class ArtworkRepository private constructor(private val context: Context) {
             }
             if (heroBonus != null && (hero == null || sim + heroBonus > hero.second)) hero = img to sim + heroBonus
         }
-        GameArt(cover?.first?.uri, logo?.first?.uri, hero?.first?.uri).also { lastGameArt = key to it }
+        return GameArt(cover?.first?.uri, logo?.first?.uri, hero?.first?.uri)
     }
 
     @Volatile private var lastGameArt: Pair<String, GameArt>? = null

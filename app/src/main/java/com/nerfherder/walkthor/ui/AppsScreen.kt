@@ -131,7 +131,11 @@ object AppCatalog {
         } else {
             activity?.let { DisplayHelper.gameDisplay(it)?.displayId }
         }
-        if (here) Revive.closedOnPurpose(context)
+        if (here) {
+            Revive.closedOnPurpose(context)
+            // It opens beside the game: it doesn't end the game or start a new one.
+            com.nerfherder.walkthor.EmulatorWatch.openedByWalkThor(pkg)
+        }
         val options = target?.let { ActivityOptions.makeBasic().setLaunchDisplayId(it).toBundle() }
         runCatching { context.startActivity(launch, options) }
             .onFailure { Toast.makeText(context, "Couldn't open that app", Toast.LENGTH_SHORT).show() }
@@ -251,7 +255,7 @@ fun AppsScreen(
 }
 
 @Composable
-private fun SearchBox(query: String, onChange: (String) -> Unit, modifier: Modifier) {
+internal fun SearchBox(query: String, onChange: (String) -> Unit, modifier: Modifier) {
     Row(
         modifier
             .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(50))
