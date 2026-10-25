@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import com.nerfherder.walkthor.data.CocoonLaunchLog
 import com.nerfherder.walkthor.data.GameGuides
 import com.nerfherder.walkthor.data.LaunchedGame
+import com.nerfherder.walkthor.data.Book
+import com.nerfherder.walkthor.ui.gameTitleOf
 import com.nerfherder.walkthor.ui.GuideIntro
 import com.nerfherder.walkthor.ui.BookColors
 import com.nerfherder.walkthor.ui.ControlsScreen
@@ -64,6 +66,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -137,7 +140,7 @@ class MainActivity : ComponentActivity() {
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         // Until the launch log has been checked, assume a game may be running (when Cocoon is
         // linked) so WalkThor never grabs focus from it while starting up as its companion.
-        GameFocus.gameRunning.value = CocoonLaunchLog.linkedFolder(this) != null
+        GameFocus.gameRunning.value = CocoonLaunchLog.linkedFolder(this) != null || EmulatorWatch.session.value != null
         applyGameFocus(initial = true)
         lifecycleScope.launch {
             var typing = GameFocus.wantFocus.value
@@ -200,7 +203,7 @@ class MainActivity : ComponentActivity() {
                         // Every half minute, note the game's power draw (for the Stats tab's
                         // "usually lasts about …").
                         if (++beats % 6 == 0) {
-                            PlaySession.current.value?.title?.let { com.nerfherder.walkthor.ui.PlayStats.record(this@MainActivity, it) }
+                            PlaySession.current.value?.takeIf { !it.unknown }?.title?.let { com.nerfherder.walkthor.ui.PlayStats.record(this@MainActivity, it) }
                         }
                     }
                     delay(5_000)
@@ -531,13 +534,6 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         Toast.makeText(context, "WalkThor will open this guide for ${game.title} from now on", Toast.LENGTH_SHORT).show()
     }
 
-    LaunchedEffect(Unit) {
-        library.opened.collect { id ->
-            linkImportTo?.let { linkGuide(it, id) }
-            linkImportTo = null
-            openId = id
-        }
-    }
     // The Now playing screen stays underneath an opened guide, so Back from the guide returns
     // to it. A guide just imported for it may arrive on the shelf a moment after it's linked.
     LaunchedEffect(books) {
@@ -556,13 +552,90 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     val gameGuideNow by rememberUpdatedState(gameGuideOn)
     val checkLock = remember { Mutex() }
 
+    // ---- without Cocoon: the game an emulator is running ("Detect games from any emulator") ----
+    /** The emulator session WalkThor last acted on, and whether you picked its guide yourself. */
+    var emuActedAt by remember { mutableStateOf(0L) }
+    var emuPicked by remember { mutableStateOf(false) }
+
+    /**
+     * Which game the running emulator has: a guide whose title matches text the emulator showed,
+     * else the guide you last used with this emulator; null if neither (WalkThor asks).
+     */
+    fun identifyFromEmulator(s: EmulatorWatch.Session): Book? {
+        val books = booksNow
+        if (books.isEmpty()) return null
+        EmulatorWatch.seenText().asReversed().forEach { text ->
+            GameGuides.pick(context, books, LaunchedGame(text, null, s.name, s.at))?.let { return it }
+        }
+        return EmulatorWatch.recentGuides(context, s.pkg).firstNotNullOfOrNull { id -> books.firstOrNull { it.id == id } }
+    }
+
+    fun emulatorGame(s: EmulatorWatch.Session, book: Book?) =
+        if (book != null) LaunchedGame(gameTitleOf(book.title), null, s.name, s.at, emulatorPkg = s.pkg)
+        else LaunchedGame(s.name, null, s.name, s.at, emulatorPkg = s.pkg, unknown = true)
+
+    suspend fun checkEmulator(force: Boolean): Acted? {
+        val s = EmulatorWatch.session.value
+        if (s == null) { PlaySession.current.value = null; GameFocus.gameRunning.value = false; return null }
+        GameFocus.gameRunning.value = true
+        val showing = noGuide?.game?.takeIf { it.emulatorPkg == s.pkg && it.at == s.at }
+        // Same session: only revisit it while the game is still unknown (new text may name it).
+        if (!force && s.at == emuActedAt && (showing == null || !showing.unknown || emuPicked)) {
+            PlaySession.current.value = showing ?: PlaySession.current.value
+            return null
+        }
+        val book = withContext(Dispatchers.Default) { identifyFromEmulator(s) }
+        if (s.at == emuActedAt && book == null && !force) return null
+        val newSession = s.at != emuActedAt
+        emuActedAt = s.at
+        if (newSession) emuPicked = false
+        val game = emulatorGame(s, book)
+        PlaySession.current.value = game
+        swipeGame = game
+        swipeGameAt = System.currentTimeMillis()
+        autoOpened = book?.id
+        if (newSession) {
+            com.nerfherder.walkthor.data.PdfSource.trimAll()
+            runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
+        }
+        val art = if (game.unknown) GameArt(null) else ArtworkRepository.get(context).gameArt(game.title, null)
+        if (newSession) {
+            openId = null
+            gameTab = null
+            fromAll = false
+        }
+        noGuide = Showing(game, art, book)
+        if (newSession && !game.unknown) {
+            when (val first = GameTabs.openOn(context, game.title)) {
+                null -> Unit
+                GameTab.GUIDE -> if (book != null) { lastOpened = book.id; openId = book.id } else gameTab = GameTab.GUIDE
+                else -> gameTab = first
+            }
+        }
+        AutoDim.wake()
+        return Acted(game, book, art)
+    }
+
+    /** You picked [book] for the emulator's game: that's the game now, and it's suggested first next time. */
+    suspend fun pickForEmulator(game: LaunchedGame, book: Book) {
+        val pkg = game.emulatorPkg ?: return
+        EmulatorWatch.noteGuide(context, pkg, book.id)
+        emuPicked = true
+        val named = game.copy(title = gameTitleOf(book.title), unknown = false)
+        PlaySession.current.value = named
+        swipeGame = named
+        autoOpened = book.id
+        val art = ArtworkRepository.get(context).gameArt(named.title, null)
+        noGuide = Showing(named, art, book)
+    }
+
     /**
      * Looks at Cocoon's newest launch. A swipe ([force]) always acts on it; the on-screen poll only
      * acts on a launch it hasn't handled yet, so browsing other guides isn't interrupted.
      */
     suspend fun checkGame(force: Boolean): Acted? = checkLock.withLock {
         val tree = CocoonLaunchLog.linkedFolder(context)
-        if (tree == null) { PlaySession.current.value = null; GameFocus.gameRunning.value = false; return@withLock null }
+        if (tree == null) return@withLock checkEmulator(force)
         val game = CocoonLaunchLog.lastLaunch(context, tree)
         // Only a game launched in the last few hours counts as "playing now".
         val recent = game != null && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
@@ -611,20 +684,36 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             Acted(game, book, art)
         }
     }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        library.opened.collect { id ->
+            linkImportTo?.let { g ->
+                if (g.emulatorPkg != null) {
+                    // A guide just added for the emulator's game: it may reach the shelf a moment later.
+                    val book = booksNow.firstOrNull { it.id == id } ?: kotlinx.coroutines.withTimeoutOrNull(3_000) {
+                        library.books.first { list -> list.any { it.id == id } }.first { it.id == id }
+                    }
+                    if (book != null) pickForEmulator(g, book)
+                } else linkGuide(g, id)
+            }
+            linkImportTo = null
+            openId = id
+        }
+    }
     // ---- boot screen: plays while Cocoon's launch log is read on a fresh open ----
     var booting by rememberSaveable { mutableStateOf(boot) }
     var bootFinished by remember { mutableStateOf(false) }
     var bootStatus by remember { mutableStateOf<BootStatus>(BootStatus.Idle) }
     // Cocoon linked with auto-open on: WalkThor is most likely opening alongside a game, so
     // keep the boot animation light while the game loads.
-    val bootLight = remember { CocoonLaunchLog.linkedFolder(context) != null && gameGuideOn }
+    val bootLight = remember { (CocoonLaunchLog.linkedFolder(context) != null || EmulatorWatch.session.value != null) && gameGuideOn }
     // A swipe that opened WalkThor is handled by the boot check, not the effect below.
     val bootSwipeTick = remember { if (boot) swipeTick else 0L }
     LaunchedEffect(Unit) {
         if (!booting) return@LaunchedEffect
         val start = System.currentTimeMillis()
         val tree = CocoonLaunchLog.linkedFolder(context)
-        if (tree != null && gameGuideNow) {
+        if ((tree != null || EmulatorWatch.session.value != null) && gameGuideNow) {
             bootStatus = BootStatus.Checking
             // Cocoon may start WalkThor (as a companion app) a moment before it finishes writing
             // the launch to its log, so keep looking briefly for a launch we haven't seen yet.
@@ -648,7 +737,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             found?.let { (game, guide, art) ->
                 // The game's title card: its wide art (or box art) fades in behind its name.
                 val cover = art?.cover
-                bootStatus = BootStatus.Playing(game.title, guide, guide?.let(library::coverFile), cover, game.player, hero = art?.hero)
+                bootStatus = BootStatus.Playing(
+                    game.title, guide, guide?.let(library::coverFile), cover,
+                    if (game.unknown) null else game.player, hero = art?.hero, unknown = game.unknown,
+                )
                 delay(if (art?.hero != null || cover != null) 1_300 else 900)
             }
         } else {
@@ -661,6 +753,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
 
     LaunchedEffect(swipeTick) { if (swipeTick != 0L && swipeTick != bootSwipeTick) checkGame(force = true) }
     LaunchedEffect(Unit) { host.pollTickFlow.collect { checkGame(force = false) } }
+    // Without Cocoon: a new emulator session, or new text from the running emulator.
+    val emuSession by EmulatorWatch.session.collectAsState()
+    val emuText by EmulatorWatch.textTick.collectAsState()
+    LaunchedEffect(emuSession, emuText) {
+        if (!booting && emuSession != null && CocoonLaunchLog.linkedFolder(context) == null) checkGame(force = false)
+    }
 
     // Opening a different guide soon after swiping in teaches WalkThor which guide goes with the game.
     LaunchedEffect(openId) {
@@ -668,6 +766,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val id = openId ?: return@LaunchedEffect
         if (System.currentTimeMillis() - swipeGameAt > LEARN_WINDOW_MS) { swipeGame = null; return@LaunchedEffect }
         if (id != autoOpened) {
+            if (game.emulatorPkg != null) {
+                // Without Cocoon: the guide you open is the game you're playing.
+                books.firstOrNull { it.id == id }?.let { pickForEmulator(game, it) }
+                autoOpened = id
+                return@LaunchedEffect
+            }
             GameGuides.remember(context, game, id)
             autoOpened = id
             Toast.makeText(context, "Linked this guide to ${game.title}", Toast.LENGTH_SHORT).show()
@@ -804,7 +908,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                                 books = books,
                                 coverFile = library::coverFile,
                                 onAddGuide = { linkImportTo = game; host.pickGuide() },
-                                onPickGuide = { linkGuide(game, it.id); gameTab = null; openId = it.id },
+                                onPickGuide = { b ->
+                                    if (game.emulatorPkg != null) scope.launch { pickForEmulator(game, b) } else linkGuide(game, b.id)
+                                    autoOpened = b.id
+                                    gameTab = null
+                                    openId = b.id
+                                },
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -835,7 +944,11 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                             books = books,
                             coverFile = library::coverFile,
                             onAddGuide = { linkImportTo = game; host.pickGuide() },
-                            onPickGuide = { linkGuide(game, it.id); openId = it.id },
+                            onPickGuide = { b ->
+                                if (game.emulatorPkg != null) scope.launch { pickForEmulator(game, b) } else linkGuide(game, b.id)
+                                autoOpened = b.id
+                                openId = b.id
+                            },
                             onLibrary = { noGuide = null },
                             guide = guide,
                             onClose = host::closeApp,

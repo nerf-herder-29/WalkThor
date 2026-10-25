@@ -186,6 +186,19 @@ internal fun displayTitle(title: String): String {
     return "$article $name$rest"
 }
 
+/**
+ * The game a guide is for, from the guide's title: "Lanterns of Emberfall - Complete Walkthrough"
+ * and "Moss & Marrow 100% Guide" become "Lanterns of Emberfall" and "Moss & Marrow".
+ */
+fun gameTitleOf(guideTitle: String): String {
+    val base = guideTitle.substringBefore(" - ").substringBefore(" – ").substringBefore(": ").trim()
+    val trimmed = base.replace(
+        Regex("""(?i)\s+(?:(?:100%|complete|full|official|unofficial)\s+)*(?:walkthrough|guide|faq|strategy guide|guidebook|manual)s?\s*$"""),
+        "",
+    ).trim()
+    return trimmed.ifEmpty { guideTitle.trim() }
+}
+
 /** "Dolphin Emulator" → "Dolphin"; names without the suffix are left alone. */
 internal fun emulatorName(player: String): String =
     player.removeSuffix(" Emulator").removeSuffix(" emulator").trim().ifEmpty { player }

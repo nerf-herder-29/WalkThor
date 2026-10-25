@@ -107,7 +107,7 @@ fun NowPlayingScreen(
     // Dims after the Auto-dim setting's time, like everywhere else.
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
-        AutoDim.linkLabel.value = linkLabelFor(guide, books)
+        AutoDim.linkLabel.value = linkLabelFor(guide, books, game.unknown)
         AutoDim.nowPlayingShown.value = true
         onDispose {
             AutoDim.nowPlayingShown.value = false
@@ -157,9 +157,10 @@ fun NowPlayingScreen(
             )
         )
         // ---- the game, its emulator and the buttons: the same layout as the dimmed screen ----
-        val link = linkLabelFor(guide, books)?.let { it to { picking = true } }
+        val link = linkLabelFor(guide, books, game.unknown)?.let { it to { picking = true } }
         NowPlayingStack(
-            title = game.title,
+            // Noticed from its emulator but not yet known: ask (the emulator shows underneath).
+            title = if (game.unknown && books.isNotEmpty()) "What are you playing?" else game.title,
             player = game.player,
             buttons = emptyList(),
             link = link,
@@ -284,7 +285,8 @@ private fun SecondaryButtons(
 }
 
 /** The small link under the buttons: pick another guide, or one from the shelf; null if there's none to pick. */
-private fun linkLabelFor(guide: Book?, books: List<Book>): String? = when {
+private fun linkLabelFor(guide: Book?, books: List<Book>, unknown: Boolean = false): String? = when {
+    unknown && books.isNotEmpty() -> "Choose a guide"
     guide != null && books.size > 1 -> "Other guide"
     guide == null && books.isNotEmpty() -> "From my shelf"
     else -> null
@@ -299,14 +301,21 @@ fun GuidePickerDialog(
     onPick: (Book) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val ranked = remember(books, game) {
-        val names = listOfNotNull(game.title, game.file?.substringBeforeLast('.'))
-        books.sortedByDescending { b -> names.maxOf { Matcher.gameScore(b.title, it) } }
+        // Without Cocoon: the guides you've used with this emulator first, most recent first.
+        val recent = game.emulatorPkg?.let { com.nerfherder.walkthor.EmulatorWatch.recentGuides(context, it) }.orEmpty()
+        if (game.unknown) {
+            books.sortedWith(compareBy<Book> { b -> recent.indexOf(b.id).let { if (it < 0) Int.MAX_VALUE else it } }.thenByDescending { it.addedAt })
+        } else {
+            val names = listOfNotNull(game.title, game.file?.substringBeforeLast('.'))
+            books.sortedByDescending { b -> names.maxOf { Matcher.gameScore(b.title, it) } }
+        }
     }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = BookColors.Surface,
-        title = { Text("Which guide is for this game?", fontFamily = DisplayFont) },
+        title = { Text(if (game.unknown) "What are you playing?" else "Which guide is for this game?", fontFamily = DisplayFont) },
         text = {
             LazyColumn(Modifier.heightIn(max = 340.dp)) {
                 items(ranked, key = { it.id }) { book ->

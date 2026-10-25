@@ -69,7 +69,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                     color = BookColors.Text,
                 )
                 Spacer(Modifier.height(12.dp))
-                Text("WHAT IT DOES ON THE GAME'S SCREEN", style = EyebrowStyle)
+                Text("What it does on the game's screen", style = EyebrowStyle)
                 Text(
                     "While a game is running, a couple of seconds after WalkThor opens (or after you finish typing " +
                         "a search), it taps the very top edge " +
@@ -85,14 +85,16 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                     "Touches that begin in a thin strip along the top edge of the bottom screen. And, only if you " +
                         "agree on the Face Buttons screen, and only while that screen is open, your " +
                         "controller button presses, to light up the matching buttons. Every press is passed straight " +
-                        "on to your game; none is recorded or stored.",
+                        "on to your game; none is recorded or stored. And, only if you turn on Detect games from any " +
+                        "emulator (for when you don't use Cocoon), which app is in front, plus the running emulator's " +
+                        "own window title and notifications, to tell which game you're playing.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 Spacer(Modifier.height(12.dp))
-                Text("WHAT IT DOESN'T DO", style = EyebrowStyle)
+                Text("What it doesn't do", style = EyebrowStyle)
                 Text(
-                    "It doesn't read what's on your screen or in other apps and doesn't record what you type. " +
+                    "It doesn't read what's on your screen or in other apps (beyond the above) and doesn't record what you type. " +
                         "It doesn't collect, store or share any data — WalkThor has no internet access at all.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
@@ -113,6 +115,58 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
             ) { Text("Agree & continue", fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = { TextButton(onClick = onDecline) { Text("No thanks", color = BookColors.TextMuted) } },
+    )
+}
+
+/** Explains "Detect games from any emulator" before it's switched on. */
+@Composable
+fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = BookColors.Surface,
+        title = { Text("Detect games from any emulator", fontFamily = DisplayFont) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Without Cocoon, WalkThor can still tell when you start a game: when an emulator comes to the " +
+                        "front, WalkThor opens on the bottom screen with the game's tabs. If it can't tell which game " +
+                        "it is, it asks, with the guides you've used in that emulator first, and remembers your pick.",
+                    color = BookColors.Text,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text("What it accesses", style = EyebrowStyle)
+                Text(
+                    "Through WalkThor's accessibility service: which app comes to the front. For the emulator that's " +
+                        "running, and only that one, also its window title and its own notifications, to spot a game " +
+                        "name that matches one of your guides.",
+                    color = BookColors.TextMuted,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text("What it doesn't do", style = EyebrowStyle)
+                Text(
+                    "It never reads other apps' notifications or anything on the game's screen. What it sees is kept " +
+                        "in memory only until the game ends; nothing is stored or sent, and WalkThor has no internet " +
+                        "access. Only the guides you pick for each emulator are remembered, on this device.",
+                    color = BookColors.TextMuted,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Needs accessibility access. Turn it off any time from the ⋮ menu.",
+                    color = BookColors.TextMuted,
+                    fontSize = 12.sp,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAgree,
+                colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
+            ) { Text("Turn on", fontWeight = FontWeight.SemiBold) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now", color = BookColors.TextMuted) } },
     )
 }
 

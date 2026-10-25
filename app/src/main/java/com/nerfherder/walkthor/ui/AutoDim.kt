@@ -236,7 +236,7 @@ fun AutoDimOverlay() {
                     .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
             ) {
                 NowPlayingStack(
-                    title = g.title,
+                    title = if (g.unknown && linkLabel != null) "What are you playing?" else g.title,
                     player = g.player,
                     buttons = emptyList(),
                     link = linkLabel?.let { it to {} },

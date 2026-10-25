@@ -19,6 +19,10 @@ data class LaunchedGame(
     val player: String?,
     /** When it was launched (or last swapped screens), epoch millis; 0 if unknown. */
     val at: Long,
+    /** Set when the game was noticed from its emulator (no Cocoon): the emulator's package. */
+    val emulatorPkg: String? = null,
+    /** Noticed from its emulator but we don't know which game yet ([title] is the emulator's name). */
+    val unknown: Boolean = false,
 )
 
 /**

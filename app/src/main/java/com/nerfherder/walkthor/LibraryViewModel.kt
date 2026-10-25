@@ -99,6 +99,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             repo.delete(book)
             com.nerfherder.walkthor.data.GameGuides.forget(getApplication(), book.id)
+            com.nerfherder.walkthor.EmulatorWatch.forgetGuide(getApplication(), book.id)
         }
     }
 

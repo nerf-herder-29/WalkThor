@@ -67,6 +67,8 @@ sealed interface BootStatus {
         val player: String? = null,
         /** The game's wide art (content URI), shown across the top; box art stands in without it. */
         val hero: String? = null,
+        /** Noticed from its emulator without knowing the game ([title] is the emulator's name). */
+        val unknown: Boolean = false,
     ) : BootStatus
 }
 
@@ -192,7 +194,7 @@ fun BootScreen(
                         }
                     }
                 } else Column {
-                    val sub = listOfNotNull("Now playing", p.player?.let(::emulatorName), if (p.guide == null) "No guide yet" else null)
+                    val sub = listOfNotNull("Now playing", p.player?.let(::emulatorName), if (p.guide == null && !p.unknown) "No guide yet" else null)
                     Text(sub.joinToString("  ·  "), color = BookColors.TextMuted, fontSize = 15.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(

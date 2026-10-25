@@ -153,6 +153,13 @@ fun LibraryScreen(
         actions.onToggleSwipeToOpen(true)
         if (!actions.isSwipeServiceOn()) explainSwipe = true
     }
+    val context = LocalContext.current
+    var showEmulatorDisclosure by remember { mutableStateOf(false) }
+    /** Detection needs the accessibility service: set that up too if it isn't yet. */
+    fun turnOnEmulators() {
+        com.nerfherder.walkthor.EmulatorWatch.setOn(context, true)
+        if (!swipeToOpen || swipeNeedsPermission) startSwipeSetup()
+    }
 
     val narrowHeader = LocalConfiguration.current.screenWidthDp < 560
     // Very narrow: the time and battery move to a bottom bar (as in the reader) to give the title room.
@@ -203,6 +210,11 @@ fun LibraryScreen(
                 onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
                 onAbout = { showAbout = true },
                 onSetupGuide = { showSetup = true },
+                onToggleEmulators = { on ->
+                    if (!on) com.nerfherder.walkthor.EmulatorWatch.setOn(context, false)
+                    else if (!com.nerfherder.walkthor.EmulatorWatch.hasConsent(context)) showEmulatorDisclosure = true
+                    else turnOnEmulators()
+                },
             )
         }
         if (swipeToOpen && swipeNeedsPermission) {
@@ -271,6 +283,12 @@ fun LibraryScreen(
         )
     }
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
+    if (showEmulatorDisclosure) {
+        EmulatorDisclosureDialog(
+            onAgree = { showEmulatorDisclosure = false; turnOnEmulators() },
+            onDismiss = { showEmulatorDisclosure = false },
+        )
+    }
     if (showSetup) {
         SetupGuideDialog(
             state = SetupState(
@@ -350,6 +368,7 @@ private fun SettingsMenu(
     onToggleSwipe: (Boolean) -> Unit,
     onAbout: () -> Unit,
     onSetupGuide: () -> Unit,
+    onToggleEmulators: (Boolean) -> Unit = {},
 ) {
     var open by remember { mutableStateOf(false) }
     var pickDim by remember { mutableStateOf(false) }
@@ -404,6 +423,19 @@ private fun SettingsMenu(
                 trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                 onClick = { open = false; onToggleSwipe(!swipeToOpen) },
             )
+            if (!cocoonLinked) {
+                val detecting by com.nerfherder.walkthor.EmulatorWatch.on.collectAsState()
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Detect games from any emulator")
+                            Text("Opens with your game, without Cocoon", fontSize = 11.sp, color = BookColors.TextMuted)
+                        }
+                    },
+                    trailingIcon = { if (detecting) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                    onClick = { open = false; onToggleEmulators(!detecting) },
+                )
+            }
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
             }

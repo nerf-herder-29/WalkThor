@@ -79,6 +79,8 @@ object SwipeLauncher {
         gameGuide.value = true // always on (it used to be a setting)
         cocoonLinked.value = com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) != null
         needsPermission.value = enabled.value && (!hasConsent(context) || !isServiceOn(context))
+        // Detecting games from emulators only runs without Cocoon.
+        EmulatorWatch.refresh(context)
     }
 
     fun isServiceOn(context: Context): Boolean {
@@ -109,6 +111,9 @@ object SwipeLauncher {
 
 /** Set on the intent when WalkThor is opened by the swipe gesture. */
 const val EXTRA_FROM_SWIPE = "walkthor.fromSwipe"
+
+/** Set (to the emulator's package) when WalkThor is opened because an emulator started a game. */
+const val EXTRA_FROM_EMULATOR = "walkthor.fromEmulator"
 
 /** Where WalkThor's activity currently is, so the gesture can bring it to (or take it off) the right screen. */
 object AppState {
@@ -167,11 +172,46 @@ class SwipeGestureService : AccessibilityService() {
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
+        // "Detect games from any emulator": listen for apps coming to the front only while it's on.
+        EmulatorWatch.refresh(this)
         // If Android closed WalkThor mid-game to free memory, bring it back (see Revive).
         Revive.onServiceStart(this)
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event == null) return
+        // Only ever subscribed to while "Detect games from any emulator" is on (see applyEventTypes).
+        val started = EmulatorWatch.onEvent(this, event) ?: return
+        openForGame(started)
+    }
+
+    /**
+     * Listens for apps coming to the front (and the running emulator's notifications) only while
+     * "Detect games from any emulator" is on; otherwise just the minimum, as before.
+     */
+    fun applyEventTypes() {
+        val info = serviceInfo ?: return
+        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or
+            if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0
+        if (info.eventTypes != want) {
+            info.eventTypes = want
+            serviceInfo = info
+        }
+    }
+
+    /** An emulator just started a game: bring WalkThor up on the bottom screen (it then works out the game). */
+    private fun openForGame(session: EmulatorWatch.Session) {
+        val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
+        // Already showing there: it picks the new game up by itself.
+        if (AppState.resumedDisplayId == bottom) return
+        val intent = Intent(this, MainActivity::class.java)
+            .setAction(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
+            .putExtra(EXTRA_FROM_EMULATOR, session.pkg)
+        runCatching { startActivity(intent, ActivityOptions.makeBasic().setLaunchDisplayId(bottom).toBundle()) }
+    }
 
     /**
      * Controls screen, "Show presses": while on, Android hands this service each button press
