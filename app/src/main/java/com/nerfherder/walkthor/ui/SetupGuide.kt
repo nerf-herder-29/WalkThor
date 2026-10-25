@@ -142,9 +142,14 @@ fun SetupGuideDialog(
                         "lights up the one you press.")
 
                 Para(
-                    "All shows Mirror, your guide where you left off, Face Buttons and Stats together. Tap any of them " +
-                        "to open that tab; Back (or the All button) brings you back. To rearrange them, press and hold a panel and " +
-                        "drag it onto another."
+                    "Multi shows up to four tabs at once: choose from Mirror, your guide where you left off, Face Buttons, " +
+                        "Stats and your pinned apps with ⋮ → Choose panels. Tap any of them to open that tab; Back (or the Multi " +
+                        "button) brings you back. To rearrange them, press and hold a panel and drag it onto another."
+                )
+                Para(
+                    "Apps opens any of your apps on the bottom screen while the game keeps running. Pin the ones you use " +
+                        "most; press and hold an app to open it on the top screen instead. If there are more tabs than fit, " +
+                        "swipe the tabs sideways."
                 )
                 Para(
                     "To have a game open straight on one tab (say, Mirror or the guide), press and hold that tab. A small " +

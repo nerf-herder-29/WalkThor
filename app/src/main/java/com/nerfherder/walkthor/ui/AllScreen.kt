@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,11 +70,20 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /** Fixed content for store screenshots. */
-data class AllPreview(val guideText: String?, val stats: StatsPreview)
+data class AllPreview(val guideText: String?, val stats: StatsPreview, val apps: List<InstalledApp>? = null)
+
+/** Where each of [n] panels sits, as fractions of the grid: left, top, right, bottom. */
+private fun slotsFor(n: Int): List<List<Float>> = when (n) {
+    1 -> listOf(listOf(0f, 0f, 1f, 1f))
+    2 -> listOf(listOf(0f, 0f, 0.5f, 1f), listOf(0.5f, 0f, 1f, 1f))
+    3 -> listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 1f, 1f))
+    else -> listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 0.5f, 1f), listOf(0.5f, 0.5f, 1f, 1f))
+}
 
 /**
- * The All tab: the game's other tabs at a glance, in a 2×2 grid (Mirror, the guide where you left
- * off, Face Buttons and Stats). Tap a panel to open that tab.
+ * The Multi tab: the game's other tabs at a glance, in up to four panels you choose (⋮ → Choose
+ * panels): Mirror, the guide where you left off, Face Buttons, Stats and your pinned apps. Tap a
+ * panel to open that tab; press and hold one and drag it onto another to swap them.
  */
 @Composable
 fun AllScreen(
@@ -106,7 +116,13 @@ fun AllScreen(
     Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
         // The panels, in your order: press and hold one and drag it onto another to swap them.
-        val order = remember { androidx.compose.runtime.mutableStateListOf(*AllLayout.order(context).toTypedArray()) }
+        val order by AllLayout.panels(context).collectAsState()
+        val choosing by AllLayout.choosing.collectAsState()
+        if (choosing) ChoosePanelsDialog(order, onDone = { picked ->
+            AllLayout.choosing.value = false
+            if (picked != null) AllLayout.choose(context, picked)
+        })
+        val n = order.size
         var dragging by remember { mutableStateOf<GameTab?>(null) }
         var dragOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
         var grid by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
@@ -116,12 +132,17 @@ fun AllScreen(
             val from = order.indexOf(tab)
             if (from >= 0 && grid.width > 0 && grid.height > 0) {
                 // Where the middle of the dragged panel ended up decides the slot it lands in.
-                val cx = ((from % 2) + 0.5f) * grid.width / 2f + dragOffset.x
-                val cy = ((from / 2) + 0.5f) * grid.height / 2f + dragOffset.y
-                val to = (if (cy < grid.height / 2f) 0 else 2) + (if (cx < grid.width / 2f) 0 else 1)
-                if (to != from) {
-                    order[from] = order[to].also { order[to] = tab }
-                    AllLayout.setOrder(context, order.toList())
+                val slots = slotsFor(n)
+                val (l, t, r, b) = slots[from]
+                val cx = (l + r) / 2f * grid.width + dragOffset.x
+                val cy = (t + b) / 2f * grid.height + dragOffset.y
+                val to = slots.indexOfFirst { (l2, t2, r2, b2) ->
+                    cx >= l2 * grid.width && cx < r2 * grid.width && cy >= t2 * grid.height && cy < b2 * grid.height
+                }
+                if (to >= 0 && to != from) {
+                    val next = order.toMutableList()
+                    next[from] = next[to].also { next[to] = tab }
+                    AllLayout.setOrder(context, next)
                 }
             }
             dragging = null
@@ -164,6 +185,7 @@ fun AllScreen(
                     GuidePanel(guide, preview?.guideText)
                 }
                 GameTab.FACE -> Panel("Face buttons", compact, m) { FacePanel(game, preview != null) }
+                GameTab.APPS -> Panel("Apps", compact, m) { AppsPanel(preview?.apps, compact) }
                 else -> Panel("Stats", compact, m) { StatsPanel(preview?.stats, compact) }
             }
         }
@@ -175,10 +197,11 @@ fun AllScreen(
                 .onSizeChanged { grid = it },
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            for (row in 0..1) {
+            // One or two panels: one row. Three: two on top, one across the bottom. Four: 2×2.
+            val rows = if (n <= 2) listOf(order) else listOf(order.take(2), order.drop(2))
+            for (row in rows) {
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (col in 0..1) {
-                        val tab = order[row * 2 + col]
+                    for (tab in row) {
                         androidx.compose.runtime.key(tab) { PanelFor(tab, Modifier.weight(1f)) }
                     }
                 }
@@ -401,19 +424,134 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
     }
 }
 
-/** The order of the panels on the All tab (the same for every game), as you arranged them. */
+/** Your pinned apps; tap one to open it on this screen. */
+@Composable
+private fun AppsPanel(preview: List<InstalledApp>?, compact: Boolean) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        if (preview == null) {
+            AppCatalog.loadPins(context)
+            if (AppCatalog.apps.value == null) AppCatalog.refresh(context)
+        }
+    }
+    val loaded by AppCatalog.apps.collectAsState()
+    val pins by AppCatalog.pinned.collectAsState()
+    val all = preview ?: loaded
+    val apps = remember(all, pins) {
+        val byPkg = all?.associateBy { it.packageName } ?: emptyMap()
+        if (preview != null) preview else pins.mapNotNull { byPkg[it] }
+    }
+    if (apps.isEmpty()) { Note(if (all == null) "Loading…" else "Pin apps on the Apps tab to see them here."); return }
+    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(if (compact) 64.dp else 78.dp),
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        userScrollEnabled = false,
+    ) {
+        items(apps.size) { i ->
+            AppIcon(apps[i], compact = true, onOpen = { AppCatalog.open(context, apps[i].packageName, here = true) }, onHold = null)
+        }
+    }
+}
+
+/** The ⋮ on the Multi tab's bar: choose its panels, or close WalkThor. */
+@Composable
+fun MultiMenu(onClose: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        androidx.compose.material3.IconButton(onClick = { open = true }) {
+            Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = "More", tint = BookColors.TextMuted)
+        }
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text("Choose panels…") },
+                onClick = { open = false; AllLayout.choosing.value = true },
+            )
+            androidx.compose.material3.DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; onClose() })
+        }
+    }
+}
+
+/** Pick which tabs the Multi tab shows (one to four). */
+@Composable
+private fun ChoosePanelsDialog(current: List<GameTab>, onDone: (List<GameTab>?) -> Unit) {
+    var picked by remember { mutableStateOf(current) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { onDone(null) },
+        title = { Text("Multi panels", fontFamily = DisplayFont) },
+        text = {
+            Column {
+                Text("Choose up to four.", color = BookColors.TextMuted, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                AllLayout.CHOICES.forEach { tab ->
+                    val on = tab in picked
+                    val enabled = on || picked.size < 4
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = enabled && !(on && picked.size == 1)) {
+                                picked = if (on) picked - tab else picked + tab
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = on,
+                            onCheckedChange = null,
+                            enabled = enabled,
+                            colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                checkedColor = BookColors.Text,
+                                checkmarkColor = Color.Black,
+                                uncheckedColor = BookColors.TextMuted,
+                            ),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(tab.label, color = if (enabled) BookColors.Text else BookColors.TextMuted, fontSize = 15.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onDone(picked) }) { Text("Done", color = BookColors.Text) }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = { onDone(null) }) { Text("Cancel", color = BookColors.TextMuted) }
+        },
+    )
+}
+
+/** Which panels the Multi tab shows, and in what order (the same for every game). */
 object AllLayout {
+    /** The tabs that can be a panel, in the order they're offered. */
+    val CHOICES = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS, GameTab.APPS)
     private val DEFAULT = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS)
+    private var flow: kotlinx.coroutines.flow.MutableStateFlow<List<GameTab>>? = null
+    /** True while the "Choose panels" dialog is open (⋮ on the Multi tab). */
+    val choosing = kotlinx.coroutines.flow.MutableStateFlow(false)
+
     private fun prefs(context: android.content.Context) =
         context.getSharedPreferences("tabs", android.content.Context.MODE_PRIVATE)
 
+    fun panels(context: android.content.Context): kotlinx.coroutines.flow.StateFlow<List<GameTab>> =
+        flow ?: kotlinx.coroutines.flow.MutableStateFlow(order(context)).also { flow = it }
+
     fun order(context: android.content.Context): List<GameTab> {
+        flow?.let { return it.value }
         val saved = prefs(context).getString("allOrder", null)?.split(',')
-            ?.mapNotNull { n -> GameTab.entries.firstOrNull { it.name == n } }
-        return if (saved != null && saved.toSet() == DEFAULT.toSet() && saved.size == 4) saved else DEFAULT
+            ?.mapNotNull { n -> CHOICES.firstOrNull { it.name == n } }?.distinct()
+        return if (saved != null && saved.size in 1..4) saved else DEFAULT
     }
 
+    /** Saves exactly this order (after dragging panels around). */
     fun setOrder(context: android.content.Context, order: List<GameTab>) {
-        prefs(context).edit().putString("allOrder", order.joinToString(",") { it.name }).apply()
+        val next = order.distinct().take(4).ifEmpty { DEFAULT }
+        prefs(context).edit().putString("allOrder", next.joinToString(",") { it.name }).apply()
+        (flow ?: kotlinx.coroutines.flow.MutableStateFlow(next).also { flow = it }).value = next
+    }
+
+    /** Saves a new choice of panels: kept ones stay where they were, newly added ones go at the end. */
+    fun choose(context: android.content.Context, picked: List<GameTab>) {
+        val prev = order(context)
+        setOrder(context, prev.filter { it in picked } + picked.filter { it !in prev })
     }
 }

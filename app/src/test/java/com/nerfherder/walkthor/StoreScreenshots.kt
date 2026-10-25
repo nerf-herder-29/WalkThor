@@ -707,7 +707,16 @@ class StoreScreenshots {
         shot("check-stats-dense")
     }
 
-    private fun allTab(name: String) {
+    private fun allTab(
+        name: String,
+        panels: List<com.nerfherder.walkthor.ui.GameTab> = listOf(
+            com.nerfherder.walkthor.ui.GameTab.MIRROR, com.nerfherder.walkthor.ui.GameTab.GUIDE,
+            com.nerfherder.walkthor.ui.GameTab.FACE, com.nerfherder.walkthor.ui.GameTab.STATS,
+        ),
+        choosing: Boolean = false,
+    ) {
+        com.nerfherder.walkthor.ui.AllLayout.setOrder(app, panels)
+        com.nerfherder.walkthor.ui.AllLayout.choosing.value = choosing
         val title = "Lanterns of Emberfall"
         com.nerfherder.walkthor.Mirror.setAreas(app, title, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = setOf(android.view.KeyEvent.KEYCODE_BUTTON_A)
@@ -721,17 +730,77 @@ class StoreScreenshots {
             com.nerfherder.walkthor.ui.AllScreen(
                 game = game, guide = null, frame = frame, onOpen = {}, onStartCapture = {},
                 topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.ALL) },
-                preview = com.nerfherder.walkthor.ui.AllPreview(text.substring(text.indexOf("1. CONTROLS") - 82), statsPreview()),
+                preview = com.nerfherder.walkthor.ui.AllPreview(
+                    text.substring(text.indexOf("1. CONTROLS") - 82), statsPreview(), fakeApps().take(8),
+                ),
             )
         }
         settle()
         shot(name)
+        com.nerfherder.walkthor.ui.AllLayout.choosing.value = false
         com.nerfherder.walkthor.ui.GameTabs.state.value = null
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = emptySet()
     }
 
     @Test
     fun allTabShot() = allTab("14-all")
+
+    @Test
+    fun multiThree() = allTab(
+        "14b-multi-three",
+        listOf(com.nerfherder.walkthor.ui.GameTab.MIRROR, com.nerfherder.walkthor.ui.GameTab.STATS, com.nerfherder.walkthor.ui.GameTab.APPS),
+    )
+
+    @Test
+    fun multiChoose() = allTab("14c-multi-choose", choosing = true)
+
+    /** Made-up apps with plain coloured icons. */
+    private fun fakeApps(): List<com.nerfherder.walkthor.ui.InstalledApp> {
+        val names = listOf(
+            "Browser" to 0xFF2F5FB3, "Video" to 0xFFB3322F, "Chat" to 0xFF5B4FC7, "Music" to 0xFF1F9E5A,
+            "Calculator" to 0xFF555555, "Camera" to 0xFF3A3A3A, "Clock" to 0xFF2B6F8F, "Files" to 0xFFC98A1B,
+            "Gallery" to 0xFFA0408F, "Maps" to 0xFF2F8F5F, "Notes" to 0xFF8A5A2F, "Podcasts" to 0xFF7A3FB0,
+            "Settings" to 0xFF5A5A5A, "Store" to 0xFF2F8F8F,
+        )
+        return names.map { (n, c) ->
+            val size = 112
+            val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bmp)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = c.toInt() }
+            canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 30f, 30f, paint)
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(size / 2f, size / 2f, size * 0.18f, paint)
+            com.nerfherder.walkthor.ui.InstalledApp("sample.${n.lowercase()}", n, bmp.asImageBitmap())
+        }
+    }
+
+    @Test
+    fun appsTab() {
+        val apps = fakeApps()
+        com.nerfherder.walkthor.ui.AppCatalog.pinned.value = listOf("sample.browser", "sample.video", "sample.chat", "sample.music")
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(
+            selected = com.nerfherder.walkthor.ui.GameTab.APPS, onSelect = {},
+        )
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.AppsScreen(topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.APPS) }, preview = apps)
+        }
+        settle()
+        shot("15-apps")
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
+        com.nerfherder.walkthor.ui.AppCatalog.pinned.value = emptyList()
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun appsTabDense() {
+        com.nerfherder.walkthor.ui.AppCatalog.pinned.value = listOf("sample.browser", "sample.video")
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.AppsScreen(topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.APPS) }, preview = fakeApps())
+        }
+        settle()
+        shot("check-apps-dense")
+        com.nerfherder.walkthor.ui.AppCatalog.pinned.value = emptyList()
+    }
 
     @Test
     @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")

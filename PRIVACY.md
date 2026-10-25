@@ -44,6 +44,11 @@ accounts, no analytics and no ads. Everything below stays on your device.
   stored or sent, and keyboard text elsewhere is never read. The button layout you pick for each
   emulator is stored on the device.
 
+- **Apps tab: your installed apps.** The Apps tab lists the apps that have a home-screen icon
+  (their names and icons), read from Android when you open the tab, so you can open them on
+  either screen. The list isn't stored or sent anywhere; only the apps you pin are remembered, on
+  the device. Opening an app on WalkThor's screen tells WalkThor not to reopen itself over it.
+
 - **Reopening after Android closes WalkThor.** While WalkThor is on screen during a game, it notes
   the time every few seconds. If Android closes it (for example to free memory for a heavy game),
   WalkThor asks Android why it last closed, so it can reopen on the bottom screen when that
@@ -52,8 +57,8 @@ accounts, no analytics and no ads. Everything below stays on your device.
 
 ## What WalkThor stores (on your device only)
 
-Your library of guides, cover images, reading positions, settings, and which guide you linked to
-which game, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
+Your library of guides, cover images, reading positions, settings, which guide you linked to
+which game, the apps you pinned, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
 can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 accessibility access at any time from the library's ⋮ menu or Android's Accessibility settings.
 

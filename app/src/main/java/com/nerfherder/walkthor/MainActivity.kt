@@ -747,9 +747,11 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         SideEffect { GameTabs.state.value = tabs }
         DisposableEffect(Unit) { onDispose { GameTabs.state.value = null } }
         // The mirror's capture keeps running (paused) while you're on other tabs.
+        // Multi only needs the capture when it shows the Mirror or Stats panel.
+        val multiPanels by com.nerfherder.walkthor.ui.AllLayout.panels(context).collectAsState()
         val mirrorFrame = rememberMirrorFrame(
-            active = current == null && (gameTab == GameTab.MIRROR || gameTab == GameTab.ALL),
-            counting = current == null && (gameTab == GameTab.STATS || gameTab == GameTab.ALL),
+            active = current == null && (gameTab == GameTab.MIRROR || (gameTab == GameTab.ALL && GameTab.MIRROR in multiPanels)),
+            counting = current == null && (gameTab == GameTab.STATS || (gameTab == GameTab.ALL && GameTab.STATS in multiPanels)),
         )
         val toNowPlaying = { openId = null; gameTab = null; fromAll = false }
         // Back from a tab: to All if that's where you came from, else to Now playing.
@@ -781,8 +783,17 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                             frame = mirrorFrame,
                             onOpen = ::selectTab,
                             onStartCapture = host::requestMirror,
-                            topBar = { GameTabBar(selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp) },
+                            topBar = {
+                                GameTabBar(
+                                    selectedTab, ::selectTab, onBack = toNowPlaying, onClose = host::closeApp,
+                                    trailing = { com.nerfherder.walkthor.ui.MultiMenu(onClose = host::closeApp) },
+                                )
+                            },
                         )
+                    }
+                    shownTab == GameTab.APPS -> {
+                        BackHandler { back() }
+                        com.nerfherder.walkthor.ui.AppsScreen(topBar = bar)
                     }
                     shownTab == GameTab.GUIDE -> {
                         BackHandler { back() }

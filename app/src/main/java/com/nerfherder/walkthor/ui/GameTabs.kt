@@ -33,6 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.drawWithContent
@@ -53,12 +56,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /** The tabs across the top of the bottom screen while a game is playing. */
 enum class GameTab(val label: String, val shortLabel: String = label) {
-    /** Everything at a glance: Mirror, the guide, Face Buttons and Stats together. */
-    ALL("All"),
+    /** Several tabs at a glance, in panels you choose (named Multi; ALL is kept so saved choices still match). */
+    ALL("Multi"),
     GUIDE("Guide"),
     MIRROR("Mirror"),
     FACE("Face Buttons", "Buttons"),
     STATS("Stats"),
+    /** Your apps, opened on the bottom (or top) screen. */
+    APPS("Apps"),
 }
 
 /**
@@ -75,6 +80,12 @@ data class TabsState(
 object GameTabs {
     /** Where the open tab's line was last drawn, so the next tab bar can glide it from there. */
     internal var indicatorX = Float.NaN
+
+    /**
+     * How far the tab bar is scrolled, shared by every tab bar (and the dimmed screen's copy of
+     * the tabs), so the tabs stay put as you move between screens.
+     */
+    val scroll = androidx.compose.foundation.ScrollState(0)
 
     /** Set while a game's tabs are on screen; null otherwise. */
     val state = MutableStateFlow<TabsState?>(null)
@@ -106,9 +117,10 @@ val TabBarSlot = 48.dp
 fun tabBarRightSlots(): Int = 1
 
 /**
- * The tabs, sharing the width they're given: an icon over a label, with a short line gliding
- * under the open one. [actOnDown] makes a tab act on touch down (the dimmed screen,
- * where the same touch also wakes it).
+ * The tabs: an icon over a label, with a short line gliding under the open one. Each tab keeps
+ * the size it had when there were five, so they don't shrink as tabs are added; the row scrolls
+ * sideways instead (with a soft fade at an edge that has more). [actOnDown] makes a tab act on
+ * touch down (the dimmed screen, where the same touch also wakes it).
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -135,9 +147,46 @@ fun GameTabsRow(
         if (indicator.value.isNaN() || actOnDown) indicator.snapTo(target)
         else indicator.animateTo(target, androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 420f))
     }
-    Row(
+    val gap = if (narrow) 4.dp else 8.dp
+    val scroll = GameTabs.scroll
+    androidx.compose.foundation.layout.BoxWithConstraints(
         modifier
             .fillMaxHeight()
+            .clipToBounds()
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                // Fade the edge that has more tabs past it.
+                val fade = 28.dp.toPx()
+                if (scroll.canScrollForward) drawRect(
+                    Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - fade, endX = size.width),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                )
+                if (scroll.canScrollBackward) drawRect(
+                    Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = fade),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                )
+            },
+    ) {
+    // The size each tab had when the bar held five (Multi a little narrower, plus its divider).
+    val unit = (maxWidth - gap * 5 - 1.dp) / 4.65f
+    // Keep the open tab in view (not on the dimmed screen's copy, which follows the bar).
+    androidx.compose.runtime.LaunchedEffect(selected, bounds[selected]) {
+        val b = selected?.let { bounds[it] } ?: return@LaunchedEffect
+        if (actOnDown) return@LaunchedEffect
+        val view = constraints.maxWidth
+        val (x, w) = b
+        val to = when {
+            x < scroll.value -> x.toInt()
+            x + w > scroll.value + view -> (x + w - view).toInt()
+            else -> return@LaunchedEffect
+        }
+        scroll.animateScrollTo(to.coerceIn(0, scroll.maxValue))
+    }
+    Row(
+        Modifier
+            .fillMaxHeight()
+            .horizontalScroll(scroll)
             .padding(vertical = 6.dp)
             .drawWithContent {
                 drawContent()
@@ -158,7 +207,7 @@ fun GameTabsRow(
             // All is the game's home, set apart from the others by a thin line.
             Column(
                 Modifier
-                    .weight(if (hub) 0.65f else 1f)
+                    .width(if (hub) unit * 0.65f else unit)
                     .fillMaxHeight()
                     .onGloballyPositioned { c -> bounds[tab] = c.positionInParent().x to c.size.width.toFloat() }
                     .then(
@@ -213,6 +262,7 @@ fun GameTabsRow(
             }
         }
     }
+    }
 }
 
 /** Each tab's small icon: an open book, a picture-in-picture, the four face buttons. */
@@ -248,6 +298,13 @@ private fun TabIcon(tab: GameTab, tint: Color) {
                     size = androidx.compose.ui.geometry.Size(w, size.height * h),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 3),
                 )
+            }
+        }
+        GameTab.APPS -> Canvas(Modifier.size(20.dp)) {
+            // Nine dots: an app grid.
+            val step = size.minDimension / 3f
+            for (i in 0..2) for (j in 0..2) {
+                drawCircle(tint, size.minDimension * 0.09f, Offset(step * (i + 0.5f), step * (j + 0.5f)))
             }
         }
         GameTab.FACE -> Canvas(Modifier.size(20.dp)) {
