@@ -54,7 +54,7 @@ object EmulatorWatch {
 
     private val seen = ArrayDeque<String>()
     private val emulatorCache = HashMap<String, Boolean>()
-    private val labelCache = HashMap<String, String>()
+    private val labelCache = java.util.concurrent.ConcurrentHashMap<String, String>()
     private val appCache = HashMap<String, Boolean>()
     private var homePackage: String? = null
     /** The last app seen coming to the front, so going back to the same emulator counts as a new launch. */
@@ -198,9 +198,9 @@ object EmulatorWatch {
     val scan = MutableStateFlow<Scan?>(null)
     /** Each text on the frontend's screen and when it last appeared there (newest last). */
     private val appeared = LinkedHashMap<String, Long>()
-    private var onScreen: List<String> = emptyList()
-    private var focusedTexts: List<String> = emptyList()
-    private var focusedAt = 0L
+    @Volatile private var onScreen: List<String> = emptyList()
+    @Volatile private var focusedTexts: List<String> = emptyList()
+    @Volatile private var focusedAt = 0L
     private var lastScanAt = 0L
 
     /**
@@ -208,31 +208,64 @@ object EmulatorWatch {
      * game you moved to) is noted with the time, so the game you launch is the newest one that
      * matches your games; the highlighted item's own name counts first.
      */
+    /** Screen reading runs here, off the accessibility service's main thread. */
+    private val readHandler by lazy {
+        android.os.Handler(android.os.HandlerThread("walkthor-read").apply { start() }.looper)
+    }
+    @Volatile private var readQueued = false
+
     private fun readFrontend(context: Context, event: AccessibilityEvent, pkg: String) {
         val now = System.currentTimeMillis()
-        val name = label(context, pkg)
         val focus = event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED
-        if (focus) {
-            val t = (listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() } + itemTexts(event))
-                .map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
-            if (t.isNotEmpty()) { focusedTexts = t; focusedAt = now }
-        }
-        // Content changes come in floods: read the screen at most a few times a second.
-        if (!focus && now - lastScanAt < 300) return
+        // Animated frontends send a flood of content changes: read at most twice a second, and
+        // never pile reads up. Highlight changes always count.
+        if (!focus && (readQueued || now - lastScanAt < 500)) return
         lastScanAt = now
-        val root = runCatching { event.source?.window?.root }.getOrNull()
+        readQueued = true
+        // Only the event's own fields here; walking the screen asks the frontend for every item,
+        // which is slow, so it happens on the reading thread (or Android may stop the service).
+        val own = listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() }
+        val source = runCatching { event.source }.getOrNull()
+        readHandler.post {
+            try {
+                readScreen(context, pkg, focus, own, source, now)
+            } catch (_: Throwable) {
+            } finally {
+                readQueued = false
+            }
+        }
+    }
+
+    /**
+     * Reads the text on the frontend's screen. Text that just appeared (a details panel showing the
+     * game you moved to) is noted with the time, so the game you launch is the newest one that
+     * matches your games; the highlighted item's own name counts first.
+     */
+    private fun readScreen(
+        context: Context, pkg: String, focus: Boolean, own: List<String>,
+        source: android.view.accessibility.AccessibilityNodeInfo?, now: Long,
+    ) {
+        val name = label(context, pkg)
+        if (focus) {
+            val t = (own + itemTexts(source))
+                .map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
+            if (t.isNotEmpty()) synchronized(appeared) { focusedTexts = t; focusedAt = now }
+        }
+        val root = runCatching { source?.window?.root }.getOrNull()
             ?: runCatching { (context as? android.accessibilityservice.AccessibilityService)?.rootInActiveWindow }.getOrNull()
         val (texts, count) = if (root != null) screenTexts(root) else emptyList<String>() to 0
         val clean = texts.map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
-        synchronized(appeared) {
+        val newest = synchronized(appeared) {
             val before = onScreen.toSet()
             clean.filter { it !in before }.forEach { appeared.remove(it); appeared[it] = now }
             while (appeared.size > 300) appeared.remove(appeared.keys.first())
             onScreen = clean
+            appeared.entries.lastOrNull { it.key in clean }?.key
         }
+        // Turned off while reading: keep nothing.
+        if (!pickActive.value) return
         scan.value = Scan(name, count, clean.take(10), now)
-        val newest = synchronized(appeared) { appeared.entries.lastOrNull { it.key in clean }?.key }
-        (focusedTexts.firstOrNull() ?: newest)?.let { heard.value = Heard(pkg, name, it, now) }
+        (synchronized(appeared) { focusedTexts.firstOrNull() } ?: newest)?.let { heard.value = Heard(pkg, name, it, now) }
     }
 
     /** Names to try for the game just launched, most likely first. */
@@ -248,12 +281,12 @@ object EmulatorWatch {
         val queue = ArrayDeque<android.view.accessibility.AccessibilityNodeInfo>()
         queue.add(root)
         var count = 0
-        while (queue.isNotEmpty() && count < 400) {
+        while (queue.isNotEmpty() && count < 300) {
             val n = queue.removeFirst()
             count++
             n.text?.toString()?.let(out::add)
             n.contentDescription?.toString()?.let(out::add)
-            for (i in 0 until n.childCount.coerceAtMost(60)) runCatching { n.getChild(i) }.getOrNull()?.let(queue::add)
+            for (i in 0 until n.childCount.coerceAtMost(40)) runCatching { n.getChild(i) }.getOrNull()?.let(queue::add)
         }
         return out to count
     }
@@ -273,8 +306,8 @@ object EmulatorWatch {
     }
 
     /** The highlighted item's name, and the labels just inside it (a few levels, a dozen at most). */
-    private fun itemTexts(event: AccessibilityEvent): List<String> {
-        val root = runCatching { event.source }.getOrNull() ?: return emptyList()
+    private fun itemTexts(source: android.view.accessibility.AccessibilityNodeInfo?): List<String> {
+        val root = source ?: return emptyList()
         val out = ArrayList<String>()
         val queue = ArrayDeque<Pair<android.view.accessibility.AccessibilityNodeInfo, Int>>()
         queue.add(root to 0)

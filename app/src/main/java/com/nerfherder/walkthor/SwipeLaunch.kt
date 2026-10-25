@@ -181,8 +181,10 @@ class SwipeGestureService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
-        val started = EmulatorWatch.onEvent(this, event) ?: return
-        openForGame(started)
+        // Never let a bad event take the service down: Android turns off an accessibility
+        // service that keeps crashing, and WalkThor would lose its access.
+        val started = try { EmulatorWatch.onEvent(this, event) } catch (_: Throwable) { null } ?: return
+        runCatching { openForGame(started) }
     }
 
     /**
