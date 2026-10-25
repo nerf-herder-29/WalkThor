@@ -36,7 +36,6 @@ import com.nerfherder.walkthor.ui.PlaySession
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
 import kotlinx.coroutines.runBlocking
-import androidx.compose.ui.test.performScrollTo
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -658,12 +657,14 @@ class StoreScreenshots {
 
     @Test
     fun scraperAccounts() {
-        content { Library() }
-        compose.onNodeWithContentDescription("Settings").performClick()
-        compose.waitForIdle()
-        compose.onNodeWithText("Scraper accounts…").performScrollTo().performClick()
-        compose.waitForIdle()
-        shot("17-scraper-accounts")
+        // A paused clock: a text field's blinking cursor would otherwise never let the screen settle.
+        compose.mainClock.autoAdvance = false
+        content {
+            Library()
+            com.nerfherder.walkthor.ui.ScraperAccountsDialog(onDismiss = {})
+        }
+        compose.mainClock.advanceTimeBy(1_000)
+        captureScreenRoboImage("build/screenshots/17-scraper-accounts.png")
     }
 
     @Test
