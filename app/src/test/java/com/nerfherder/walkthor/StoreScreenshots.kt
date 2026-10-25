@@ -657,7 +657,8 @@ class StoreScreenshots {
 
     @Test
     fun scraperAccounts() {
-        // A paused clock: a text field's blinking cursor would otherwise never let the screen settle.
+        // Like a real touch screen: nothing gets focused on its own, so no cursor keeps blinking.
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
         compose.mainClock.autoAdvance = false
         content {
             Library()
