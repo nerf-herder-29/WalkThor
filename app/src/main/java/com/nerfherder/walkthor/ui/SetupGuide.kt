@@ -124,12 +124,15 @@ fun SetupGuideDialog(
                         "Face Buttons, Stats and Apps, plus Multi) switch between the game's screens, even while it's dimmed."
                 )
                 Para(
-                    "Not using Cocoon? Turn on ⋮ → Detect games from any emulator (it needs accessibility access, step 5). " +
-                        "When an emulator comes to the front, WalkThor opens on the bottom screen with the game's tabs. If it " +
-                        "can't tell which game it is, Now playing asks What are you playing?, with the guides you've used in " +
-                        "that emulator first; next time it suggests your last pick. If the emulator shows the game's name " +
-                        "(in its window title or its own notification) and it matches one of your guides, WalkThor picks it " +
-                        "by itself."
+                    "Turn on ⋮ → Open when an emulator starts (it needs accessibility access, step 5) and WalkThor opens " +
+                        "on the bottom screen whenever an emulator comes to the front, from any frontend. With Cocoon linked, " +
+                        "Cocoon names the game. Without Cocoon, if WalkThor can't tell which game it is, Now playing asks What " +
+                        "are you playing?, offering your games (from a ROMs folder you link) and guides, your last picks first."
+                )
+                Para(
+                    "⋮ → Link ROMs folder… takes the folder that holds one folder per system (3ds, nds, gba, switch, psp, " +
+                        "ps2, gc…). Add a ScreenScraper account or a SteamGridDB API key in ⋮ → Scraper accounts and WalkThor " +
+                        "fetches box art, wide art and logos for those games. This is the only time WalkThor goes online."
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
