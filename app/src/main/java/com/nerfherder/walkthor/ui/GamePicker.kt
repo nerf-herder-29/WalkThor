@@ -72,7 +72,7 @@ fun GamePickerDialog(
     val games = if (q.isEmpty()) forEmulator else roms.filter { it.title.contains(q, ignoreCase = true) }
     val guides = if (q.isEmpty()) books else books.filter { it.title.contains(q, ignoreCase = true) }
     val systemNames = remember(systems) {
-        systems.mapNotNull { RomLibrary.system(it)?.name }.joinToString(" & ")
+        systems.mapNotNull { RomLibrary.system(it)?.name?.removePrefix("Nintendo ")?.removePrefix("Sony ") }.joinToString(" & ")
     }
 
     AlertDialog(
@@ -87,7 +87,7 @@ fun GamePickerDialog(
         text = {
             Column {
                 if (roms.size + books.size > 8) {
-                    SearchBox(query, { query = it }, Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                    SearchBox(query, { query = it }, Modifier.fillMaxWidth().padding(bottom = 8.dp), hint = "Search games and guides")
                 }
                 LazyColumn(Modifier.heightIn(max = 360.dp)) {
                     if (q.isEmpty() && recent.isNotEmpty()) {

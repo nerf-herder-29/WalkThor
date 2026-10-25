@@ -43,10 +43,17 @@ step that's done.
   Press and hold a tab to have that game open straight on it next time.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
-- **Works without Cocoon too** — turn on *Detect games from any emulator* (⋮ menu) and WalkThor
-  opens on the bottom screen whenever an emulator starts, from any frontend. It asks which guide
-  you're playing (suggesting the ones you've used in that emulator), or picks it by itself when the
-  emulator shows a game name that matches one of your guides.
+- **Opens when an emulator starts** — turn on *Open when an emulator starts* (⋮ menu) and
+  WalkThor opens on the bottom screen whenever an emulator comes to the front, from any frontend.
+  With Cocoon linked it knows the game and its art from Cocoon as usual. Without Cocoon it asks
+  *What are you playing?*, offering the games in your ROMs folder for that emulator's systems and
+  your guides (your last picks first), or picks by itself when the emulator shows a matching name.
+- **Your ROMs folder and artwork scraping** — link the folder that holds one folder per system
+  (`3ds`, `nds`, `gba`, `switch`, `psp`, `ps2`, `gc`…). Add a ScreenScraper account and/or a
+  SteamGridDB API key (⋮ → *Scraper accounts*) and WalkThor scrapes box art, wide art and logos for
+  your games, used on Now playing, the splash and behind the tabs. Release builds can carry
+  ScreenScraper developer credentials from the `SCREENSCRAPER_DEV_ID` / `SCREENSCRAPER_DEV_PASSWORD`
+  repository secrets; otherwise users enter their own.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app
   priority from it. Tapping and reading on the bottom screen leave the game in charge, and after
   WalkThor opens (or you finish a search) it hands priority back with one tap on the top edge of
@@ -156,9 +163,10 @@ app/src/main/java/com/nerfherder/walkthor/
 
 ## Privacy
 
-WalkThor doesn't collect, send or share any data and has **no internet permission** (every CI
-build checks this). See [PRIVACY.md](PRIVACY.md) — it doubles as the privacy-policy link for a
-store listing.
+WalkThor doesn't collect or share any data. It only goes online to fetch artwork for your ROMs,
+and only if you add a ScreenScraper or SteamGridDB account and start a scrape; it sends nothing but
+game file names, systems and your account details to those services. See [PRIVACY.md](PRIVACY.md);
+it doubles as the privacy-policy link for a store listing.
 
 ## Publishing notes
 

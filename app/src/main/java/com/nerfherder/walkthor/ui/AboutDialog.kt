@@ -95,7 +95,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 Text("What it doesn't do", style = EyebrowStyle)
                 Text(
                     "It doesn't read what's on your screen or in other apps (beyond the above) and doesn't record what you type. " +
-                        "It doesn't collect, store or share any data — WalkThor has no internet access at all.",
+                        "It doesn't collect, store or share any data, and never sends anything it sees anywhere.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -197,12 +197,17 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
                 Section("Privacy")
                 Body(
-                    "WalkThor doesn't collect, send or share any data, and has no internet access. Guides, covers, " +
+                    "WalkThor doesn't collect or share any data. It only goes online to fetch artwork for your ROMs, " +
+                        "and only if you add a ScreenScraper or SteamGridDB account and start a scrape; it then sends just " +
+                        "each game's file name and system (and your account details) to that service. Guides, covers, " +
                         "reading positions and game links stay on this device and are removed if you uninstall. " +
-                        "It reads only what you point it at: guides you import, an artwork folder you link, and " +
-                        "Cocoon's launch_debug.log (to see which game you launched). The accessibility service responds " +
+                        "It reads only what you point it at: guides you import, an artwork folder you link, the file names " +
+                        "in a ROMs folder you link, and Cocoon's launch_debug.log (to see which game you launched). The " +
+                        "accessibility service responds " +
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
-                        "of the game's screen once to hand it back top performance priority. It never reads screen content. " +
+                        "of the game's screen once to hand it back top performance priority; with Open when an emulator starts " +
+                        "on, it also notes which app comes to the front (and, without Cocoon, the running emulator's window " +
+                        "title and notifications). It never reads screen content. " +
                         "Mirror and the Stats tab's FPS meter use the top screen's picture only while you use them (Android " +
                         "asks first); the picture is never recorded, saved or sent. The Stats tab reads the battery, heat, memory " +
                         "and CPU speed from Android, on the device only. Face Buttons can light up the buttons you press, only " +

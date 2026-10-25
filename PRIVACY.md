@@ -1,9 +1,10 @@
 # WalkThor privacy policy
 
-_Last updated: October 23, 2026_
+_Last updated: October 25, 2026_
 
-**WalkThor does not collect, send or share any data.** It has no internet permission, no
-accounts, no analytics and no ads. Everything below stays on your device.
+**WalkThor does not collect or share any data.** It has no analytics and no ads. It goes online
+for one thing only: fetching artwork for the games in your ROMs folder, and only if you add a
+scraper account and start a scrape (see below). Everything else stays on your device.
 
 ## What WalkThor reads, and why
 
@@ -44,13 +45,26 @@ accounts, no analytics and no ads. Everything below stays on your device.
   stored or sent, and keyboard text elsewhere is never read. The button layout you pick for each
   emulator is stored on the device.
 
-- **Detect games from any emulator, only if you turn it on.** For when you don't use Cocoon. While
-  it's on (and no Cocoon folder is linked), WalkThor's accessibility service notes which app comes
-  to the front, so it knows when an emulator starts a game. For the emulator that's running, and
-  only that one, it also looks at its window title and its own notifications, to spot a game name
-  that matches one of your guides. Other apps' notifications are ignored and nothing on the game's
-  screen is read. What it sees is kept in memory only until the game ends; only the guides you
-  pick for each emulator are remembered, on the device.
+- **Open when an emulator starts, only if you turn it on.** While it's on, WalkThor's
+  accessibility service notes which app comes to the front, so it knows when an emulator starts a
+  game and can open on the bottom screen. With Cocoon linked, Cocoon's log names the game as usual.
+  Without Cocoon, for the emulator that's running, and only that one, it also looks at its window
+  title and its own notifications, to spot a game name that matches one of your games or guides.
+  Other apps' notifications are ignored and nothing on the game's screen is read. What it sees is
+  kept in memory only until the game ends; only the games and guides you pick for each emulator
+  are remembered, on the device.
+
+- **A ROMs folder you link.** WalkThor reads the names of the folders and files in it (one folder
+  per system, like `gba` or `switch`), never the games themselves, so you can pick which game
+  you're playing and scrape its artwork. The list of names is kept on the device.
+
+- **Scraping artwork (the only time WalkThor goes online), only if you add an account.** When you
+  start a scrape (or pick a game that has no artwork yet), WalkThor sends each game's ROM file name
+  and system to [ScreenScraper](https://www.screenscraper.fr) with your ScreenScraper login and
+  developer credentials, and/or its tidied-up title to [SteamGridDB](https://www.steamgriddb.com)
+  with your API key, and downloads the box art, wide art and logo they return. Nothing else is
+  sent. Those services' own privacy policies apply to what you send them. Your account details
+  and the downloaded artwork are stored only on the device.
 
 - **Apps tab: your installed apps.** The Apps tab lists the apps that have a home-screen icon
   (their names and icons), read from Android when you open the tab, so you can open them on
@@ -66,7 +80,8 @@ accounts, no analytics and no ads. Everything below stays on your device.
 ## What WalkThor stores (on your device only)
 
 Your library of guides, cover images, reading positions, settings, which guide you linked to
-which game, the apps you pinned, the guides you picked for each emulator, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
+which game, the apps you pinned, the games and guides you picked for each emulator, your ROMs
+folder's list of game names, artwork you scraped and your scraper account details, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
 can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 accessibility access at any time from the library's ⋮ menu or Android's Accessibility settings.
 

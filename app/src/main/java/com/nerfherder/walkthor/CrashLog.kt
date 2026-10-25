@@ -12,7 +12,7 @@ import java.util.Locale
 
 /**
  * Keeps a copy of the last crash on this device, so it can be shared for a bug report from
- * About & licences. Nothing is sent anywhere automatically; WalkThor has no internet access.
+ * About & licences. Nothing is sent anywhere automatically (WalkThor only goes online to scrape artwork).
  */
 object CrashLog {
     private const val FILE = "last_crash.txt"

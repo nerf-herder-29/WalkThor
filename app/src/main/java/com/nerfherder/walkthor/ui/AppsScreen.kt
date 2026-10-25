@@ -255,7 +255,7 @@ fun AppsScreen(
 }
 
 @Composable
-internal fun SearchBox(query: String, onChange: (String) -> Unit, modifier: Modifier) {
+internal fun SearchBox(query: String, onChange: (String) -> Unit, modifier: Modifier, hint: String = "Search apps") {
     Row(
         modifier
             .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(50))
@@ -265,7 +265,7 @@ internal fun SearchBox(query: String, onChange: (String) -> Unit, modifier: Modi
         Icon(Icons.Filled.Search, contentDescription = null, tint = BookColors.TextMuted, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) Text("Search apps", color = BookColors.TextMuted, fontSize = 13.sp)
+            if (query.isEmpty()) Text(hint, color = BookColors.TextMuted, fontSize = 13.sp)
             BasicTextField(
                 value = query,
                 onValueChange = onChange,
