@@ -590,6 +590,56 @@ class StoreScreenshots {
         AutoDim.delayMs.value = 0L
     }
 
+    // ---- without Cocoon: a game noticed from its emulator ----
+    private val emuGame = LaunchedGame(
+        "Dolphin", null, "Dolphin", System.currentTimeMillis() - 2 * 60_000L,
+        emulatorPkg = "org.dolphinemu.dolphinemu", unknown = true,
+    )
+
+    @Composable
+    private fun EmulatorNowPlaying() = NowPlayingScreen(
+        game = emuGame,
+        art = GameArt(null),
+        books = shelf,
+        coverFile = { null },
+        onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+    )
+
+    @Test
+    fun emulatorUnknownGame() {
+        content { EmulatorNowPlaying() }
+        settle()
+        shot("16-emulator-what-playing")
+    }
+
+    @Test
+    fun emulatorPickGuide() {
+        // Guides used before in this emulator come first.
+        com.nerfherder.walkthor.EmulatorWatch.noteGuide(app, "org.dolphinemu.dolphinemu", shelf[3].id)
+        com.nerfherder.walkthor.EmulatorWatch.noteGuide(app, "org.dolphinemu.dolphinemu", shelf[0].id)
+        content { EmulatorNowPlaying() }
+        settle()
+        compose.onNodeWithText("Choose a guide").performClick()
+        compose.waitForIdle()
+        shot("16b-emulator-pick")
+    }
+
+    @Test
+    fun emulatorSetting() {
+        content {
+            LibraryScreen(
+                books = shelf, artLinked = true, artCount = 412, artScanning = null, alwaysBottom = true,
+                swipeToOpen = true, gameGuide = true, cocoonLinked = false, swipeNeedsPermission = false, actions = actions(),
+            )
+        }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        shot("16c-emulator-setting")
+        compose.onNodeWithText("Detect games from any emulator").performClick()
+        compose.waitForIdle()
+        shot("16d-emulator-disclosure")
+    }
+
     @Test
     fun nowPlayingWithGuide() {
         content {

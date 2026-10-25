@@ -43,6 +43,10 @@ step that's done.
   Press and hold a tab to have that game open straight on it next time.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
+- **Works without Cocoon too** — turn on *Detect games from any emulator* (⋮ menu) and WalkThor
+  opens on the bottom screen whenever an emulator starts, from any frontend. It asks which guide
+  you're playing (suggesting the ones you've used in that emulator), or picks it by itself when the
+  emulator shows a game name that matches one of your guides.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app
   priority from it. Tapping and reading on the bottom screen leave the game in charge, and after
   WalkThor opens (or you finish a search) it hands priority back with one tap on the top edge of

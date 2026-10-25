@@ -44,6 +44,14 @@ accounts, no analytics and no ads. Everything below stays on your device.
   stored or sent, and keyboard text elsewhere is never read. The button layout you pick for each
   emulator is stored on the device.
 
+- **Detect games from any emulator, only if you turn it on.** For when you don't use Cocoon. While
+  it's on (and no Cocoon folder is linked), WalkThor's accessibility service notes which app comes
+  to the front, so it knows when an emulator starts a game. For the emulator that's running, and
+  only that one, it also looks at its window title and its own notifications, to spot a game name
+  that matches one of your guides. Other apps' notifications are ignored and nothing on the game's
+  screen is read. What it sees is kept in memory only until the game ends; only the guides you
+  pick for each emulator are remembered, on the device.
+
 - **Apps tab: your installed apps.** The Apps tab lists the apps that have a home-screen icon
   (their names and icons), read from Android when you open the tab, so you can open them on
   either screen. The list isn't stored or sent anywhere; only the apps you pin are remembered, on
@@ -58,7 +66,7 @@ accounts, no analytics and no ads. Everything below stays on your device.
 ## What WalkThor stores (on your device only)
 
 Your library of guides, cover images, reading positions, settings, which guide you linked to
-which game, the apps you pinned, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
+which game, the apps you pinned, the guides you picked for each emulator, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
 can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 accessibility access at any time from the library's ⋮ menu or Android's Accessibility settings.
 

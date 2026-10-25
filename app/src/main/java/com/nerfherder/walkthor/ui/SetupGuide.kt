@@ -121,7 +121,15 @@ fun SetupGuideDialog(
                 Para(
                     "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
                         "to save power after the time set in ⋮ → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror, " +
-                        "Face Buttons and Stats, plus All) switch between the game's screens, even while it's dimmed."
+                        "Face Buttons, Stats and Apps, plus Multi) switch between the game's screens, even while it's dimmed."
+                )
+                Para(
+                    "Not using Cocoon? Turn on ⋮ → Detect games from any emulator (it needs accessibility access, step 5). " +
+                        "When an emulator comes to the front, WalkThor opens on the bottom screen with the game's tabs. If it " +
+                        "can't tell which game it is, Now playing asks What are you playing?, with the guides you've used in " +
+                        "that emulator first; next time it suggests your last pick. If the emulator shows the game's name " +
+                        "(in its window title or its own notification) and it matches one of your guides, WalkThor picks it " +
+                        "by itself."
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
