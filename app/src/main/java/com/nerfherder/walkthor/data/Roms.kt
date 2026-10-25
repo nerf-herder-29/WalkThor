@@ -212,6 +212,34 @@ class RomLibrary private constructor(private val context: Context) {
 
         fun system(key: String): GameSystem? = SYSTEMS.firstOrNull { it.key == key }
 
+        /** The game in [roms] whose name [text] clearly is (a close match, well ahead of the next best). */
+        fun matchName(text: String, roms: List<Rom>): Rom? {
+            val want = Matcher.words(text).toSet()
+            if (want.isEmpty() || roms.isEmpty()) return null
+            val ranked = roms.map { it to Matcher.closeness(want, Matcher.words(it.title).toSet()) }.sortedByDescending { it.second }
+            val (top, score) = ranked.first()
+            val next = ranked.getOrNull(1)?.second ?: 0f
+            return top.takeIf { score >= 0.85f && score - next >= 0.1f }
+        }
+
+        /**
+         * The game a frontend's label names: a close match, or a game all of whose words appear in
+         * the label (labels often add the system: "Golden Sun · Game Boy Advance"), the most specific
+         * one if several fit.
+         */
+        fun matchLabel(label: String, roms: List<Rom>): Rom? {
+            matchName(label, roms)?.let { return it }
+            val words = Matcher.words(label).toSet()
+            if (words.isEmpty()) return null
+            val fits = roms.mapNotNull { r ->
+                val w = Matcher.words(r.title).toSet()
+                if (w.isNotEmpty() && words.containsAll(w)) r to w.size else null
+            }
+            val best = fits.maxOfOrNull { it.second } ?: return null
+            return fits.filter { it.second == best }.map { it.first }.distinctBy { it.title.lowercase() }.singleOrNull()
+        }
+
+
         /** The systems an emulator plays, from its app name; empty if it plays anything (RetroArch) or isn't known. */
         fun systemsFor(emulatorName: String?): Set<String> {
             val n = emulatorName?.lowercase() ?: return emptySet()

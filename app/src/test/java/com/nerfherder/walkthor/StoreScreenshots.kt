@@ -644,8 +644,10 @@ class StoreScreenshots {
         com.nerfherder.walkthor.PerfCheck.enabled.value = true
         com.nerfherder.walkthor.EmulatorWatch.pickActive.value = true
         val now = System.currentTimeMillis()
-        com.nerfherder.walkthor.EmulatorWatch.heard.value =
-            com.nerfherder.walkthor.EmulatorWatch.Heard("sample.frontend", "My Frontend", "Lanterns of Emberfall", now)
+        sampleRoms()
+        com.nerfherder.walkthor.EmulatorWatch.scan.value = com.nerfherder.walkthor.EmulatorWatch.Scan(
+            "My Frontend", 37, listOf("custom wallpaper", "Lanterns of Emberfall", "GameCube", "Play"), now,
+        )
         com.nerfherder.walkthor.EmulatorWatch.session.value = com.nerfherder.walkthor.EmulatorWatch.Session(
             "org.dolphinemu.dolphinemu", "Dolphin", now, listOf("Play", "Lanterns of Emberfall"),
         )
@@ -658,7 +660,7 @@ class StoreScreenshots {
         settle()
         shot("18-pick-readout")
         com.nerfherder.walkthor.EmulatorWatch.session.value = null
-        com.nerfherder.walkthor.EmulatorWatch.heard.value = null
+        com.nerfherder.walkthor.EmulatorWatch.scan.value = null
         com.nerfherder.walkthor.EmulatorWatch.pickActive.value = false
         com.nerfherder.walkthor.PerfCheck.enabled.value = false
     }

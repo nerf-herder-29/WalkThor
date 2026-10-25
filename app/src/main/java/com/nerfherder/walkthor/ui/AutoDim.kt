@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -332,38 +333,54 @@ private fun DimButton(label: String, filled: Boolean, action: () -> Unit) {
 private const val READABLE_DIM = 0.85f
 
 /**
- * With the performance check on and "Recognise the game you pick" running: the last name WalkThor
- * heard from your frontend, at the bottom of the screen, so you can see whether yours reports it.
+ * With the performance check on and "Recognise the game you pick" running: what WalkThor last read
+ * from your frontend's screen, which of it matches your games, and what it used for the last launch,
+ * so you can see whether your frontend works with it.
  */
 @Composable
 fun HeardReadout() {
     val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
     val picking by com.nerfherder.walkthor.EmulatorWatch.pickActive.collectAsState()
     if (!perfOn || !picking) return
-    val heard by com.nerfherder.walkthor.EmulatorWatch.heard.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scan by com.nerfherder.walkthor.EmulatorWatch.scan.collectAsState()
     val session by com.nerfherder.walkthor.EmulatorWatch.session.collectAsState()
+    val roms by com.nerfherder.walkthor.data.RomLibrary.get(context).roms.collectAsState()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         Column(
             Modifier
-                .padding(bottom = 40.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 40.dp)
                 .background(Color(0xFF0B0B0D), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                 .border(1.dp, Color.White.copy(alpha = 0.18f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            val h = heard
-            Text(
-                if (h == null) "Heard: nothing yet (highlight a game in your frontend)" else "Heard from ${h.app}: “${h.text}”",
-                color = Color(0xFF7FC48A),
-                fontSize = 12.sp,
-                maxLines = 2,
-            )
-            session?.let { s ->
+            val sc = scan
+            if (sc == null) {
+                Text("Read nothing yet: open your frontend and move around your games", color = BookColors.TextMuted, fontSize = 12.sp)
+            } else {
+                val matches = remember(sc, roms) {
+                    sc.texts.mapNotNull { com.nerfherder.walkthor.data.RomLibrary.matchLabel(it, roms)?.title }.distinct()
+                }
                 Text(
-                    "Last launch (${s.name}): " + (s.picked.takeIf { it.isNotEmpty() }?.joinToString(" › ") { "“$it”" } ?: "nothing heard just before"),
-                    color = BookColors.TextMuted,
-                    fontSize = 11.sp,
-                    maxLines = 2,
+                    "Read ${sc.app}'s screen: ${sc.items} items · " + sc.texts.take(4).joinToString(", ") { "“$it”" },
+                    color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 2,
+                )
+                Text(
+                    if (roms.isEmpty()) "Link your ROMs folder to match games"
+                    else if (matches.isEmpty()) "No game names from your ROMs folder on screen"
+                    else "Your games on screen: " + matches.take(4).joinToString(", "),
+                    color = if (matches.isEmpty()) Color(0xFFE0A15A) else Color(0xFF7FC48A),
+                    fontSize = 12.sp, maxLines = 2,
+                )
+            }
+            session?.let { s ->
+                val picked = remember(s, roms) {
+                    s.picked.firstNotNullOfOrNull { com.nerfherder.walkthor.data.RomLibrary.matchLabel(it, roms)?.title }
+                }
+                Text(
+                    "Last launch (${s.name}): " + (picked?.let { "recognised $it" } ?: "no game recognised (${s.picked.size} texts read before)"),
+                    color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 2,
                 )
             }
         }

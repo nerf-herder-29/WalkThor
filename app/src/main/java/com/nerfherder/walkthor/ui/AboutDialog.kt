@@ -88,7 +88,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                         "on to your game; none is recorded or stored. And, only if you turn on Open when an " +
                         "emulator starts, which app is in front, plus the running emulator's " +
                         "own window title and notifications, to tell which game you're playing; and with Recognise the game " +
-                        "you pick, the names you highlight in other apps (only the last few, briefly, in memory).",
+                        "you pick, the text on your frontend's screen (in memory only).",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -181,19 +181,18 @@ fun PickDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "When you highlight a game in your frontend (in a list or as an icon), the frontend tells Android " +
-                        "its name, the same way it would for a screen reader. WalkThor remembers the last few names, and " +
-                        "when an emulator starts a moment later, it opens straight to that game: matched against your ROMs " +
-                        "folder and guides, or simply by its name.",
+                    "Your frontend shows the name of the game you're on (in a list, under an icon or in a details " +
+                        "panel). WalkThor reads the text on your frontend's screen, the same way a screen reader would, " +
+                        "and when an emulator starts a moment later, it opens straight to the game you were on: the " +
+                        "newest name on screen that matches a game in your ROMs folder or one of your guides.",
                     color = BookColors.Text,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text("What it accesses", style = EyebrowStyle)
                 Text(
-                    "Through WalkThor's accessibility service: the name of what you highlight or select in other apps " +
-                        "(the item itself and the labels just inside it, like the title under a box-art icon). " +
-                        "Only the last few names are kept, in memory, for under a minute; names from emulators, keyboards and " +
-                        "Android's own screens are ignored. Nothing is stored or sent.",
+                    "Through WalkThor's accessibility service: the text on your frontend's screen (Cocoon, Daijisho, ES-DE " +
+                        "and similar apps, or your home-screen app), and nothing from any other app. It's kept in memory, " +
+                        "only until you launch a game; only names that match your games are ever used. Nothing is stored or sent.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -201,7 +200,7 @@ fun PickDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 Text(
                     "Some frontends don't tell Android what's on screen (ES-DE draws its menus like a game); then WalkThor " +
                         "falls back to your last pick. To check yours, turn on ⋮ → About & licences → Performance check: " +
-                        "WalkThor then shows the last name it heard.",
+                        "WalkThor then shows what it read and which of your games it found there.",
                     color = BookColors.TextMuted,
                     fontSize = 12.sp,
                 )
@@ -255,8 +254,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority; with Open when an emulator starts " +
                         "on, it also notes which app comes to the front (and, without Cocoon, the running emulator's window " +
-                        "title and notifications, and with Recognise the game you pick, the names you highlight in other apps, " +
-                        "kept briefly in memory). It never reads screen content. " +
+                        "title and notifications, and with Recognise the game you pick, the text on your frontend's screen, " +
+                        "kept in memory only). It never reads other apps' screens. " +
                         "Mirror and the Stats tab's FPS meter use the top screen's picture only while you use them (Android " +
                         "asks first); the picture is never recorded, saved or sent. The Stats tab reads the battery, heat, memory " +
                         "and CPU speed from Android, on the device only. Face Buttons can light up the buttons you press, only " +

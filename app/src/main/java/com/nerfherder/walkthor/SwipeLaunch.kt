@@ -197,7 +197,8 @@ class SwipeGestureService : AccessibilityService() {
             // "Recognise the game you pick": what you highlight or select (see EmulatorWatch).
             (if (picking) AccessibilityEvent.TYPE_VIEW_FOCUSED or AccessibilityEvent.TYPE_VIEW_SELECTED or
                 AccessibilityEvent.TYPE_VIEW_CLICKED or AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED or
-                AccessibilityEvent.TYPE_VIEW_HOVER_ENTER else 0)
+                AccessibilityEvent.TYPE_VIEW_HOVER_ENTER or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
+                AccessibilityEvent.TYPE_VIEW_SCROLLED else 0)
         // Icons are often marked "not important" for accessibility; include them so their names come through.
         val notImportant = android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
         val flags = if (picking) info.flags or notImportant else info.flags and notImportant.inv()

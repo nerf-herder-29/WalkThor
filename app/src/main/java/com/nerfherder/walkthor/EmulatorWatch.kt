@@ -29,8 +29,6 @@ object EmulatorWatch {
     /** The last thing you highlighted or selected in another app (your frontend), in memory only. */
     data class Heard(val pkg: String, val app: String, val text: String, val at: Long)
     val heard = MutableStateFlow<Heard?>(null)
-    /** The last few names heard (newest last), so a "Play" button pressed after the game doesn't hide it. */
-    private val recentHeard = ArrayDeque<Heard>()
     /** "Recognise the game you pick" (the setting), and whether it's running (it needs detection on too). */
     val pickOn = MutableStateFlow(false)
     val pickActive = MutableStateFlow(false)
@@ -57,6 +55,7 @@ object EmulatorWatch {
     private val emulatorCache = HashMap<String, Boolean>()
     private val labelCache = HashMap<String, String>()
     private val appCache = HashMap<String, Boolean>()
+    private var homePackage: String? = null
     /** The last app seen coming to the front, so going back to the same emulator counts as a new launch. */
     private var lastFront: String? = null
     /** Apps WalkThor opened on its own screen (Apps tab), and when: they don't end or restart a game. */
@@ -77,7 +76,7 @@ object EmulatorWatch {
     /** Turns "Recognise the game you pick" on (after its explanation was agreed to) or off. */
     fun setPickOn(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean(KEY_PICK, on).apply { if (on) putBoolean(KEY_PICK_CONSENT, true) }.apply()
-        if (!on) { heard.value = null; synchronized(recentHeard) { recentHeard.clear() } }
+        if (!on) { heard.value = null; scan.value = null; synchronized(appeared) { appeared.clear(); onScreen = emptyList() }; focusedTexts = emptyList() }
         refresh(context)
     }
     fun hasConsent(context: Context) = prefs(context).getBoolean(KEY_CONSENT, false)
@@ -130,9 +129,7 @@ object EmulatorWatch {
                         end()
                         val now = System.currentTimeMillis()
                         // What you highlighted in your frontend just before is most likely the game.
-                        val picked = synchronized(recentHeard) {
-                            recentHeard.filter { now - it.at < PICK_MS && it.pkg != pkg }.map { it.text }.asReversed().distinct()
-                        }
+                        val picked = pickedBefore(now)
                         Session(pkg, label(context, pkg), now, picked).also { session.value = it }
                     } else null
                     remember(event.text.map { it.toString() } + listOfNotNull(event.contentDescription?.toString()), pkg, context)
@@ -143,24 +140,12 @@ object EmulatorWatch {
             }
             AccessibilityEvent.TYPE_VIEW_FOCUSED, AccessibilityEvent.TYPE_VIEW_SELECTED,
             AccessibilityEvent.TYPE_VIEW_CLICKED, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED,
-            AccessibilityEvent.TYPE_VIEW_HOVER_ENTER -> {
-                // "Recognise the game you pick": only the latest name highlighted in an app (your
-                // frontend), never from emulators, keyboards or system UI, and kept in memory only.
-                if (!pickActive.value || isEmulator(context, pkg) || !isApp(context, pkg) || isOpenedHere(pkg)) return null
-                val name = label(context, pkg)
-                // The event's own text first; many apps (Flutter, Compose) only put the name on the
-                // highlighted item itself, or on a label inside it (the title under a box-art icon).
-                val text = (listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() } + itemTexts(event))
-                    .map { it.trim() }
-                    .firstOrNull { it.length in 2..150 && !it.equals(name, ignoreCase = true) }
-                    ?: return null
-                val h = Heard(pkg, name, text, System.currentTimeMillis())
-                heard.value = h
-                synchronized(recentHeard) {
-                    recentHeard.removeAll { it.text == text }
-                    recentHeard.addLast(h)
-                    while (recentHeard.size > 6) recentHeard.removeFirst()
-                }
+            AccessibilityEvent.TYPE_VIEW_HOVER_ENTER, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+                // "Recognise the game you pick": read your frontend's screen (only frontends and the
+                // home-screen app; never emulators or other apps), kept in memory only.
+                if (!pickActive.value || isEmulator(context, pkg) || isOpenedHere(pkg) || !isFrontend(context, pkg)) return null
+                readFrontend(context, event, pkg)
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
                 // Only the running emulator's own notifications; everything else is ignored outright.
@@ -178,6 +163,85 @@ object EmulatorWatch {
             }
         }
         return null
+    }
+
+    /** What WalkThor last read from your frontend's screen (for the readout). */
+    data class Scan(val app: String, val items: Int, val texts: List<String>, val at: Long)
+    val scan = MutableStateFlow<Scan?>(null)
+    /** Each text on the frontend's screen and when it last appeared there (newest last). */
+    private val appeared = LinkedHashMap<String, Long>()
+    private var onScreen: List<String> = emptyList()
+    private var focusedTexts: List<String> = emptyList()
+    private var focusedAt = 0L
+    private var lastScanAt = 0L
+
+    /**
+     * Reads the text on the frontend's screen. Text that just appeared (a details panel showing the
+     * game you moved to) is noted with the time, so the game you launch is the newest one that
+     * matches your games; the highlighted item's own name counts first.
+     */
+    private fun readFrontend(context: Context, event: AccessibilityEvent, pkg: String) {
+        val now = System.currentTimeMillis()
+        val name = label(context, pkg)
+        val focus = event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED
+        if (focus) {
+            val t = (listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() } + itemTexts(event))
+                .map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
+            if (t.isNotEmpty()) { focusedTexts = t; focusedAt = now }
+        }
+        // Content changes come in floods: read the screen at most a few times a second.
+        if (!focus && now - lastScanAt < 300) return
+        lastScanAt = now
+        val root = runCatching { event.source?.window?.root }.getOrNull()
+            ?: runCatching { (context as? android.accessibilityservice.AccessibilityService)?.rootInActiveWindow }.getOrNull()
+        val (texts, count) = if (root != null) screenTexts(root) else emptyList<String>() to 0
+        val clean = texts.map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
+        synchronized(appeared) {
+            val before = onScreen.toSet()
+            clean.filter { it !in before }.forEach { appeared.remove(it); appeared[it] = now }
+            while (appeared.size > 300) appeared.remove(appeared.keys.first())
+            onScreen = clean
+        }
+        scan.value = Scan(name, count, clean.take(10), now)
+        val newest = synchronized(appeared) { appeared.entries.lastOrNull { it.key in clean }?.key }
+        (focusedTexts.firstOrNull() ?: newest)?.let { heard.value = Heard(pkg, name, it, now) }
+    }
+
+    /** Names to try for the game just launched, most likely first. */
+    private fun pickedBefore(now: Long): List<String> = synchronized(appeared) {
+        val focused = if (now - focusedAt < PICK_MS) focusedTexts else emptyList()
+        val recent = appeared.entries.filter { now - it.value < PICK_MS }.map { it.key }.asReversed()
+        (focused + recent + onScreen).distinct().take(80)
+    }
+
+    /** All the text on a screen (a few hundred items at most). */
+    private fun screenTexts(root: android.view.accessibility.AccessibilityNodeInfo): Pair<List<String>, Int> {
+        val out = ArrayList<String>()
+        val queue = ArrayDeque<android.view.accessibility.AccessibilityNodeInfo>()
+        queue.add(root)
+        var count = 0
+        while (queue.isNotEmpty() && count < 400) {
+            val n = queue.removeFirst()
+            count++
+            n.text?.toString()?.let(out::add)
+            n.contentDescription?.toString()?.let(out::add)
+            for (i in 0 until n.childCount.coerceAtMost(60)) runCatching { n.getChild(i) }.getOrNull()?.let(queue::add)
+        }
+        return out to count
+    }
+
+    /** Your frontend: the home-screen app, or a known frontend (Cocoon, Daijisho, ES-DE…). */
+    private fun isFrontend(context: Context, pkg: String): Boolean {
+        val home = homePackage ?: runCatching {
+            context.packageManager.resolveActivity(
+                android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME),
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+            )?.activityInfo?.packageName
+        }.getOrNull()?.also { homePackage = it }
+        if (pkg == home) return true
+        val p = pkg.lowercase()
+        val l = label(context, pkg).lowercase()
+        return FRONTENDS.any { it in p || it in l }
     }
 
     /** The highlighted item's name, and the labels just inside it (a few levels, a dozen at most). */
@@ -303,4 +367,8 @@ object EmulatorWatch {
         "xendroid", "xenon", "rpcs3", "lemuroid", "emubox", "nostalgia", "kenji", "uzuy", "eggns", "egg ns",
     )
     private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
+    private val FRONTENDS = listOf(
+        "cocoon", "es-de", "es_de", "esde", "daijish", "beacon", "console launcher", "consolelauncher", "iisu",
+        "pegasus", "odin", "launcher", "frontend", "retro hub", "gamehub launcher",
+    )
 }
