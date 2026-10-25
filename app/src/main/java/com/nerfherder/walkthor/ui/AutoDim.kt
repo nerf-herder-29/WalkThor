@@ -346,7 +346,8 @@ fun HeardReadout() {
         Column(
             Modifier
                 .padding(bottom = 40.dp)
-                .background(Color.Black.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                .background(Color(0xFF0B0B0D), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.18f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
