@@ -187,9 +187,21 @@ class PdfSource private constructor(
         /** Open PDFs, so rendered pages can be dropped when Android is short of memory. */
         private val live: MutableSet<PdfSource> = java.util.Collections.newSetFromMap(java.util.WeakHashMap())
 
-        /** Frees every cached page bitmap (they're re-rendered on demand). */
+        /**
+         * Frees every cached page bitmap (they're re-rendered on demand). [live] only weakly holds
+         * its guides, so one can vanish at any moment as memory is reclaimed: read it with the
+         * iterator's own hasNext/next (which keeps each guide alive while it's handed over) rather
+         * than a size-then-read shortcut, which can find the set suddenly empty and crash. This
+         * runs exactly when memory is tight (Android's low-memory warning, a game starting), so
+         * it must never fail.
+         */
         fun trimAll() {
-            synchronized(live) { live.toList() }.forEach { it.trim() }
+            val sources = ArrayList<PdfSource>()
+            synchronized(live) {
+                val it = live.iterator()
+                while (it.hasNext()) it.next()?.let(sources::add)
+            }
+            sources.forEach { runCatching { it.trim() } }
         }
 
         suspend fun open(context: Context, file: File): PdfSource = withContext(Dispatchers.IO) {
