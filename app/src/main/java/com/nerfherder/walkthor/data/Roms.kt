@@ -30,8 +30,10 @@ data class Rom(val system: String, val file: String, val title: String) {
 /**
  * Your ROMs folder, for picking which game you're playing (without Cocoon) and for scraping its
  * artwork. Link the folder that holds one folder per system, named the usual way (3ds, nds, gba,
- * switch, psp, ps2, gc…, as ES-DE and most frontends do). WalkThor only reads the names of the
- * files in it, never the games themselves, and keeps the list on the device.
+ * switch, psp, ps2, gc, windows, pc…, as ES-DE and most frontends do). Inside each, every file is
+ * a game, and so is every folder (a PC game's folder, a game kept with its updates…), except
+ * folders that are plainly media or saves. WalkThor only reads the names, never the games
+ * themselves, and keeps the list on the device.
  */
 class RomLibrary private constructor(private val context: Context) {
 
@@ -196,6 +198,12 @@ class RomLibrary private constructor(private val context: Context) {
             GameSystem("xbox", "Xbox", 32, setOf("xbox"), setOf("cxbx", "xemu")),
             GameSystem("xbox360", "Xbox 360", 33, setOf("xbox360"), setOf("ax360", "xenia")),
             GameSystem("wonderswan", "WonderSwan Color", 46, setOf("wonderswan", "wonderswancolor", "wsc")),
+            // PC games: usually one folder per game (or a shortcut file), run through Winlator and the like.
+            GameSystem(
+                "windows", "Windows", 138, setOf("windows", "win", "win32", "win64", "pcgames", "steam", "winlator", "gamehub"),
+                setOf("winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64", "exagear", "termux"),
+            ),
+            GameSystem("pc", "PC (DOS)", 135, setOf("pc", "dos", "msdos", "pcdos"), setOf("dosbox", "magic dosbox")),
         )
         private val BY_FOLDER: Map<String, GameSystem> = SYSTEMS.flatMap { s -> s.folders.map { it to s } }.toMap()
 

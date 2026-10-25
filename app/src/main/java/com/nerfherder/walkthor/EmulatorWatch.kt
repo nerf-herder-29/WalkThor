@@ -203,7 +203,7 @@ object EmulatorWatch {
         "citron", "yuzu", "sudachi", "suyu", "ryujinx", "torzu", "skyline", "citra", "lime3ds", "azahar",
         "melonds", "drastic", "mupen", "m64plus", "flycast", "redream", "vita3k", "cemu", "xenia", "ax360",
         "mgba", "snes9x", "nestopia", "fceumm", "epsxe", "fpse", "mame4droid", "scummvm", "dosbox", "yabasanshiro",
-        "gearboy", "my boy", "john gba", "pizza boy", "rpcsx", "shadps4", "winlator", "gamehub",
+        "gearboy", "my boy", "john gba", "pizza boy", "rpcsx", "shadps4", "winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64",
     )
     private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
 }
