@@ -166,6 +166,21 @@ fun GameTabsRow(
                     Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = fade),
                     blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
                 )
+                // A small arrow at each edge with more tabs past it.
+                val a = 4.dp.toPx()
+                val cy = size.height / 2f - 4.dp.toPx()
+                val arrow = Color.White.copy(alpha = 0.55f)
+                val w = 1.6.dp.toPx()
+                if (scroll.canScrollForward) {
+                    val x = size.width - 3.dp.toPx()
+                    drawLine(arrow, Offset(x - a, cy - a), Offset(x, cy), w, StrokeCap.Round)
+                    drawLine(arrow, Offset(x, cy), Offset(x - a, cy + a), w, StrokeCap.Round)
+                }
+                if (scroll.canScrollBackward) {
+                    val x = 3.dp.toPx()
+                    drawLine(arrow, Offset(x + a, cy - a), Offset(x, cy), w, StrokeCap.Round)
+                    drawLine(arrow, Offset(x, cy), Offset(x + a, cy + a), w, StrokeCap.Round)
+                }
             },
     ) {
     // The size each tab had when the bar held five (Multi a little narrower, plus its divider).

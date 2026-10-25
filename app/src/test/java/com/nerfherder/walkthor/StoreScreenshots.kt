@@ -729,7 +729,12 @@ class StoreScreenshots {
         content(hero = fakeHero()) {
             com.nerfherder.walkthor.ui.AllScreen(
                 game = game, guide = null, frame = frame, onOpen = {}, onStartCapture = {},
-                topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.ALL) },
+                topBar = {
+                    com.nerfherder.walkthor.ui.GameTabBar(
+                        com.nerfherder.walkthor.ui.GameTab.ALL, onSelect = {}, onBack = {}, onClose = {},
+                        trailing = { com.nerfherder.walkthor.ui.MultiMenu(onClose = {}) },
+                    )
+                },
                 preview = com.nerfherder.walkthor.ui.AllPreview(
                     text.substring(text.indexOf("1. CONTROLS") - 82), statsPreview(), fakeApps().take(8),
                 ),
