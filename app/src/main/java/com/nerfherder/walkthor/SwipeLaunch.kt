@@ -114,6 +114,8 @@ const val EXTRA_FROM_SWIPE = "walkthor.fromSwipe"
 
 /** Set (to the emulator's package) when WalkThor is opened because an emulator started a game. */
 const val EXTRA_FROM_EMULATOR = "walkthor.fromEmulator"
+/** How long WalkThor waits before opening over a dual-screen frontend's bottom screen. */
+private const val FRONTEND_DELAY_MS = 5_000L
 
 /** Where WalkThor's activity currently is, so the gesture can bring it to (or take it off) the right screen. */
 object AppState {
@@ -216,13 +218,23 @@ class SwipeGestureService : AccessibilityService() {
     }
 
     /** An emulator just started a game: bring WalkThor up on the bottom screen (it then works out the game). */
-    private fun openForGame(session: EmulatorWatch.Session) {
+    /** Delayed opens (kept apart from [handler], which display changes clear). */
+    private val laterHandler = Handler(android.os.Looper.getMainLooper())
+
+    private fun openForGame(session: EmulatorWatch.Session, late: Boolean = false) {
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
         // Already showing there: it picks the new game up by itself.
         if (AppState.resumedDisplayId == bottom) return
-        // A dual-screen frontend (iiSU) still showing its own bottom screen: leave it, or it may
-        // close the game. The game is still known, so swiping WalkThor open shows it.
-        if (EmulatorWatch.frontendOnBottom(this, session)) return
+        // A dual-screen frontend (iiSU) still showing its own bottom screen: jumping in front of it
+        // straight away makes it close the game, so let the game finish starting first.
+        if (EmulatorWatch.frontendOnBottom(this, session) && !late) {
+            laterHandler.removeCallbacksAndMessages(null)
+            laterHandler.postDelayed({
+                // Still the same game (you haven't gone back to the frontend or switched apps).
+                if (EmulatorWatch.session.value == session) runCatching { openForGame(session, late = true) }
+            }, FRONTEND_DELAY_MS)
+            return
+        }
         val intent = Intent(this, MainActivity::class.java)
             .setAction(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
