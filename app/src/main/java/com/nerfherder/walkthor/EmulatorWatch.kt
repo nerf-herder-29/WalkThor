@@ -24,7 +24,8 @@ object EmulatorWatch {
      * A game running in [name] (the emulator's app name), since [at]. [picked] is the name you
      * last highlighted in your frontend just before (with "Recognise the game you pick").
      */
-    data class Session(val pkg: String, val name: String, val at: Long, val picked: List<String> = emptyList())
+    /** [from]: the app on the game screen just before (your frontend), if any. */
+    data class Session(val pkg: String, val name: String, val at: Long, val picked: List<String> = emptyList(), val from: String? = null)
 
     /** The last thing you highlighted or selected in another app (your frontend), in memory only. */
     data class Heard(val pkg: String, val app: String, val text: String, val at: Long)
@@ -60,6 +61,19 @@ object EmulatorWatch {
     private var lastFront: String? = null
     /** Apps WalkThor opened on its own screen (Apps tab), and when: they don't end or restart a game. */
     private val openedHere = HashMap<String, Long>()
+    /** The app last seen on the bottom screen (WalkThor's screen): WalkThor itself, or another. */
+    @Volatile private var bottomApp: String? = null
+
+    /**
+     * Your frontend still has its own screen on the bottom display while the game runs (a dual-screen
+     * frontend like iiSU). Jumping in front of it there makes some close the game, so WalkThor waits
+     * for your swipe instead.
+     */
+    fun frontendOnBottom(context: Context, session: Session): Boolean {
+        val b = bottomApp ?: return false
+        // Cocoon hands its bottom screen to WalkThor, so opening over it is fine.
+        return b != context.packageName && b == session.from && "cocoon" !in b.lowercase()
+    }
 
     /** WalkThor's Apps tab just opened [pkg] on WalkThor's screen. */
     fun openedByWalkThor(pkg: String) { synchronized(openedHere) { openedHere[pkg] = System.currentTimeMillis() } }
@@ -114,6 +128,12 @@ object EmulatorWatch {
     fun onEvent(context: Context, event: AccessibilityEvent): Session? {
         if (!active.value) return null
         val pkg = event.packageName?.toString() ?: return null
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && onBottom(context, event)) {
+            // WalkThor's screen: what shows there doesn't start or end a game (a dual-screen
+            // frontend keeps its second screen there while the game runs). Just note who it is.
+            if (pkg == context.packageName || isApp(context, pkg)) bottomApp = pkg
+            return null
+        }
         if (pkg == context.packageName) return null
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
@@ -130,7 +150,8 @@ object EmulatorWatch {
                         val now = System.currentTimeMillis()
                         // What you highlighted in your frontend just before is most likely the game.
                         val picked = pickedBefore(now)
-                        Session(pkg, label(context, pkg), now, picked).also { session.value = it }
+                        val from = previous?.takeIf { it != pkg && !isEmulator(context, it) }
+                        Session(pkg, label(context, pkg), now, picked, from).also { session.value = it }
                     } else null
                     remember(event.text.map { it.toString() } + listOfNotNull(event.contentDescription?.toString()), pkg, context)
                     return started
@@ -163,6 +184,13 @@ object EmulatorWatch {
             }
         }
         return null
+    }
+
+    /** The event happened on the bottom screen (WalkThor's), on a two-screen device. */
+    private fun onBottom(context: Context, event: AccessibilityEvent): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 30) return false
+        val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull() ?: return false
+        return event.displayId == bottom
     }
 
     /** What WalkThor last read from your frontend's screen (for the readout). */

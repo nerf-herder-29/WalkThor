@@ -218,6 +218,9 @@ class SwipeGestureService : AccessibilityService() {
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
         // Already showing there: it picks the new game up by itself.
         if (AppState.resumedDisplayId == bottom) return
+        // A dual-screen frontend (iiSU) still showing its own bottom screen: leave it, or it may
+        // close the game. The game is still known, so swiping WalkThor open shows it.
+        if (EmulatorWatch.frontendOnBottom(this, session)) return
         val intent = Intent(this, MainActivity::class.java)
             .setAction(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
