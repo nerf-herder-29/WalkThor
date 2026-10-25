@@ -655,18 +655,6 @@ class StoreScreenshots {
         shot("16d-emulator-disclosure")
     }
 
-    @Test
-    fun scraperAccounts() {
-        // Like a real touch screen: nothing gets focused on its own, so no cursor keeps blinking.
-        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
-        compose.mainClock.autoAdvance = false
-        content {
-            Library()
-            com.nerfherder.walkthor.ui.ScraperAccountsDialog(onDismiss = {})
-        }
-        compose.mainClock.advanceTimeBy(1_000)
-        captureScreenRoboImage("build/screenshots/17-scraper-accounts.png")
-    }
 
     @Test
     fun nowPlayingWithGuide() {
