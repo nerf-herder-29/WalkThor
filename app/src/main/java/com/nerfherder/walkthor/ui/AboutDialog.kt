@@ -190,7 +190,8 @@ fun PickDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
                 Text("What it accesses", style = EyebrowStyle)
                 Text(
-                    "Through WalkThor's accessibility service: the name of what you highlight or select in other apps. " +
+                    "Through WalkThor's accessibility service: the name of what you highlight or select in other apps " +
+                        "(the item itself and the labels just inside it, like the title under a box-art icon). " +
                         "Only the last few names are kept, in memory, for under a minute; names from emulators, keyboards and " +
                         "Android's own screens are ignored. Nothing is stored or sent.",
                     color = BookColors.TextMuted,

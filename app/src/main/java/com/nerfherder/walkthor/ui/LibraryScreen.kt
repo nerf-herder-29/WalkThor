@@ -379,6 +379,7 @@ private fun SettingsMenu(
     var pickDim by remember { mutableStateOf(false) }
     var showAccounts by remember { mutableStateOf(false) }
     var showPickDisclosure by remember { mutableStateOf(false) }
+    var showEmulators by remember { mutableStateOf(false) }
     val menuScope = androidx.compose.runtime.rememberCoroutineScope()
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
@@ -446,6 +447,17 @@ private fun SettingsMenu(
                     trailingIcon = { if (detecting) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                     onClick = { open = false; onToggleEmulators(!detecting) },
                 )
+                if (detecting) {
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text("Choose emulators…")
+                                Text("Tick any WalkThor doesn't know", fontSize = 11.sp, color = BookColors.TextMuted)
+                            }
+                        },
+                        onClick = { open = false; showEmulators = true },
+                    )
+                }
                 if (detecting && !cocoonLinked) {
                     val picking by com.nerfherder.walkthor.EmulatorWatch.pickOn.collectAsState()
                     DropdownMenuItem(
@@ -539,6 +551,7 @@ private fun SettingsMenu(
         }
     }
     if (showAccounts) ScraperAccountsDialog(onDismiss = { showAccounts = false })
+    if (showEmulators) EmulatorsDialog(onDismiss = { showEmulators = false })
     if (showPickDisclosure) {
         PickDisclosureDialog(
             onAgree = { showPickDisclosure = false; com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, true) },

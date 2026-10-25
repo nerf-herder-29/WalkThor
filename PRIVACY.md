@@ -55,8 +55,8 @@ scraper account and start a scrape (see below). Everything else stays on your de
   are remembered, on the device.
 
 - **Recognise the game you pick, only if you turn it on** (it needs *Open when an emulator
-  starts*). WalkThor's accessibility service is told the name of what you highlight or select in
-  other apps, as a screen reader would be, so the name you highlight in your frontend just before
+  starts*). WalkThor's accessibility service reads the name of what you highlight or select in
+  other apps (the item itself and the labels just inside it), as a screen reader would, so the name you highlight in your frontend just before
   an emulator starts tells WalkThor which game you launched. Only the last few names are kept, in
   memory, for under a minute; names from emulators, keyboards and Android's own screens are
   ignored, and nothing is stored or sent.

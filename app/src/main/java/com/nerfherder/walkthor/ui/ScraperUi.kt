@@ -1,6 +1,9 @@
 package com.nerfherder.walkthor.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -149,3 +152,68 @@ private fun Field(label: String, value: String, onChange: (String) -> Unit, secr
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
     )
 }
+
+/**
+ * Which apps count as emulators for "Open when an emulator starts": WalkThor's guess, ticked, and
+ * any app you tick or untick yourself (for an emulator it doesn't know, like a new one).
+ */
+@Composable
+fun EmulatorsDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(Unit) { if (AppCatalog.apps.value == null) AppCatalog.refresh(context) }
+    val apps by AppCatalog.apps.collectAsState()
+    var query by remember { mutableStateOf("") }
+    // Bumped on each tick so the list re-reads the choices.
+    var version by remember { mutableStateOf(0) }
+    val list = remember(apps, version) {
+        apps.orEmpty().map { it to com.nerfherder.walkthor.EmulatorWatch.isEmulator(context, it.packageName) }
+            .sortedWith(compareBy({ !it.second }, { it.first.label.lowercase() }))
+    }
+    val shown = if (query.isBlank()) list else list.filter { it.first.label.contains(query.trim(), ignoreCase = true) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = BookColors.Surface,
+        title = { Text("Emulators", fontFamily = DisplayFont) },
+        text = {
+            Column {
+                Text(
+                    "WalkThor opens when one of these comes to the front. Tick any it missed.",
+                    color = BookColors.TextMuted, fontSize = 13.sp,
+                )
+                SearchBox(query, { query = it }, Modifier.fillMaxWidth().padding(vertical = 8.dp))
+                if (apps == null) Text("Loading your apps…", color = BookColors.TextMuted)
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 340.dp)) {
+                    items(shown.size) { i ->
+                        val (app, on) = shown[i]
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    com.nerfherder.walkthor.EmulatorWatch.setChosen(context, app.packageName, !on)
+                                    version++
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            androidx.compose.material3.Checkbox(
+                                checked = on,
+                                onCheckedChange = null,
+                                colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                    checkedColor = BookColors.Text, checkmarkColor = androidx.compose.ui.graphics.Color.Black,
+                                    uncheckedColor = BookColors.TextMuted,
+                                ),
+                            )
+                            Spacer(Modifier.padding(start = 8.dp))
+                            app.icon?.let {
+                                androidx.compose.foundation.Image(it, contentDescription = null, modifier = Modifier.padding(end = 10.dp).size(28.dp))
+                            }
+                            Text(app.label, color = BookColors.Text, fontSize = 15.sp, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+

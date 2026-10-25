@@ -148,7 +148,9 @@ object EmulatorWatch {
                 // frontend), never from emulators, keyboards or system UI, and kept in memory only.
                 if (!pickActive.value || isEmulator(context, pkg) || !isApp(context, pkg) || isOpenedHere(pkg)) return null
                 val name = label(context, pkg)
-                val text = (listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() })
+                // The event's own text first; many apps (Flutter, Compose) only put the name on the
+                // highlighted item itself, or on a label inside it (the title under a box-art icon).
+                val text = (listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() } + itemTexts(event))
                     .map { it.trim() }
                     .firstOrNull { it.length in 2..150 && !it.equals(name, ignoreCase = true) }
                     ?: return null
@@ -178,6 +180,27 @@ object EmulatorWatch {
         return null
     }
 
+    /** The highlighted item's name, and the labels just inside it (a few levels, a dozen at most). */
+    private fun itemTexts(event: AccessibilityEvent): List<String> {
+        val root = runCatching { event.source }.getOrNull() ?: return emptyList()
+        val out = ArrayList<String>()
+        val queue = ArrayDeque<Pair<android.view.accessibility.AccessibilityNodeInfo, Int>>()
+        queue.add(root to 0)
+        var seen = 0
+        while (queue.isNotEmpty() && seen < 12) {
+            val (node, depth) = queue.removeFirst()
+            seen++
+            node.contentDescription?.toString()?.let(out::add)
+            node.text?.toString()?.let(out::add)
+            if (depth < 3) {
+                for (i in 0 until node.childCount.coerceAtMost(8)) {
+                    runCatching { node.getChild(i) }.getOrNull()?.let { queue.add(it to depth + 1) }
+                }
+            }
+        }
+        return out
+    }
+
     private fun remember(texts: List<String>, pkg: String, context: Context) {
         val name = label(context, pkg)
         val useful = texts.map { it.trim() }.filter { t ->
@@ -194,11 +217,32 @@ object EmulatorWatch {
         textTick.value++
     }
 
-    /** Whether [pkg] is an emulator, from its package and app name. */
-    fun isEmulator(context: Context, pkg: String): Boolean = emulatorCache.getOrPut(pkg) {
+    /** Apps you marked as emulators (or not), overriding the automatic guess. */
+    fun chosen(context: Context): Map<String, Boolean> =
+        prefs(context).getStringSet("emuYes", emptySet())!!.associateWith { true } +
+            prefs(context).getStringSet("emuNo", emptySet())!!.associateWith { false }
+
+    fun setChosen(context: Context, pkg: String, isEmu: Boolean) {
+        val p = prefs(context)
+        val yes = p.getStringSet("emuYes", emptySet())!!.toMutableSet()
+        val no = p.getStringSet("emuNo", emptySet())!!.toMutableSet()
+        yes.remove(pkg); no.remove(pkg)
+        if (isEmu != autoEmulator(context, pkg)) (if (isEmu) yes else no).add(pkg)
+        p.edit().putStringSet("emuYes", yes).putStringSet("emuNo", no).apply()
+        synchronized(emulatorCache) { emulatorCache.clear() }
+        appCache.clear()
+    }
+
+    /** Whether [pkg] is an emulator: your choice if you made one, else a guess from its names. */
+    fun isEmulator(context: Context, pkg: String): Boolean = synchronized(emulatorCache) {
+        emulatorCache.getOrPut(pkg) { chosen(context)[pkg] ?: autoEmulator(context, pkg) }
+    }
+
+    /** The automatic guess, from its package and app name. */
+    fun autoEmulator(context: Context, pkg: String): Boolean {
         val p = pkg.lowercase()
         val l = label(context, pkg).lowercase()
-        KNOWN.any { it in p || it in l } ||
+        return KNOWN.any { it in p || it in l } ||
             "emulator" in p || "emulator" in l ||
             p.split('.', '_').any { it.endsWith("emu") && it.length > 3 }
     }
@@ -256,6 +300,7 @@ object EmulatorWatch {
         "melonds", "drastic", "mupen", "m64plus", "flycast", "redream", "vita3k", "cemu", "xenia", "ax360",
         "mgba", "snes9x", "nestopia", "fceumm", "epsxe", "fpse", "mame4droid", "scummvm", "dosbox", "yabasanshiro",
         "gearboy", "my boy", "john gba", "pizza boy", "rpcsx", "shadps4", "winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64",
+        "xendroid", "xenon", "rpcs3", "lemuroid", "emubox", "nostalgia", "kenji", "uzuy", "eggns", "egg ns",
     )
     private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
 }
