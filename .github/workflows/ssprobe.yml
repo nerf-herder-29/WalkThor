@@ -1,0 +1,16 @@
+name: ScreenScraper probe
+on:
+  push:
+    branches: ["probe/**"]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call jeuInfos without developer credentials
+        run: |
+          echo "--- no devid, no user"
+          curl -s -m 30 "https://api.screenscraper.fr/api2/jeuInfos.php?softname=WalkThor&output=json&systemeid=12&romtype=rom&romnom=Golden%20Sun%20(USA).gba" | head -c 400; echo
+          echo "--- empty devid, fake user"
+          curl -s -m 30 "https://api.screenscraper.fr/api2/jeuInfos.php?devid=&devpassword=&softname=WalkThor&ssid=walkthorprobe&sspassword=x&output=json&systemeid=12&romtype=rom&romnom=Golden%20Sun%20(USA).gba" | head -c 400; echo
+          echo "--- systemesListe no devid"
+          curl -s -m 30 "https://api.screenscraper.fr/api2/systemesListe.php?softname=WalkThor&output=json" | head -c 300; echo
