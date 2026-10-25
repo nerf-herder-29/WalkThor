@@ -191,14 +191,23 @@ class SwipeGestureService : AccessibilityService() {
      */
     fun applyEventTypes() {
         val info = serviceInfo ?: return
+        val picking = EmulatorWatch.pickActive.value
         val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or
-            if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0
+            (if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0) or
+            // "Recognise the game you pick": what you highlight or select (see EmulatorWatch).
+            (if (picking) AccessibilityEvent.TYPE_VIEW_FOCUSED or AccessibilityEvent.TYPE_VIEW_SELECTED or
+                AccessibilityEvent.TYPE_VIEW_CLICKED or AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED or
+                AccessibilityEvent.TYPE_VIEW_HOVER_ENTER else 0)
+        // Icons are often marked "not important" for accessibility; include them so their names come through.
+        val notImportant = android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+        val flags = if (picking) info.flags or notImportant else info.flags and notImportant.inv()
         // While detecting, every app switch counts: don't let Android merge quick ones together
         // (a fast emulator launch could otherwise be missed).
         val timeout = if (EmulatorWatch.active.value) 0L else 1000L
-        if (info.eventTypes != want || info.notificationTimeout != timeout) {
+        if (info.eventTypes != want || info.notificationTimeout != timeout || info.flags != flags) {
             info.eventTypes = want
             info.notificationTimeout = timeout
+            info.flags = flags
             serviceInfo = info
         }
     }

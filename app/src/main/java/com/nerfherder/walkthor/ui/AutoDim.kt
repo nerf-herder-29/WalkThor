@@ -330,3 +330,41 @@ private fun DimButton(label: String, filled: Boolean, action: () -> Unit) {
 
 /** How dark the screen gets, at least, when the game's name is drawn over a guide page. */
 private const val READABLE_DIM = 0.85f
+
+/**
+ * With the performance check on and "Recognise the game you pick" running: the last name WalkThor
+ * heard from your frontend, at the bottom of the screen, so you can see whether yours reports it.
+ */
+@Composable
+fun HeardReadout() {
+    val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
+    val picking by com.nerfherder.walkthor.EmulatorWatch.pickActive.collectAsState()
+    if (!perfOn || !picking) return
+    val heard by com.nerfherder.walkthor.EmulatorWatch.heard.collectAsState()
+    val session by com.nerfherder.walkthor.EmulatorWatch.session.collectAsState()
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        Column(
+            Modifier
+                .padding(bottom = 40.dp)
+                .background(Color.Black.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val h = heard
+            Text(
+                if (h == null) "Heard: nothing yet (highlight a game in your frontend)" else "Heard from ${h.app}: “${h.text}”",
+                color = Color(0xFF7FC48A),
+                fontSize = 12.sp,
+                maxLines = 2,
+            )
+            session?.let { s ->
+                Text(
+                    "Last launch (${s.name}): " + (s.picked.takeIf { it.isNotEmpty() }?.joinToString(" › ") { "“$it”" } ?: "nothing heard just before"),
+                    color = BookColors.TextMuted,
+                    fontSize = 11.sp,
+                    maxLines = 2,
+                )
+            }
+        }
+    }
+}

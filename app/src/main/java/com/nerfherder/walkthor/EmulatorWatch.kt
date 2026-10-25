@@ -20,8 +20,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * you open from WalkThor's Apps tab don't count.
  */
 object EmulatorWatch {
-    /** A game running in [name] (the emulator's app name), since [at]. */
-    data class Session(val pkg: String, val name: String, val at: Long)
+    /**
+     * A game running in [name] (the emulator's app name), since [at]. [picked] is the name you
+     * last highlighted in your frontend just before (with "Recognise the game you pick").
+     */
+    data class Session(val pkg: String, val name: String, val at: Long, val picked: List<String> = emptyList())
+
+    /** The last thing you highlighted or selected in another app (your frontend), in memory only. */
+    data class Heard(val pkg: String, val app: String, val text: String, val at: Long)
+    val heard = MutableStateFlow<Heard?>(null)
+    /** The last few names heard (newest last), so a "Play" button pressed after the game doesn't hide it. */
+    private val recentHeard = ArrayDeque<Heard>()
+    /** "Recognise the game you pick" (the setting), and whether it's running (it needs detection on too). */
+    val pickOn = MutableStateFlow(false)
+    val pickActive = MutableStateFlow(false)
 
     val session = MutableStateFlow<Session?>(null)
     /** On and agreed to: the service should listen for apps coming to the front. */
@@ -34,6 +46,10 @@ object EmulatorWatch {
     private const val PREFS = "emulators"
     private const val KEY_ON = "detect"
     private const val KEY_CONSENT = "consent"
+    private const val KEY_PICK = "pick"
+    private const val KEY_PICK_CONSENT = "pickConsent"
+    /** How long a highlighted name counts as "what you just launched". */
+    private const val PICK_MS = 45_000L
     private const val MAX_SEEN = 24
     private const val MAX_RECENT = 8
 
@@ -55,6 +71,15 @@ object EmulatorWatch {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun isOn(context: Context) = prefs(context).getBoolean(KEY_ON, false)
+    fun isPickOn(context: Context) = prefs(context).getBoolean(KEY_PICK, false)
+    fun hasPickConsent(context: Context) = prefs(context).getBoolean(KEY_PICK_CONSENT, false)
+
+    /** Turns "Recognise the game you pick" on (after its explanation was agreed to) or off. */
+    fun setPickOn(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean(KEY_PICK, on).apply { if (on) putBoolean(KEY_PICK_CONSENT, true) }.apply()
+        if (!on) { heard.value = null; synchronized(recentHeard) { recentHeard.clear() } }
+        refresh(context)
+    }
     fun hasConsent(context: Context) = prefs(context).getBoolean(KEY_CONSENT, false)
 
     /** Turns detection on (after the disclosure was agreed to) or off. */
@@ -68,6 +93,9 @@ object EmulatorWatch {
         val now = isOn(context) && hasConsent(context)
         on.value = isOn(context)
         active.value = now
+        pickOn.value = isPickOn(context)
+        pickActive.value = now && isPickOn(context) && hasPickConsent(context)
+        if (!pickActive.value) heard.value = null
         if (!now) end()
         SwipeGestureService.instance?.get()?.applyEventTypes()
     }
@@ -100,13 +128,37 @@ object EmulatorWatch {
                     // A new launch: a different emulator, or this one again after another app.
                     val started = if (current?.pkg != pkg || previous != pkg) {
                         end()
-                        Session(pkg, label(context, pkg), System.currentTimeMillis()).also { session.value = it }
+                        val now = System.currentTimeMillis()
+                        // What you highlighted in your frontend just before is most likely the game.
+                        val picked = synchronized(recentHeard) {
+                            recentHeard.filter { now - it.at < PICK_MS && it.pkg != pkg }.map { it.text }.asReversed().distinct()
+                        }
+                        Session(pkg, label(context, pkg), now, picked).also { session.value = it }
                     } else null
                     remember(event.text.map { it.toString() } + listOfNotNull(event.contentDescription?.toString()), pkg, context)
                     return started
                 }
                 // Another app came to the front (your frontend, the home screen): the game is over.
                 if (session.value != null) end()
+            }
+            AccessibilityEvent.TYPE_VIEW_FOCUSED, AccessibilityEvent.TYPE_VIEW_SELECTED,
+            AccessibilityEvent.TYPE_VIEW_CLICKED, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED,
+            AccessibilityEvent.TYPE_VIEW_HOVER_ENTER -> {
+                // "Recognise the game you pick": only the latest name highlighted in an app (your
+                // frontend), never from emulators, keyboards or system UI, and kept in memory only.
+                if (!pickActive.value || isEmulator(context, pkg) || !isApp(context, pkg) || isOpenedHere(pkg)) return null
+                val name = label(context, pkg)
+                val text = (listOfNotNull(event.contentDescription?.toString()) + event.text.map { it.toString() })
+                    .map { it.trim() }
+                    .firstOrNull { it.length in 2..150 && !it.equals(name, ignoreCase = true) }
+                    ?: return null
+                val h = Heard(pkg, name, text, System.currentTimeMillis())
+                heard.value = h
+                synchronized(recentHeard) {
+                    recentHeard.removeAll { it.text == text }
+                    recentHeard.addLast(h)
+                    while (recentHeard.size > 6) recentHeard.removeFirst()
+                }
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
                 // Only the running emulator's own notifications; everything else is ignored outright.

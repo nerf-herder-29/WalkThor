@@ -378,6 +378,7 @@ private fun SettingsMenu(
     var open by remember { mutableStateOf(false) }
     var pickDim by remember { mutableStateOf(false) }
     var showAccounts by remember { mutableStateOf(false) }
+    var showPickDisclosure by remember { mutableStateOf(false) }
     val menuScope = androidx.compose.runtime.rememberCoroutineScope()
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
@@ -445,6 +446,24 @@ private fun SettingsMenu(
                     trailingIcon = { if (detecting) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
                     onClick = { open = false; onToggleEmulators(!detecting) },
                 )
+                if (detecting && !cocoonLinked) {
+                    val picking by com.nerfherder.walkthor.EmulatorWatch.pickOn.collectAsState()
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text("Recognise the game you pick")
+                                Text("From the name you highlight in your frontend", fontSize = 11.sp, color = BookColors.TextMuted)
+                            }
+                        },
+                        trailingIcon = { if (picking) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
+                        onClick = {
+                            open = false
+                            if (picking) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, false)
+                            else if (com.nerfherder.walkthor.EmulatorWatch.hasPickConsent(context)) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, true)
+                            else showPickDisclosure = true
+                        },
+                    )
+                }
             }
             actions.onSwapScreen?.let { swap ->
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
@@ -520,6 +539,12 @@ private fun SettingsMenu(
         }
     }
     if (showAccounts) ScraperAccountsDialog(onDismiss = { showAccounts = false })
+    if (showPickDisclosure) {
+        PickDisclosureDialog(
+            onAgree = { showPickDisclosure = false; com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, true) },
+            onDismiss = { showPickDisclosure = false },
+        )
+    }
     if (pickDim) {
         AlertDialog(
             onDismissRequest = { pickDim = false; AutoDim.previewing.value = false },

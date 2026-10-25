@@ -54,6 +54,13 @@ scraper account and start a scrape (see below). Everything else stays on your de
   kept in memory only until the game ends; only the games and guides you pick for each emulator
   are remembered, on the device.
 
+- **Recognise the game you pick, only if you turn it on** (it needs *Open when an emulator
+  starts*). WalkThor's accessibility service is told the name of what you highlight or select in
+  other apps, as a screen reader would be, so the name you highlight in your frontend just before
+  an emulator starts tells WalkThor which game you launched. Only the last few names are kept, in
+  memory, for under a minute; names from emulators, keyboards and Android's own screens are
+  ignored, and nothing is stored or sent.
+
 - **A ROMs folder you link.** WalkThor reads the names of the folders and files in it (one folder
   per system, like `gba` or `switch`), never the games themselves, so you can pick which game
   you're playing and scrape its artwork. The list of names is kept on the device.

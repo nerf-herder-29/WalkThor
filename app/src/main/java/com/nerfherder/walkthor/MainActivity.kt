@@ -237,6 +237,7 @@ class MainActivity : ComponentActivity() {
                             host = this@MainActivity,
                         )
                         AutoDimOverlay()
+                        com.nerfherder.walkthor.ui.HeardReadout()
                     }
                 }
             }
@@ -595,6 +596,23 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val books = booksNow
         val systems = com.nerfherder.walkthor.data.RomLibrary.systemsFor(s.name)
         val candidates = romsNow.filter { systems.isEmpty() || it.system in systems }
+        // "Recognise the game you pick": the names you highlighted in your frontend just before,
+        // newest first. A game in your ROMs folder or a guide that matches wins; failing that, the
+        // newest name that looks like a game (not a "Play" button) is taken as the game's title.
+        if (s.picked.isNotEmpty()) {
+            for (label in s.picked) {
+                (labelMatch(label, candidates) ?: labelMatch(label, romsNow))?.let { return romPick(s, it) }
+                if (books.isNotEmpty()) {
+                    GameGuides.pick(context, books, LaunchedGame(label, null, s.name, s.at))?.let { b ->
+                        return EmuPick(gameTitleOf(b.title), null, b, null)
+                    }
+                }
+            }
+            s.picked.firstOrNull { looksLikeGame(it) }?.let { label ->
+                val title = com.nerfherder.walkthor.data.RomLibrary.tidy(label, isDir = true)
+                return EmuPick(title, null, GameGuides.pick(context, books, LaunchedGame(title, null, s.name, s.at)), null)
+            }
+        }
         EmulatorWatch.seenText().asReversed().forEach { text ->
             romMatch(text, candidates)?.let { return romPick(s, it) }
             if (books.isNotEmpty()) {
@@ -1109,6 +1127,37 @@ private fun romMatch(text: String, roms: List<com.nerfherder.walkthor.data.Rom>)
     val next = ranked.getOrNull(1)?.second ?: 0f
     return top.takeIf { score >= 0.85f && score - next >= 0.1f }
 }
+
+/**
+ * The game a frontend's label names: a close match, or a game all of whose words appear in the
+ * label (labels often add the system or a rating: "Golden Sun · Game Boy Advance"), the most
+ * specific one if several fit.
+ */
+private fun labelMatch(label: String, roms: List<com.nerfherder.walkthor.data.Rom>): com.nerfherder.walkthor.data.Rom? {
+    romMatch(label, roms)?.let { return it }
+    val words = com.nerfherder.walkthor.data.Matcher.words(label).toSet()
+    if (words.isEmpty()) return null
+    val fits = roms.mapNotNull { r ->
+        val w = com.nerfherder.walkthor.data.Matcher.words(r.title).toSet()
+        if (w.isNotEmpty() && words.containsAll(w)) r to w.size else null
+    }
+    val best = fits.maxOfOrNull { it.second } ?: return null
+    val top = fits.filter { it.second == best }.map { it.first }.distinctBy { it.title.lowercase() }
+    return top.singleOrNull()
+}
+
+/** Not a button or menu label: "Play", "Start", "Settings" and the like aren't games. */
+private fun looksLikeGame(label: String): Boolean {
+    val l = label.trim().lowercase()
+    if (l.length < 3 || l.length > 80) return false
+    return l !in NOT_GAME_LABELS && com.nerfherder.walkthor.data.Matcher.words(label).isNotEmpty()
+}
+
+private val NOT_GAME_LABELS = setOf(
+    "play", "play game", "start", "launch", "resume", "continue", "ok", "open", "back", "cancel", "yes", "no",
+    "details", "info", "favorite", "favourite", "settings", "menu", "search", "home", "games", "all games",
+    "recent", "recently played", "library", "options", "more", "close", "exit", "apps", "collections",
+)
 
 private data class Showing(val game: LaunchedGame, val art: GameArt, val guide: com.nerfherder.walkthor.data.Book?)
 
