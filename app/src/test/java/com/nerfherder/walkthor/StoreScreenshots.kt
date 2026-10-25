@@ -640,6 +640,37 @@ class StoreScreenshots {
     }
 
     @Test
+    fun pickReadout() {
+        com.nerfherder.walkthor.PerfCheck.enabled.value = true
+        com.nerfherder.walkthor.EmulatorWatch.pickActive.value = true
+        val now = System.currentTimeMillis()
+        com.nerfherder.walkthor.EmulatorWatch.heard.value =
+            com.nerfherder.walkthor.EmulatorWatch.Heard("sample.frontend", "My Frontend", "Lanterns of Emberfall", now)
+        com.nerfherder.walkthor.EmulatorWatch.session.value = com.nerfherder.walkthor.EmulatorWatch.Session(
+            "org.dolphinemu.dolphinemu", "Dolphin", now, listOf("Play", "Lanterns of Emberfall"),
+        )
+        content {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                Library()
+                com.nerfherder.walkthor.ui.HeardReadout()
+            }
+        }
+        settle()
+        shot("18-pick-readout")
+        com.nerfherder.walkthor.EmulatorWatch.session.value = null
+        com.nerfherder.walkthor.EmulatorWatch.heard.value = null
+        com.nerfherder.walkthor.EmulatorWatch.pickActive.value = false
+        com.nerfherder.walkthor.PerfCheck.enabled.value = false
+    }
+
+    @Test
+    fun pickDisclosure() {
+        content { com.nerfherder.walkthor.ui.PickDisclosureDialog(onAgree = {}, onDismiss = {}) }
+        settle()
+        shot("18b-pick-disclosure")
+    }
+
+    @Test
     fun emulatorSetting() {
         content {
             LibraryScreen(
