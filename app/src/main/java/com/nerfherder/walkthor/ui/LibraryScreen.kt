@@ -386,7 +386,6 @@ private fun SettingsScreen(
 ) {
     var pickDim by remember { mutableStateOf(false) }
     var showAccounts by remember { mutableStateOf(false) }
-    var showPickDisclosure by remember { mutableStateOf(false) }
     var showEmulators by remember { mutableStateOf(false) }
     var section by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(SettingsSection.GENERAL) }
     val menuScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -395,7 +394,6 @@ private fun SettingsScreen(
     val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
     val detecting by com.nerfherder.walkthor.EmulatorWatch.on.collectAsState()
-    val picking by com.nerfherder.walkthor.EmulatorWatch.pickOn.collectAsState()
     // Your ROMs folder: for picking which game you're playing, and for scraping artwork.
     val romLib = remember { com.nerfherder.walkthor.data.RomLibrary.get(context) }
     val romFolder by romLib.folder.collectAsState()
@@ -502,17 +500,6 @@ private fun SettingsScreen(
                     if (detecting) {
                         SettingLink("Choose emulators", "Tick any WalkThor doesn't know") { showEmulators = true }
                     }
-                    if (detecting && !cocoonLinked) {
-                        SettingSwitch(
-                            "Recognise the game you pick",
-                            "From the name you highlight in your frontend",
-                            checked = picking,
-                        ) { on ->
-                            if (!on) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, false)
-                            else if (com.nerfherder.walkthor.EmulatorWatch.hasPickConsent(context)) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, true)
-                            else showPickDisclosure = true
-                        }
-                    }
                 }
                 if (detecting && cocoonLinked) {
                     SettingsNote("With Cocoon linked, WalkThor knows the game from Cocoon's launch log.")
@@ -553,12 +540,6 @@ private fun SettingsScreen(
     }
     if (showAccounts) ScraperAccountsDialog(onDismiss = { showAccounts = false })
     if (showEmulators) EmulatorsDialog(onDismiss = { showEmulators = false })
-    if (showPickDisclosure) {
-        PickDisclosureDialog(
-            onAgree = { showPickDisclosure = false; com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, true) },
-            onDismiss = { showPickDisclosure = false },
-        )
-    }
     if (pickDim) {
         AlertDialog(
             onDismissRequest = { pickDim = false; AutoDim.previewing.value = false },

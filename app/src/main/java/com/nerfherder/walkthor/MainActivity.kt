@@ -237,7 +237,6 @@ class MainActivity : ComponentActivity() {
                             host = this@MainActivity,
                         )
                         AutoDimOverlay()
-                        com.nerfherder.walkthor.ui.HeardReadout()
                     }
                 }
             }
@@ -596,19 +595,6 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         val books = booksNow
         val systems = com.nerfherder.walkthor.data.RomLibrary.systemsFor(s.name)
         val candidates = romsNow.filter { systems.isEmpty() || it.system in systems }
-        // "Recognise the game you pick": the text on your frontend's screen just before, most
-        // likely first (what you highlighted, then what appeared most recently). Only a game in
-        // your ROMs folder or a guide that matches counts; menu labels and the like never do.
-        if (s.picked.isNotEmpty()) {
-            for (label in s.picked) {
-                (com.nerfherder.walkthor.data.RomLibrary.matchLabel(label, candidates) ?: com.nerfherder.walkthor.data.RomLibrary.matchLabel(label, romsNow))?.let { return romPick(s, it) }
-                if (books.isNotEmpty()) {
-                    GameGuides.pick(context, books, LaunchedGame(label, null, s.name, s.at))?.let { b ->
-                        return EmuPick(gameTitleOf(b.title), null, b, null)
-                    }
-                }
-            }
-        }
         EmulatorWatch.seenText().asReversed().forEach { text ->
             com.nerfherder.walkthor.data.RomLibrary.matchName(text, candidates)?.let { return romPick(s, it) }
             if (books.isNotEmpty()) {
@@ -617,9 +603,6 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 }
             }
         }
-        // Your frontend's screen was read but showed none of your games: ask, rather than
-        // guessing the last game you played here (which is often a different one).
-        if (EmulatorWatch.pickActive.value) return null
         return EmulatorWatch.recentEntries(context, s.pkg).firstNotNullOfOrNull { e ->
             if (e.startsWith("r:")) romsNow.firstOrNull { it.id == e.drop(2) }?.let { romPick(s, it) }
             else books.firstOrNull { it.id == e.drop(2) }?.let { b -> EmuPick(gameTitleOf(b.title), null, b, null) }

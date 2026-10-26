@@ -193,17 +193,10 @@ class SwipeGestureService : AccessibilityService() {
      */
     fun applyEventTypes() {
         val info = serviceInfo ?: return
-        val picking = EmulatorWatch.pickActive.value
         val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or
-            (if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0) or
-            // "Recognise the game you pick": what you highlight or select (see EmulatorWatch).
-            (if (picking) AccessibilityEvent.TYPE_VIEW_FOCUSED or AccessibilityEvent.TYPE_VIEW_SELECTED or
-                AccessibilityEvent.TYPE_VIEW_CLICKED or AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED or
-                AccessibilityEvent.TYPE_VIEW_HOVER_ENTER or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-                AccessibilityEvent.TYPE_VIEW_SCROLLED else 0)
-        // Icons are often marked "not important" for accessibility; include them so their names come through.
-        val notImportant = android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
-        val flags = if (picking) info.flags or notImportant else info.flags and notImportant.inv()
+            (if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0)
+        // Never other apps' screen contents (an older version read your frontend's screen).
+        val flags = info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS.inv()
         // While detecting, every app switch counts: don't let Android merge quick ones together
         // (a fast emulator launch could otherwise be missed).
         val timeout = if (EmulatorWatch.active.value) 0L else 1000L
