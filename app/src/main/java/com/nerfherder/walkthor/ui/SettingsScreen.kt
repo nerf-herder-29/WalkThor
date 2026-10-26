@@ -130,7 +130,8 @@ fun SettingsFrame(
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    "Close WalkThor",
+                    if (narrow) "Close" else "Close WalkThor",
+                    maxLines = 1,
                     fontSize = 11.sp,
                     color = BookColors.TextMuted.copy(alpha = 0.7f),
                     modifier = Modifier
@@ -194,7 +195,7 @@ fun SettingRow(
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
-        val stack = buttons != null && maxWidth < 430.dp
+        val stack = buttons != null && maxWidth < 380.dp
         Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
