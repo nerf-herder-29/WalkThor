@@ -50,8 +50,8 @@ step that's done.
   your guides (your last picks first), or picks by itself when the emulator shows a matching name.
 - **Your library** — with a ROMs folder linked, the library shows your games as covers, by
   system folder down the left (with All games and your Guides). Games with a guide are tagged;
-  tap one to open its guide, or add or pick one. Long-press a game to choose its cover: yours
-  first, then Cocoon's artwork, then scraped art.
+  tap one to open its guide, or add or pick one. Long-press a game to choose its cover, its
+  background on Now playing and its marquee: yours first, then Cocoon's artwork, then scraped art.
 - **Artwork scraping** — add a ScreenScraper account and/or a SteamGridDB API key (Settings →
   Artwork → *Scraper accounts*) and WalkThor scrapes box art for your guides' covers, and a
   screenshot and marquee for each game, shown on Now playing, the splash and behind the tabs. A

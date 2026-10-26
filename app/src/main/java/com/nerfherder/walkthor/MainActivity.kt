@@ -529,7 +529,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             host.pickedCoverFlow.value = null
             if (bookId.startsWith(GAME_COVER)) {
                 // A cover you picked for a game in your library.
-                host.lifecycleScope.launch { com.nerfherder.walkthor.data.GameCovers.setUser(context, bookId.removePrefix(GAME_COVER), uri) }
+                // "game:<kind>|<title>": a cover, background or marquee you picked for a game.
+                val rest = bookId.removePrefix(GAME_COVER)
+                val kind = com.nerfherder.walkthor.data.GameCovers.Kind.entries.firstOrNull { rest.startsWith(it.name + "|") }
+                val title = if (kind != null) rest.substringAfter('|') else rest
+                host.lifecycleScope.launch {
+                    com.nerfherder.walkthor.data.GameCovers.setUser(context, title, uri, kind ?: com.nerfherder.walkthor.data.GameCovers.Kind.COVER)
+                }
             } else {
                 books.firstOrNull { it.id == bookId }?.let { library.setCover(it, uri) }
             }
@@ -1101,7 +1107,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
                 onLinkRoms = host::pickRomFolder,
-                onPickGameCover = { title -> host.pickCoverImage(GAME_COVER + title) },
+                onPickGameCover = { title, kind -> host.pickCoverImage(GAME_COVER + kind.name + "|" + title) },
                 onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
                 onLinkGuide = { game, id -> linkGuide(game, id); openId = id },
             ),

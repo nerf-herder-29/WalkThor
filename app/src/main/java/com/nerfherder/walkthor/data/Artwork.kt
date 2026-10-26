@@ -186,7 +186,14 @@ class ArtworkRepository private constructor(private val context: Context) {
             cover = fromFolder.cover ?: scraped.cover,
             logo = fromFolder.logo ?: scraped.logo,
             hero = fromFolder.hero ?: scraped.hero,
-        )).let { a -> GameCovers.userCover(context, title)?.let { a.copy(cover = it) } ?: a }
+        )).let { a ->
+            // Art you chose for this game wins over both.
+            GameArt(
+                cover = GameCovers.user(context, title, file, GameCovers.Kind.COVER) ?: a.cover,
+                logo = GameCovers.user(context, title, file, GameCovers.Kind.LOGO) ?: a.logo,
+                hero = GameCovers.user(context, title, file, GameCovers.Kind.HERO) ?: a.hero,
+            )
+        }
         merged.also { lastGameArt = key to it }
     }
 
@@ -194,8 +201,11 @@ class ArtworkRepository private constructor(private val context: Context) {
     fun forgetGameArt() { lastGameArt = null; GameCovers.invalidate() }
 
     /** The artwork folder's box art for a game, if it has one. */
-    suspend fun folderCover(title: String, file: String?): String? =
-        withContext(Background.dispatcher) { if (_folder.value == null) null else folderGameArt(title, file).cover }
+    suspend fun folderCover(title: String, file: String?): String? = folderArt(title, file).cover
+
+    /** The artwork folder's art for a game (cover, logo, wide art), whatever it has. */
+    suspend fun folderArt(title: String, file: String?): GameArt =
+        withContext(Background.dispatcher) { if (_folder.value == null) GameArt(null) else folderGameArt(title, file) }
 
     private suspend fun folderGameArt(title: String, file: String?): GameArt {
         val names = listOfNotNull(title, file?.substringBeforeLast('.'))
@@ -251,18 +261,18 @@ class ArtworkRepository private constructor(private val context: Context) {
      * Copies an image (any content/file URI) into [dir] as a reasonably sized cover.
      * Returns the new file name.
      */
-    suspend fun saveCover(source: Uri, dir: File, bookId: String): String? = withContext(Dispatchers.IO) {
+    suspend fun saveCover(source: Uri, dir: File, bookId: String, maxSize: Int = COVER_MAX): String? = withContext(Dispatchers.IO) {
         runCatching {
             val cr = context.contentResolver
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             cr.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, bounds) }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
             var sample = 1
-            while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= COVER_MAX) sample *= 2
+            while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSize) sample *= 2
             val bmp = cr.openInputStream(source)?.use {
                 BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
             } ?: return@runCatching null
-            val scale = COVER_MAX.toFloat() / max(bmp.width, bmp.height)
+            val scale = maxSize.toFloat() / max(bmp.width, bmp.height)
             val sized = if (scale < 1f) {
                 Bitmap.createScaledBitmap(bmp, (bmp.width * scale).toInt().coerceAtLeast(1), (bmp.height * scale).toInt().coerceAtLeast(1), true)
             } else bmp

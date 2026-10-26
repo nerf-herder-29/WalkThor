@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -186,7 +187,7 @@ fun GamesGrid(roms: List<Rom>, books: List<Book>, coverFile: (Book) -> File?, ac
             subtitle = RomLibrary.system(rom.system)?.name ?: rom.system,
             gameTitle = rom.title,
             file = rom.file,
-            onPickFile = { artFor = null; actions.onPickGameCover(rom.title) },
+            onPickFile = { kind -> artFor = null; actions.onPickGameCover(rom.title, kind) },
             onDismiss = { artFor = null },
         )
     }
@@ -322,13 +323,15 @@ private fun GameSheet(
                 TextButton(onClick = onAddGuide) { Text("Add guide") }
             }
         },
-        dismissButton = { TextButton(onClick = onChooseCover) { Text("Choose cover", color = BookColors.TextMuted) } },
+        dismissButton = { TextButton(onClick = onChooseCover) { Text("Choose art", color = BookColors.TextMuted) } },
     )
 }
 
 /**
- * Choose a game's cover: yours (if you've set one), the Cocoon artwork folder's, the scraped one,
- * or any image file. "Use automatic" goes back to Cocoon's, else the scraped one.
+ * Choose a game's art, in three tabs: its cover (library), background (Now playing, behind the
+ * tabs, the splash) and marquee (the logo on top). Each shows yours (if you've set one), the
+ * Cocoon artwork folder's and the scraped one, or any image file. "Use automatic" goes back to
+ * Cocoon's, else the scraped one.
  */
 @Composable
 fun GameArtworkDialog(
@@ -336,16 +339,19 @@ fun GameArtworkDialog(
     subtitle: String,
     gameTitle: String,
     file: String?,
-    onPickFile: () -> Unit,
+    onPickFile: (GameCovers.Kind) -> Unit,
     onDismiss: () -> Unit,
+    startOn: GameCovers.Kind = GameCovers.Kind.COVER,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val options by produceState<GameCovers.Options?>(null, gameTitle, file) { value = GameCovers.options(context, gameTitle, file) }
-    val o = options
-    // What's in use now: yours, else the automatic one.
-    val current = o?.user ?: o?.cocoon ?: o?.scraped
-    var chosen by remember(current) { mutableStateOf(current) }
+    val version by GameCovers.version.collectAsState()
+    val all by produceState<Map<GameCovers.Kind, GameCovers.Options>?>(null, gameTitle, file, version) {
+        value = GameCovers.allOptions(context, gameTitle, file)
+    }
+    var kind by remember { mutableStateOf(startOn) }
+    // Your pick per tab, applied together with Done.
+    val picks = remember { androidx.compose.runtime.mutableStateMapOf<GameCovers.Kind, String>() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
             Modifier
@@ -355,23 +361,55 @@ fun GameArtworkDialog(
                 .padding(20.dp),
         ) {
             Text(title, fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = BookColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("$subtitle · Choose the cover shown in your library", color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
-            Spacer(Modifier.height(16.dp))
+            Text(
+                "$subtitle · " + when (kind) {
+                    GameCovers.Kind.COVER -> "Shown in your library"
+                    GameCovers.Kind.HERO -> "Shown behind the game on Now playing"
+                    GameCovers.Kind.LOGO -> "Shown on top of the background"
+                },
+                color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp),
+            )
+            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GameCovers.Kind.entries.forEach { k ->
+                    val on = k == kind
+                    Text(
+                        k.label,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (on) Color.Black else BookColors.TextMuted,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(if (on) BookColors.Text else BookColors.SurfaceHigh)
+                            .clickable { kind = k }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            val o = all?.get(kind)
+            val current = o?.let { it.user ?: it.cocoon ?: it.scraped }
+            val chosen = picks[kind] ?: current
+            // Box art is tall, backgrounds wide, marquees wider still (and shown whole).
+            val (w, ratio) = when (kind) {
+                GameCovers.Kind.COVER -> 96.dp to 3f / 4f
+                GameCovers.Kind.HERO -> 150.dp to 16f / 9f
+                GameCovers.Kind.LOGO -> 150.dp to 2f
+            }
             if (o == null) {
-                Text("Looking for covers…", color = BookColors.TextMuted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 40.dp))
+                Text("Looking for art…", color = BookColors.TextMuted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 40.dp))
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    o.user?.let { CoverChoice(it, "Yours", "Picked by you", chosen == it) { chosen = it } }
-                    o.cocoon?.let { CoverChoice(it, "Cocoon", "Artwork folder", chosen == it) { chosen = it } }
-                    o.scraped?.let { CoverChoice(it, "Scraped", "Fetched online", chosen == it) { chosen = it } }
-                    Column(Modifier.width(100.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    o.user?.let { ArtChoice(it, "Yours", "Picked by you", chosen == it, w, ratio, kind) { picks[kind] = it } }
+                    o.cocoon?.let { ArtChoice(it, "Cocoon", "Artwork folder", chosen == it, w, ratio, kind) { picks[kind] = it } }
+                    o.scraped?.let { ArtChoice(it, "Scraped", "Fetched online", chosen == it, w, ratio, kind) { picks[kind] = it } }
+                    Column(Modifier.width(w)) {
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(3f / 4f)
+                                .aspectRatio(ratio)
                                 .clip(RoundedCornerShape(8.dp))
                                 .border(1.dp, BookColors.Hairline, RoundedCornerShape(8.dp))
-                                .clickable(onClick = onPickFile),
+                                .clickable { onPickFile(kind) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("+\nPick an image", color = BookColors.TextMuted, fontSize = 11.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -384,19 +422,23 @@ fun GameArtworkDialog(
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (o?.user != null) {
-                    TextButton(onClick = { GameCovers.clearUser(context, gameTitle); onDismiss() }) {
+                    TextButton(onClick = { GameCovers.clearUser(context, gameTitle, kind); picks.remove(kind) }) {
                         Text("Use automatic", color = BookColors.TextMuted)
                     }
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onDismiss) { Text("Cancel", color = BookColors.TextMuted) }
                 TextButton(onClick = {
-                    val pick = chosen
-                    if (pick != null && pick != current) {
-                        scope.launch {
+                    val chosenNow = picks.toMap()
+                    val options = all
+                    scope.launch {
+                        chosenNow.forEach { (k, pick) ->
+                            val op = options?.get(k) ?: return@forEach
+                            val cur = op.user ?: op.cocoon ?: op.scraped
+                            if (pick == cur) return@forEach
                             // Choosing the automatic one just clears yours; anything else becomes yours.
-                            if (o?.user != null && pick == (o.cocoon ?: o.scraped)) GameCovers.clearUser(context, gameTitle)
-                            else GameCovers.setUser(context, gameTitle, Uri.parse(pick))
+                            if (op.user != null && pick == (op.cocoon ?: op.scraped)) GameCovers.clearUser(context, gameTitle, k)
+                            else GameCovers.setUser(context, gameTitle, Uri.parse(pick), k)
                         }
                     }
                     onDismiss()
@@ -407,18 +449,24 @@ fun GameArtworkDialog(
 }
 
 @Composable
-private fun CoverChoice(uri: String, label: String, note: String, on: Boolean, onClick: () -> Unit) {
-    Column(Modifier.width(100.dp)) {
+private fun ArtChoice(
+    uri: String, label: String, note: String, on: Boolean,
+    width: androidx.compose.ui.unit.Dp, ratio: Float, kind: GameCovers.Kind, onClick: () -> Unit,
+) {
+    Column(Modifier.width(width)) {
         AsyncImage(
             Uri.parse(uri),
             contentDescription = label,
-            contentScale = ContentScale.Crop,
+            // Marquees are logos: show them whole, on a dark card.
+            contentScale = if (kind == GameCovers.Kind.LOGO) ContentScale.Fit else ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(3f / 4f)
+                .aspectRatio(ratio)
                 .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0B0B0D))
                 .border(if (on) 3.dp else 1.dp, if (on) BookColors.Text else BookColors.Hairline, RoundedCornerShape(8.dp))
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .padding(if (kind == GameCovers.Kind.LOGO) 8.dp else 0.dp),
         )
         Text(label, color = BookColors.Text, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
         Text(note, color = BookColors.TextMuted, fontSize = 10.sp)

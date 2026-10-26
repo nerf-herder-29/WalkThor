@@ -131,8 +131,8 @@ class LibraryActions(
     val onSwapScreen: (() -> Unit)?,
     /** Pick your ROMs folder (one folder per system). */
     val onLinkRoms: () -> Unit = {},
-    /** Pick an image file as a game's cover. */
-    val onPickGameCover: (String) -> Unit = {},
+    /** Pick an image file as a game's cover, background or marquee. */
+    val onPickGameCover: (String, com.nerfherder.walkthor.data.GameCovers.Kind) -> Unit = { _, _ -> },
     /** Add a guide (file picker) and link it to a game. */
     val onAddGuideFor: (com.nerfherder.walkthor.data.LaunchedGame) -> Unit = {},
     /** Link one of your guides to a game, and open it. */

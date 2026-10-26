@@ -182,11 +182,14 @@ class StoreScreenshots {
         content {
             com.nerfherder.walkthor.ui.GameArtworkDialog(
                 title = "Lanterns of Emberfall", subtitle = "Nintendo GameCube", gameTitle = "Lanterns of Emberfall",
-                file = "Lanterns of Emberfall (USA).rvz", onPickFile = {}, onDismiss = {},
+                file = "Lanterns of Emberfall (USA).rvz", onPickFile = { _ -> }, onDismiss = {},
             )
         }
         settle()
         shot("02e-game-artwork")
+        compose.onNodeWithText("Background").performClick()
+        settle()
+        shot("02f-game-artwork-background")
     }
 
     @Test
