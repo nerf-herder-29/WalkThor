@@ -24,8 +24,7 @@ object EmulatorWatch {
      * A game running in [name] (the emulator's app name), since [at]. [picked] is the name you
      * last highlighted in your frontend just before (with "Recognise the game you pick").
      */
-    /** [from]: the app on the game screen just before (your frontend), if any. */
-    data class Session(val pkg: String, val name: String, val at: Long, val picked: List<String> = emptyList(), val from: String? = null)
+    data class Session(val pkg: String, val name: String, val at: Long, val picked: List<String> = emptyList())
 
     /** The last thing you highlighted or selected in another app (your frontend), in memory only. */
     data class Heard(val pkg: String, val app: String, val text: String, val at: Long)
@@ -61,20 +60,6 @@ object EmulatorWatch {
     private var lastFront: String? = null
     /** Apps WalkThor opened on its own screen (Apps tab), and when: they don't end or restart a game. */
     private val openedHere = HashMap<String, Long>()
-    /** The app last seen on the bottom screen (WalkThor's screen): WalkThor itself, or another. */
-    @Volatile private var bottomApp: String? = null
-
-    /**
-     * Your frontend still has its own screen on the bottom display while the game runs (a dual-screen
-     * frontend like iiSU). Jumping in front of it there makes some close the game, so WalkThor waits
-     * for your swipe instead.
-     */
-    fun frontendOnBottom(context: Context, session: Session): Boolean {
-        val b = bottomApp ?: return false
-        // Cocoon hands its bottom screen to WalkThor, so opening over it is fine.
-        return b != context.packageName && b == session.from && "cocoon" !in b.lowercase()
-    }
-
     /** WalkThor's Apps tab just opened [pkg] on WalkThor's screen. */
     fun openedByWalkThor(pkg: String) { synchronized(openedHere) { openedHere[pkg] = System.currentTimeMillis() } }
     private fun isOpenedHere(pkg: String) = synchronized(openedHere) {
@@ -129,9 +114,7 @@ object EmulatorWatch {
         if (!active.value) return null
         val pkg = event.packageName?.toString() ?: return null
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && onBottom(context, event)) {
-            // WalkThor's screen: what shows there doesn't start or end a game (a dual-screen
-            // frontend keeps its second screen there while the game runs). Just note who it is.
-            if (pkg == context.packageName || isApp(context, pkg)) bottomApp = pkg
+            // WalkThor's screen: what shows there doesn't start or end a game.
             return null
         }
         if (pkg == context.packageName) return null
@@ -150,8 +133,7 @@ object EmulatorWatch {
                         val now = System.currentTimeMillis()
                         // What you highlighted in your frontend just before is most likely the game.
                         val picked = pickedBefore(now)
-                        val from = previous?.takeIf { it != pkg && !isEmulator(context, it) }
-                        Session(pkg, label(context, pkg), now, picked, from).also { session.value = it }
+                        Session(pkg, label(context, pkg), now, picked).also { session.value = it }
                     } else null
                     remember(event.text.map { it.toString() } + listOfNotNull(event.contentDescription?.toString()), pkg, context)
                     return started
@@ -194,7 +176,7 @@ object EmulatorWatch {
     }
 
     /** What WalkThor last read from your frontend's screen (for the readout). */
-    data class Scan(val app: String, val items: Int, val texts: List<String>, val at: Long, val windows: Int = 1)
+    data class Scan(val app: String, val items: Int, val texts: List<String>, val at: Long)
     val scan = MutableStateFlow<Scan?>(null)
     /** Each text on the frontend's screen and when it last appeared there (newest last). */
     private val appeared = LinkedHashMap<String, Long>()
@@ -251,22 +233,9 @@ object EmulatorWatch {
                 .map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
             if (t.isNotEmpty()) synchronized(appeared) { focusedTexts = t; focusedAt = now }
         }
-        // Every window the frontend has, on both screens: a dual-screen frontend (iiSU) shows its
-        // menu on one screen and the games on the other, and either can be the one that changed.
-        val roots = frontendRoots(context, pkg).ifEmpty {
-            listOfNotNull(
-                runCatching { source?.window?.root }.getOrNull()
-                    ?: runCatching { (context as? android.accessibilityservice.AccessibilityService)?.rootInActiveWindow }.getOrNull()
-            )
-        }
-        var count = 0
-        val texts = ArrayList<String>()
-        for (r in roots) {
-            val (t, c) = screenTexts(r, 500 - count)
-            texts += t
-            count += c
-            if (count >= 500) break
-        }
+        val root = runCatching { source?.window?.root }.getOrNull()
+            ?: runCatching { (context as? android.accessibilityservice.AccessibilityService)?.rootInActiveWindow }.getOrNull()
+        val (texts, count) = if (root != null) screenTexts(root) else emptyList<String>() to 0
         val clean = texts.map { it.trim() }.filter { it.length in 2..150 && !it.equals(name, true) }.distinct()
         val newest = synchronized(appeared) {
             val before = onScreen.toSet()
@@ -277,7 +246,7 @@ object EmulatorWatch {
         }
         // Turned off while reading: keep nothing.
         if (!pickActive.value) return
-        scan.value = Scan(name, count, clean.take(10), now, roots.size)
+        scan.value = Scan(name, count, clean.take(10), now)
         (synchronized(appeared) { focusedTexts.firstOrNull() } ?: newest)?.let { heard.value = Heard(pkg, name, it, now) }
     }
 
@@ -289,20 +258,6 @@ object EmulatorWatch {
     }
 
     /** All the text on a screen (a few hundred items at most). */
-    /** The roots of all of [pkg]'s windows, on every screen (Android 11 and later). */
-    private fun frontendRoots(context: Context, pkg: String): List<android.view.accessibility.AccessibilityNodeInfo> {
-        if (android.os.Build.VERSION.SDK_INT < 30) return emptyList()
-        val service = context as? android.accessibilityservice.AccessibilityService ?: return emptyList()
-        val all = runCatching { service.windowsOnAllDisplays }.getOrNull() ?: return emptyList()
-        val out = ArrayList<android.view.accessibility.AccessibilityNodeInfo>()
-        for (i in 0 until all.size()) {
-            all.valueAt(i).orEmpty().forEach { w ->
-                runCatching { w.root }.getOrNull()?.takeIf { it.packageName?.toString() == pkg }?.let(out::add)
-            }
-        }
-        return out
-    }
-
     private fun screenTexts(root: android.view.accessibility.AccessibilityNodeInfo, budget: Int = 300): Pair<List<String>, Int> {
         val out = ArrayList<String>()
         val queue = ArrayDeque<android.view.accessibility.AccessibilityNodeInfo>()
@@ -456,7 +411,7 @@ object EmulatorWatch {
     )
     private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
     private val FRONTENDS = listOf(
-        "cocoon", "es-de", "es_de", "esde", "daijish", "beacon", "console launcher", "consolelauncher", "iisu",
+        "cocoon", "es-de", "es_de", "esde", "daijish", "beacon", "console launcher", "consolelauncher",
         "pegasus", "odin", "launcher", "frontend", "retro hub", "gamehub launcher",
     )
 }
