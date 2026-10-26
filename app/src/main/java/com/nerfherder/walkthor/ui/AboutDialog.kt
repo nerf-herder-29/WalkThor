@@ -205,8 +205,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "in a ROMs folder you link, and Cocoon's launch_debug.log (to see which game you launched). The " +
                         "accessibility service responds " +
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
-                        "of the game's screen once to hand it back top performance priority; with Open when an emulator starts " +
-                        "on, it also notes which app comes to the front (and, without Cocoon, the running emulator's window " +
+                        "of the game's screen once to hand it back top performance priority, only when a game is in front there " +
+                        "(so it notes which app is in front on each screen); with Open when an emulator starts " +
+                        "on, it uses that to see an emulator start (and, without Cocoon, the running emulator's window " +
                         "title and notifications, kept in memory only). It never reads other apps' screens. " +
                         "Mirror and the Stats tab's FPS meter use the top screen's picture only while you use them (Android " +
                         "asks first); the picture is never recorded, saved or sent. The Stats tab reads the battery, heat, memory " +

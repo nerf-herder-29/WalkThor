@@ -226,6 +226,8 @@ object Scraper {
     private const val SCRAPED = "scraped:"
 
     private suspend fun guideCover(c: Context, book: Book, refresh: Boolean): Boolean {
+        // Your Cocoon artwork folder has an image for it: that's its cover, not scraped art.
+        if (ArtworkRepository.get(c).autoMatch(book.title) != null) return false
         val title = com.nerfherder.walkthor.ui.gameTitleOf(book.title)
         // The guide's game in your ROMs folder, if it's there: its system makes the match exact.
         val rom = RomLibrary.matchName(title, RomLibrary.get(c).roms.value)

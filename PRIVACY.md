@@ -20,8 +20,10 @@ scraper account and start a scrape (see below). Everything else stays on your de
   there, to open or close WalkThor. While a game is running, it also taps the very top edge of
   the game's screen once, a couple of seconds after WalkThor opens or after you finish typing a
   search, because Android gives top
-  performance priority to the screen last touched (turning off accessibility access stops it too). It does **not** read the content of your screen or of other apps, and does not
-  record what you type.
+  performance priority to the screen last touched (turning off accessibility access stops it too).
+  To make sure that tap only ever lands on a game, never on Cocoon or another app, it notes which
+  app is in front on each screen (the app's name only, in memory). It does **not** read the content
+  of your screen or of other apps, and does not record what you type.
 
 - **Mirror (screen capture), only when you use it.** The Mirror tab shows part of the top
   screen live on the bottom screen, using Android's screen capture. Android asks for your

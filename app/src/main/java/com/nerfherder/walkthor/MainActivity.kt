@@ -291,6 +291,12 @@ class MainActivity : ComponentActivity() {
                 if (yielding != true || PerfCheck.walkThorIsTop.value != true) return@launch
                 val gameDisplay = DisplayHelper.gameDisplay(this@MainActivity)
                 if (gameDisplay == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
+                // Cocoon (or another frontend) on the game screen, not a game: a tap there would
+                // press something in it (turning its pages), so never tap.
+                if (!EmulatorWatch.gameInFront(this@MainActivity, gameDisplay.displayId)) {
+                    PerfCheck.handBack.value = "skipped (no game in front on the game screen)"
+                    return@launch
+                }
                 val service = SwipeGestureService.instance?.get()
                 if (service == null) {
                     PerfCheck.handBack.value = "needs accessibility access switched on"

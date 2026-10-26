@@ -178,16 +178,14 @@ class ArtworkRepository private constructor(private val context: Context) {
         // The same game is looked up again on every swipe; answer from the last lookup.
         val key = "$title|$file"
         lastGameArt?.let { (k, art) -> if (k == key) return@withContext art }
-        // Artwork WalkThor scraped itself comes first; the linked folder fills any gaps.
-        val scraped = ScrapedArt.lookup(context, title, file)
-        if (scraped != null && scraped.cover != null && scraped.hero != null && scraped.logo != null) {
-            return@withContext scraped.also { lastGameArt = key to it }
-        }
+        // Your Cocoon artwork folder comes first; artwork WalkThor scraped only fills its gaps.
         val fromFolder = folderGameArt(title, file)
+        val scraped = if (fromFolder.cover != null && fromFolder.hero != null && fromFolder.logo != null) null
+        else ScrapedArt.lookup(context, title, file)
         val merged = if (scraped == null) fromFolder else GameArt(
-            cover = scraped.cover ?: fromFolder.cover,
-            logo = scraped.logo ?: fromFolder.logo,
-            hero = scraped.hero ?: fromFolder.hero,
+            cover = fromFolder.cover ?: scraped.cover,
+            logo = fromFolder.logo ?: scraped.logo,
+            hero = fromFolder.hero ?: scraped.hero,
         )
         merged.also { lastGameArt = key to it }
     }

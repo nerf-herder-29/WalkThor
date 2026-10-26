@@ -35,6 +35,15 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val artFolder: StateFlow<Uri?> = art.folder
     /** Number of images in the linked artwork folder (the index itself stays on disk). */
     val artCount = art.count.also { art.prepare() }
+
+    init {
+        // Covers scraped before the artwork folder was preferred: swap in the folder's image
+        // where it has one.
+        viewModelScope.launch {
+            if (art.folder.value == null) return@launch
+            repo.books.value.filter { it.coverSource?.startsWith("scraped:") == true }.forEach { autoCover(it) }
+        }
+    }
     val artScanning: StateFlow<String?> = art.scanning
 
     private val _import = MutableStateFlow<ImportState?>(null)
@@ -177,8 +186,6 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun autoCover(book: Book): Boolean {
         val fresh = repo.find(book.id) ?: return false
         if (fresh.coverManual) return false
-        // Box art scraped for this guide stays; the artwork folder fills in guides without a cover.
-        if (fresh.coverSource?.startsWith("scraped:") == true && repo.coverFile(fresh) != null) return false
         val match = art.autoMatch(fresh.title) ?: return false
         if (match.uri == fresh.coverSource && repo.coverFile(fresh) != null) return false
         val name = art.saveCover(Uri.parse(match.uri), repo.coversDir, fresh.id) ?: return false

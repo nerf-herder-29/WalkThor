@@ -183,6 +183,7 @@ class SwipeGestureService : AccessibilityService() {
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         // Never let a bad event take the service down: Android turns off an accessibility
         // service that keeps crashing, and WalkThor would lose its access.
+        runCatching { EmulatorWatch.noteFront(this, event) }
         val started = try { EmulatorWatch.onEvent(this, event) } catch (_: Throwable) { null } ?: return
         runCatching { openForGame(started) }
     }
@@ -193,8 +194,10 @@ class SwipeGestureService : AccessibilityService() {
      */
     fun applyEventTypes() {
         val info = serviceInfo ?: return
-        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or
-            (if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0)
+        // Which app is in front (always: the hand-back tap only goes to a game, never Cocoon), plus
+        // the running emulator's notifications while "Open when an emulator starts" is on.
+        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+            (if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0)
         // Never other apps' screen contents (an older version read your frontend's screen).
         val flags = info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS.inv()
         // While detecting, every app switch counts: don't let Android merge quick ones together

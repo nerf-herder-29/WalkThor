@@ -183,6 +183,42 @@ object EmulatorWatch {
     }
 
     /** An app you can switch to (it has a home-screen icon), or an emulator. */
+    /** The app last seen coming to the front on each screen (whatever the settings). */
+    private val frontByDisplay = java.util.concurrent.ConcurrentHashMap<Int, String>()
+
+    /** From the accessibility service: notes which app came to the front on which screen. */
+    fun noteFront(context: Context, event: AccessibilityEvent) {
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || android.os.Build.VERSION.SDK_INT < 30) return
+        val pkg = event.packageName?.toString() ?: return
+        if (pkg != context.packageName && !isApp(context, pkg)) return // keyboards, system overlays
+        frontByDisplay[event.displayId] = pkg
+    }
+
+    /**
+     * Whether a game is in front on [displayId]: an emulator or another game app, not Cocoon, your
+     * home screen or another frontend. Unknown (nothing seen yet) counts as no.
+     */
+    fun gameInFront(context: Context, displayId: Int): Boolean {
+        val pkg = frontByDisplay[displayId] ?: return false
+        if (pkg == context.packageName) return false
+        if (isEmulator(context, pkg)) return true
+        val home = runCatching {
+            context.packageManager.resolveActivity(
+                android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME),
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+            )?.activityInfo?.packageName
+        }.getOrNull()
+        if (pkg == home) return false
+        val p = pkg.lowercase()
+        val l = label(context, pkg).lowercase()
+        return NOT_GAMES.none { it in p || it in l }
+    }
+
+    private val NOT_GAMES = listOf(
+        "cocoon", "launcher", "frontend", "es-de", "es_de", "esde", "daijish", "beacon", "pegasus", "odin",
+        "settings", "systemui", "android.vending", "play store", "files", "documentsui",
+    )
+
     private fun isApp(context: Context, pkg: String): Boolean = appCache.getOrPut(pkg) {
         isEmulator(context, pkg) || runCatching { context.packageManager.getLaunchIntentForPackage(pkg) != null }.getOrDefault(false)
     }
