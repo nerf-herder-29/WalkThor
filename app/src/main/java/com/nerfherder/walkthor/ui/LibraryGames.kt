@@ -85,7 +85,7 @@ fun LibraryRail(roms: List<Rom>, guides: Int, section: String, onSection: (Strin
     val narrow = LocalConfiguration.current.screenWidthDp < 520
     val systems = remember(roms) {
         roms.groupingBy { it.system }.eachCount().entries
-            .map { (key, n) -> Triple(key, RomLibrary.system(key)?.let { shortSystem(it.name) } ?: key.uppercase(), n) }
+            .map { (key, n) -> Triple(key, railName(key), n) }
             .sortedBy { it.second.lowercase() }
     }
     Column(
@@ -102,6 +102,10 @@ fun LibraryRail(roms: List<Rom>, guides: Int, section: String, onSection: (Strin
         RailItem("Guides", guides, section == LibrarySection.GUIDES, narrow) { onSection(LibrarySection.GUIDES) }
     }
 }
+
+/** A system's name short enough for the list: "GameCube", "PlayStation 2", else its folder ("GBA"). */
+private fun railName(key: String): String =
+    RomLibrary.system(key)?.let { shortSystem(it.name) }?.takeIf { it.length <= 13 } ?: key.uppercase()
 
 /** "Nintendo GameCube" → "GameCube", "Sony PlayStation 2" → "PlayStation 2". */
 private fun shortSystem(name: String) =
@@ -253,23 +257,15 @@ private fun PlainCover(rom: Rom) {
             .fillMaxSize()
             .background(Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(ink, Color.White, 0.14f), ink, Color(0xFF0D0D10)))),
     ) {
+        // The name is under the card already; here just the system, quietly.
         Text(
-            (RomLibrary.system(rom.system)?.let { shortSystem(it.name) } ?: rom.system).uppercase(),
-            color = Color.White.copy(alpha = 0.6f),
-            fontSize = 9.sp,
+            railName(rom.system).uppercase(),
+            color = Color.White.copy(alpha = 0.55f),
+            fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
-        )
-        Text(
-            displayTitle(rom.title),
-            color = BookColors.Text,
-            fontFamily = DisplayFont,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            lineHeight = 16.sp,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 9.dp, end = 9.dp, bottom = 11.dp),
+            letterSpacing = 1.sp,
+            maxLines = 1,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 9.dp, end = 9.dp, bottom = 10.dp),
         )
     }
 }
