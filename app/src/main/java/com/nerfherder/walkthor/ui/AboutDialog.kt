@@ -102,7 +102,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "You can turn it off any time from the ⋮ menu or Android's Accessibility settings.",
+                    "You can turn it off any time from Settings (⋮) or Android's Accessibility settings.",
                     color = BookColors.TextMuted,
                     fontSize = 12.sp,
                 )
@@ -154,7 +154,7 @@ fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Needs accessibility access. Turn it off any time from the ⋮ menu.",
+                    "Needs accessibility access. Turn it off any time from Settings (⋮).",
                     color = BookColors.TextMuted,
                     fontSize = 12.sp,
                 )
@@ -199,7 +199,7 @@ fun PickDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "Some frontends don't tell Android what's on screen (ES-DE draws its menus like a game); then WalkThor " +
-                        "falls back to your last pick. To check yours, turn on ⋮ → About & licences → Performance check: " +
+                        "falls back to your last pick. To check yours, turn on Settings → About → About & licences → Performance check: " +
                         "WalkThor then shows what it read and which of your games it found there.",
                     color = BookColors.TextMuted,
                     fontSize = 12.sp,
@@ -279,7 +279,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     }
                 }
 
-                // Diagnostics: the performance check readout (moved here from the ⋮ menu).
+                // Diagnostics: the performance check readout (moved here from Settings (⋮)).
                 Section("Diagnostics")
                 // If Android has closed WalkThor to free memory (heavy games), what happened.
                 remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }

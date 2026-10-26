@@ -32,7 +32,7 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
    (and lets you swipe WalkThor up and down).
 
 Optional: link your artwork folder (Cocoon's media folder works) for game art, logos and guide
-covers. Every step is also in the app under ⋮ → *How to set up WalkThor*, with a tick for each
+covers. Every step is also in the app under Settings (⋮) → About → *How to set up WalkThor*, with a tick for each
 step that's done.
 
 ## Features
@@ -43,14 +43,14 @@ step that's done.
   Press and hold a tab to have that game open straight on it next time.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
-- **Opens when an emulator starts** — turn on *Open when an emulator starts* (⋮ menu) and
+- **Opens when an emulator starts** — turn on *Open when an emulator starts* (Settings → Emulators) and
   WalkThor opens on the bottom screen whenever an emulator comes to the front, from any frontend.
   With Cocoon linked it knows the game and its art from Cocoon as usual. Without Cocoon it asks
   *What are you playing?*, offering the games in your ROMs folder for that emulator's systems and
   your guides (your last picks first), or picks by itself when the emulator shows a matching name.
 - **Your ROMs folder and artwork scraping** — link the folder that holds one folder per system
   (`3ds`, `nds`, `gba`, `switch`, `psp`, `ps2`, `gc`…). Add a ScreenScraper account and/or a
-  SteamGridDB API key (⋮ → *Scraper accounts*) and WalkThor scrapes box art, wide art and logos for
+  SteamGridDB API key (Settings → Artwork → *Scraper accounts*) and WalkThor scrapes box art, wide art and logos for
   your games, used on Now playing, the splash and behind the tabs. Release builds can carry
   ScreenScraper developer credentials from the `SCREENSCRAPER_DEV_ID` / `SCREENSCRAPER_DEV_PASSWORD`
   repository secrets; otherwise users enter their own.
@@ -60,7 +60,7 @@ step that's done.
   the game's screen.
 - **Comes back if a heavy game pushes it out** — some demanding games make Android close other
   apps to free memory while they load. If that closes WalkThor during a game, it reopens on the
-  bottom screen right away and hands the game its priority back (⋮ → *About & licences* →
+  bottom screen right away and hands the game its priority back (Settings → About → *About & licences* →
   Diagnostics shows when this happened).
 - **Mirror** — show part of the top screen, like a minimap or HUD, live on the bottom screen. The
   picking box keeps the bottom screen's shape so the mirror fills it (or resize it freely). Pick
@@ -171,7 +171,7 @@ it doubles as the privacy-policy link for a store listing.
 ## Publishing notes
 
 - **License:** MIT — see [LICENSE](LICENSE). Open-source components and their licenses are listed in
-  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in the app under ⋮ → *About & licences*.
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in the app under Settings → About → *About & licences*.
 - **No content is bundled.** Users import their own guides; covers come from their own folders.
   Keep it that way — guides and box art belong to their authors and publishers.
 - **Cocoon:** WalkThor is not affiliated with Cocoon. It reads Cocoon's `launch_debug.log` from a folder the user links. It's not an

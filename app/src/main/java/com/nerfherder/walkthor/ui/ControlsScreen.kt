@@ -100,7 +100,7 @@ fun ControlsScreen(
             // (In screenshots there's no accessibility service; don't show its warning there.)
             val ok = if (inspection) true else SwipeGestureService.instance?.get()?.setKeyWatch(true)
             watchProblem = when (ok) {
-                null -> "Button presses need Accessibility access switched on (⋮ menu)."
+                null -> "Button presses need Accessibility access switched on (Settings → General)."
                 false -> "Switch WalkThor off and on in Android's Accessibility settings to let it see button presses."
                 else -> null
             }

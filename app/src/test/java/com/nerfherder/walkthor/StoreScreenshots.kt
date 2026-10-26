@@ -673,6 +673,31 @@ class StoreScreenshots {
     }
 
     @Test
+    fun settingsScreen() {
+        content { Library() }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        shot("19a-settings-general")
+        compose.onNodeWithText("Artwork").performClick()
+        compose.waitForIdle()
+        shot("19b-settings-artwork")
+        compose.onNodeWithText("Cocoon").performClick()
+        compose.waitForIdle()
+        shot("19c-settings-cocoon")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun settingsScreenDense() {
+        content { Library() }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Artwork").performClick()
+        compose.waitForIdle()
+        shot("19d-settings-artwork-dense")
+    }
+
+    @Test
     fun emulatorSetting() {
         content {
             LibraryScreen(
@@ -681,6 +706,8 @@ class StoreScreenshots {
             )
         }
         compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Emulators").performClick()
         compose.waitForIdle()
         shot("16c-emulator-setting")
         compose.onNodeWithText("Open when an emulator starts").performClick()

@@ -213,7 +213,7 @@ object Scraper {
         when (code) {
             200 -> Unit
             404 -> return null // not in ScreenScraper
-            400, 401, 403 -> throw ScrapeStop("ScreenScraper didn't accept the login. Check your accounts in ⋮ → Scraper accounts.")
+            400, 401, 403 -> throw ScrapeStop("ScreenScraper didn't accept the login. Check your accounts in Settings → Artwork → Scraper accounts.")
             423 -> throw ScrapeStop("ScreenScraper's API is closed right now. Try again later.")
             426 -> throw ScrapeStop("ScreenScraper needs a newer WalkThor.")
             429, 430, 431 -> throw ScrapeStop("ScreenScraper's daily limit for your account was reached. Try again tomorrow.")
@@ -238,7 +238,7 @@ object Scraper {
     private fun steamGridDb(c: Context, title: String): Map<String, String>? {
         val key = ScraperPrefs.sgdbKey(c)
         val (code, body) = get("$SGDB_BASE/search/autocomplete/${enc(title).replace("+", "%20")}", key)
-        if (code == 401 || code == 403) throw ScrapeStop("SteamGridDB didn't accept your API key. Check it in ⋮ → Scraper accounts.")
+        if (code == 401 || code == 403) throw ScrapeStop("SteamGridDB didn't accept your API key. Check it in Settings → Artwork → Scraper accounts.")
         if (code != 200) return null
         val games = runCatching { JSONObject(body).getJSONArray("data") }.getOrNull() ?: return null
         if (games.length() == 0) return null

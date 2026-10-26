@@ -114,7 +114,7 @@ fun GamePickerDialog(
                         item {
                             Text(
                                 if (q.isNotEmpty()) "Nothing matches “$q”." else
-                                    "Link your ROMs folder (⋮ → Link ROMs folder…) or add a guide to choose from.",
+                                    "Link your ROMs folder (Settings → Artwork → ROMs folder) or add a guide to choose from.",
                                 color = BookColors.TextMuted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp),
                             )
                         }

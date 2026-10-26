@@ -151,6 +151,7 @@ fun LibraryScreen(
     var showDisclosure by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     var showSetup by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
     // Turning swipe-to-open on always goes through the disclosure first.
     fun startSwipeSetup() {
         if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
@@ -168,6 +169,7 @@ fun LibraryScreen(
     val narrowHeader = LocalConfiguration.current.screenWidthDp < 560
     // Very narrow: the time and battery move to a bottom bar (as in the reader) to give the title room.
     val statusAtBottom = LocalConfiguration.current.screenWidthDp < 480
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
         Row(
@@ -209,17 +211,9 @@ fun LibraryScreen(
             IconButton(onClick = actions.onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
             }
-            SettingsMenu(
-                artLinked, artCount, alwaysBottom, swipeToOpen, gameGuide, cocoonLinked, actions,
-                onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
-                onAbout = { showAbout = true },
-                onSetupGuide = { showSetup = true },
-                onToggleEmulators = { on ->
-                    if (!on) com.nerfherder.walkthor.EmulatorWatch.setOn(context, false)
-                    else if (!com.nerfherder.walkthor.EmulatorWatch.hasConsent(context)) showEmulatorDisclosure = true
-                    else turnOnEmulators()
-                },
-            )
+            IconButton(onClick = { settingsOpen = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
+            }
         }
         if (swipeToOpen && swipeNeedsPermission) {
             Row(
@@ -273,6 +267,21 @@ fun LibraryScreen(
                 StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
             }
         }
+    }
+    if (settingsOpen) {
+        SettingsScreen(
+            artLinked, artCount, alwaysBottom, swipeToOpen, cocoonLinked, actions,
+            onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
+            onAbout = { showAbout = true },
+            onSetupGuide = { showSetup = true },
+            onToggleEmulators = { on ->
+                if (!on) com.nerfherder.walkthor.EmulatorWatch.setOn(context, false)
+                else if (!com.nerfherder.walkthor.EmulatorWatch.hasConsent(context)) showEmulatorDisclosure = true
+                else turnOnEmulators()
+            },
+            onDismiss = { settingsOpen = false },
+        )
+    }
     }
 
     if (showDisclosure) {
@@ -362,192 +371,184 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun SettingsMenu(
+private fun SettingsScreen(
     artLinked: Boolean,
     artCount: Int,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
-    gameGuide: Boolean,
     cocoonLinked: Boolean,
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
     onAbout: () -> Unit,
     onSetupGuide: () -> Unit,
-    onToggleEmulators: (Boolean) -> Unit = {},
+    onToggleEmulators: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
     var pickDim by remember { mutableStateOf(false) }
     var showAccounts by remember { mutableStateOf(false) }
     var showPickDisclosure by remember { mutableStateOf(false) }
     var showEmulators by remember { mutableStateOf(false) }
+    var section by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(SettingsSection.GENERAL) }
     val menuScope = androidx.compose.runtime.rememberCoroutineScope()
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
     val dimLevel by AutoDim.level.collectAsState()
     val showTimer by PlaySession.showTimer.collectAsState()
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text("How to set up WalkThor", fontWeight = FontWeight.SemiBold) },
-                leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null, tint = BookColors.Brass) },
-                onClick = { open = false; onSetupGuide() },
-            )
-            HorizontalDivider(color = BookColors.Hairline)
-            DropdownMenuItem(
-                text = { Text("Always open on bottom screen") },
-                trailingIcon = { if (alwaysBottom) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                onClick = { actions.onToggleAlwaysBottom(!alwaysBottom) },
-            )
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Auto-dim")
-                        Text(AutoDim.label(dimDelay), fontSize = 11.sp, color = BookColors.TextMuted)
+    val detecting by com.nerfherder.walkthor.EmulatorWatch.on.collectAsState()
+    val picking by com.nerfherder.walkthor.EmulatorWatch.pickOn.collectAsState()
+    // Your ROMs folder: for picking which game you're playing, and for scraping artwork.
+    val romLib = remember { com.nerfherder.walkthor.data.RomLibrary.get(context) }
+    val romFolder by romLib.folder.collectAsState()
+    val roms by romLib.roms.collectAsState()
+    LaunchedEffect(Unit) { romLib.load() }
+    // Re-read the scraper accounts each time the accounts dialog closes.
+    val scraperCount = remember(showAccounts) {
+        listOf(
+            com.nerfherder.walkthor.data.ScraperPrefs.hasSteamGridDb(context),
+            com.nerfherder.walkthor.data.ScraperPrefs.hasScreenScraper(context),
+        ).count { it }
+    }
+    androidx.activity.compose.BackHandler(onBack = onDismiss)
+
+    SettingsFrame(
+        section = section,
+        onSection = { section = it },
+        version = com.nerfherder.walkthor.BuildConfig.VERSION_NAME,
+        onBack = onDismiss,
+        onClose = { onDismiss(); actions.onClose() },
+    ) {
+        when (section) {
+            SettingsSection.GENERAL -> {
+                SettingsGroup("Screen") {
+                    SettingSwitch("Always open on bottom screen", checked = alwaysBottom, divider = false) { actions.onToggleAlwaysBottom(it) }
+                    SettingLink("Auto-dim", value = AutoDim.label(dimDelay)) { pickDim = true }
+                    actions.onSwapScreen?.let { swap ->
+                        SettingLink("Move to the other screen") { onDismiss(); swap() }
                     }
-                },
-                onClick = { open = false; pickDim = true },
-            )
-            if (cocoonLinked) {
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text("Show play time")
-                            Text("Next to the clock, from Cocoon's launch log", fontSize = 11.sp, color = BookColors.TextMuted)
-                        }
-                    },
-                    trailingIcon = { if (showTimer) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                    onClick = { PlaySession.setShowTimer(context, !showTimer) },
-                )
-            }
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Accessibility access")
-                        Text("Swipe down to open, and keeps games at full speed", fontSize = 11.sp, color = BookColors.TextMuted)
-                    }
-                },
-                trailingIcon = { if (swipeToOpen) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                onClick = { open = false; onToggleSwipe(!swipeToOpen) },
-            )
-            run {
-                val detecting by com.nerfherder.walkthor.EmulatorWatch.on.collectAsState()
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text("Open when an emulator starts")
-                            Text(
-                                if (cocoonLinked) "Even when Cocoon doesn't open WalkThor" else "Works without Cocoon",
-                                fontSize = 11.sp, color = BookColors.TextMuted,
-                            )
-                        }
-                    },
-                    trailingIcon = { if (detecting) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                    onClick = { open = false; onToggleEmulators(!detecting) },
-                )
-                if (detecting) {
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text("Choose emulators…")
-                                Text("Tick any WalkThor doesn't know", fontSize = 11.sp, color = BookColors.TextMuted)
-                            }
-                        },
-                        onClick = { open = false; showEmulators = true },
-                    )
                 }
-                if (detecting && !cocoonLinked) {
-                    val picking by com.nerfherder.walkthor.EmulatorWatch.pickOn.collectAsState()
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text("Recognise the game you pick")
-                                Text("From the name you highlight in your frontend", fontSize = 11.sp, color = BookColors.TextMuted)
-                            }
-                        },
-                        trailingIcon = { if (picking) Icon(Icons.Filled.Check, contentDescription = "On", tint = BookColors.Brass) },
-                        onClick = {
-                            open = false
-                            if (picking) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, false)
+                SettingsGroup("Access") {
+                    SettingSwitch(
+                        "Accessibility access",
+                        "Swipe down to open, and keeps games at full speed",
+                        checked = swipeToOpen,
+                        divider = false,
+                    ) { onToggleSwipe(it) }
+                }
+            }
+            SettingsSection.ARTWORK -> {
+                SettingsGroup("Cocoon artwork") {
+                    if (artLinked) {
+                        SettingRow(
+                            "Artwork folder",
+                            "$artCount images",
+                            divider = false,
+                            buttons = {
+                                PillButton("Rescan") { actions.onRescanArt() }
+                                PillButton("Change") { actions.onLinkArtFolder() }
+                                PillButton("Unlink", quiet = true) { actions.onUnlinkArt() }
+                            },
+                        )
+                    } else {
+                        SettingRow(
+                            "Artwork folder",
+                            "Cocoon's media folder: box art and backdrops for your guides",
+                            divider = false,
+                            buttons = { PillButton("Link…") { actions.onLinkArtFolder() } },
+                        )
+                    }
+                }
+                SettingsGroup("ROMs & scraping") {
+                    if (romFolder != null) {
+                        val systems = roms.map { it.system }.distinct().size
+                        SettingRow(
+                            "ROMs folder",
+                            "${roms.size} games" + if (systems > 1) " in $systems systems" else "",
+                            divider = false,
+                            buttons = {
+                                PillButton("Rescan") { menuScope.launch { romLib.scan() } }
+                                PillButton("Change") { actions.onLinkRoms() }
+                                PillButton("Unlink", quiet = true) { romLib.unlink() }
+                            },
+                        )
+                        SettingLink("Scrape artwork", "Box art, wide art and logos for your games") {
+                            if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) {
+                                com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
+                                onDismiss()
+                            } else showAccounts = true
+                        }
+                    } else {
+                        SettingRow(
+                            "ROMs folder",
+                            "One folder per system (3ds, gba, switch…)",
+                            divider = false,
+                            buttons = { PillButton("Link…") { actions.onLinkRoms() } },
+                        )
+                    }
+                    SettingLink(
+                        "Scraper accounts",
+                        "SteamGridDB · ScreenScraper",
+                        value = if (scraperCount == 0) "None" else "$scraperCount linked",
+                    ) { showAccounts = true }
+                }
+            }
+            SettingsSection.EMULATORS -> {
+                SettingsGroup("Emulators") {
+                    SettingSwitch(
+                        "Open when an emulator starts",
+                        if (cocoonLinked) "Even when Cocoon doesn't open WalkThor" else "Works without Cocoon",
+                        checked = detecting,
+                        divider = false,
+                    ) { onToggleEmulators(it) }
+                    if (detecting) {
+                        SettingLink("Choose emulators", "Tick any WalkThor doesn't know") { showEmulators = true }
+                    }
+                    if (detecting && !cocoonLinked) {
+                        SettingSwitch(
+                            "Recognise the game you pick",
+                            "From the name you highlight in your frontend",
+                            checked = picking,
+                        ) { on ->
+                            if (!on) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, false)
                             else if (com.nerfherder.walkthor.EmulatorWatch.hasPickConsent(context)) com.nerfherder.walkthor.EmulatorWatch.setPickOn(context, true)
                             else showPickDisclosure = true
-                        },
-                    )
+                        }
+                    }
+                }
+                if (detecting && cocoonLinked) {
+                    SettingsNote("With Cocoon linked, WalkThor knows the game from Cocoon's launch log.")
                 }
             }
-            actions.onSwapScreen?.let { swap ->
-                DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; swap() })
-            }
-            DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; actions.onClose() })
-            HorizontalDivider(color = BookColors.Hairline)
-            if (cocoonLinked) {
-                DropdownMenuItem(text = { Text("Change Cocoon folder…") }, onClick = { open = false; actions.onLinkCocoon() })
-                DropdownMenuItem(text = { Text("Unlink Cocoon folder") }, onClick = { open = false; actions.onUnlinkCocoon() })
-            } else {
-                DropdownMenuItem(
-                    text = { Text("Link Cocoon folder…") },
-                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null) },
-                    onClick = { open = false; actions.onLinkCocoon() },
-                )
-            }
-            if (!artLinked) {
-                DropdownMenuItem(
-                    text = { Text("Link Cocoon artwork folder…") },
-                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null) },
-                    onClick = { open = false; actions.onLinkArtFolder() },
-                )
-            } else {
-                DropdownMenuItem(
-                    text = { Text("Artwork: $artCount images", color = BookColors.TextMuted) },
-                    leadingIcon = { Icon(AppIcons.Image, contentDescription = null, tint = BookColors.TextMuted) },
-                    onClick = {},
-                    enabled = false,
-                )
-                DropdownMenuItem(text = { Text("Rescan artwork") }, onClick = { open = false; actions.onRescanArt() })
-                DropdownMenuItem(text = { Text("Change artwork folder…") }, onClick = { open = false; actions.onLinkArtFolder() })
-                DropdownMenuItem(text = { Text("Unlink artwork folder") }, onClick = { open = false; actions.onUnlinkArt() })
-            }
-            HorizontalDivider(color = BookColors.Hairline)
-            // Your ROMs folder: for picking which game you're playing, and for scraping artwork.
-            val romLib = remember { com.nerfherder.walkthor.data.RomLibrary.get(context) }
-            val romFolder by romLib.folder.collectAsState()
-            val roms by romLib.roms.collectAsState()
-            LaunchedEffect(Unit) { romLib.load() }
-            if (romFolder == null) {
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text("Link ROMs folder…")
-                            Text("One folder per system (3ds, gba, switch…)", fontSize = 11.sp, color = BookColors.TextMuted)
+            SettingsSection.COCOON -> {
+                SettingsGroup("Cocoon") {
+                    if (cocoonLinked) {
+                        SettingRow(
+                            "Cocoon folder",
+                            "WalkThor knows each game Cocoon launches",
+                            divider = false,
+                            buttons = {
+                                PillButton("Change") { actions.onLinkCocoon() }
+                                PillButton("Unlink", quiet = true) { actions.onUnlinkCocoon() }
+                            },
+                        )
+                        SettingSwitch("Show play time", "Next to the clock, from Cocoon's launch log", checked = showTimer) {
+                            PlaySession.setShowTimer(context, it)
                         }
-                    },
-                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null) },
-                    onClick = { open = false; actions.onLinkRoms() },
-                )
-            } else {
-                DropdownMenuItem(
-                    text = { Text("ROMs: ${roms.size} games", color = BookColors.TextMuted) },
-                    leadingIcon = { Icon(AppIcons.Folder, contentDescription = null, tint = BookColors.TextMuted) },
-                    onClick = {},
-                    enabled = false,
-                )
-                DropdownMenuItem(
-                    text = { Text("Scrape artwork") },
-                    onClick = {
-                        open = false
-                        if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
-                        else showAccounts = true
-                    },
-                )
-                DropdownMenuItem(text = { Text("Rescan ROMs folder") }, onClick = { open = false; menuScope.launch { romLib.scan() } })
-                DropdownMenuItem(text = { Text("Change ROMs folder…") }, onClick = { open = false; actions.onLinkRoms() })
-                DropdownMenuItem(text = { Text("Unlink ROMs folder") }, onClick = { open = false; romLib.unlink() })
+                    } else {
+                        SettingRow(
+                            "Cocoon folder",
+                            "Link it so WalkThor knows each game Cocoon launches",
+                            divider = false,
+                            buttons = { PillButton("Link…") { actions.onLinkCocoon() } },
+                        )
+                    }
+                }
             }
-            DropdownMenuItem(text = { Text("Scraper accounts…") }, onClick = { open = false; showAccounts = true })
-            HorizontalDivider(color = BookColors.Hairline)
-            DropdownMenuItem(text = { Text("About & licences") }, onClick = { open = false; onAbout() })
+            SettingsSection.ABOUT -> {
+                SettingsGroup(null) {
+                    SettingLink("How to set up WalkThor", divider = false) { onSetupGuide() }
+                    SettingLink("About & licences") { onAbout() }
+                }
+            }
         }
     }
     if (showAccounts) ScraperAccountsDialog(onDismiss = { showAccounts = false })
@@ -869,7 +870,7 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
                 )
                 Text(
                     when {
-                        artCount == 0 -> "No images indexed yet — try ⋮ → Rescan artwork, or link a different folder."
+                        artCount == 0 -> "No images indexed yet — try Settings → Artwork → Rescan, or link a different folder."
                         matches.isNullOrEmpty() -> "Searched $artCount images"
                         else -> "Closest matches from $artCount images · tap one to use it"
                     },

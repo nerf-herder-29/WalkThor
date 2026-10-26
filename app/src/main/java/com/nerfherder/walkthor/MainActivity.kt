@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
             } else if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(this@MainActivity)) {
                 com.nerfherder.walkthor.data.Scraper.scrapeAll(this@MainActivity)
             } else {
-                Toast.makeText(this@MainActivity, "Found $n games. Add a scraper account (⋮) to fetch their artwork.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, "Found $n games. Add a scraper account (Settings → Artwork) to fetch their artwork.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -728,7 +728,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         GameFocus.gameRunning.value = recent
         if (!gameGuideNow) return@withLock null
         if (game == null) {
-            if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try ⋮ → Change Cocoon folder…", Toast.LENGTH_LONG).show()
+            if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try Settings → Cocoon", Toast.LENGTH_LONG).show()
             return@withLock null
         }
         if (!recent) return@withLock null

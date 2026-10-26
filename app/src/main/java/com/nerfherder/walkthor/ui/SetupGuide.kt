@@ -44,7 +44,7 @@ class SetupState(
 )
 
 /**
- * ⋮ → How to set up: every step to get WalkThor working with Cocoon, in order, with a tick for
+ * Settings → About → How to set up: every step to get WalkThor working with Cocoon, in order, with a tick for
  * what's already done and a button for what isn't. Then how playing and reading work.
  */
 @Composable
@@ -102,7 +102,7 @@ fun SetupGuideDialog(
                     "Pick the folder with your game artwork (Cocoon's media folder works). WalkThor uses it for " +
                         "guide covers and for the Now playing screen: hero or fan art as the background and the " +
                         "logo on top. Optional, but it makes everything look much better. After adding new art, " +
-                        "use ⋮ → Rescan artwork.",
+                        "use Settings → Artwork → Rescan.",
                 )
                 Step(
                     4, "Make WalkThor Cocoon's companion app", null, null, null,
@@ -120,18 +120,18 @@ fun SetupGuideDialog(
                 Heading("When you play")
                 Para(
                     "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
-                        "to save power after the time set in ⋮ → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror, " +
+                        "to save power after the time set in Settings → General → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror, " +
                         "Face Buttons, Stats and Apps, plus Multi) switch between the game's screens, even while it's dimmed."
                 )
                 Para(
-                    "Turn on ⋮ → Open when an emulator starts (it needs accessibility access, step 5) and WalkThor opens " +
+                    "Turn on Settings → Emulators → Open when an emulator starts (it needs accessibility access, step 5) and WalkThor opens " +
                         "on the bottom screen whenever an emulator comes to the front, from any frontend. With Cocoon linked, " +
                         "Cocoon names the game. Without Cocoon, if WalkThor can't tell which game it is, Now playing asks What " +
                         "are you playing?, offering your games (from a ROMs folder you link) and guides, your last picks first."
                 )
                 Para(
-                    "⋮ → Link ROMs folder… takes the folder that holds one folder per system (3ds, nds, gba, switch, psp, " +
-                        "ps2, gc…). Add a ScreenScraper account or a SteamGridDB API key in ⋮ → Scraper accounts and WalkThor " +
+                    "Settings → Artwork → ROMs folder takes the folder that holds one folder per system (3ds, nds, gba, switch, psp, " +
+                        "ps2, gc…). Add a ScreenScraper account or a SteamGridDB API key in Settings → Artwork → Scraper accounts and WalkThor " +
                         "fetches box art, wide art and logos for those games. This is the only time WalkThor goes online."
                 )
                 Para(
@@ -179,12 +179,12 @@ fun SetupGuideDialog(
                 Bullet("Tap the middle of a page (or the magnifying glass) for a zoomable, full-width view.")
                 Bullet("Press and hold on a page for a magnifier you can slide around.")
                 Bullet("WalkThor remembers your place in every guide.")
-                Bullet("The screen dims on its own after the time set in ⋮ → Auto-dim, to the strength you choose there.")
+                Bullet("The screen dims on its own after the time set in Settings → General → Auto-dim, to the strength you choose there.")
 
                 Heading("Good to know")
                 Bullet("Tapping WalkThor never slows your game: the game keeps top priority while you read.")
                 Bullet("Typing in search briefly gives WalkThor focus for the keyboard. When you're done, WalkThor hands it back to the game on its own.")
-                Bullet("If WalkThor ever opens on the wrong screen, use ⋮ → Move to other screen.")
+                Bullet("If WalkThor ever opens on the wrong screen, use Settings → General → Move to the other screen.")
             }
             Row(Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss, modifier = if (compact) Modifier.height(36.dp) else Modifier) { Text("Close") }
