@@ -157,6 +157,8 @@ class StoreScreenshots {
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
+        compose.onNodeWithText("About").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("How to set up WalkThor").performClick()
         shot("09-setup-guide")
     }
@@ -166,6 +168,8 @@ class StoreScreenshots {
     fun setupGuideDense() {
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("About").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("How to set up WalkThor").performClick()
         shot("09-setup-guide-dense")
