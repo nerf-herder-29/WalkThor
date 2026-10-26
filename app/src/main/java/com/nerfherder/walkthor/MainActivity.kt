@@ -159,7 +159,9 @@ class MainActivity : ComponentActivity() {
         applyGameFocus(initial = true)
         lifecycleScope.launch {
             var typing = GameFocus.wantFocus.value
-            kotlinx.coroutines.flow.combine(GameFocus.keepOnGame, GameFocus.gameRunning, GameFocus.wantFocus) { _, _, _ -> }
+            kotlinx.coroutines.flow.combine(
+                GameFocus.keepOnGame, GameFocus.gameRunning, GameFocus.wantFocus, EmulatorWatch.gameShowing, EmulatorWatch.frontKnown,
+            ) { _, _, _, _, _ -> }
                 .collect {
                     applyGameFocus(initial = false)
                     // Just finished typing a search: WalkThor took focus for the keyboard, so hand
@@ -347,7 +349,12 @@ class MainActivity : ComponentActivity() {
 
     /** Makes the window non-focusable while a game is running (see [GameFocus]). */
     private fun applyGameFocus(initial: Boolean) {
-        val yieldToGame = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && !GameFocus.wantFocus.value
+        // Only when a game is actually in front on the other screen. Cocoon's log alone isn't
+        // enough: back in Cocoon after playing, a non-focusable WalkThor sends your controller to
+        // Cocoon and Android reports WalkThor as not responding. (Without accessibility access
+        // WalkThor can't see what's in front, so it goes by the log as before.)
+        val gameInFront = !EmulatorWatch.frontKnown.value || EmulatorWatch.gameShowing.value
+        val yieldToGame = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && gameInFront && !GameFocus.wantFocus.value
         if (yielding == yieldToGame) return
         yielding = yieldToGame
         if (yieldToGame) {

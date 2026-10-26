@@ -192,7 +192,18 @@ object EmulatorWatch {
         val pkg = event.packageName?.toString() ?: return
         if (pkg != context.packageName && !isApp(context, pkg)) return // keyboards, system overlays
         frontByDisplay[event.displayId] = pkg
+        val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
+        val others = frontByDisplay.filterKeys { it != bottom }.values
+        if (others.isNotEmpty()) {
+            frontKnown.value = true
+            gameShowing.value = others.any { isGamePkg(context, it) }
+        }
     }
+
+    /** Whether the accessibility service has seen what's in front on the game screen yet. */
+    val frontKnown = MutableStateFlow(false)
+    /** A game (not Cocoon, a launcher or WalkThor itself) is in front on the game screen. */
+    val gameShowing = MutableStateFlow(false)
 
     /**
      * Whether a game is in front on [displayId]: an emulator or another game app, not Cocoon, your
@@ -200,6 +211,10 @@ object EmulatorWatch {
      */
     fun gameInFront(context: Context, displayId: Int): Boolean {
         val pkg = frontByDisplay[displayId] ?: return false
+        return isGamePkg(context, pkg)
+    }
+
+    private fun isGamePkg(context: Context, pkg: String): Boolean {
         if (pkg == context.packageName) return false
         if (isEmulator(context, pkg)) return true
         val home = runCatching {
