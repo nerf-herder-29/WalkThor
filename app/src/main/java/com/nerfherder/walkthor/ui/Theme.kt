@@ -143,7 +143,7 @@ private fun typographyFor(f: FontFamily) = Typography(
     labelSmall = base.labelSmall.copy(fontFamily = f),
 )
 
-/** Quiet label used for section headers ("Your shelf"): small, dim, normal case. */
+/** Quiet label used for section headers ("Your library"): small, dim, normal case. */
 val EyebrowStyle: TextStyle get() = TextStyle(
     fontFamily = AppFont.family,
     fontSize = 12.sp,

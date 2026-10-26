@@ -303,7 +303,7 @@ private fun linkLabelFor(guide: Book?, books: List<Book>, game: LaunchedGame? = 
     game?.unknown == true && choices -> "Choose game"
     game?.emulatorPkg != null && choices -> "Change game"
     guide != null && books.size > 1 -> "Other guide"
-    guide == null && books.isNotEmpty() -> "From my shelf"
+    guide == null && books.isNotEmpty() -> "From my guides"
     else -> null
 }
 
@@ -395,7 +395,7 @@ fun NoGuidePanel(
                 ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
                 if (books.isNotEmpty()) {
                     androidx.compose.material3.OutlinedButton(onClick = { picking = true }) {
-                        Text("From my shelf", color = BookColors.Text, fontWeight = FontWeight.SemiBold)
+                        Text("From my guides", color = BookColors.Text, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

@@ -96,7 +96,7 @@ class ArtworkRepository private constructor(private val context: Context) {
         indexFile.delete()
         v1File.delete()
         legacyFile.delete()
-        lastGameArt = null
+        forgetGameArt()
     }
 
     suspend fun rescan() = withContext(Dispatchers.IO) {
@@ -107,7 +107,7 @@ class ArtworkRepository private constructor(private val context: Context) {
             val root = DocumentsContract.getTreeDocumentId(tree)
             walk(tree, root, "", out, 0)
             saveIndex(out)
-            lastGameArt = null
+            forgetGameArt()
         } finally {
             _scanning.value = null
         }
@@ -182,16 +182,20 @@ class ArtworkRepository private constructor(private val context: Context) {
         val fromFolder = folderGameArt(title, file)
         val scraped = if (fromFolder.cover != null && fromFolder.hero != null && fromFolder.logo != null) null
         else ScrapedArt.lookup(context, title, file)
-        val merged = if (scraped == null) fromFolder else GameArt(
+        val merged = (if (scraped == null) fromFolder else GameArt(
             cover = fromFolder.cover ?: scraped.cover,
             logo = fromFolder.logo ?: scraped.logo,
             hero = fromFolder.hero ?: scraped.hero,
-        )
+        )).let { a -> GameCovers.userCover(context, title)?.let { a.copy(cover = it) } ?: a }
         merged.also { lastGameArt = key to it }
     }
 
     /** Forget the last lookup (after scraping new artwork). */
-    fun forgetGameArt() { lastGameArt = null }
+    fun forgetGameArt() { lastGameArt = null; GameCovers.invalidate() }
+
+    /** The artwork folder's box art for a game, if it has one. */
+    suspend fun folderCover(title: String, file: String?): String? =
+        withContext(Background.dispatcher) { if (_folder.value == null) null else folderGameArt(title, file).cover }
 
     private suspend fun folderGameArt(title: String, file: String?): GameArt {
         val names = listOfNotNull(title, file?.substringBeforeLast('.'))

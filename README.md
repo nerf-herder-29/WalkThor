@@ -19,13 +19,13 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 | ![Guide tab: a GameFAQs-style text guide during a game](docs/screenshots/03b-reader-tabs.png) | ![Mirror tab: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) |
 | ![Face Buttons tab: shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) | ![Picking the part of the top screen to mirror](docs/screenshots/11c-mirror-pick.png) |
 | ![Stats tab: the top screen's FPS, battery, heat, memory and CPU](docs/screenshots/13-stats.png) | ![Multi tab: Mirror, the guide, Face Buttons and Stats at a glance](docs/screenshots/14-all.png) |
-| ![Your shelf of guides](docs/screenshots/02-library.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
+| ![Your library](docs/screenshots/02-library.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
 
 ## Quick start
 
 1. **Install** the APK from the [latest release](https://github.com/nerf-herder-29/WalkThor/releases/latest)
    (allow "Install unknown apps" for your browser or file manager).
-2. **Add a guide:** *Add guide* on the shelf, or *Open with* / *Share* a PDF or TXT from a file manager.
+2. **Add a guide:** *Add guide* in your library, or *Open with* / *Share* a PDF or TXT from a file manager.
 3. **Link Cocoon's folder** (the one with `launch_debug.log`) so WalkThor knows which game you started.
 4. **In Cocoon, choose WalkThor as the companion app** for the bottom screen.
 5. **Allow accessibility access** when WalkThor asks. It's what keeps the game at full priority
@@ -48,6 +48,10 @@ step that's done.
   With Cocoon linked it knows the game and its art from Cocoon as usual. Without Cocoon it asks
   *What are you playing?*, offering the games in your ROMs folder for that emulator's systems and
   your guides (your last picks first), or picks by itself when the emulator shows a matching name.
+- **Your library** — with a ROMs folder linked, the library shows your games as covers, by
+  system folder down the left (with All games and your Guides). Games with a guide are tagged;
+  tap one to open its guide, or add or pick one. Long-press a game to choose its cover: yours
+  first, then Cocoon's artwork, then scraped art.
 - **Artwork scraping** — add a ScreenScraper account and/or a SteamGridDB API key (Settings →
   Artwork → *Scraper accounts*) and WalkThor scrapes box art for your guides' covers, and a
   screenshot and marquee for each game, shown on Now playing, the splash and behind the tabs. A

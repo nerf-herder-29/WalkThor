@@ -153,6 +153,43 @@ class StoreScreenshots {
     }
 
     @Test
+    fun libraryGames() {
+        sampleRoms()
+        com.nerfherder.walkthor.ui.LibrarySection.save(app, com.nerfherder.walkthor.ui.LibrarySection.ALL)
+        content { Library() }
+        settle()
+        shot("02b-library-games")
+        compose.onNodeWithText("GameCube").performClick()
+        settle()
+        shot("02c-library-system")
+        compose.onNodeWithText("Starfall Tactics").performClick()
+        settle()
+        shot("02d-library-game-sheet")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun libraryGamesDense() {
+        sampleRoms()
+        com.nerfherder.walkthor.ui.LibrarySection.save(app, com.nerfherder.walkthor.ui.LibrarySection.ALL)
+        content { Library() }
+        settle()
+        shot("check-library-games-dense")
+    }
+
+    @Test
+    fun gameArtwork() {
+        content {
+            com.nerfherder.walkthor.ui.GameArtworkDialog(
+                title = "Lanterns of Emberfall", subtitle = "Nintendo GameCube", gameTitle = "Lanterns of Emberfall",
+                file = "Lanterns of Emberfall (USA).rvz", onPickFile = {}, onDismiss = {},
+            )
+        }
+        settle()
+        shot("02e-game-artwork")
+    }
+
+    @Test
     fun setupGuide() {
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()

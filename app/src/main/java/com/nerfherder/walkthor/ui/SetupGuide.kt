@@ -138,10 +138,10 @@ fun SetupGuideDialog(
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
-                        "doesn't find one, the Guide tab offers Add guide or From my shelf, and WalkThor remembers " +
+                        "doesn't find one, the Guide tab offers Add guide or From my guides, and WalkThor remembers " +
                         "that guide for the game next time. Other guide (on Now playing) switches to a different one."
                 )
-                Para("Back from any tab takes you to Now playing, and back again to your shelf. Switching tabs keeps your place.")
+                Para("Back from any tab takes you to Now playing, and back again to your library. Switching tabs keeps your place.")
                 Para(
                     "Mirror shows part of the top screen here, like a " +
                         "minimap or a HUD. The first time for a game, drag a box over the part you want; it keeps this " +

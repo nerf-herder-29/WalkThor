@@ -38,7 +38,7 @@ data class StackButton(val label: String, val filled: Boolean, val action: () ->
  * the Now playing screen and the dimmed screen, so everything stays in exactly the same place
  * when the screen dims or wakes.
  *
- * [link] ("Other guide" / "From my shelf") sits under the buttons; with [linkVisible] false it
+ * [link] ("Other guide" / "From my guides") sits under the buttons; with [linkVisible] false it
  * still takes its space, so the dimmed and awake layouts line up.
  * [actOnDown] makes the buttons act on touch down (the dimmed screen, where the same touch also
  * wakes it).

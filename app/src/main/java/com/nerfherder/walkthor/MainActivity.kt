@@ -527,7 +527,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     LaunchedEffect(pickedCover) {
         pickedCover?.let { (bookId, uri) ->
             host.pickedCoverFlow.value = null
-            books.firstOrNull { it.id == bookId }?.let { library.setCover(it, uri) }
+            if (bookId.startsWith(GAME_COVER)) {
+                // A cover you picked for a game in your library.
+                host.lifecycleScope.launch { com.nerfherder.walkthor.data.GameCovers.setUser(context, bookId.removePrefix(GAME_COVER), uri) }
+            } else {
+                books.firstOrNull { it.id == bookId }?.let { library.setCover(it, uri) }
+            }
         }
     }
     LaunchedEffect(pickedCocoon) {
@@ -1096,6 +1101,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
                 onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
                 onLinkRoms = host::pickRomFolder,
+                onPickGameCover = { title -> host.pickCoverImage(GAME_COVER + title) },
+                onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
+                onLinkGuide = { game, id -> linkGuide(game, id); openId = id },
             ),
         )
     }
@@ -1152,3 +1160,6 @@ private var imageLoaderSet = false
 private const val GAME_RECENT_MS = 6 * 60 * 60 * 1000L
 /** After swiping in, the next guide opened within this time is linked to the game. */
 private const val LEARN_WINDOW_MS = 15 * 60 * 1000L
+
+/** Marks a cover picked for a game (not a guide) in the image picker's round trip. */
+private const val GAME_COVER = "game:"

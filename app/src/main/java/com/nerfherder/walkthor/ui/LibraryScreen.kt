@@ -98,7 +98,7 @@ import com.nerfherder.walkthor.data.BookType
 import kotlinx.coroutines.delay
 import java.io.File
 
-private val coverInks = listOf(
+internal val coverInks = listOf(
     Color(0xFF5B2328), Color(0xFF1F3550), Color(0xFF214234), Color(0xFF4A3420),
     Color(0xFF3D2547), Color(0xFF1E4146), Color(0xFF51401A), Color(0xFF34302E),
 )
@@ -131,6 +131,12 @@ class LibraryActions(
     val onSwapScreen: (() -> Unit)?,
     /** Pick your ROMs folder (one folder per system). */
     val onLinkRoms: () -> Unit = {},
+    /** Pick an image file as a game's cover. */
+    val onPickGameCover: (String) -> Unit = {},
+    /** Add a guide (file picker) and link it to a game. */
+    val onAddGuideFor: (com.nerfherder.walkthor.data.LaunchedGame) -> Unit = {},
+    /** Link one of your guides to a game, and open it. */
+    val onLinkGuide: (com.nerfherder.walkthor.data.LaunchedGame, String) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -152,6 +158,17 @@ fun LibraryScreen(
     var showAbout by remember { mutableStateOf(false) }
     var showSetup by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    // Your ROMs folder's games, by system, with your guides as their own section.
+    val libContext = LocalContext.current
+    val romLibrary = remember { com.nerfherder.walkthor.data.RomLibrary.get(libContext) }
+    val roms by romLibrary.roms.collectAsState()
+    LaunchedEffect(Unit) { romLibrary.load() }
+    var chosenSection by remember { mutableStateOf(LibrarySection.load(libContext)) }
+    // A system folder that's gone (relinked, rescanned): back to all games.
+    val section = chosenSection.takeIf { s ->
+        s == LibrarySection.ALL || s == LibrarySection.GUIDES || roms.any { it.system == s }
+    } ?: LibrarySection.ALL
+    val showGames = roms.isNotEmpty() && section != LibrarySection.GUIDES
     // Turning swipe-to-open on always goes through the disclosure first.
     fun startSwipeSetup() {
         if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
@@ -178,7 +195,11 @@ fun LibraryScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (books.isEmpty() || narrowHeader) "Your shelf" else "Your shelf · ${books.size} guide${if (books.size == 1) "" else "s"}",
+                    when {
+                        showGames -> if (narrowHeader) "Your library" else "Your library · ${roms.size} game${if (roms.size == 1) "" else "s"}"
+                        books.isEmpty() || narrowHeader -> "Your guides"
+                        else -> "Your guides · ${books.size} guide${if (books.size == 1) "" else "s"}"
+                    },
                     style = EyebrowStyle,
                     maxLines = 1,
                     softWrap = false,
@@ -244,8 +265,20 @@ fun LibraryScreen(
         ScrapeProgress()
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
-        Box(Modifier.weight(1f)) {
-            if (books.isEmpty()) {
+        Row(Modifier.weight(1f)) {
+          if (roms.isNotEmpty()) {
+            LibraryRail(roms, books.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
+            Box(Modifier.width(1.dp).fillMaxHeight().background(BookColors.Hairline))
+          }
+          Box(Modifier.weight(1f)) {
+            if (showGames) {
+                GamesGrid(
+                    roms = if (section == LibrarySection.ALL) roms else roms.filter { it.system == section },
+                    books = books,
+                    coverFile = actions.coverFile,
+                    actions = actions,
+                )
+            } else if (books.isEmpty()) {
                 EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder, onSetupGuide = { showSetup = true })
             } else {
                 LazyVerticalGrid(
@@ -260,6 +293,7 @@ fun LibraryScreen(
                     }
                 }
             }
+          }
         }
         if (statusAtBottom) {
             Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -630,7 +664,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
     ) {
         Text("❦", fontSize = 28.sp, color = BookColors.Brass)
         Spacer(Modifier.height(6.dp))
-        Text("An empty shelf", fontFamily = DisplayFont, fontSize = 22.sp, color = BookColors.Text)
+        Text("No guides yet", fontFamily = DisplayFont, fontSize = 22.sp, color = BookColors.Text)
         Spacer(Modifier.height(6.dp))
         Text(
             "Add a PDF or TXT walkthrough and it becomes a book you can flip through and search.",
@@ -698,7 +732,7 @@ private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> 
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(text = { Text("Choose cover…") }, onClick = { menu = false; onChooseCover() })
                     DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
-                    DropdownMenuItem(text = { Text("Remove from shelf") }, onClick = { menu = false; confirmDelete = true })
+                    DropdownMenuItem(text = { Text("Remove guide") }, onClick = { menu = false; confirmDelete = true })
                 }
             }
         }

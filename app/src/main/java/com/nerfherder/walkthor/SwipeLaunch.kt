@@ -365,7 +365,7 @@ class SwipeGestureService : AccessibilityService() {
      */
     fun handBack(gameDisplayId: Int): String {
         if (Build.VERSION.SDK_INT < 30) return "needs Android 11+"
-        if (!SwipeLauncher.hasConsent(this)) return "accessibility access needs setting up again (shelf banner)"
+        if (!SwipeLauncher.hasConsent(this)) return "accessibility access needs setting up again (library banner)"
         val info = serviceInfo
         if (info == null ||
             (info.capabilities and android.accessibilityservice.AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES) == 0
