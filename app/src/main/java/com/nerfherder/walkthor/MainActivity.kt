@@ -295,7 +295,10 @@ class MainActivity : ComponentActivity() {
                 if (gameDisplay == null) { PerfCheck.handBack.value = "no game screen found"; return@launch }
                 // Cocoon (or another frontend) on the game screen, not a game: a tap there would
                 // press something in it (turning its pages), so never tap.
-                if (!EmulatorWatch.gameInFront(this@MainActivity, gameDisplay.displayId)) {
+                // Not known yet (WalkThor's service just restarted, as after Android closes and
+                // WalkThor reopens itself mid-game): go by Cocoon's log, as before. Skipping the tap
+                // then would leave the game without its performance priority.
+                if (EmulatorWatch.gameInFront(this@MainActivity, gameDisplay.displayId) == false) {
                     PerfCheck.handBack.value = "skipped (no game in front on the game screen)"
                     return@launch
                 }

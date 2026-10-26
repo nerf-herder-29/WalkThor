@@ -207,10 +207,11 @@ object EmulatorWatch {
 
     /**
      * Whether a game is in front on [displayId]: an emulator or another game app, not Cocoon, your
-     * home screen or another frontend. Unknown (nothing seen yet) counts as no.
+     * home screen or another frontend. Null when nothing has been seen there yet.
      */
-    fun gameInFront(context: Context, displayId: Int): Boolean {
-        val pkg = frontByDisplay[displayId] ?: return false
+    fun gameInFront(context: Context, displayId: Int): Boolean? {
+        // Not seen yet (the service just started, e.g. after Android closed WalkThor mid-game).
+        val pkg = frontByDisplay[displayId] ?: return null
         return isGamePkg(context, pkg)
     }
 
