@@ -130,9 +130,11 @@ fun SetupGuideDialog(
                         "are you playing?, offering your games (from a ROMs folder you link) and guides, your last picks first."
                 )
                 Para(
-                    "Settings → Artwork → ROMs folder takes the folder that holds one folder per system (3ds, nds, gba, switch, psp, " +
-                        "ps2, gc…). Add a ScreenScraper account or a SteamGridDB API key in Settings → Artwork → Scraper accounts and WalkThor " +
-                        "fetches box art, wide art and logos for those games. This is the only time WalkThor goes online."
+                    "Add a ScreenScraper account or a SteamGridDB API key in Settings → Artwork → Scraper accounts, then Scrape artwork: " +
+                        "WalkThor fetches box art for your guides' covers, and a screenshot and marquee for each game, shown on Now playing " +
+                        "while you play. A game you start that has none yet is looked up once on its own. Linking your ROMs folder " +
+                        "(Settings → Artwork → ROMs folder, the folder that holds one folder per system: 3ds, nds, gba, switch…) makes the " +
+                        "matches exact. This is the only time WalkThor goes online."
                 )
                 Para(
                     "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +

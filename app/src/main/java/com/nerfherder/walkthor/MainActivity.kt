@@ -613,12 +613,25 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         if (pick != null) LaunchedGame(pick.title, pick.file, s.name, s.at, emulatorPkg = s.pkg)
         else LaunchedGame(s.name, null, s.name, s.at, emulatorPkg = s.pkg, unknown = true)
 
-    /** No artwork for a game from your ROMs folder yet: scrape it now (if you've added an account), then show it. */
+    /**
+     * The game you started has no screenshot, marquee or box art yet: look it up once (if you've
+     * added a scraper account), by its ROM when it's in your ROMs folder, else by name, then show it.
+     */
     fun scrapeIfBare(game: LaunchedGame, art: GameArt, rom: com.nerfherder.walkthor.data.Rom?) {
-        if (rom == null || art.cover != null || art.hero != null) return
-        if (!com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) return
+        if (art.cover != null && art.hero != null && art.logo != null) return
+        if (game.unknown || !com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) return
+        val match = rom ?: game.file?.let { f ->
+            val name = f.substringAfterLast('/')
+            romsNow.firstOrNull { it.file.equals(name, ignoreCase = true) }
+                ?: com.nerfherder.walkthor.data.RomLibrary.matchName(com.nerfherder.walkthor.data.RomLibrary.tidy(name), romsNow)
+        } ?: com.nerfherder.walkthor.data.RomLibrary.matchName(game.title, romsNow)
+        if (!com.nerfherder.walkthor.data.ScrapedArt.shouldTry(context, match?.title ?: game.title)) return
         scope.launch {
-            if (com.nerfherder.walkthor.data.Scraper.scrapeOne(context, rom)) {
+            val found = if (match != null) com.nerfherder.walkthor.data.Scraper.scrapeOne(context, match)
+            else com.nerfherder.walkthor.data.Scraper.scrapeTitle(
+                context, game.title, com.nerfherder.walkthor.data.RomLibrary.systemsFor(game.player).singleOrNull(),
+            )
+            if (found) {
                 val fresh = ArtworkRepository.get(context).gameArt(game.title, game.file)
                 noGuide = noGuide?.let { sh -> if (sh.game == game) sh.copy(art = fresh) else sh }
             }
@@ -742,6 +755,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             gameTab = null
             fromAll = false
             noGuide = Showing(game, art, book)
+            scrapeIfBare(game, art, null)
             // Opens straight on the tab you chose for this game (long-press a tab), if any.
             when (val first = GameTabs.openOn(context, game.title)) {
                 null -> Unit

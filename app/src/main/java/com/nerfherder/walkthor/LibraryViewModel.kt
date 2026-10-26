@@ -77,6 +77,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 autoCover(book)
                 _import.value = null
                 _opened.tryEmit(book.id)
+                // No cover from the artwork folder: look its box art up, if you've added a scraper account.
+                val app = getApplication<Application>()
+                if (repo.find(book.id)?.let { repo.coverFile(it) } == null && com.nerfherder.walkthor.data.ScraperPrefs.hasAny(app)) {
+                    launch { com.nerfherder.walkthor.data.Scraper.coverForGuide(app, book) }
+                }
             } catch (e: ImportException) {
                 _import.value = ImportState.Failed(e.message ?: "Import failed.")
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -172,6 +177,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun autoCover(book: Book): Boolean {
         val fresh = repo.find(book.id) ?: return false
         if (fresh.coverManual) return false
+        // Box art scraped for this guide stays; the artwork folder fills in guides without a cover.
+        if (fresh.coverSource?.startsWith("scraped:") == true && repo.coverFile(fresh) != null) return false
         val match = art.autoMatch(fresh.title) ?: return false
         if (match.uri == fresh.coverSource && repo.coverFile(fresh) != null) return false
         val name = art.saveCover(Uri.parse(match.uri), repo.coversDir, fresh.id) ?: return false

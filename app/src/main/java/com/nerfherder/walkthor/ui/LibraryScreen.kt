@@ -455,7 +455,27 @@ private fun SettingsScreen(
                         )
                     }
                 }
-                SettingsGroup("ROMs & scraping") {
+                SettingsGroup("Scraping") {
+                    SettingLink(
+                        "Scraper accounts",
+                        "SteamGridDB · ScreenScraper",
+                        value = if (scraperCount == 0) "None" else "$scraperCount linked",
+                        divider = false,
+                    ) { showAccounts = true }
+                    SettingLink("Scrape artwork", "Covers for your guides; screenshots and marquees for your games") {
+                        if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) {
+                            com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
+                            onDismiss()
+                        } else showAccounts = true
+                    }
+                    if (scraperCount > 0) {
+                        SettingLink("Scrape everything again", "Replaces art WalkThor found before (never a cover you chose)") {
+                            com.nerfherder.walkthor.data.Scraper.scrapeAll(context, refresh = true)
+                            onDismiss()
+                        }
+                    }
+                }
+                SettingsGroup("ROMs folder") {
                     if (romFolder != null) {
                         val systems = roms.map { it.system }.distinct().size
                         SettingRow(
@@ -468,25 +488,14 @@ private fun SettingsScreen(
                                 PillButton("Unlink", quiet = true) { romLib.unlink() }
                             },
                         )
-                        SettingLink("Scrape artwork", "Box art, wide art and logos for your games") {
-                            if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) {
-                                com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
-                                onDismiss()
-                            } else showAccounts = true
-                        }
                     } else {
                         SettingRow(
                             "ROMs folder",
-                            "One folder per system (3ds, gba, switch…)",
+                            "Optional: one folder per system (3ds, gba, switch…), for exact matches",
                             divider = false,
                             buttons = { PillButton("Link…") { actions.onLinkRoms() } },
                         )
                     }
-                    SettingLink(
-                        "Scraper accounts",
-                        "SteamGridDB · ScreenScraper",
-                        value = if (scraperCount == 0) "None" else "$scraperCount linked",
-                    ) { showAccounts = true }
                 }
             }
             SettingsSection.EMULATORS -> {

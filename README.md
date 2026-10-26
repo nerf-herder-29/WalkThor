@@ -48,10 +48,11 @@ step that's done.
   With Cocoon linked it knows the game and its art from Cocoon as usual. Without Cocoon it asks
   *What are you playing?*, offering the games in your ROMs folder for that emulator's systems and
   your guides (your last picks first), or picks by itself when the emulator shows a matching name.
-- **Your ROMs folder and artwork scraping** — link the folder that holds one folder per system
-  (`3ds`, `nds`, `gba`, `switch`, `psp`, `ps2`, `gc`…). Add a ScreenScraper account and/or a
-  SteamGridDB API key (Settings → Artwork → *Scraper accounts*) and WalkThor scrapes box art, wide art and logos for
-  your games, used on Now playing, the splash and behind the tabs. Release builds can carry
+- **Artwork scraping** — add a ScreenScraper account and/or a SteamGridDB API key (Settings →
+  Artwork → *Scraper accounts*) and WalkThor scrapes box art for your guides' covers, and a
+  screenshot and marquee for each game, shown on Now playing, the splash and behind the tabs. A
+  game Cocoon starts that has no art yet is looked up once on its own. Optionally link your ROMs
+  folder (one folder per system: `3ds`, `nds`, `gba`, `switch`…) for exact matches. Release builds can carry
   ScreenScraper developer credentials from the `SCREENSCRAPER_DEV_ID` / `SCREENSCRAPER_DEV_PASSWORD`
   repository secrets; otherwise users enter their own.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app

@@ -59,10 +59,11 @@ scraper account and start a scrape (see below). Everything else stays on your de
   you're playing and scrape its artwork. The list of names is kept on the device.
 
 - **Scraping artwork (the only time WalkThor goes online), only if you add an account.** When you
-  start a scrape (or pick a game that has no artwork yet), WalkThor sends each game's ROM file name
-  and system to [ScreenScraper](https://www.screenscraper.fr) with your ScreenScraper login and
-  developer credentials, and/or its tidied-up title to [SteamGridDB](https://www.steamgriddb.com)
-  with your API key, and downloads the box art, wide art and logo they return. Nothing else is
+  start a scrape (or start a game that has no artwork yet, once), WalkThor sends each game's ROM
+  file name and system, or the game's name (from a guide's title or Cocoon's log), to
+  [ScreenScraper](https://www.screenscraper.fr) with your ScreenScraper login and developer
+  credentials, and/or its tidied-up title to [SteamGridDB](https://www.steamgriddb.com) with your
+  API key, and downloads the box art, screenshot, wide art and marquee (logo) they return. Nothing else is
   sent. Those services' own privacy policies apply to what you send them. Your account details
   and the downloaded artwork are stored only on the device.
 

@@ -69,18 +69,46 @@ object ScrapedArt {
         }
     }
 
-    fun dirFor(c: Context, rom: Rom): File =
-        File(root(c), rom.system + "/" + rom.title.replace(Regex("""[^\w\- ]"""), "_").take(80))
+    fun dirFor(c: Context, rom: Rom): File = dirFor(c, rom.system, rom.title)
 
-    fun has(c: Context, rom: Rom): Boolean = load(c).containsKey(key(rom.title)) && dirFor(c, rom).listFiles()?.isNotEmpty() == true
+    /** A game's folder by system (or "_" when it isn't known) and title. */
+    fun dirFor(c: Context, system: String?, title: String): File =
+        File(root(c), (system ?: "_") + "/" + title.replace(Regex("""[^\w\- ]"""), "_").take(80))
+
+    fun has(c: Context, rom: Rom): Boolean = has(c, rom.title)
+    fun has(c: Context, title: String): Boolean =
+        load(c)[key(title)]?.let { File(root(c), it).listFiles()?.isNotEmpty() } == true
+
+    fun record(c: Context, rom: Rom, dir: File) = record(c, rom.title, dir)
 
     @Synchronized
-    fun record(c: Context, rom: Rom, dir: File) {
+    fun record(c: Context, title: String, dir: File) {
         val m = load(c)
-        m[key(rom.title)] = dir.relativeTo(root(c)).path
+        m[key(title)] = dir.relativeTo(root(c)).path
         indexFile(c).parentFile?.mkdirs()
         indexFile(c).writeText(m.entries.joinToString("\n") { "${it.key}\t${it.value}" })
     }
+
+    /** The scraped box art file for a title, if any (for a guide's cover). */
+    fun coverFile(c: Context, title: String): File? {
+        val rel = load(c)[key(title)] ?: return null
+        return File(root(c), rel).listFiles()?.firstOrNull { it.name.startsWith("cover.") }
+    }
+
+    private fun tried(c: Context) = c.getSharedPreferences("scrapeTried", Context.MODE_PRIVATE)
+
+    /**
+     * Whether to look [title] up now, for a game you're playing: not if it was looked up in the
+     * last week (found or not), so launching the same game again never waits on the network.
+     */
+    fun shouldTry(c: Context, title: String): Boolean {
+        val at = tried(c).getLong(key(title), 0L)
+        return System.currentTimeMillis() - at > RETRY_MS
+    }
+
+    fun markTried(c: Context, title: String) { tried(c).edit().putLong(key(title), System.currentTimeMillis()).apply() }
+
+    private const val RETRY_MS = 7L * 24 * 60 * 60 * 1000
 
     /** Scraped art for a game, by its title (or its ROM file's tidied name); null if there's none. */
     fun lookup(c: Context, title: String, file: String?): GameArt? {
@@ -95,6 +123,7 @@ object ScrapedArt {
 
     fun clearAll(c: Context) {
         root(c).deleteRecursively()
+        tried(c).edit().clear().apply()
         index = null
     }
 }
@@ -103,9 +132,13 @@ object ScrapedArt {
 data class ScrapeState(val done: Int, val total: Int, val current: String?, val found: Int, val message: String? = null, val running: Boolean = true)
 
 /**
- * Fetches artwork for your ROMs from ScreenScraper (box art, by system and ROM name) and
- * SteamGridDB (wide hero art and logos, by title). Only the game's ROM file name, its system and
- * your account details are sent, and only when you start a scrape (or a game you pick has none yet).
+ * Fetches artwork, for two places:
+ *  - box art for your guides' covers on the shelf, and
+ *  - a screenshot and the game's marquee (its logo) for the Now playing screen while you play.
+ * ScreenScraper is asked first (by system and ROM name when the game is in your ROMs folder, else by
+ * name), then SteamGridDB fills the gaps (box art, wide art and logos, by name). Only the game's
+ * name (or ROM file name), its system and your account details are sent, and only when you scrape,
+ * or once for a game you start that has none yet.
  */
 object Scraper {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -117,30 +150,49 @@ object Scraper {
     private const val SGDB_BASE = "https://www.steamgriddb.com/api/v2"
     private val REGIONS = listOf("us", "wor", "eu", "ss", "uk", "jp")
 
-    /** Scrapes every game in your ROMs folder that has no artwork yet (or all of them, [refresh]). */
+    /**
+     * Scrapes your guides' covers (guides without one) and every game in your ROMs folder without
+     * artwork. [refresh] looks everything up again, replacing art and covers WalkThor found itself
+     * (never a cover you chose).
+     */
     fun scrapeAll(context: Context, refresh: Boolean = false) {
         if (job?.isActive == true) return
         val app = context.applicationContext
         job = scope.launch {
+            val books = BookRepository.get(app)
             val lib = RomLibrary.get(app)
             lib.load()
-            val todo = lib.roms.value.filter { refresh || !ScrapedArt.has(app, it) }
+            val guides = books.books.value.filter { b ->
+                !b.coverManual && (books.coverFile(b) == null || (refresh && b.coverSource?.startsWith(SCRAPED) == true))
+            }
+            val roms = lib.roms.value.filter { refresh || !ScrapedArt.has(app, it) }
+            val total = guides.size + roms.size
             var found = 0
-            _state.value = ScrapeState(0, todo.size, null, 0)
-            for ((i, rom) in todo.withIndex()) {
-                if (!isActive) break
-                _state.value = ScrapeState(i, todo.size, rom.title, found)
-                val result = runCatching { scrape(app, rom) }
+            var done = 0
+            _state.value = ScrapeState(0, total, null, 0)
+            suspend fun step(name: String, work: suspend () -> Boolean): Boolean {
+                if (!isActive) return false
+                _state.value = ScrapeState(done, total, name, found)
+                val result = runCatching { work() }
                 // A login or quota problem stops the batch; anything odd about one game just skips it.
                 (result.exceptionOrNull() as? ScrapeStop)?.let { e ->
-                    _state.value = ScrapeState(i, todo.size, null, found, e.message ?: "Scraping stopped", running = false)
+                    _state.value = ScrapeState(done, total, null, found, e.message ?: "Scraping stopped", running = false)
                     ArtworkRepository.get(app).forgetGameArt()
-                    return@launch
+                    return false
                 }
                 if (result.getOrNull() == true) found++
+                done++
                 delay(350) // gentle on the services' rate limits
+                return true
             }
-            _state.value = ScrapeState(todo.size, todo.size, null, found, "Found artwork for $found of ${todo.size} games", running = false)
+            for (b in guides) {
+                val title = com.nerfherder.walkthor.ui.gameTitleOf(b.title)
+                if (!step(title) { guideCover(app, b, refresh) }) return@launch
+            }
+            for (rom in roms) {
+                if (!step(rom.title) { scrape(app, rom) }) return@launch
+            }
+            _state.value = ScrapeState(total, total, null, found, "Found artwork for $found of $total", running = false)
             ArtworkRepository.get(app).forgetGameArt()
         }
     }
@@ -152,75 +204,138 @@ object Scraper {
 
     fun dismiss() { if (job?.isActive != true) _state.value = null }
 
-    /** Scrapes one game now (e.g. one you just picked). True if any artwork was found. */
+    /** Scrapes one game from your ROMs folder now (one you just started). True if any artwork was found. */
     suspend fun scrapeOne(context: Context, rom: Rom): Boolean = withContext(Dispatchers.IO) {
+        ScrapedArt.markTried(context, rom.title)
         (runCatching { scrape(context.applicationContext, rom) }.getOrNull() ?: false)
             .also { if (it) ArtworkRepository.get(context).forgetGameArt() }
     }
 
+    /** Scrapes a game by name (one Cocoon started that isn't in your ROMs folder). [system] if known. */
+    suspend fun scrapeTitle(context: Context, title: String, system: String?): Boolean = withContext(Dispatchers.IO) {
+        ScrapedArt.markTried(context, title)
+        (runCatching { scrapeByName(context.applicationContext, title, system) }.getOrNull() ?: false)
+            .also { if (it) ArtworkRepository.get(context).forgetGameArt() }
+    }
+
+    /** Finds box art for a guide's game and makes it the guide's cover. */
+    suspend fun coverForGuide(context: Context, book: Book): Boolean = withContext(Dispatchers.IO) {
+        runCatching { guideCover(context.applicationContext, book, refresh = false) }.getOrNull() ?: false
+    }
+
+    private const val SCRAPED = "scraped:"
+
+    private suspend fun guideCover(c: Context, book: Book, refresh: Boolean): Boolean {
+        val title = com.nerfherder.walkthor.ui.gameTitleOf(book.title)
+        // The guide's game in your ROMs folder, if it's there: its system makes the match exact.
+        val rom = RomLibrary.matchName(title, RomLibrary.get(c).roms.value)
+        val have = if (rom != null) ScrapedArt.has(c, rom) else ScrapedArt.has(c, title)
+        if (refresh || !have || ScrapedArt.coverFile(c, rom?.title ?: title) == null) {
+            if (rom != null) scrape(c, rom) else scrapeByName(c, title, null)
+        }
+        val file = ScrapedArt.coverFile(c, rom?.title ?: title) ?: return false
+        val repo = BookRepository.get(c)
+        val fresh = repo.find(book.id) ?: return false
+        if (fresh.coverManual) return false
+        val name = ArtworkRepository.get(c).saveCover(Uri.fromFile(file), repo.coversDir, fresh.id) ?: return false
+        repo.coverFile(fresh)?.delete()
+        repo.update(fresh.copy(cover = name, coverManual = false, coverSource = SCRAPED + file.path))
+        return true
+    }
+
     /**
-     * Looks one game up and saves what it finds. Box art from ScreenScraper, else a SteamGridDB
-     * grid; wide art from a SteamGridDB hero, else ScreenScraper fan art or a screenshot; logo from
-     * SteamGridDB, else ScreenScraper's wheel. Throws (with a message to show) on a login or quota
-     * problem, which stops a batch.
+     * Looks one game from your ROMs folder up and saves what it finds. ScreenScraper by ROM name
+     * (else by the game's name); SteamGridDB fills the gaps. Throws (with a message to show) on a
+     * login or quota problem, which stops a batch.
      */
     private fun scrape(c: Context, rom: Rom): Boolean {
-        var cover: String? = null
-        var hero: String? = null
-        var logo: String? = null
-        if (ScraperPrefs.hasScreenScraper(c)) {
-            screenScraper(c, rom)?.let { m ->
-                cover = m["box-2D"]
-                hero = m["fanart"] ?: m["ss"]
-                logo = m["wheel-hd"] ?: m["wheel"]
-            }
-        }
-        if (ScraperPrefs.hasSteamGridDb(c)) {
-            steamGridDb(c, rom.title)?.let { m ->
-                if (cover == null) cover = m["grid"]
-                m["hero"]?.let { hero = it }
-                m["logo"]?.let { logo = it }
-            }
-        }
+        val system = RomLibrary.system(rom.system)
+        val ss = if (ScraperPrefs.hasScreenScraper(c)) {
+            screenScraperRom(c, rom) ?: system?.let { screenScraperSearch(c, rom.title, it.screenScraperId) }
+        } else null
+        return save(c, rom.title, ScrapedArt.dirFor(c, rom), ss)
+    }
+
+    /** The same, by name only. */
+    private fun scrapeByName(c: Context, title: String, system: String?): Boolean {
+        val ss = if (ScraperPrefs.hasScreenScraper(c)) {
+            screenScraperSearch(c, title, system?.let { RomLibrary.system(it)?.screenScraperId })
+        } else null
+        return save(c, title, ScrapedArt.dirFor(c, system, title), ss)
+    }
+
+    /**
+     * Picks and downloads: box art (cover); a screenshot for the Now playing screen (hero),
+     * else the title screen, wide art or fan art; and the marquee (logo).
+     */
+    private fun save(c: Context, title: String, dir: File, ss: Map<String, String>?): Boolean {
+        val sg = if (ScraperPrefs.hasSteamGridDb(c)) steamGridDb(c, title) else null
+        val cover = ss?.get("box-2D") ?: sg?.get("grid")
+        val hero = ss?.get("ss") ?: ss?.get("sstitle") ?: sg?.get("hero") ?: ss?.get("fanart")
+        val logo = ss?.get("wheel-hd") ?: ss?.get("wheel") ?: sg?.get("logo")
         if (cover == null && hero == null && logo == null) return false
-        val dir = ScrapedArt.dirFor(c, rom)
         dir.mkdirs()
         var saved = 0
         listOf("cover" to cover, "hero" to hero, "logo" to logo).forEach { (name, url) ->
             if (url != null && download(url, dir, name)) saved++
         }
         if (saved == 0) return false
-        ScrapedArt.record(c, rom, dir)
+        ScrapedArt.record(c, title, dir)
         return true
     }
 
-    /** ScreenScraper's media for the game: type → URL, best region first. */
-    private fun screenScraper(c: Context, rom: Rom): Map<String, String>? {
-        val system = RomLibrary.system(rom.system) ?: return null
-        val url = buildString {
-            append("$SS_BASE/jeuInfos.php?output=json&softname=WalkThor")
-            append("&devid=").append(enc(ScraperPrefs.ssDevId(c)))
-            append("&devpassword=").append(enc(ScraperPrefs.ssDevPassword(c)))
-            if (ScraperPrefs.ssUser(c).isNotEmpty()) {
-                append("&ssid=").append(enc(ScraperPrefs.ssUser(c)))
-                append("&sspassword=").append(enc(ScraperPrefs.ssPassword(c)))
-            }
-            append("&systemeid=").append(system.screenScraperId)
-            append("&romtype=rom")
-            append("&romnom=").append(enc(rom.file))
+    private fun ssAuth(c: Context) = buildString {
+        append("output=json&softname=WalkThor")
+        append("&devid=").append(enc(ScraperPrefs.ssDevId(c)))
+        append("&devpassword=").append(enc(ScraperPrefs.ssDevPassword(c)))
+        if (ScraperPrefs.ssUser(c).isNotEmpty()) {
+            append("&ssid=").append(enc(ScraperPrefs.ssUser(c)))
+            append("&sspassword=").append(enc(ScraperPrefs.ssPassword(c)))
         }
+    }
+
+    /** ScreenScraper's answer, or null if the game isn't there; throws on account problems. */
+    private fun ssGet(url: String): String? {
         val (code, body) = get(url)
-        when (code) {
-            200 -> Unit
-            404 -> return null // not in ScreenScraper
+        return when (code) {
+            200 -> body
+            404 -> null
             400, 401, 403 -> throw ScrapeStop("ScreenScraper didn't accept the login. Check your accounts in Settings → Artwork → Scraper accounts.")
             423 -> throw ScrapeStop("ScreenScraper's API is closed right now. Try again later.")
             426 -> throw ScrapeStop("ScreenScraper needs a newer WalkThor.")
             429, 430, 431 -> throw ScrapeStop("ScreenScraper's daily limit for your account was reached. Try again tomorrow.")
-            else -> return null
+            else -> null
         }
+    }
+
+    /** ScreenScraper's media for a ROM, by system and file name: type → URL, best region first. */
+    private fun screenScraperRom(c: Context, rom: Rom): Map<String, String>? {
+        val system = RomLibrary.system(rom.system) ?: return null
+        val body = ssGet("$SS_BASE/jeuInfos.php?${ssAuth(c)}&systemeid=${system.screenScraperId}&romtype=rom&romnom=${enc(rom.file)}") ?: return null
         val medias = runCatching { JSONObject(body).getJSONObject("response").getJSONObject("jeu").getJSONArray("medias") }.getOrNull()
             ?: return null
+        return medias(medias).ifEmpty { null }
+    }
+
+    /** ScreenScraper's media for a game found by name (and system, if known), only on a close match. */
+    private fun screenScraperSearch(c: Context, title: String, systemId: Int?): Map<String, String>? {
+        val url = "$SS_BASE/jeuRecherche.php?${ssAuth(c)}" + (systemId?.let { "&systemeid=$it" } ?: "") + "&recherche=${enc(title)}"
+        val body = ssGet(url) ?: return null
+        val games = runCatching { JSONObject(body).getJSONObject("response").getJSONArray("jeux") }.getOrNull() ?: return null
+        val want = Matcher.words(title).toSet()
+        val best = (0 until games.length()).mapNotNull { games.optJSONObject(it) }.map { g ->
+            val names = g.optJSONArray("noms")
+            val score = (0 until (names?.length() ?: 0)).maxOfOrNull { i ->
+                Matcher.closeness(want, Matcher.words(names!!.optJSONObject(i)?.optString("text").orEmpty()).toSet())
+            } ?: 0f
+            g to score
+        }.maxByOrNull { it.second } ?: return null
+        if (best.second < 0.75f) return null
+        val medias = best.first.optJSONArray("medias") ?: return null
+        return medias(medias).ifEmpty { null }
+    }
+
+    private fun medias(medias: JSONArray): Map<String, String> {
         val byType = HashMap<String, MutableList<JSONObject>>()
         for (i in 0 until medias.length()) {
             val m = medias.optJSONObject(i) ?: continue
@@ -231,7 +346,7 @@ object Scraper {
             val ranked = list.sortedBy { m -> REGIONS.indexOf(m.optString("region")).let { if (it < 0) REGIONS.size else it } }
             return ranked.firstNotNullOfOrNull { it.optString("url").takeIf { u -> u.startsWith("http") } }
         }
-        return listOf("box-2D", "fanart", "ss", "wheel-hd", "wheel").mapNotNull { t -> best(t)?.let { t to it } }.toMap()
+        return listOf("box-2D", "ss", "sstitle", "fanart", "wheel-hd", "wheel").mapNotNull { t -> best(t)?.let { t to it } }.toMap()
     }
 
     /** SteamGridDB's art for the title: grid (box art), hero and logo. */
