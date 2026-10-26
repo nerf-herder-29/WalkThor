@@ -66,7 +66,15 @@ object Revive {
             ApplicationExitInfo.REASON_ANR -> "because it stopped responding"
             else -> return // closed by you, by an update, or by a restart: leave it closed
         }
-        if (exit.reason == ApplicationExitInfo.REASON_CRASH_NATIVE) CrashLog.recordExit(context, exit)
+        if (exit.reason == ApplicationExitInfo.REASON_CRASH_NATIVE || exit.reason == ApplicationExitInfo.REASON_ANR) {
+            CrashLog.recordExit(context, exit)
+        }
+        // Stopped responding: reopening it could just do the same again, so leave it closed.
+        if (exit.reason == ApplicationExitInfo.REASON_ANR) {
+            val at = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(exit.timestamp))
+            p.edit().putString("note", "Android closed WalkThor $why at $at. A report was saved (About & licences).").apply()
+            return
+        }
 
         // Only when it was showing during a game right up to being closed, and only just now.
         val seen = p.getLong("seen", 0L)

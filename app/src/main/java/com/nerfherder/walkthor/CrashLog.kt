@@ -50,7 +50,7 @@ object CrashLog {
             val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
             File(context.filesDir, FILE).writeText(
                 buildString {
-                    appendLine("WalkThor $version crash report (native)")
+                    appendLine("WalkThor $version " + if (exit.reason == android.app.ApplicationExitInfo.REASON_ANR) "not-responding report" else "crash report (native)")
                     appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(exit.timestamp))}")
                     appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
                     appendLine("Reason: ${exit.description ?: exit.reason}")
