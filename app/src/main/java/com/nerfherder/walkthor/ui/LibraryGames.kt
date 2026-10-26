@@ -71,10 +71,27 @@ import java.io.File
 object LibrarySection {
     const val ALL = "all"
     const val GUIDES = "guides"
+    const val HIDDEN = "hidden"
 
     private fun prefs(c: android.content.Context) = c.getSharedPreferences("library", android.content.Context.MODE_PRIVATE)
     fun load(c: android.content.Context): String = prefs(c).getString("section", ALL) ?: ALL
     fun save(c: android.content.Context, s: String) = prefs(c).edit().putString("section", s).apply()
+}
+
+/** Games you've hidden from your library (by ROM), kept on the device. */
+object HiddenGames {
+    private const val KEY = "hidden"
+    private fun prefs(c: android.content.Context) = c.getSharedPreferences("library", android.content.Context.MODE_PRIVATE)
+    val ids = kotlinx.coroutines.flow.MutableStateFlow<Set<String>?>(null)
+
+    fun load(c: android.content.Context): Set<String> =
+        ids.value ?: (prefs(c).getStringSet(KEY, emptySet())?.toSet() ?: emptySet()).also { ids.value = it }
+
+    fun set(c: android.content.Context, romId: String, hidden: Boolean) {
+        val now = load(c).let { if (hidden) it + romId else it - romId }
+        prefs(c).edit().putStringSet(KEY, now).apply()
+        ids.value = now
+    }
 }
 
 /** The game a ROM is, as the rest of WalkThor knows games. */
@@ -82,7 +99,7 @@ internal fun Rom.asGame() = LaunchedGame(title, file, RomLibrary.system(system)?
 
 /** The list down the library's left: All games, each system folder, then Guides. */
 @Composable
-fun LibraryRail(roms: List<Rom>, guides: Int, section: String, onSection: (String) -> Unit) {
+fun LibraryRail(roms: List<Rom>, guides: Int, hidden: Int, section: String, onSection: (String) -> Unit) {
     val narrow = LocalConfiguration.current.screenWidthDp < 520
     val systems = remember(roms) {
         roms.groupingBy { it.system }.eachCount().entries
@@ -101,6 +118,9 @@ fun LibraryRail(roms: List<Rom>, guides: Int, section: String, onSection: (Strin
         systems.forEach { (key, name, n) -> RailItem(name, n, section == key, narrow) { onSection(key) } }
         Box(Modifier.padding(horizontal = 6.dp, vertical = 6.dp).fillMaxWidth().height(1.dp).background(BookColors.Hairline))
         RailItem("Guides", guides, section == LibrarySection.GUIDES, narrow) { onSection(LibrarySection.GUIDES) }
+        if (hidden > 0 || section == LibrarySection.HIDDEN) {
+            RailItem("Hidden", hidden, section == LibrarySection.HIDDEN, narrow) { onSection(LibrarySection.HIDDEN) }
+        }
     }
 }
 
@@ -141,7 +161,7 @@ private fun RailItem(label: String, count: Int, on: Boolean, narrow: Boolean, on
  * a guide; long-press any to choose its cover.
  */
 @Composable
-fun GamesGrid(roms: List<Rom>, books: List<Book>, coverFile: (Book) -> File?, actions: LibraryActions) {
+fun GamesGrid(roms: List<Rom>, books: List<Book>, coverFile: (Book) -> File?, actions: LibraryActions, hiddenView: Boolean = false) {
     val context = LocalContext.current
     // Which of your guides goes with each game (worked out once, off the main thread).
     val guideFor by produceState<Map<String, Book>>(emptyMap(), roms, books) {
@@ -152,6 +172,7 @@ fun GamesGrid(roms: List<Rom>, books: List<Book>, coverFile: (Book) -> File?, ac
     }
     var sheetFor by remember { mutableStateOf<Rom?>(null) }
     var artFor by remember { mutableStateOf<Rom?>(null) }
+    var menuFor by remember { mutableStateOf<Rom?>(null) }
     val sorted = remember(roms) { roms.sortedBy { it.title.lowercase() } }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 104.dp),
@@ -162,12 +183,25 @@ fun GamesGrid(roms: List<Rom>, books: List<Book>, coverFile: (Book) -> File?, ac
     ) {
         items(sorted, key = { it.id }) { rom ->
             val guide = guideFor[rom.id]
-            GameTile(
-                rom = rom,
-                hasGuide = guide != null,
-                onClick = { if (guide != null) actions.onOpen(guide) else sheetFor = rom },
-                onLongClick = { artFor = rom },
-            )
+            Box {
+                GameTile(
+                    rom = rom,
+                    hasGuide = guide != null,
+                    // Hidden games: a tap offers to show it again.
+                    onClick = { if (hiddenView) menuFor = rom else if (guide != null) actions.onOpen(guide) else sheetFor = rom },
+                    onLongClick = { menuFor = rom },
+                )
+                androidx.compose.material3.DropdownMenu(expanded = menuFor == rom, onDismissRequest = { menuFor = null }) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text("Choose art") },
+                        onClick = { menuFor = null; artFor = rom },
+                    )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(if (hiddenView) "Show in library" else "Hide game") },
+                        onClick = { menuFor = null; HiddenGames.set(context, rom.id, !hiddenView) },
+                    )
+                }
+            }
         }
     }
     sheetFor?.let { rom ->

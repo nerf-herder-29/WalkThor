@@ -161,14 +161,18 @@ fun LibraryScreen(
     // Your ROMs folder's games, by system, with your guides as their own section.
     val libContext = LocalContext.current
     val romLibrary = remember { com.nerfherder.walkthor.data.RomLibrary.get(libContext) }
-    val roms by romLibrary.roms.collectAsState()
+    val allRoms by romLibrary.roms.collectAsState()
     LaunchedEffect(Unit) { romLibrary.load() }
+    val hiddenIds = HiddenGames.ids.collectAsState().value ?: remember { HiddenGames.load(libContext) }
+    val roms = remember(allRoms, hiddenIds) { allRoms.filter { it.id !in hiddenIds } }
+    val hiddenRoms = remember(allRoms, hiddenIds) { allRoms.filter { it.id in hiddenIds } }
     var chosenSection by remember { mutableStateOf(LibrarySection.load(libContext)) }
     // A system folder that's gone (relinked, rescanned): back to all games.
     val section = chosenSection.takeIf { s ->
-        s == LibrarySection.ALL || s == LibrarySection.GUIDES || roms.any { it.system == s }
+        s == LibrarySection.ALL || s == LibrarySection.GUIDES || roms.any { it.system == s } ||
+            (s == LibrarySection.HIDDEN && hiddenRoms.isNotEmpty())
     } ?: LibrarySection.ALL
-    val showGames = roms.isNotEmpty() && section != LibrarySection.GUIDES
+    val showGames = allRoms.isNotEmpty() && section != LibrarySection.GUIDES
     // Turning swipe-to-open on always goes through the disclosure first.
     fun startSwipeSetup() {
         if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
@@ -266,17 +270,22 @@ fun LibraryScreen(
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
         Row(Modifier.weight(1f)) {
-          if (roms.isNotEmpty()) {
-            LibraryRail(roms, books.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
+          if (allRoms.isNotEmpty()) {
+            LibraryRail(roms, books.size, hiddenRoms.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
             Box(Modifier.width(1.dp).fillMaxHeight().background(BookColors.Hairline))
           }
           Box(Modifier.weight(1f)) {
             if (showGames) {
                 GamesGrid(
-                    roms = if (section == LibrarySection.ALL) roms else roms.filter { it.system == section },
+                    roms = when (section) {
+                        LibrarySection.ALL -> roms
+                        LibrarySection.HIDDEN -> hiddenRoms
+                        else -> roms.filter { it.system == section }
+                    },
                     books = books,
                     coverFile = actions.coverFile,
                     actions = actions,
+                    hiddenView = section == LibrarySection.HIDDEN,
                 )
             } else if (books.isEmpty()) {
                 EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder, onSetupGuide = { showSetup = true })
