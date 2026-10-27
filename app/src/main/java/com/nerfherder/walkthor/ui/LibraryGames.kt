@@ -121,6 +121,28 @@ fun LibraryRail(roms: List<Rom>, guides: Int, hidden: Int, section: String, onSe
         if (hidden > 0 || section == LibrarySection.HIDDEN) {
             RailItem("Hidden", hidden, section == LibrarySection.HIDDEN, narrow) { onSection(LibrarySection.HIDDEN) }
         }
+        // Reads your ROMs folder again, for games you've added or removed.
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        val lib = remember { RomLibrary.get(context) }
+        val reading by lib.scanning.collectAsState()
+        Box(Modifier.padding(horizontal = 6.dp, vertical = 6.dp).fillMaxWidth().height(1.dp).background(BookColors.Hairline))
+        Text(
+            if (reading != null) "Refreshing…" else "Refresh list",
+            fontSize = 11.sp,
+            color = BookColors.TextMuted.copy(alpha = 0.8f),
+            maxLines = 1,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(enabled = reading == null) {
+                    scope.launch {
+                        lib.scan()
+                        com.nerfherder.walkthor.data.ArtworkRepository.get(context).forgetGameArt()
+                    }
+                }
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        )
     }
 }
 

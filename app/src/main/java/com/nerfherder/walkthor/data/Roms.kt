@@ -92,6 +92,19 @@ class RomLibrary private constructor(private val context: Context) {
                 val system = systemForFolder(name) ?: continue
                 _scanning.value = "Reading $name…"
                 val entries = children(tree, id)
+                // Windows games: each .pcgame shortcut is a game (in the folder, or one folder down).
+                // Only when there are none do the folders inside count as games, as before.
+                if (system.key == "windows") {
+                    val shortcuts = pcGames(tree, entries)
+                    if (shortcuts.isNotEmpty()) {
+                        val seenPc = HashSet<String>()
+                        shortcuts.forEach { f ->
+                            val title = tidy(f)
+                            if (title.isNotEmpty() && seenPc.add(title.lowercase())) found.add(Rom(system.key, f, title))
+                        }
+                        continue
+                    }
+                }
                 val names = entries.filter { !it.third }.map { it.second }.toSet()
                 val seen = HashSet<String>()
                 for ((_, file, dir) in entries) {
@@ -119,6 +132,16 @@ class RomLibrary private constructor(private val context: Context) {
         } finally {
             _scanning.value = null
         }
+    }
+
+    /** The .pcgame shortcuts in a Windows folder and the folders just inside it. */
+    private fun pcGames(tree: Uri, entries: List<Triple<String, String, Boolean>>): List<String> {
+        fun isPc(name: String) = name.endsWith(".pcgame", ignoreCase = true) && !name.startsWith(".")
+        val out = entries.filter { !it.third && isPc(it.second) }.map { it.second }.toMutableList()
+        entries.filter { it.third && !it.second.startsWith(".") && it.second.lowercase() !in NOT_GAMES }.forEach { (id, _, _) ->
+            runCatching { children(tree, id) }.getOrNull()?.filter { !it.third && isPc(it.second) }?.forEach { out.add(it.second) }
+        }
+        return out
     }
 
     private fun children(tree: Uri, docId: String): List<Triple<String, String, Boolean>> {
