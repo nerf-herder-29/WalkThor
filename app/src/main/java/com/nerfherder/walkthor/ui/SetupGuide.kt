@@ -99,7 +99,7 @@ fun SetupGuideDialog(
                 )
                 Step(
                     3, "Link your artwork", state.artLinked, "Link folder", onLinkArt,
-                    "Pick the folder with your game artwork (Cocoon's media folder works). WalkThor uses it for " +
+                    "Pick the folder with your game artwork (Cocoon's media folder, or ES-DE's downloaded_media). WalkThor uses it for " +
                         "guide covers and for the Now playing screen: hero or fan art as the background and the " +
                         "logo on top. Optional, but it makes everything look much better. After adding new art, " +
                         "use Settings → Artwork → Rescan.",

@@ -229,7 +229,9 @@ class ArtworkRepository private constructor(private val context: Context) {
             val where = (img.folder + "/" + extra.joinToString(" ")).lowercase()
             val coverBonus = when {
                 "theme" in where || "backcover" in where || "marquee" in where || "logo" in where ||
-                    "wheel" in where || "manual" in where -> null
+                    "wheel" in where || "manual" in where || "physicalmedia" in where -> null
+                // ES-DE keeps flat box art in "covers" and rendered boxes in "3dboxes": prefer the flat one.
+                "3dbox" in where -> 0.05f
                 "cover" in where || "box" in where || "front" in where -> 0.15f
                 "grid" in where || "icon" in where -> 0.1f
                 "miximage" in where -> 0.05f
@@ -374,7 +376,7 @@ class ArtworkRepository private constructor(private val context: Context) {
         /** How close an image's title must be to be shown as a launched game's art. */
         const val GAME_ART_MIN = 0.6f
         private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
-        private val SKIP_DIRS = setOf("videos", "manuals", "sounds", "music", "backup", "backups")
+        private val SKIP_DIRS = setOf("videos", "manuals", "sounds", "music", "backup", "backups", "themes", "custom_systems", "gamelists", "logs", "scripts", "controllers", "settings")
 
         @Volatile private var instance: ArtworkRepository? = null
         fun get(context: Context): ArtworkRepository =
@@ -519,7 +521,8 @@ object Matcher {
         val where = (img.folder + "/" + img.name).lowercase()
         s += when {
             "theme" in where -> -0.4f
-            "backcover" in where -> -0.05f
+            "backcover" in where || "physicalmedia" in where -> -0.05f
+            "3dbox" in where -> 0.03f
             // Square icon art suits WalkThor's square guide tiles best.
             "icon" in where -> 0.12f
             "cover" in where || "box" in where || "front" in where || "grid" in where -> 0.06f

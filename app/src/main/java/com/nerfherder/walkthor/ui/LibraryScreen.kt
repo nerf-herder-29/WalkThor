@@ -482,7 +482,7 @@ private fun SettingsScreen(
                 }
             }
             SettingsSection.ARTWORK -> {
-                SettingsGroup("Cocoon artwork") {
+                SettingsGroup("Cocoon / ES-DE artwork") {
                     if (artLinked) {
                         SettingRow(
                             "Artwork folder",
@@ -497,7 +497,7 @@ private fun SettingsScreen(
                     } else {
                         SettingRow(
                             "Artwork folder",
-                            "Cocoon's media folder: box art and backdrops for your guides",
+                            "Cocoon's media folder, or ES-DE's downloaded_media: box art, backgrounds and marquees",
                             divider = false,
                             buttons = { PillButton("Link…") { actions.onLinkArtFolder() } },
                         )
@@ -727,7 +727,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
                 border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
             ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
             if (!artLinked) {
-                OutlinedButton(onClick = onLinkArt) { Text("Link Cocoon artwork", color = BookColors.Text) }
+                OutlinedButton(onClick = onLinkArt) { Text("Link artwork folder", color = BookColors.Text) }
             }
         }
         TextButton(onClick = onSetupGuide, modifier = Modifier.padding(top = 6.dp)) { Text("How to set up WalkThor") }
@@ -1007,14 +1007,14 @@ private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: 
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        "Link your Cocoon artwork folder to pick from the box art you've already scraped.",
+                        "Link your Cocoon or ES-DE artwork folder to pick from the box art you've already scraped.",
                         color = BookColors.TextMuted,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.width(360.dp),
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(onClick = { onDismiss(); actions.onLinkArtFolder() }) {
-                        Text("Link Cocoon artwork folder", color = BookColors.Text)
+                        Text("Link artwork folder", color = BookColors.Text)
                     }
                 }
             }

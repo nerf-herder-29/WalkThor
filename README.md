@@ -31,7 +31,7 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 5. **Allow accessibility access** when WalkThor asks. It's what keeps the game at full priority
    (and lets you swipe WalkThor up and down).
 
-Optional: link your artwork folder (Cocoon's media folder works) for game art, logos and guide
+Optional: link your artwork folder (Cocoon's media folder, or ES-DE's `downloaded_media`) for game art, logos and guide
 covers. Every step is also in the app under Settings (⋮) → About → *How to set up WalkThor*, with a tick for each
 step that's done.
 

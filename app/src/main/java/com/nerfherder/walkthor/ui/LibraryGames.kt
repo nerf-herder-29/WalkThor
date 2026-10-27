@@ -456,7 +456,7 @@ fun GameArtworkDialog(
             } else {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     o.user?.let { ArtChoice(it, "Yours", "Picked by you", chosen == it, w, ratio, kind) { picks[kind] = it } }
-                    o.cocoon?.let { ArtChoice(it, "Cocoon", "Artwork folder", chosen == it, w, ratio, kind) { picks[kind] = it } }
+                    o.cocoon?.let { ArtChoice(it, "Cocoon / ES-DE", "Artwork folder", chosen == it, w, ratio, kind) { picks[kind] = it } }
                     o.scraped?.let { ArtChoice(it, "Scraped", "Fetched online", chosen == it, w, ratio, kind) { picks[kind] = it } }
                     Column(Modifier.width(w)) {
                         Box(
