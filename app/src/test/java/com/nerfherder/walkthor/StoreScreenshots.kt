@@ -201,7 +201,7 @@ class StoreScreenshots {
         val words = title.uppercase().split(" ")
         val lines = if (words.size > 2) listOf(words.take(words.size / 2).joinToString(" "), words.drop(words.size / 2).joinToString(" ")) else listOf(words.joinToString(" "))
         p.textSize = if (lines.maxOf { it.length } > 11) 44f else 56f
-        lines.forEachIndexed { i, l -> c.drawText(l, w / 2f, 110f + i * 58f, p) }
+        lines.forEachIndexed { i, l -> c.drawText(l, w / 2f, h - 60f - (lines.size - 1 - i) * 58f, p) }
         val f = File(app.cacheDir, "promo-${title.hashCode()}.png")
         f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         return f
@@ -227,7 +227,9 @@ class StoreScreenshots {
             Triple("switch", "Pixel Knight DX", listOf(0xFF2B5A2B, 0xFF0B180B, 0xFFFFE08A)),
         )
         File(app.filesDir, "roms.tsv").writeText(games.joinToString("\n") { (sys, t, _) -> "$sys\t$t (USA).bin\t$t" })
-        runBlocking { com.nerfherder.walkthor.data.RomLibrary.get(app).load() }
+        val lib = com.nerfherder.walkthor.data.RomLibrary.get(app)
+        lib.javaClass.getDeclaredField("loaded").apply { isAccessible = true }.setBoolean(lib, false)
+        runBlocking { lib.load() }
         games.forEachIndexed { i, (sys, t, cols) ->
             val rom = com.nerfherder.walkthor.data.Rom(sys, "$t (USA).bin", t)
             val dir = com.nerfherder.walkthor.data.ScrapedArt.dirFor(app, rom).apply { mkdirs() }
