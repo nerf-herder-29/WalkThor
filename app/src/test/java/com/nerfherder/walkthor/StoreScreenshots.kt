@@ -177,6 +177,71 @@ class StoreScreenshots {
         shot("check-library-games-dense")
     }
 
+    /** Made-up box art for a made-up game: a colour, a simple emblem and the title. */
+    private fun promoCover(title: String, top: Int, bottom: Int, glow: Int, shape: Int): File {
+        val w = 480; val h = 640
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), top, bottom, android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        p.shader = android.graphics.RadialGradient(w / 2f, h * 0.58f, 210f, glow, glow and 0x00FFFFFF, android.graphics.Shader.TileMode.CLAMP)
+        c.drawCircle(w / 2f, h * 0.58f, 210f, p)
+        p.shader = null
+        p.color = 0xEE101014.toInt()
+        when (shape % 4) {
+            0 -> c.drawCircle(w / 2f, h * 0.58f, 70f, p)
+            1 -> { val path = android.graphics.Path(); path.moveTo(w / 2f, h * 0.44f); path.lineTo(w / 2f + 85f, h * 0.70f); path.lineTo(w / 2f - 85f, h * 0.70f); path.close(); c.drawPath(path, p) }
+            2 -> c.drawRect(w / 2f - 60f, h * 0.48f, w / 2f + 60f, h * 0.68f, p)
+            else -> { c.drawCircle(w / 2f - 40f, h * 0.6f, 45f, p); c.drawCircle(w / 2f + 40f, h * 0.56f, 55f, p) }
+        }
+        p.color = 0xFFF6EEDD.toInt()
+        p.textAlign = android.graphics.Paint.Align.CENTER
+        p.typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+        val words = title.uppercase().split(" ")
+        val lines = if (words.size > 2) listOf(words.take(words.size / 2).joinToString(" "), words.drop(words.size / 2).joinToString(" ")) else listOf(words.joinToString(" "))
+        p.textSize = if (lines.maxOf { it.length } > 11) 44f else 56f
+        lines.forEachIndexed { i, l -> c.drawText(l, w / 2f, 110f + i * 58f, p) }
+        val f = File(app.cacheDir, "promo-${title.hashCode()}.png")
+        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        return f
+    }
+
+    @Test
+    fun promoLibrary() {
+        val games = listOf(
+            Triple("gc", "Lanterns of Emberfall", listOf(0xFF1B2A4A, 0xFF6B2E1F, 0xFFFFC56B)),
+            Triple("gc", "Starfall Tactics", listOf(0xFF2A1046, 0xFF0D0D1A, 0xFFB98AFF)),
+            Triple("wii", "Moss & Marrow", listOf(0xFF15362A, 0xFF0B140F, 0xFF7FE08A)),
+            Triple("wii", "Kingdom of Glass", listOf(0xFF20435A, 0xFF0A1620, 0xFFBFE7F2)),
+            Triple("gc", "Neon Drift Racing", listOf(0xFF3A145C, 0xFF12051F, 0xFFE04FD0)),
+            Triple("ps2", "The Sunken Archive", listOf(0xFF0F3D3A, 0xFF051514, 0xFF5FE0C2)),
+            Triple("gba", "Paper Knights", listOf(0xFF5A3A12, 0xFF1C1206, 0xFFF2C230)),
+            Triple("ps2", "Hollow Tide", listOf(0xFF102A4A, 0xFF060B14, 0xFF8A9BFF)),
+            Triple("3ds", "Ironclad Rally", listOf(0xFF3A3A3A, 0xFF101010, 0xFFF2A030)),
+            Triple("3ds", "Echo Valley", listOf(0xFF1E4A2A, 0xFF08140B, 0xFFA6D66A)),
+            Triple("switch", "Skyward Tides", listOf(0xFF123C6B, 0xFF07142A, 0xFF5FB3E6)),
+            Triple("switch", "Moonlit Ronin", listOf(0xFF3B1010, 0xFF120505, 0xFFFF6A3D)),
+            Triple("nds", "Crystal Hollow", listOf(0xFF2A1446, 0xFF0C0618, 0xFFFFB3F0)),
+            Triple("gba", "Frostbound", listOf(0xFF1D3A4A, 0xFF08121A, 0xFFE8F6FF)),
+            Triple("switch", "Pixel Knight DX", listOf(0xFF2B5A2B, 0xFF0B180B, 0xFFFFE08A)),
+        )
+        File(app.filesDir, "roms.tsv").writeText(games.joinToString("\n") { (sys, t, _) -> "$sys\t$t (USA).bin\t$t" })
+        runBlocking { com.nerfherder.walkthor.data.RomLibrary.get(app).load() }
+        games.forEachIndexed { i, (sys, t, cols) ->
+            val rom = com.nerfherder.walkthor.data.Rom(sys, "$t (USA).bin", t)
+            val dir = com.nerfherder.walkthor.data.ScrapedArt.dirFor(app, rom).apply { mkdirs() }
+            promoCover(t, cols[0].toInt(), cols[1].toInt(), cols[2].toInt(), i).copyTo(File(dir, "cover.png"), overwrite = true)
+            com.nerfherder.walkthor.data.ScrapedArt.record(app, rom, dir)
+        }
+        com.nerfherder.walkthor.data.GameCovers.invalidate()
+        com.nerfherder.walkthor.ui.LibrarySection.save(app, com.nerfherder.walkthor.ui.LibrarySection.ALL)
+        content { Library() }
+        settle()
+        settle()
+        shot("20-promo-library")
+    }
+
     @Test
     fun gameArtwork() {
         content {
