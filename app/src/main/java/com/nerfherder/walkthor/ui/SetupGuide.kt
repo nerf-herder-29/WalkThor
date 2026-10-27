@@ -126,7 +126,8 @@ fun SetupGuideDialog(
                 Para(
                     "Turn on Settings → Emulators → Open when an emulator starts (it needs accessibility access, step 5) and WalkThor opens " +
                         "on the bottom screen whenever an emulator comes to the front, from any frontend. With Cocoon linked, " +
-                        "Cocoon names the game. Without Cocoon, if WalkThor can't tell which game it is, Now playing asks What " +
+                        "Cocoon names the game. Using ES-DE? Link its folder in Settings → ES-DE and turn on Custom Event Scripts " +
+                        "and Debug Mode in ES-DE's Other settings: ES-DE then names the game too. Without either, if WalkThor can't tell which game it is, Now playing asks What " +
                         "are you playing?, offering your games (from a ROMs folder you link) and guides, your last picks first."
                 )
                 Para(

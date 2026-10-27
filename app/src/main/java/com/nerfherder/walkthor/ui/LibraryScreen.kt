@@ -131,6 +131,9 @@ class LibraryActions(
     val onSwapScreen: (() -> Unit)?,
     /** Pick your ROMs folder (one folder per system). */
     val onLinkRoms: () -> Unit = {},
+    /** Pick ES-DE's folder (the one with logs/es_log.txt). */
+    val onLinkEsde: () -> Unit = {},
+    val onUnlinkEsde: () -> Unit = {},
     /** Pick an image file as a game's cover, background or marquee. */
     val onPickGameCover: (String, com.nerfherder.walkthor.data.GameCovers.Kind) -> Unit = { _, _ -> },
     /** Add a guide (file picker) and link it to a game. */
@@ -151,6 +154,7 @@ fun LibraryScreen(
     cocoonLinked: Boolean,
     swipeNeedsPermission: Boolean,
     actions: LibraryActions,
+    esdeLinked: Boolean = false,
 ) {
     var coverFor by remember { mutableStateOf<Book?>(null) }
     var explainSwipe by remember { mutableStateOf(false) }
@@ -313,7 +317,7 @@ fun LibraryScreen(
     }
     if (settingsOpen) {
         SettingsScreen(
-            artLinked, artCount, alwaysBottom, swipeToOpen, cocoonLinked, actions,
+            artLinked, artCount, alwaysBottom, swipeToOpen, cocoonLinked, esdeLinked, actions,
             onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
             onAbout = { showAbout = true },
             onSetupGuide = { showSetup = true },
@@ -420,6 +424,7 @@ private fun SettingsScreen(
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
     cocoonLinked: Boolean,
+    esdeLinked: Boolean,
     actions: LibraryActions,
     onToggleSwipe: (Boolean) -> Unit,
     onAbout: () -> Unit,
@@ -545,7 +550,11 @@ private fun SettingsScreen(
                 SettingsGroup("Emulators") {
                     SettingSwitch(
                         "Open when an emulator starts",
-                        if (cocoonLinked) "Even when Cocoon doesn't open WalkThor" else "Works without Cocoon",
+                        when {
+                            cocoonLinked -> "Even when Cocoon doesn't open WalkThor"
+                            esdeLinked -> "Opens WalkThor when you start a game in ES-DE"
+                            else -> "Works without Cocoon"
+                        },
                         checked = detecting,
                         divider = false,
                     ) { onToggleEmulators(it) }
@@ -553,8 +562,8 @@ private fun SettingsScreen(
                         SettingLink("Choose emulators", "Tick any WalkThor doesn't know") { showEmulators = true }
                     }
                 }
-                if (detecting && cocoonLinked) {
-                    SettingsNote("With Cocoon linked, WalkThor knows the game from Cocoon's launch log.")
+                if (detecting && (cocoonLinked || esdeLinked)) {
+                    SettingsNote("With " + (if (cocoonLinked) "Cocoon" else "ES-DE") + " linked, WalkThor knows the game from its launch log.")
                 }
             }
             SettingsSection.COCOON -> {
@@ -581,6 +590,35 @@ private fun SettingsScreen(
                         )
                     }
                 }
+            }
+            SettingsSection.ESDE -> {
+                SettingsGroup("ES-DE") {
+                    if (esdeLinked) {
+                        SettingRow(
+                            "ES-DE folder",
+                            "WalkThor knows each game ES-DE launches, and when you're back",
+                            divider = false,
+                            buttons = {
+                                PillButton("Change") { actions.onLinkEsde() }
+                                PillButton("Unlink", quiet = true) { actions.onUnlinkEsde() }
+                            },
+                        )
+                        SettingSwitch("Show play time", "Next to the clock, from ES-DE's log", checked = showTimer) {
+                            PlaySession.setShowTimer(context, it)
+                        }
+                    } else {
+                        SettingRow(
+                            "ES-DE folder",
+                            "Link the ES-DE folder (the one with logs inside) so WalkThor knows each game you start",
+                            divider = false,
+                            buttons = { PillButton("Link…") { actions.onLinkEsde() } },
+                        )
+                    }
+                }
+                SettingsNote(
+                    "In ES-DE: Main menu → Other settings → turn on Custom Event Scripts and Debug Mode, so it logs " +
+                        "each game. To have WalkThor open when a game starts, turn on Emulators → Open when an emulator starts.",
+                )
             }
             SettingsSection.ABOUT -> {
                 SettingsGroup(null) {

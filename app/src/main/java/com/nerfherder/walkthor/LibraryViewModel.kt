@@ -77,6 +77,21 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Links ES-DE's folder (the one holding logs/es_log.txt) for game-aware opening. */
+    fun linkEsde(tree: Uri) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            if (com.nerfherder.walkthor.data.EsdeLog.hasLog(app, tree)) {
+                com.nerfherder.walkthor.data.EsdeLog.link(app, tree)
+                com.nerfherder.walkthor.SwipeLauncher.setGameGuide(app, true)
+                _message.tryEmit("ES-DE linked. Turn on Custom Event Scripts and Debug Mode in ES-DE's Other settings")
+            } else {
+                _message.tryEmit("No logs/es_log.txt in that folder. Pick the ES-DE folder itself")
+            }
+            com.nerfherder.walkthor.SwipeLauncher.refresh(app)
+        }
+    }
+
     fun importGuide(uri: Uri) {
         if (importJob?.isActive == true) return
         importJob = viewModelScope.launch {

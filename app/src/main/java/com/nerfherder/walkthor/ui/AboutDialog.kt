@@ -202,7 +202,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "each game's file name and system (and your account details) to that service. Guides, covers, " +
                         "reading positions and game links stay on this device and are removed if you uninstall. " +
                         "It reads only what you point it at: guides you import, an artwork folder you link, the file names " +
-                        "in a ROMs folder you link, and Cocoon's launch_debug.log (to see which game you launched). The " +
+                        "in a ROMs folder you link, and Cocoon's launch_debug.log or ES-DE's es_log.txt (to see which game you launched). The " +
                         "accessibility service responds " +
                         "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority, only when a game is in front there " +

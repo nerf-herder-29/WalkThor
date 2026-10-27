@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
     /** Results from the system pickers, consumed by the UI. */
     private val pickedArtFolder = MutableStateFlow<Uri?>(null)
     private val pickedCocoonFolder = MutableStateFlow<Uri?>(null)
+    private val pickedEsdeFolder = MutableStateFlow<Uri?>(null)
     /** Bumped each time WalkThor is opened by the swipe gesture. */
     private val swipeTick = MutableStateFlow(0L)
     /** Ticks every few seconds while WalkThor is on screen, to notice a game launched meanwhile. */
@@ -95,6 +96,9 @@ class MainActivity : ComponentActivity() {
     }
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedArtFolder.value = uri
+    }
+    private val esdeFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) pickedEsdeFolder.value = uri
     }
     private val cocoonFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) pickedCocoonFolder.value = uri
@@ -155,7 +159,7 @@ class MainActivity : ComponentActivity() {
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         // Until the launch log has been checked, assume a game may be running (when Cocoon is
         // linked) so WalkThor never grabs focus from it while starting up as its companion.
-        GameFocus.gameRunning.value = CocoonLaunchLog.linkedFolder(this) != null || EmulatorWatch.session.value != null
+        GameFocus.gameRunning.value = com.nerfherder.walkthor.data.LaunchLogs.anyLinked(this) || EmulatorWatch.session.value != null
         applyGameFocus(initial = true)
         lifecycleScope.launch {
             var typing = GameFocus.wantFocus.value
@@ -434,6 +438,7 @@ class MainActivity : ComponentActivity() {
     internal val hasOtherScreenFlow get() = hasOtherScreen
     internal val pickedArtFolderFlow get() = pickedArtFolder
     internal val pickedCocoonFolderFlow get() = pickedCocoonFolder
+    internal val pickedEsdeFolderFlow get() = pickedEsdeFolder
     internal val swipeTickFlow get() = swipeTick
     internal val pollTickFlow get() = pollTick
     internal val pickedCoverFlow get() = pickedCover
@@ -448,6 +453,7 @@ class MainActivity : ComponentActivity() {
 
     internal fun pickArtFolder() = folderPicker.launch(null)
     internal fun pickCocoonFolder() = cocoonFolderPicker.launch(null)
+    internal fun pickEsdeFolder() = esdeFolderPicker.launch(null)
     internal fun pickRomFolder() = romFolderPicker.launch(null)
 
     internal fun pickCoverImage(bookId: String) {
@@ -508,9 +514,17 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     val pending by host.incomingFlow.collectAsState()
     val pickedFolder by host.pickedArtFolderFlow.collectAsState()
     val pickedCocoon by host.pickedCocoonFolderFlow.collectAsState()
+    val pickedEsde by host.pickedEsdeFolderFlow.collectAsState()
+    LaunchedEffect(pickedEsde) {
+        pickedEsde?.let { tree ->
+            host.pickedEsdeFolderFlow.value = null
+            library.linkEsde(tree)
+        }
+    }
     val swipeTick by host.swipeTickFlow.collectAsState()
     val gameGuideOn by SwipeLauncher.gameGuide.collectAsState()
     val cocoonLinked by SwipeLauncher.cocoonLinked.collectAsState()
+    val esdeLinked by SwipeLauncher.esdeLinked.collectAsState()
     val pickedCover by host.pickedCoverFlow.collectAsState()
     val canSwap by host.hasOtherScreenFlow.collectAsState()
     var openId by rememberSaveable { mutableStateOf(initialBookId) }
@@ -742,16 +756,18 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
      * acts on a launch it hasn't handled yet, so browsing other guides isn't interrupted.
      */
     suspend fun checkGame(force: Boolean): Acted? = checkLock.withLock {
-        val tree = CocoonLaunchLog.linkedFolder(context)
-        if (tree == null) return@withLock checkEmulator(force)
-        val game = CocoonLaunchLog.lastLaunch(context, tree)
-        // Only a game launched in the last few hours counts as "playing now".
-        val recent = game != null && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
+        if (!com.nerfherder.walkthor.data.LaunchLogs.anyLinked(context)) return@withLock checkEmulator(force)
+        // The newest launch from Cocoon's or ES-DE's log.
+        val game = com.nerfherder.walkthor.data.LaunchLogs.lastLaunch(context)
+        // Only a game launched in the last few hours, and not since ended, counts as "playing now".
+        val recent = game != null && !game.ended && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
+        // ES-DE says its last game has ended, but an emulator is running: started some other way.
+        if (game?.ended == true && EmulatorWatch.session.value != null) return@withLock checkEmulator(force)
         PlaySession.current.value = if (recent) game else null
         GameFocus.gameRunning.value = recent
         if (!gameGuideNow) return@withLock null
         if (game == null) {
-            if (force) Toast.makeText(context, "Couldn't read Cocoon's launch log — try Settings → Cocoon", Toast.LENGTH_LONG).show()
+            if (force) Toast.makeText(context, "Couldn't read your frontend's launch log — check Settings → Cocoon or ES-DE", Toast.LENGTH_LONG).show()
             return@withLock null
         }
         if (!recent) return@withLock null
@@ -814,14 +830,14 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
     var bootStatus by remember { mutableStateOf<BootStatus>(BootStatus.Idle) }
     // Cocoon linked with auto-open on: WalkThor is most likely opening alongside a game, so
     // keep the boot animation light while the game loads.
-    val bootLight = remember { (CocoonLaunchLog.linkedFolder(context) != null || EmulatorWatch.session.value != null) && gameGuideOn }
+    val bootLight = remember { (com.nerfherder.walkthor.data.LaunchLogs.anyLinked(context) || EmulatorWatch.session.value != null) && gameGuideOn }
     // A swipe that opened WalkThor is handled by the boot check, not the effect below.
     val bootSwipeTick = remember { if (boot) swipeTick else 0L }
     LaunchedEffect(Unit) {
         if (!booting) return@LaunchedEffect
         val start = System.currentTimeMillis()
-        val tree = CocoonLaunchLog.linkedFolder(context)
-        if ((tree != null || EmulatorWatch.session.value != null) && gameGuideNow) {
+        val linked = com.nerfherder.walkthor.data.LaunchLogs.anyLinked(context)
+        if ((linked || EmulatorWatch.session.value != null) && gameGuideNow) {
             bootStatus = BootStatus.Checking
             // Cocoon may start WalkThor (as a companion app) a moment before it finishes writing
             // the launch to its log, so keep looking briefly for a launch we haven't seen yet.
@@ -1078,8 +1094,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
             artScanning = artScanning,
             alwaysBottom = alwaysBottom,
             swipeToOpen = swipeOn,
-            gameGuide = gameGuideOn && cocoonLinked,
+            gameGuide = gameGuideOn && (cocoonLinked || esdeLinked),
             cocoonLinked = cocoonLinked,
+            esdeLinked = esdeLinked,
             swipeNeedsPermission = swipeNeedsPermission,
             actions = LibraryActions(
                 onOpen = { openId = it.id },
@@ -1098,6 +1115,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                     else SwipeLauncher.setGameGuide(context, on)
                 },
                 onUnlinkCocoon = { CocoonLaunchLog.unlink(context); SwipeLauncher.refresh(context) },
+                onLinkEsde = host::pickEsdeFolder,
+                onUnlinkEsde = { com.nerfherder.walkthor.data.EsdeLog.unlink(context); SwipeLauncher.refresh(context) },
                 onRescanArt = library::rescanArt,
                 onUnlinkArt = library::unlinkArt,
                 onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },

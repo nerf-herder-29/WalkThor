@@ -15,6 +15,9 @@ scraper account and start a scrape (see below). Everything else stays on your de
 - **The Cocoon folder you link** is read only for Cocoon's `launch_debug.log`, to learn which game
   you launched most recently (its name, file name and emulator) so WalkThor can open that game's
   guide. Nothing in the folder is changed.
+- **The ES-DE folder you link** is read only for ES-DE's `logs/es_log.txt`, for the same purpose:
+  the game ES-DE started most recently (its name, ROM file and system) and when it ended. Nothing in
+  the folder is changed.
 - **Accessibility access ("WalkThor", an Android accessibility service), if you turn it on,** places a thin
   invisible strip along the top edge of the bottom screen and responds only to swipes that start
   there, to open or close WalkThor. While a game is running, it also taps the very top edge of

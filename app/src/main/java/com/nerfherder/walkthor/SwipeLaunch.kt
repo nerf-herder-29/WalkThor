@@ -50,6 +50,8 @@ object SwipeLauncher {
     val gameGuide = MutableStateFlow(true)
     /** Whether Cocoon's data folder (with its launch log) is linked. */
     val cocoonLinked = MutableStateFlow(false)
+    /** ES-DE's folder is linked (its log names the game, like Cocoon's). */
+    val esdeLinked = MutableStateFlow(false)
 
     fun setGameGuide(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean(KEY_GAME_GUIDE, on).apply()
@@ -78,6 +80,7 @@ object SwipeLauncher {
         enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
         gameGuide.value = true // always on (it used to be a setting)
         cocoonLinked.value = com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) != null
+        esdeLinked.value = com.nerfherder.walkthor.data.EsdeLog.linkedFolder(context) != null
         needsPermission.value = enabled.value && (!hasConsent(context) || !isServiceOn(context))
         // Detecting games from emulators only runs without Cocoon.
         EmulatorWatch.refresh(context)

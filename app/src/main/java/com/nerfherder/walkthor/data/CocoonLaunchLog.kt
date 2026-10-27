@@ -23,6 +23,8 @@ data class LaunchedGame(
     val emulatorPkg: String? = null,
     /** Noticed from its emulator but we don't know which game yet ([title] is the emulator's name). */
     val unknown: Boolean = false,
+    /** The frontend logged that this game has ended (ES-DE does; Cocoon doesn't). */
+    val ended: Boolean = false,
 )
 
 /**

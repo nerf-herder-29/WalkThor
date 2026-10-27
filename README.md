@@ -41,7 +41,8 @@ step that's done.
   logo, the emulator, and tabs across the top: **Multi** (several at a glance), **Guide**,
   **Mirror**, **Face Buttons**, **Stats** and **Apps** (swipe the tabs sideways to see them all). Switching tabs keeps your place in each, and Back takes you to Now playing.
   Press and hold a tab to have that game open straight on it next time.
-- **Knows your game** — WalkThor reads Cocoon's `launch_debug.log` to see what you launched and
+- **Knows your game** — WalkThor reads Cocoon's `launch_debug.log`, or ES-DE's `logs/es_log.txt`
+  (with ES-DE's *Custom Event Scripts* and *Debug Mode* on), to see what you launched and
   picks the guide whose title matches. Pick a different one once and it's remembered for that game.
 - **Opens when an emulator starts** — turn on *Open when an emulator starts* (Settings → Emulators) and
   WalkThor opens on the bottom screen whenever an emulator comes to the front, from any frontend.
@@ -182,6 +183,8 @@ it doubles as the privacy-policy link for a store listing.
 - **Cocoon:** WalkThor is not affiliated with Cocoon. It reads Cocoon's `launch_debug.log` from a folder the user links. It's not an
   official API, so a Cocoon update could change it. Describe this as "works with Cocoon" without
   using Cocoon's logo or implying endorsement.
+- **ES-DE:** likewise not affiliated. WalkThor reads ES-DE's own `es_log.txt`, which logs each
+  game launch when ES-DE's Custom Event Scripts and Debug Mode settings are on.
 - **Google Play:** Accessibility access (swipe to open, the hand-back tap, and button presses for Face Buttons) uses an accessibility service without being an accessibility tool.
   The app shows the required in-app disclosure with Agree / No thanks before the service can run.
   You'd also need to fill in Play Console's accessibility declaration (including a short screen

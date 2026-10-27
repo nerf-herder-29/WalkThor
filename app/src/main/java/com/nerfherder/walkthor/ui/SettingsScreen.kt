@@ -50,6 +50,7 @@ enum class SettingsSection(val label: String) {
     ARTWORK("Artwork"),
     EMULATORS("Emulators"),
     COCOON("Cocoon"),
+    ESDE("ES-DE"),
     ABOUT("About"),
 }
 
