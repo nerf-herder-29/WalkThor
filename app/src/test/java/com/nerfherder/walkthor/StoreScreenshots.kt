@@ -228,8 +228,12 @@ class StoreScreenshots {
         )
         File(app.filesDir, "roms.tsv").writeText(games.joinToString("\n") { (sys, t, _) -> "$sys\t$t (USA).bin\t$t" })
         val lib = com.nerfherder.walkthor.data.RomLibrary.get(app)
-        lib.javaClass.getDeclaredField("loaded").apply { isAccessible = true }.setBoolean(lib, false)
-        runBlocking { lib.load() }
+        // The library may be left over from another test (with another app's files): set its games directly.
+        @Suppress("UNCHECKED_CAST")
+        (lib.javaClass.getDeclaredField("_roms").apply { isAccessible = true }.get(lib)
+            as kotlinx.coroutines.flow.MutableStateFlow<List<com.nerfherder.walkthor.data.Rom>>).value =
+            games.map { (sys, t, _) -> com.nerfherder.walkthor.data.Rom(sys, "$t (USA).bin", t) }
+        lib.javaClass.getDeclaredField("loaded").apply { isAccessible = true }.setBoolean(lib, true)
         games.forEachIndexed { i, (sys, t, cols) ->
             val rom = com.nerfherder.walkthor.data.Rom(sys, "$t (USA).bin", t)
             val dir = com.nerfherder.walkthor.data.ScrapedArt.dirFor(app, rom).apply { mkdirs() }
