@@ -766,6 +766,9 @@ class StoreScreenshots {
         compose.onNodeWithText("Cocoon").performClick()
         compose.waitForIdle()
         shot("19c-settings-cocoon")
+        compose.onNodeWithText("ES-DE").performClick()
+        compose.waitForIdle()
+        shot("19e-settings-esde")
     }
 
     @Test
