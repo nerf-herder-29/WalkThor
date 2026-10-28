@@ -92,7 +92,7 @@ class RomLibrary private constructor(private val context: Context) {
                 val system = systemForFolder(name) ?: continue
                 _scanning.value = "Reading $name…"
                 val entries = children(tree, id)
-                // Windows games: each .pcgame or .steam shortcut is a game (in the folder, or one folder down).
+                // Windows games: each .pcgame, .steam or .steamappid shortcut is a game (in the folder, or one folder down).
                 // Only when there are none do the folders inside count as games, as before.
                 if (system.key == "windows") {
                     val shortcuts = pcGames(tree, entries)
@@ -134,7 +134,7 @@ class RomLibrary private constructor(private val context: Context) {
         }
     }
 
-    /** The .pcgame and .steam shortcuts in a Windows folder and the folders just inside it. */
+    /** The .pcgame, .steam and .steamappid shortcuts in a Windows folder and the folders just inside it. */
     private fun pcGames(tree: Uri, entries: List<Triple<String, String, Boolean>>): List<String> {
         fun isPc(name: String) = !name.startsWith(".") &&
             PC_SHORTCUTS.any { name.endsWith(it, ignoreCase = true) }
@@ -167,7 +167,7 @@ class RomLibrary private constructor(private val context: Context) {
             instance ?: synchronized(this) { instance ?: RomLibrary(context.applicationContext).also { instance = it } }
 
         /** Shortcut files that stand for one Windows game each (GameNative, Winlator and the like). */
-        private val PC_SHORTCUTS = listOf(".pcgame", ".steam")
+        private val PC_SHORTCUTS = listOf(".pcgame", ".steam", ".steamappid")
 
         private val NOT_ROMS = setOf(
             "txt", "nfo", "xml", "json", "dat", "db", "ini", "cfg", "log", "md", "pdf", "html",
