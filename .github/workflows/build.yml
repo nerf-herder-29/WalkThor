@@ -82,7 +82,8 @@ jobs:
           name: WalkThor ${{ github.ref_name }}
           body_path: release-notes/${{ github.ref_name }}.md
           files: app/build/outputs/apk/release/*.apk
-          # Every tagged build goes out as a pre-release, so it can be tested before anyone gets it
-          # as "latest". Promote it on GitHub (edit the release, untick pre-release, tick latest) once it's good.
-          prerelease: true
+          # Every tagged build is a private draft (only the repo's owner and collaborators see it), so
+          # it can be tested first. Publish it on GitHub (edit the draft, set pre-release or latest,
+          # then Publish release) once it's good.
+          draft: true
           make_latest: false
