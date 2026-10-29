@@ -11,6 +11,9 @@
     <!-- Mirror: holding a screen-capture session while the mirror screen is open. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Captions: Android requires this to capture the game's own sound (playback capture);
+         WalkThor never uses the microphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- The Apps tab lists apps with a home-screen icon so you can open them on either screen. -->
     <queries>

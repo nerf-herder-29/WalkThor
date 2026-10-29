@@ -41,6 +41,14 @@ scraper account and start a scrape (see below). Everything else stays on your de
   you framed) only when you press its button, as a PNG in Pictures/WalkThor on your device. You can
   view, share or delete them from the tab. Nothing is sent anywhere.
 
+- **Captions (test), only while it's on.** The Captions tab captures your game's own sound (never
+  the microphone) through the same screen access as Mirror, and passes it to Android's speech
+  recognizer on your device to show what's said as text. Android requires its "record audio"
+  permission for capturing another app's sound, so it asks for that. The sound isn't recorded or
+  saved by WalkThor, and it stops when you leave the tab. If the device's speech recognizer works
+  online rather than on the device, it's that recognizer's privacy terms that apply to the sound
+  it receives; the readout shows which it is.
+
 - **Stats.** The Stats tab counts how often the top screen changes (its frame rate) using the
   same screen capture as Mirror, with the same permission and the same rules: nothing is recorded,
   saved or sent. It also reads the battery's power draw, the device's heat status, free memory and

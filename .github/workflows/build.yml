@@ -54,8 +54,9 @@ jobs:
           AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           perms=$("$AAPT2" dump permissions app/build/outputs/apk/release/*.apk | grep -i "uses-permission" | sed 's/.*name=//' | tr -d "'" | tr '\n' ' ')
           echo "::notice title=APK permissions::${perms:-none}"
-          # Internet is only for artwork scraping (opt-in); nothing else should ask for more.
-          unexpected=$(echo "$perms" | tr ' ' '\n' | grep -E "READ_CONTACTS|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|RECORD_AUDIO|CAMERA|READ_SMS" || true)
+          # Internet is only for artwork scraping (opt-in). RECORD_AUDIO is only for Captions, which captures
+          # the game's own sound (Android requires it for that); the microphone is never used.
+          unexpected=$(echo "$perms" | tr ' ' '\n' | grep -E "READ_CONTACTS|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|CAMERA|READ_SMS" || true)
           if [ -n "$unexpected" ]; then
             echo "::error title=Unexpected permission::$unexpected"; exit 1
           fi

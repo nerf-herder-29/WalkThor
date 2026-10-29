@@ -1061,6 +1061,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                             topBar = bar,
                         )
                     }
+                    shownTab == GameTab.CAPTIONS -> {
+                        BackHandler { back() }
+                        com.nerfherder.walkthor.ui.CaptionsScreen(onStartCapture = host::requestMirror, topBar = bar)
+                    }
                     shownTab == GameTab.STATS -> {
                         BackHandler { back() }
                         com.nerfherder.walkthor.ui.StatsScreen(game = game, onStartCapture = host::requestMirror, topBar = bar)

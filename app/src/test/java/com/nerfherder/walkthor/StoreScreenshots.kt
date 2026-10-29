@@ -361,6 +361,24 @@ class StoreScreenshots {
     }
 
     @Test
+    fun captionsTab() {
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.CaptionsScreen(onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.CAPTIONS) })
+        }
+        // As it looks mid-scene: sound arriving and a line being heard.
+        com.nerfherder.walkthor.data.Captions.on.value = true
+        com.nerfherder.walkthor.data.Captions.level.value = 0.62f
+        com.nerfherder.walkthor.data.Captions.peak.value = 0.8f
+        com.nerfherder.walkthor.data.Captions.samples.value = 16_000L * 42
+        com.nerfherder.walkthor.data.Captions.recognizer.value = "hearing speech (on-device)"
+        com.nerfherder.walkthor.data.Captions.lines.value = listOf("You made it past the docks.", "The lantern remembers the way.")
+        com.nerfherder.walkthor.data.Captions.partial.value = "Light it again at the bridge and"
+        settle()
+        shot("22-captions-test")
+        com.nerfherder.walkthor.data.Captions.on.value = false
+    }
+
+    @Test
     fun mirrorMinimap() {
         val game = "Lanterns of Emberfall"
         com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))

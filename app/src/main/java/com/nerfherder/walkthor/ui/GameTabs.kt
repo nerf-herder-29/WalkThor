@@ -64,6 +64,8 @@ enum class GameTab(val label: String, val shortLabel: String = label) {
     STATS("Stats"),
     /** Screenshots of the top screen. */
     SHOTS("Shots"),
+    /** Captions of the game's speech (a test for now). */
+    CAPTIONS("Captions"),
     /** Your apps, opened on the bottom (or top) screen. */
     APPS("Apps"),
 }
@@ -336,6 +338,20 @@ private fun TabIcon(tab: GameTab, tint: Color) {
                 style = stroke,
             )
             drawCircle(tint, size.minDimension * 0.17f, Offset(size.width / 2f, top + size.height * 0.31f), style = stroke)
+        }
+        GameTab.CAPTIONS -> Canvas(Modifier.size(20.dp)) {
+            // A speech bubble with two lines of text.
+            val stroke = Stroke(1.6.dp.toPx())
+            drawRoundRect(
+                tint,
+                topLeft = Offset(size.width * 0.06f, size.height * 0.14f),
+                size = androidx.compose.ui.geometry.Size(size.width * 0.88f, size.height * 0.58f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension * 0.14f),
+                style = stroke,
+            )
+            drawLine(tint, Offset(size.width * 0.3f, size.height * 0.72f), Offset(size.width * 0.22f, size.height * 0.9f), 1.6.dp.toPx(), StrokeCap.Round)
+            drawLine(tint, Offset(size.width * 0.24f, size.height * 0.36f), Offset(size.width * 0.76f, size.height * 0.36f), 1.6.dp.toPx(), StrokeCap.Round)
+            drawLine(tint, Offset(size.width * 0.24f, size.height * 0.52f), Offset(size.width * 0.6f, size.height * 0.52f), 1.6.dp.toPx(), StrokeCap.Round)
         }
         GameTab.APPS -> Canvas(Modifier.size(20.dp)) {
             // Nine dots: an app grid.
