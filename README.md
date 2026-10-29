@@ -70,7 +70,10 @@ step that's done.
   Diagnostics shows when this happened).
 - **Shots** — screenshots of the top screen without leaving your game: the whole screen or just
   the part you frame (kept for each game), saved in Pictures/WalkThor and listed in the tab to view,
-  share or delete.
+  share or delete. **Clip** mode records the top screen with the game's sound: switch on *Keep the
+  last* (10 to 60 seconds, held in memory only) and press *Save* after something happens, or press
+  *Record* to record from now until you stop. Saved as MP4s in Movies/WalkThor. A red mark next to
+  the clock shows while it's on, and it stops when you put WalkThor away.
 - **Captions** — what's said in your game, as text on the bottom screen, so you can play with the
   sound down. It captures the game's own sound (never the microphone) and recognises speech on the
   device with [Vosk](https://alphacephei.com/vosk/) (a one-time 40 MB model download, then offline).

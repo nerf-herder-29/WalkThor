@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -153,6 +154,7 @@ fun ShotsScreen(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f)
+                            .heightIn(min = 90.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFF0B0B0D)),
                         contentAlignment = Alignment.Center,

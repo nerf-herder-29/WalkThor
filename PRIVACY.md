@@ -41,6 +41,15 @@ scraper account and start a scrape (see below). Everything else stays on your de
   you framed) only when you press its button, as a PNG in Pictures/WalkThor on your device. You can
   view, share or delete them from the tab. Nothing is sent anywhere.
 
+- **Clips, only when you switch them on.** In the Shots tab's Clip mode, WalkThor can record the
+  top screen with the game's own sound (never the microphone), through the same screen access as
+  Mirror. *Keep the last* holds the last few seconds (10 to 60, your choice) in memory only, each
+  second dropped as a new one arrives; nothing is written anywhere unless you press *Save*.
+  *Record* writes from that moment until you press Stop (at most 30 minutes). A red "Clips" or
+  "REC" mark shows next to the clock whenever either is on, and both stop when you leave the game's
+  screens or put WalkThor away; WalkThor never records in the background. Clips are saved as MP4s in
+  Movies/WalkThor on your device, and listed in the tab to play, share or delete. Nothing is sent anywhere.
+
 - **Captions, only while they're on.** The Captions tab captures your game's own sound (never
   the microphone) through the same screen access as Mirror, and passes it to Android's speech
   recognizer on your device to show what's said as text. Android requires its "record audio"

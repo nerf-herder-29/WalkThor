@@ -95,13 +95,15 @@ internal fun ClipControls(game: String, enabled: Boolean, narrow: Boolean, onSav
         else { pending = action; permission.launch(Manifest.permission.RECORD_AUDIO) }
     }
     fun projection() = Mirror.projection.value
+    // On a short screen, only the controls (the live view keeps its room).
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 420
 
     Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
         // ---- keep the last seconds ----
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Keep the last", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Text(
+                if (!compact) Text(
                     if (keeping) "Kept in memory only. Nothing is saved unless you press Save."
                     else "Off. Turn on to save moments after they happen.",
                     color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 2,
@@ -117,7 +119,7 @@ internal fun ClipControls(game: String, enabled: Boolean, narrow: Boolean, onSav
             )
         }
         Row(
-            Modifier.fillMaxWidth().padding(top = 6.dp).horizontalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().padding(top = if (compact) 2.dp else 6.dp).horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Clips.LENGTHS.forEach { s ->
@@ -157,7 +159,10 @@ internal fun ClipControls(game: String, enabled: Boolean, narrow: Boolean, onSav
             }
         }
         // ---- quality ----
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp).horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text("Quality", color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(end = 8.dp))
             Clips.Quality.entries.forEach { q ->
                 SmallChip(q.label, q == quality, enabled = !keeping && !recording) {
@@ -167,7 +172,7 @@ internal fun ClipControls(game: String, enabled: Boolean, narrow: Boolean, onSav
                 Spacer(Modifier.width(6.dp))
             }
         }
-        Text(
+        if (!compact || error != null) Text(
             error ?: "Clips of the top screen with the game's sound, saved to Movies/WalkThor. Stops when WalkThor is put away.",
             color = if (error != null) Color(0xFFE0A15A) else BookColors.TextMuted,
             fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp),
