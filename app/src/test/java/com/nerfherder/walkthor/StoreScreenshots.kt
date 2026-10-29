@@ -362,6 +362,9 @@ class StoreScreenshots {
 
     @Test
     fun captionsTab() {
+        // As if the speech model were downloaded (so its card isn't shown).
+        java.io.File(com.nerfherder.walkthor.data.SpeechModel.dir(app), "am").apply { mkdirs() }.resolve("final.mdl").writeText("x")
+        com.nerfherder.walkthor.data.SpeechModel.refresh(app)
         content(hero = fakeHero()) {
             com.nerfherder.walkthor.ui.CaptionsScreen(onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.CAPTIONS) })
         }
@@ -374,7 +377,7 @@ class StoreScreenshots {
         com.nerfherder.walkthor.data.Captions.lines.value = listOf("You made it past the docks.", "The lantern remembers the way.")
         com.nerfherder.walkthor.data.Captions.partial.value = "Light it again at the bridge and"
         settle()
-        shot("22-captions-test")
+        shot("22-captions")
         com.nerfherder.walkthor.data.Captions.on.value = false
     }
 
