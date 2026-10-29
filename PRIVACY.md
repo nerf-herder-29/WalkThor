@@ -41,7 +41,7 @@ scraper account and start a scrape (see below). Everything else stays on your de
   you framed) only when you press its button, as a PNG in Pictures/WalkThor on your device. You can
   view, share or delete them from the tab. Nothing is sent anywhere.
 
-- **Captions (test), only while it's on.** The Captions tab captures your game's own sound (never
+- **Captions, only while they're on.** The Captions tab captures your game's own sound (never
   the microphone) through the same screen access as Mirror, and passes it to Android's speech
   recognizer on your device to show what's said as text. Android requires its "record audio"
   permission for capturing another app's sound, so it asks for that. The sound isn't recorded or

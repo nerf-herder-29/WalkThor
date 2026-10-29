@@ -71,6 +71,9 @@ step that's done.
 - **Shots** — screenshots of the top screen without leaving your game: the whole screen or just
   the part you frame (kept for each game), saved in Pictures/WalkThor and listed in the tab to view,
   share or delete.
+- **Captions** — what's said in your game, as text on the bottom screen, so you can play with the
+  sound down. It captures the game's own sound (never the microphone) and recognises speech on the
+  device with [Vosk](https://alphacephei.com/vosk/) (a one-time 40 MB model download, then offline).
 - **Mirror** — show part of the top screen, like a minimap or HUD, live on the bottom screen. The
   picking box keeps the bottom screen's shape so the mirror fills it (or resize it freely). Pick
   up to four areas per game, switch between them or see them all side by side, and WalkThor

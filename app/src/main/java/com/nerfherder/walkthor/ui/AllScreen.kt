@@ -345,7 +345,7 @@ private fun CaptionsPanel(onStartCapture: () -> Unit, still: Boolean) {
     Column(Modifier.fillMaxSize().padding(4.dp), verticalArrangement = Arrangement.Bottom) {
         if (lines.isEmpty() && partial.isBlank()) {
             Text(
-                if (on) recognizer.replaceFirstChar { it.uppercase() } else "Captions of the game's speech",
+                if (on) (if (recognizer.startsWith("loading")) "Loading the speech model…" else "Listening…") else "Captions of the game's speech",
                 color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f),
             )
         } else {

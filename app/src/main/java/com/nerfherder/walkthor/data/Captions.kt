@@ -23,7 +23,7 @@ import kotlin.math.log10
 import kotlin.math.sqrt
 
 /**
- * Captions (test): captures the game's own sound (not the microphone) through the screen access
+ * Captions: captures the game's own sound (not the microphone) through the screen access
  * Mirror uses, shows how loud it is, and passes it to Android's speech recognizer to turn speech
  * into captions. Nothing is recorded, saved or sent by WalkThor; the sound only goes to the
  * recognizer on this device while captions are on.

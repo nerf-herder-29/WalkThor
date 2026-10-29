@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,48 +70,50 @@ fun rememberCaptionsStarter(onStartCapture: () -> Unit): () -> Unit {
 }
 
 /**
- * Captions (test): turns the game's spoken audio into text on the bottom screen. For now it's a
- * test, with a sound meter and a readout, to find out whether the game's sound arrives (with the
- * volume down or muted) and whether this device's speech recognizer can caption it.
+ * Captions: what's said in your game, as text on the bottom screen, for playing with the sound
+ * down. WalkThor captures the game's own sound (never the microphone) and turns speech into text
+ * on the device. Captions stop when you leave the tab.
  */
 @Composable
 fun CaptionsScreen(onStartCapture: () -> Unit, topBar: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
-    val projection by Mirror.projection.collectAsState()
     val on by Captions.on.collectAsState()
-    val level by Captions.level.collectAsState()
-    val peak by Captions.peak.collectAsState()
-    val samples by Captions.samples.collectAsState()
     val recognizer by Captions.recognizer.collectAsState()
     val partial by Captions.partial.collectAsState()
     val lines by Captions.lines.collectAsState()
     val error by Captions.error.collectAsState()
+    val model by com.nerfherder.walkthor.data.SpeechModel.state.collectAsState()
+    LaunchedEffect(Unit) { com.nerfherder.walkthor.data.SpeechModel.refresh(context) }
     val start = rememberCaptionsStarter(onStartCapture)
-    // Ends when you leave the tab (for now), so it never runs unnoticed.
     DisposableEffect(Unit) {
         val holder = Any()
         AutoDim.wake()
         AutoDim.holdBright(holder, true)
         onDispose { AutoDim.holdBright(holder, false); Captions.stop() }
     }
+    // One short line about what's happening; only problems are spelled out.
+    val problem = error ?: recognizer.takeIf { on && (it.startsWith("no ") || it.startsWith("couldn") || "couldn't" in it || it.startsWith("needs")) }
+    val status = when {
+        problem != null -> problem.replaceFirstChar { it.uppercase() }
+        on && recognizer.startsWith("loading") -> "Loading the speech model…"
+        on -> "Listening"
+        else -> "Off"
+    }
+    val modelReady = model is com.nerfherder.walkthor.data.SpeechModel.State.Ready
 
     Column(Modifier.fillMaxSize().background(backdropOr(Color.Black))) {
         topBar?.invoke()
         Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Captions", fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = BookColors.Text)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "TEST", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = BookColors.TextMuted,
-                            modifier = Modifier.border(1.dp, BookColors.Hairline, RoundedCornerShape(50)).padding(horizontal = 7.dp, vertical = 2.dp),
-                        )
+                    Text("Captions", fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = BookColors.Text)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        if (on && problem == null) {
+                            Box(Modifier.size(7.dp).background(Color(0xFF7FC48A), androidx.compose.foundation.shape.CircleShape))
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(status, color = if (problem != null) Color(0xFFE0A15A) else BookColors.TextMuted, fontSize = 12.sp, maxLines = 2)
                     }
-                    Text(
-                        "Captures the game's own sound (not the microphone) and captions speech, on this device only. Try it with the volume down and muted.",
-                        color = BookColors.TextMuted, fontSize = 11.sp,
-                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 Button(
@@ -117,45 +122,38 @@ fun CaptionsScreen(onStartCapture: () -> Unit, topBar: (@Composable () -> Unit)?
                     border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 ) { Text(if (on) "Stop" else "Start", fontWeight = FontWeight.SemiBold) }
             }
-            Spacer(Modifier.height(12.dp))
-            // ---- the sound meter ----
-            Text("Game sound", color = BookColors.TextMuted, fontSize = 11.sp)
-            Box(
-                Modifier.fillMaxWidth().height(14.dp).padding(top = 4.dp)
-                    .background(BookColors.SurfaceHigh, RoundedCornerShape(50)),
-            ) {
-                Box(Modifier.fillMaxWidth(level.coerceIn(0f, 1f)).fillMaxHeight().background(Color(0xFF7FC48A), RoundedCornerShape(50)))
-            }
-            val seconds = samples / 16_000
-            Text(
-                when {
-                    !on -> error ?: "Not running."
-                    samples == 0L -> "Nothing arriving yet. If it stays at zero, Android isn't passing on this game's sound."
-                    peak < 0.05f -> "Sound is arriving (${seconds}s) but silent: the game may be muted before WalkThor gets it."
-                    else -> "Sound is arriving (${seconds}s, loudest ${(peak * 100).toInt()}%)."
-                },
-                color = if (on && peak >= 0.05f) Color(0xFF7FC48A) else BookColors.TextMuted,
-                fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
-            )
-            Text("Recognizer: $recognizer", color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
-            SpeechModelRow()
+            // The speech model, until it's downloaded.
+            if (!modelReady) SpeechModelRow()
             Spacer(Modifier.height(12.dp))
             // ---- the captions ----
             Column(
                 Modifier.fillMaxWidth().weight(1f)
                     .background(Color(0xFF0B0B0D), RoundedCornerShape(12.dp))
                     .border(1.dp, BookColors.Hairline, RoundedCornerShape(12.dp))
-                    .padding(16.dp),
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.Bottom,
             ) {
                 if (lines.isEmpty() && partial.isBlank()) {
                     Text(
-                        if (on) "Captions appear here when someone speaks." else "Press Start, then play a scene with speech.",
+                        if (on) "Captions appear here when someone speaks."
+                        else "Press Start to caption what's said in your game. Works with the volume all the way down.",
                         color = BookColors.TextMuted.copy(alpha = 0.7f), fontSize = 15.sp,
                     )
                 }
-                lines.forEach { Text(it, color = BookColors.Text.copy(alpha = 0.75f), fontSize = 18.sp, modifier = Modifier.padding(top = 4.dp)) }
-                if (partial.isNotBlank()) Text(partial, color = BookColors.Text, fontSize = 22.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+                lines.forEach { Text(it, color = BookColors.Text.copy(alpha = 0.7f), fontSize = 19.sp, modifier = Modifier.padding(top = 6.dp)) }
+                if (partial.isNotBlank()) Text(partial, color = BookColors.Text, fontSize = 24.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+            }
+            if (modelReady && !on) {
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End) {
+                    Text(
+                        "Remove speech model (${com.nerfherder.walkthor.data.SpeechModel.SIZE_LABEL})",
+                        color = BookColors.TextMuted.copy(alpha = 0.7f), fontSize = 11.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { com.nerfherder.walkthor.data.SpeechModel.delete(context) }
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                    )
+                }
             }
         }
     }
@@ -178,11 +176,11 @@ private fun SpeechModelRow() {
     ) {
         val s = state
         Column(Modifier.weight(1f)) {
-            Text("Built-in speech recognizer", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("Speech model", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Text(
                 when (s) {
                     is com.nerfherder.walkthor.data.SpeechModel.State.Missing ->
-                        "For devices without one. Works offline once downloaded (${com.nerfherder.walkthor.data.SpeechModel.SIZE_LABEL}, English)."
+                        "Captions need a speech model: a one-time download (${com.nerfherder.walkthor.data.SpeechModel.SIZE_LABEL}, English), then it works offline."
                     is com.nerfherder.walkthor.data.SpeechModel.State.Downloading -> "Downloading… ${s.percent}%"
                     is com.nerfherder.walkthor.data.SpeechModel.State.Unpacking -> "Unpacking…"
                     is com.nerfherder.walkthor.data.SpeechModel.State.Ready ->
