@@ -48,6 +48,9 @@ scraper account and start a scrape (see below). Everything else stays on your de
   saved by WalkThor, and it stops when you leave the tab. If the device's speech recognizer works
   online rather than on the device, it's that recognizer's privacy terms that apply to the sound
   it receives; the readout shows which it is.
+  WalkThor also has its own speech recognizer for devices without one (Vosk): only if you tap
+  Download on the Captions tab, it downloads a speech model (about 40 MB) once from
+  alphacephei.com, the Vosk project's site, and from then on works entirely on the device.
 
 - **Stats.** The Stats tab counts how often the top screen changes (its frame rate) using the
   same screen capture as Mirror, with the same permission and the same rules: nothing is recorded,

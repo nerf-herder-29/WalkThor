@@ -81,8 +81,10 @@ object Captions {
         level.value = 0f; peak.value = 0f; samples.value = 0L; partial.value = ""; lines.value = emptyList()
         on.value = true
         runCatching { rec.startRecording() }.onFailure { error.value = "Couldn't start capturing (${it.javaClass.simpleName})"; stop(); return }
-        thread = Thread({ readLoop(rec) }, "WalkThor captions").apply { start() }
-        startRecognizer(app)
+        // WalkThor's own recognizer if you've downloaded it; otherwise the device's, if it has one.
+        val builtIn = SpeechModel.isReady(app)
+        thread = Thread({ readLoop(rec, if (builtIn) SpeechModel.dir(app).absolutePath else null) }, "WalkThor captions").apply { start() }
+        if (!builtIn) startRecognizer(app)
     }
 
     fun stop() {
@@ -100,9 +102,22 @@ object Captions {
         level.value = 0f
     }
 
-    private fun readLoop(rec: AudioRecord) {
+    private fun readLoop(rec: AudioRecord, modelPath: String?) {
         val buf = ShortArray(RATE / 10) // a tenth of a second
         val bytes = ByteArray(buf.size * 2)
+        // The built-in recognizer: loaded here (it takes a moment), freed when captions stop.
+        var model: org.vosk.Model? = null
+        var vosk: org.vosk.Recognizer? = null
+        if (modelPath != null) {
+            recognizer.value = "loading the built-in speech model…"
+            runCatching {
+                val m = org.vosk.Model(modelPath)
+                model = m
+                vosk = org.vosk.Recognizer(m, RATE.toFloat())
+            }.onFailure { recognizer.value = "built-in speech model couldn't load (${it.javaClass.simpleName})" }
+            if (vosk != null) recognizer.value = "listening (built-in, offline)"
+        }
+        try {
         while (on.value && record === rec) {
             val n = runCatching { rec.read(buf, 0, buf.size) }.getOrDefault(-1)
             if (n <= 0) { if (n < 0) break else continue }
@@ -115,12 +130,30 @@ object Captions {
             level.value = l
             if (l > peak.value) peak.value = l
             samples.value += n
+            vosk?.let { v ->
+                runCatching {
+                    if (v.acceptWaveForm(buf, n)) {
+                        textOf(v.result, "text")?.let { t -> lines.value = (lines.value + t).takeLast(4) }
+                        partial.value = ""
+                    } else {
+                        partial.value = textOf(v.partialResult, "partial").orEmpty()
+                    }
+                }
+            }
             pipeOut?.let { out ->
                 for (i in 0 until n) { bytes[2 * i] = (buf[i].toInt() and 0xFF).toByte(); bytes[2 * i + 1] = (buf[i].toInt() shr 8).toByte() }
                 try { out.write(bytes, 0, n * 2) } catch (_: IOException) { closePipe() }
             }
         }
+        } finally {
+            runCatching { vosk?.close() }
+            runCatching { model?.close() }
+        }
     }
+
+    /** The words in one of Vosk's answers ({"text": "…"} or {"partial": "…"}), or null if none. */
+    private fun textOf(json: String?, key: String): String? =
+        runCatching { org.json.JSONObject(json ?: return null).optString(key) }.getOrNull()?.trim()?.takeIf { it.isNotEmpty() }
 
     private fun closePipe() {
         runCatching { pipeOut?.close() }
@@ -133,7 +166,8 @@ object Captions {
         main.post {
             if (!on.value) return@post
             if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-                recognizer.value = "no speech recognizer on this device" + recognizers(context).let { if (it.isEmpty()) "" else " (found: $it)" }
+                recognizer.value = "no speech recognizer on this device" + recognizers(context).let { if (it.isEmpty()) "" else " (found: $it)" } +
+                    ". Download WalkThor's own below."
                 return@post
             }
             val onDevice = Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(context) }.getOrDefault(false)

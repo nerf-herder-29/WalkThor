@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.nerfherder.walkthor.Mirror
 import com.nerfherder.walkthor.data.Captions
+import kotlinx.coroutines.launch
 
 /**
  * Starting captions takes two of Android's prompts: capturing sound (its "record audio"
@@ -137,6 +138,7 @@ fun CaptionsScreen(onStartCapture: () -> Unit, topBar: (@Composable () -> Unit)?
                 fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
             )
             Text("Recognizer: $recognizer", color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+            SpeechModelRow()
             Spacer(Modifier.height(12.dp))
             // ---- the captions ----
             Column(
@@ -155,6 +157,50 @@ fun CaptionsScreen(onStartCapture: () -> Unit, topBar: (@Composable () -> Unit)?
                 lines.forEach { Text(it, color = BookColors.Text.copy(alpha = 0.75f), fontSize = 18.sp, modifier = Modifier.padding(top = 4.dp)) }
                 if (partial.isNotBlank()) Text(partial, color = BookColors.Text, fontSize = 22.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
             }
+        }
+    }
+}
+
+/** WalkThor's own (offline) speech recognizer: download it once, or remove it. */
+@Composable
+private fun SpeechModelRow() {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val state by com.nerfherder.walkthor.data.SpeechModel.state.collectAsState()
+    LaunchedEffect(Unit) { com.nerfherder.walkthor.data.SpeechModel.refresh(context) }
+    val on by Captions.on.collectAsState()
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp)
+            .background(BookColors.Surface, RoundedCornerShape(10.dp))
+            .border(1.dp, BookColors.Hairline, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val s = state
+        Column(Modifier.weight(1f)) {
+            Text("Built-in speech recognizer", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(
+                when (s) {
+                    is com.nerfherder.walkthor.data.SpeechModel.State.Missing ->
+                        "For devices without one. Works offline once downloaded (${com.nerfherder.walkthor.data.SpeechModel.SIZE_LABEL}, English)."
+                    is com.nerfherder.walkthor.data.SpeechModel.State.Downloading -> "Downloading… ${s.percent}%"
+                    is com.nerfherder.walkthor.data.SpeechModel.State.Unpacking -> "Unpacking…"
+                    is com.nerfherder.walkthor.data.SpeechModel.State.Ready ->
+                        if (on) "Ready. Stop and start captions to switch to it." else "Ready. Captions use it from now on, offline."
+                    is com.nerfherder.walkthor.data.SpeechModel.State.Failed -> s.message
+                },
+                color = BookColors.TextMuted, fontSize = 11.sp,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        when (s) {
+            is com.nerfherder.walkthor.data.SpeechModel.State.Missing, is com.nerfherder.walkthor.data.SpeechModel.State.Failed ->
+                PillButton(if (s is com.nerfherder.walkthor.data.SpeechModel.State.Failed) "Try again" else "Download") {
+                    scope.launch { com.nerfherder.walkthor.data.SpeechModel.download(context) }
+                }
+            is com.nerfherder.walkthor.data.SpeechModel.State.Ready ->
+                PillButton("Remove", quiet = true) { if (on) Captions.stop(); com.nerfherder.walkthor.data.SpeechModel.delete(context) }
+            else -> Unit
         }
     }
 }
