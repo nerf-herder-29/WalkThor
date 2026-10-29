@@ -210,7 +210,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "on, it uses that to see an emulator start (and, without Cocoon, the running emulator's window " +
                         "title and notifications, kept in memory only). It never reads other apps' screens. " +
                         "Mirror and the Stats tab's FPS meter use the top screen's picture only while you use them (Android " +
-                        "asks first); the picture is never recorded, saved or sent. The Stats tab reads the battery, heat, memory " +
+                        "asks first); the picture is never recorded or sent, and saved only as a screenshot when you press the Shots tab's button. The Stats tab reads the battery, heat, memory " +
                         "and CPU speed from Android, on the device only. Face Buttons can light up the buttons you press, only " +
                         "while that screen is open; presses go straight on to the game and aren't kept."
                 )

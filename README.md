@@ -68,6 +68,9 @@ step that's done.
   apps to free memory while they load. If that closes WalkThor during a game, it reopens on the
   bottom screen right away and hands the game its priority back (Settings → About → *About & licences* →
   Diagnostics shows when this happened).
+- **Shots** — screenshots of the top screen without leaving your game: the whole screen or just
+  the part you frame (kept for each game), saved in Pictures/WalkThor and listed in the tab to view,
+  share or delete.
 - **Mirror** — show part of the top screen, like a minimap or HUD, live on the bottom screen. The
   picking box keeps the bottom screen's shape so the mirror fills it (or resize it freely). Pick
   up to four areas per game, switch between them or see them all side by side, and WalkThor

@@ -335,6 +335,32 @@ class StoreScreenshots {
     }
 
     @Test
+    fun shotsTab() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.data.Shots.setUseArea(app, game, true)
+        com.nerfherder.walkthor.data.Shots.setArea(app, game, floatArrayOf(0.55f, 0.03f, 0.98f, 0.45f))
+        val frame = fakeGameFrame()
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.ShotsScreen(game, frame = frame, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.SHOTS) })
+        }
+        settle()
+        shot("21-shots")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun shotsTabDense() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.data.Shots.setUseArea(app, game, false)
+        val frame = fakeGameFrame()
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.ShotsScreen(game, frame = frame, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.SHOTS) })
+        }
+        settle()
+        shot("check-shots-dense")
+    }
+
+    @Test
     fun mirrorMinimap() {
         val game = "Lanterns of Emberfall"
         com.nerfherder.walkthor.Mirror.setAreas(app, game, listOf(floatArrayOf(800f / 960, 12f / 540, 950f / 960, 172f / 540)))

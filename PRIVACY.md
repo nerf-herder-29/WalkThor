@@ -36,6 +36,11 @@ scraper account and start a scrape (see below). Everything else stays on your de
   leave the game's screens or put WalkThor away. The only thing stored is which parts of the
   screen you chose for each game.
 
+- **Shots (screenshots), only when you press the button.** The Shots tab uses the same screen
+  access as Mirror to show the top screen, and saves a screenshot (the whole screen or the part
+  you framed) only when you press its button, as a PNG in Pictures/WalkThor on your device. You can
+  view, share or delete them from the tab. Nothing is sent anywhere.
+
 - **Stats.** The Stats tab counts how often the top screen changes (its frame rate) using the
   same screen capture as Mirror, with the same permission and the same rules: nothing is recorded,
   saved or sent. It also reads the battery's power draw, the device's heat status, free memory and

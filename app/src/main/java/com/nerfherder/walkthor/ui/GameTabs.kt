@@ -62,6 +62,8 @@ enum class GameTab(val label: String, val shortLabel: String = label) {
     MIRROR("Mirror"),
     FACE("Face Buttons", "Buttons"),
     STATS("Stats"),
+    /** Screenshots of the top screen. */
+    SHOTS("Shots"),
     /** Your apps, opened on the bottom (or top) screen. */
     APPS("Apps"),
 }
@@ -314,6 +316,26 @@ private fun TabIcon(tab: GameTab, tint: Color) {
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 3),
                 )
             }
+        }
+        GameTab.SHOTS -> Canvas(Modifier.size(20.dp)) {
+            // A camera: body, lens and the bump on top.
+            val stroke = Stroke(1.6.dp.toPx())
+            val top = size.height * 0.28f
+            drawRoundRect(
+                tint,
+                topLeft = Offset(size.width * 0.06f, top),
+                size = androidx.compose.ui.geometry.Size(size.width * 0.88f, size.height * 0.62f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension * 0.12f),
+                style = stroke,
+            )
+            drawRoundRect(
+                tint,
+                topLeft = Offset(size.width * 0.32f, size.height * 0.14f),
+                size = androidx.compose.ui.geometry.Size(size.width * 0.36f, size.height * 0.16f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension * 0.05f),
+                style = stroke,
+            )
+            drawCircle(tint, size.minDimension * 0.17f, Offset(size.width / 2f, top + size.height * 0.31f), style = stroke)
         }
         GameTab.APPS -> Canvas(Modifier.size(20.dp)) {
             // Nine dots: an app grid.

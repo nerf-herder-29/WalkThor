@@ -538,12 +538,15 @@ private fun AreaChip(label: String, selected: Boolean, onClick: () -> Unit) {
 
 /** The whole top screen with a box to drag and resize over the part to mirror. */
 @Composable
-private fun AreaPicker(img: ImageBitmap, r: FloatArray, shape: Float?, onChange: (FloatArray) -> Unit) {
+internal fun AreaPicker(
+    img: ImageBitmap, r: FloatArray, shape: Float?, onChange: (FloatArray) -> Unit,
+    pad: androidx.compose.ui.unit.Dp = 56.dp,
+) {
     val handle = with(LocalDensity.current) { 28.dp.toPx() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val area = with(LocalDensity.current) { Size(maxWidth.toPx(), maxHeight.toPx()) }
         // Leave room for the top bar and the hint.
-        val pad = with(LocalDensity.current) { 56.dp.toPx() }
+        val pad = with(LocalDensity.current) { pad.toPx() }
         val fit = fitRect(img.width.toFloat(), img.height.toFloat(), Size(area.width, area.height - pad * 2)).translate(0f, pad)
         var mode by remember { mutableStateOf(-1) } // 0..3 = a corner, 4 = move
         val current by androidx.compose.runtime.rememberUpdatedState(r)
