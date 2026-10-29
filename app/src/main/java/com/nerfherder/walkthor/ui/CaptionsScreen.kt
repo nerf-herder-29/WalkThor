@@ -41,6 +41,31 @@ import com.nerfherder.walkthor.Mirror
 import com.nerfherder.walkthor.data.Captions
 
 /**
+ * Starting captions takes two of Android's prompts: capturing sound (its "record audio"
+ * permission), then screen access (as Mirror). Returns the function that starts it.
+ */
+@Composable
+fun rememberCaptionsStarter(onStartCapture: () -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val projection by Mirror.projection.collectAsState()
+    var wantStart by remember { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (!ok) { wantStart = false; Captions.error.value = "Android's sound permission is needed to hear the game." }
+    }
+    fun hasAudio() = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    LaunchedEffect(wantStart, projection) {
+        if (!wantStart) return@LaunchedEffect
+        val p = projection
+        when {
+            !hasAudio() -> permission.launch(Manifest.permission.RECORD_AUDIO)
+            p == null -> onStartCapture()
+            else -> { wantStart = false; Captions.start(context, p) }
+        }
+    }
+    return { Captions.error.value = null; wantStart = true }
+}
+
+/**
  * Captions (test): turns the game's spoken audio into text on the bottom screen. For now it's a
  * test, with a sound meter and a readout, to find out whether the game's sound arrives (with the
  * volume down or muted) and whether this device's speech recognizer can caption it.
@@ -57,21 +82,7 @@ fun CaptionsScreen(onStartCapture: () -> Unit, topBar: (@Composable () -> Unit)?
     val partial by Captions.partial.collectAsState()
     val lines by Captions.lines.collectAsState()
     val error by Captions.error.collectAsState()
-    // Starting takes two of Android's prompts: sound capture, then screen access (as Mirror).
-    var wantStart by remember { mutableStateOf(false) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (!ok) { wantStart = false; Captions.error.value = "Android's sound permission is needed to hear the game." }
-    }
-    fun hasAudio() = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-    LaunchedEffect(wantStart, projection) {
-        if (!wantStart) return@LaunchedEffect
-        val p = projection
-        when {
-            !hasAudio() -> permission.launch(Manifest.permission.RECORD_AUDIO)
-            p == null -> onStartCapture()
-            else -> { wantStart = false; Captions.start(context, p) }
-        }
-    }
+    val start = rememberCaptionsStarter(onStartCapture)
     // Ends when you leave the tab (for now), so it never runs unnoticed.
     DisposableEffect(Unit) {
         val holder = Any()
@@ -100,7 +111,7 @@ fun CaptionsScreen(onStartCapture: () -> Unit, topBar: (@Composable () -> Unit)?
                 }
                 Spacer(Modifier.width(12.dp))
                 Button(
-                    onClick = { if (on) Captions.stop() else { Captions.error.value = null; wantStart = true } },
+                    onClick = { if (on) Captions.stop() else start() },
                     colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
                     border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 ) { Text(if (on) "Stop" else "Start", fontWeight = FontWeight.SemiBold) }

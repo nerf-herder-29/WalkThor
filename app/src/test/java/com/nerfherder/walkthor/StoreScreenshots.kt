@@ -1006,6 +1006,15 @@ class StoreScreenshots {
     fun allTabShot() = allTab("14-all")
 
     @Test
+    fun multiShotsCaptions() = allTab(
+        "14d-multi-shots-captions",
+        panels = listOf(
+            com.nerfherder.walkthor.ui.GameTab.MIRROR, com.nerfherder.walkthor.ui.GameTab.SHOTS,
+            com.nerfherder.walkthor.ui.GameTab.GUIDE, com.nerfherder.walkthor.ui.GameTab.CAPTIONS,
+        ),
+    )
+
+    @Test
     fun multiThree() = allTab(
         "14b-multi-three",
         listOf(com.nerfherder.walkthor.ui.GameTab.MIRROR, com.nerfherder.walkthor.ui.GameTab.STATS, com.nerfherder.walkthor.ui.GameTab.APPS),

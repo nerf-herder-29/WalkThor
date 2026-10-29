@@ -68,6 +68,12 @@ import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.data.PdfSource
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import androidx.compose.foundation.border
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asAndroidBitmap
+import kotlinx.coroutines.launch
 
 /** Fixed content for store screenshots. */
 data class AllPreview(val guideText: String?, val stats: StatsPreview, val apps: List<InstalledApp>? = null)
@@ -186,6 +192,8 @@ fun AllScreen(
                 }
                 GameTab.FACE -> Panel("Face buttons", compact, m) { FacePanel(game, preview != null) }
                 GameTab.APPS -> Panel("Apps", compact, m) { AppsPanel(preview?.apps, compact) }
+                GameTab.SHOTS -> Panel("Shots", compact, m) { ShotsPanel(game, frame, preview != null) }
+                GameTab.CAPTIONS -> Panel("Captions", compact, m) { CaptionsPanel(onStartCapture, preview != null) }
                 else -> Panel("Stats", compact, m) { StatsPanel(preview?.stats, compact) }
             }
         }
@@ -267,6 +275,94 @@ private fun MirrorPanel(game: LaunchedGame, frame: ImageBitmap?, still: Boolean)
         frame != null -> MirrorView(frame, areas)
         projection == null && !still -> Note("Tap to start Mirror")
         else -> Note("Starting…")
+    }
+}
+
+/**
+ * Shots: the top screen (or the part framed for this game on the Shots tab) with a shutter
+ * button, to take a screenshot without leaving Multi.
+ */
+@Composable
+private fun ShotsPanel(game: LaunchedGame, frame: ImageBitmap?, still: Boolean) {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val projection by Mirror.projection.collectAsState()
+    val area = remember(game.title) {
+        if (com.nerfherder.walkthor.data.Shots.useArea(context, game.title)) com.nerfherder.walkthor.data.Shots.area(context, game.title) else null
+    }
+    var busy by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(note) { if (note != null) { kotlinx.coroutines.delay(2_000); note = null } }
+    Box(Modifier.fillMaxSize()) {
+        when {
+            frame != null -> MirrorView(frame, listOf(area ?: floatArrayOf(0f, 0f, 1f, 1f)))
+            projection == null && !still -> Note("Tap to start Shots")
+            else -> Note("Starting…")
+        }
+        if (frame != null || still) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .size(44.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .border(3.dp, BookColors.Text, androidx.compose.foundation.shape.CircleShape)
+                    .clickable(enabled = !busy && frame != null) {
+                        busy = true
+                        val copy = frame?.let { f -> runCatching { f.asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false) }.getOrNull() }
+                        scope.launch {
+                            val shot = runCatching {
+                                com.nerfherder.walkthor.data.Shots.take(context, Mirror.projection.value, copy, game.title, area)
+                            }.getOrNull()
+                            note = if (shot != null) "Saved" else "Couldn't save"
+                            busy = false
+                        }
+                    }
+                    .padding(5.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(BookColors.Text),
+            )
+        }
+        note?.let {
+            Text(
+                it, color = BookColors.Text, fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp)
+                    .background(Color(0xEE0D0D10), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 3.dp),
+            )
+        }
+    }
+}
+
+/** Captions: what's being said in the game, with Start and Stop (ends when you leave Multi). */
+@Composable
+private fun CaptionsPanel(onStartCapture: () -> Unit, still: Boolean) {
+    val on by com.nerfherder.walkthor.data.Captions.on.collectAsState()
+    val partial by com.nerfherder.walkthor.data.Captions.partial.collectAsState()
+    val lines by com.nerfherder.walkthor.data.Captions.lines.collectAsState()
+    val recognizer by com.nerfherder.walkthor.data.Captions.recognizer.collectAsState()
+    val start = rememberCaptionsStarter(onStartCapture)
+    if (!still) DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.data.Captions.stop() } }
+    Column(Modifier.fillMaxSize().padding(4.dp), verticalArrangement = Arrangement.Bottom) {
+        if (lines.isEmpty() && partial.isBlank()) {
+            Text(
+                if (on) recognizer.replaceFirstChar { it.uppercase() } else "Captions of the game's speech",
+                color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+            lines.takeLast(2).forEach { Text(it, color = BookColors.Text.copy(alpha = 0.7f), fontSize = 13.sp, maxLines = 2) }
+            if (partial.isNotBlank()) Text(partial, color = BookColors.Text, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 2)
+        }
+        Text(
+            if (on) "Stop" else "Start",
+            color = BookColors.Text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .clip(RoundedCornerShape(50))
+                .background(BookColors.SurfaceHigh)
+                .clickable(enabled = !still) { if (on) com.nerfherder.walkthor.data.Captions.stop() else start() }
+                .padding(horizontal = 14.dp, vertical = 5.dp),
+        )
     }
 }
 
@@ -480,7 +576,7 @@ private fun ChoosePanelsDialog(current: List<GameTab>, onDone: (List<GameTab>?) 
         onDismissRequest = { onDone(null) },
         title = { Text("Multi panels", fontFamily = DisplayFont) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 Text("Choose up to four.", color = BookColors.TextMuted, fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
                 AllLayout.CHOICES.forEach { tab ->
@@ -523,7 +619,7 @@ private fun ChoosePanelsDialog(current: List<GameTab>, onDone: (List<GameTab>?) 
 /** Which panels the Multi tab shows, and in what order (the same for every game). */
 object AllLayout {
     /** The tabs that can be a panel, in the order they're offered. */
-    val CHOICES = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS, GameTab.APPS)
+    val CHOICES = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS, GameTab.SHOTS, GameTab.CAPTIONS, GameTab.APPS)
     private val DEFAULT = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS)
     private var flow: kotlinx.coroutines.flow.MutableStateFlow<List<GameTab>>? = null
     /** True while the "Choose panels" dialog is open (⋮ on the Multi tab). */

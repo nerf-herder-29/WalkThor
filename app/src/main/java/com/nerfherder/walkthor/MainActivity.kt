@@ -978,7 +978,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
         // Multi only needs the capture when it shows the Mirror or Stats panel.
         val multiPanels by com.nerfherder.walkthor.ui.AllLayout.panels(context).collectAsState()
         val mirrorFrame = rememberMirrorFrame(
-            active = current == null && (gameTab == GameTab.MIRROR || gameTab == GameTab.SHOTS || (gameTab == GameTab.ALL && GameTab.MIRROR in multiPanels)),
+            active = current == null && (gameTab == GameTab.MIRROR || gameTab == GameTab.SHOTS ||
+                (gameTab == GameTab.ALL && (GameTab.MIRROR in multiPanels || GameTab.SHOTS in multiPanels))),
             counting = current == null && (gameTab == GameTab.STATS || (gameTab == GameTab.ALL && GameTab.STATS in multiPanels)),
         )
         val toNowPlaying = { openId = null; gameTab = null; fromAll = false }
