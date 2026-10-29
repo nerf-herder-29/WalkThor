@@ -43,7 +43,8 @@ object Mirror {
 
     fun showPreviewOn(surface: android.view.Surface?) {
         previewSurface = surface
-        if (!com.nerfherder.walkthor.data.Clips.drawing) runCatching { shared.value?.display?.surface = surface }
+        if (com.nerfherder.walkthor.data.Clips.drawing) com.nerfherder.walkthor.data.Clips.previewChanged(surface)
+        else runCatching { shared.value?.display?.surface = surface }
     }
     /** Why the last start failed, if it did. */
     val error = MutableStateFlow<String?>(null)

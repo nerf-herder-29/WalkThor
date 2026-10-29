@@ -81,6 +81,9 @@ object Clips {
     /** Whether clips are drawing through Mirror's display (so Mirror leaves its surface alone). */
     val drawing get() = pipe != null
 
+    /** The live view came or went (another tab): clips take the lighter path when there's none. */
+    fun previewChanged(surface: android.view.Surface?) { pipe?.route(surface) }
+
     // Recording from now.
     private var muxer: MediaMuxer? = null
     private var muxerFd: android.os.ParcelFileDescriptor? = null
@@ -244,15 +247,19 @@ object Clips {
                     setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
                     // Keep frames coming when the picture is still, so clips don't stall.
                     setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 100_000L)
-                    if (q.fps > 30) setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, q.fps.toFloat())
+                    // Encode no more than the chosen rate, however fast the game draws.
+                    setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, q.fps.toFloat())
+                    setInteger(MediaFormat.KEY_PRIORITY, 1) // not real-time: the game comes first
+                    setInteger(MediaFormat.KEY_OPERATING_RATE, q.fps)
                 }
                 val vc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
                 videoCodec = vc
                 vc.configure(vf, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
                 val encoderSurface = vc.createInputSurface()
                 vc.start()
+                this.encoderSurface = encoderSurface
                 val r = ClipRenderer(
-                    encoderSurface, w, h,
+                    encoderSurface, w, h, q.fps,
                     previewSize = { shared.width to shared.height },
                     preview = { com.nerfherder.walkthor.Mirror.previewSurface },
                 )
@@ -261,11 +268,11 @@ object Clips {
                 videoFormat = null
                 audioFormat = null
                 running = true
-                threads += Thread({ drain(vc, video = true) }, "WalkThor clips video").apply { start() }
-                // Borrow Mirror's display: the top screen now draws at the clip's size into the renderer.
+                threads += background({ drain(vc, video = true) }, "WalkThor clips video")
+                // Borrow Mirror's display: the top screen now draws at the clip's size.
                 display = shared.display
                 shared.display.resize(w, h, (shared.dpi * h / shared.height.coerceAtLeast(1)).coerceAtLeast(80))
-                shared.display.surface = r.input
+                route(com.nerfherder.walkthor.Mirror.previewSurface)
                 // The game's sound, if Android lets WalkThor capture it.
                 if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     runCatching { startAudio(projection) }
@@ -276,6 +283,31 @@ object Clips {
                 false
             }
         }
+
+        private var encoderSurface: android.view.Surface? = null
+
+        /**
+         * Straight into the encoder when nothing on the bottom screen shows the live picture (the
+         * lightest way); through the renderer, which also feeds the live view, only while one does.
+         */
+        fun route(preview: android.view.Surface?) {
+            val d = display ?: return
+            val r = renderer ?: return
+            runCatching {
+                if (preview == null) {
+                    r.attachEncoder(false)
+                    d.surface = encoderSurface
+                } else {
+                    d.surface = r.input
+                    r.attachEncoder(true)
+                }
+            }
+        }
+
+        private fun background(body: () -> Unit, name: String) = Thread({
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            body()
+        }, name).apply { start() }
 
         @SuppressLint("MissingPermission")
         private fun startAudio(projection: MediaProjection) {
@@ -300,8 +332,8 @@ object Clips {
             rec.startRecording()
             audioRecord = rec
             audioCodec = ac
-            threads += Thread({ feedAudio(rec, ac) }, "WalkThor clips sound").apply { start() }
-            threads += Thread({ drain(ac, video = false) }, "WalkThor clips sound out").apply { start() }
+            threads += background({ feedAudio(rec, ac) }, "WalkThor clips sound")
+            threads += background({ drain(ac, video = false) }, "WalkThor clips sound out")
         }
 
         /** Game sound into the AAC encoder, timed by the clock the screen's frames use. */

@@ -26,10 +26,11 @@ internal class ClipRenderer(
     private val encoderSurface: Surface,
     private val width: Int,
     private val height: Int,
+    private val maxFps: Int,
     private val previewSize: () -> Pair<Int, Int>,
     private val preview: () -> Surface?,
 ) {
-    private val thread = HandlerThread("WalkThor clips picture").apply { start() }
+    private val thread = HandlerThread("WalkThor clips picture", android.os.Process.THREAD_PRIORITY_BACKGROUND).apply { start() }
     private val handler = Handler(thread.looper)
     private var eglDisplay: EGLDisplay = EGL14.EGL_NO_DISPLAY
     private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
@@ -42,6 +43,29 @@ internal class ClipRenderer(
     private var surfaceTexture: SurfaceTexture? = null
     private val matrix = FloatArray(16)
     private var lastPreviewNs = 0L
+    private var lastEncodedNs = 0L
+    private var idleEgl: EGLSurface = EGL14.EGL_NO_SURFACE
+
+    /**
+     * Whether this draws into the encoder. Only one thing can draw into it at a time, so it lets
+     * go when the top screen's picture goes straight to the encoder. Waits until done.
+     */
+    fun attachEncoder(on: Boolean) {
+        val done = CountDownLatch(1)
+        val posted = handler.post {
+            runCatching {
+                if (on && encoderEgl == EGL14.EGL_NO_SURFACE) {
+                    encoderEgl = EGL14.eglCreateWindowSurface(eglDisplay, config, encoderSurface, intArrayOf(EGL14.EGL_NONE), 0)
+                } else if (!on && encoderEgl != EGL14.EGL_NO_SURFACE) {
+                    EGL14.eglMakeCurrent(eglDisplay, idleEgl, idleEgl, eglContext)
+                    EGL14.eglDestroySurface(eglDisplay, encoderEgl)
+                    encoderEgl = EGL14.EGL_NO_SURFACE
+                }
+            }
+            done.countDown()
+        }
+        if (posted) done.await(1, TimeUnit.SECONDS)
+    }
 
     /** The surface the display draws into. Null if the picture couldn't be set up. */
     var input: Surface? = null
@@ -66,6 +90,7 @@ internal class ClipRenderer(
         val attrs = intArrayOf(
             EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8, EGL14.EGL_BLUE_SIZE, 8, EGL14.EGL_ALPHA_SIZE, 8,
             EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+            EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT,
             EGLExt.EGL_RECORDABLE_ANDROID, 1,
             EGL14.EGL_NONE,
         )
@@ -75,9 +100,10 @@ internal class ClipRenderer(
         config = configs[0]
         eglContext = EGL14.eglCreateContext(eglDisplay, config, EGL14.EGL_NO_CONTEXT, intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE), 0)
         check(eglContext != EGL14.EGL_NO_CONTEXT)
-        encoderEgl = EGL14.eglCreateWindowSurface(eglDisplay, config, encoderSurface, intArrayOf(EGL14.EGL_NONE), 0)
-        check(encoderEgl != EGL14.EGL_NO_SURFACE)
-        check(EGL14.eglMakeCurrent(eglDisplay, encoderEgl, encoderEgl, eglContext))
+        // A tiny off-screen surface to work on; the encoder is drawn into only while attached.
+        idleEgl = EGL14.eglCreatePbufferSurface(eglDisplay, config, intArrayOf(EGL14.EGL_WIDTH, 1, EGL14.EGL_HEIGHT, 1, EGL14.EGL_NONE), 0)
+        check(idleEgl != EGL14.EGL_NO_SURFACE)
+        check(EGL14.eglMakeCurrent(eglDisplay, idleEgl, idleEgl, eglContext))
 
         program = buildProgram()
         val tex = IntArray(1)
@@ -98,13 +124,18 @@ internal class ClipRenderer(
     private fun drawFrame() {
         val st = surfaceTexture ?: return
         runCatching {
-            EGL14.eglMakeCurrent(eglDisplay, encoderEgl, encoderEgl, eglContext)
+            EGL14.eglMakeCurrent(eglDisplay, idleEgl, idleEgl, eglContext)
             st.updateTexImage()
             st.getTransformMatrix(matrix)
             val ts = st.timestamp
-            draw(width, height)
-            EGLExt.eglPresentationTimeANDROID(eglDisplay, encoderEgl, ts)
-            EGL14.eglSwapBuffers(eglDisplay, encoderEgl)
+            // No more frames than the clip keeps (the game may draw far more): skipped ones cost nothing.
+            if (encoderEgl != EGL14.EGL_NO_SURFACE && ts - lastEncodedNs >= 1_000_000_000L / maxFps - 2_000_000L) {
+                EGL14.eglMakeCurrent(eglDisplay, encoderEgl, encoderEgl, eglContext)
+                draw(width, height)
+                EGLExt.eglPresentationTimeANDROID(eglDisplay, encoderEgl, ts)
+                EGL14.eglSwapBuffers(eglDisplay, encoderEgl)
+                lastEncodedNs = ts
+            }
             // The live preview, at most about 30 times a second.
             val target = preview()
             if (target == null) {
@@ -130,7 +161,7 @@ internal class ClipRenderer(
 
     private fun dropPreview() {
         if (previewEgl != EGL14.EGL_NO_SURFACE) {
-            EGL14.eglMakeCurrent(eglDisplay, encoderEgl, encoderEgl, eglContext)
+            EGL14.eglMakeCurrent(eglDisplay, idleEgl, idleEgl, eglContext)
             EGL14.eglDestroySurface(eglDisplay, previewEgl)
         }
         previewEgl = EGL14.EGL_NO_SURFACE
@@ -204,6 +235,7 @@ internal class ClipRenderer(
                 if (eglDisplay != EGL14.EGL_NO_DISPLAY) {
                     EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
                     if (encoderEgl != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(eglDisplay, encoderEgl)
+                    if (idleEgl != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(eglDisplay, idleEgl)
                     if (eglContext != EGL14.EGL_NO_CONTEXT) EGL14.eglDestroyContext(eglDisplay, eglContext)
                     EGL14.eglReleaseThread()
                 }
