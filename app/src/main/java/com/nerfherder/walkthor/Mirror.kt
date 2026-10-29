@@ -41,7 +41,7 @@ object Mirror {
     /** Where the live picture goes when no clip is being kept (null while paused). */
     @Volatile var previewSurface: android.view.Surface? = null
 
-    fun setPreviewSurface(surface: android.view.Surface?) {
+    fun showPreviewOn(surface: android.view.Surface?) {
         previewSurface = surface
         if (!com.nerfherder.walkthor.data.Clips.drawing) runCatching { shared.value?.display?.surface = surface }
     }

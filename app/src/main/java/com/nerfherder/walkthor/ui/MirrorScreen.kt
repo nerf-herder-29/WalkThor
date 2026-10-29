@@ -148,7 +148,7 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
     // Paused on another tab: the virtual display stops drawing until it has somewhere to draw again.
     LaunchedEffect(display, reader, active, counting) {
         val d = display ?: return@LaunchedEffect
-        Mirror.setPreviewSurface(if (active || counting) reader?.surface else null)
+        Mirror.showPreviewOn(if (active || counting) reader?.surface else null)
     }
 
     // Counting (Stats, or All): every new picture of the top screen is taken off the queue on a
