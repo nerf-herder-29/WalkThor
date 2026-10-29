@@ -93,6 +93,18 @@ fun ShotsScreen(
     var viewing by remember { mutableStateOf<Shots.Shot?>(null) }
     val version by Shots.version.collectAsState()
     val shots by produceState(emptyList<Shots.Shot>(), game, version) { value = Shots.list(context, game) }
+    val clipsVersion by com.nerfherder.walkthor.data.Clips.version.collectAsState()
+    val clips by produceState(emptyList<com.nerfherder.walkthor.data.Clips.Clip>(), game, clipsVersion) {
+        value = com.nerfherder.walkthor.data.Clips.list(context, game)
+    }
+    var viewingClip by remember { mutableStateOf<com.nerfherder.walkthor.data.Clips.Clip?>(null) }
+    val keepingClips by com.nerfherder.walkthor.data.Clips.buffering.collectAsState()
+    val recordingClip by com.nerfherder.walkthor.data.Clips.recording.collectAsState()
+    var clipMode by remember { mutableStateOf(keepingClips || recordingClip || ShotsPrefs.clipMode(context)) }
+    // Screenshots and clips together, newest first.
+    val items = remember(shots, clips) {
+        (shots.map { it.takenAt to (it as Any) } + clips.map { it.takenAt to (it as Any) }).sortedByDescending { it.first }.map { it.second }
+    }
     val narrow = LocalConfiguration.current.screenWidthDp < 520
     // If WalkThor is itself on the top screen, a screenshot would just show WalkThor.
     val onMainDisplay = remember {
@@ -148,8 +160,19 @@ fun ShotsScreen(
                         val img = frame
                         when {
                             img == null -> Text("Waiting for the top screen…", color = BookColors.TextMuted, fontSize = 13.sp)
-                            useArea -> AreaPicker(img, area, shape = null, onChange = { area = it; Shots.setArea(context, game, it) }, pad = 0.dp)
+                            useArea && !clipMode -> AreaPicker(img, area, shape = null, onChange = { area = it; Shots.setArea(context, game, it) }, pad = 0.dp)
                             else -> WholeScreen(img)
+                        }
+                        if (recordingClip) {
+                            Row(
+                                Modifier.align(Alignment.TopStart).padding(10.dp)
+                                    .background(Color(0xCC0D0D10), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(Modifier.size(8.dp).background(RecRed, CircleShape))
+                                Spacer(Modifier.width(6.dp))
+                                Text("REC", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                         saved?.let {
                             Text(
@@ -165,27 +188,45 @@ fun ShotsScreen(
                             )
                         }
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ModeChip("Whole screen", !useArea) { useArea = false; Shots.setUseArea(context, game, false) }
-                        Spacer(Modifier.width(8.dp))
-                        ModeChip("Area", useArea) { useArea = true; Shots.setUseArea(context, game, true); Shots.setArea(context, game, area) }
-                        Spacer(Modifier.weight(1f))
-                        CaptureButton(enabled = frame != null && !busy, size = if (narrow) 48.dp else 60.dp, onClick = ::take)
+                    // Screenshot or clip.
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 10.dp)
+                            .background(BookColors.SurfaceHigh, RoundedCornerShape(50)).padding(3.dp),
+                    ) {
+                        SegmentTab("Screenshot", !clipMode, Modifier.weight(1f)) { clipMode = false; ShotsPrefs.setClipMode(context, false) }
+                        SegmentTab("Clip", clipMode, Modifier.weight(1f), dot = keepingClips || recordingClip) { clipMode = true; ShotsPrefs.setClipMode(context, true) }
                     }
-                    Text(
-                        if (useArea) "Drag the frame over the part you want; it's kept for this game. Saved to Pictures/WalkThor."
-                        else "The whole top screen. Saved to Pictures/WalkThor.",
-                        color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp),
-                    )
+                    if (clipMode) {
+                        ClipControls(game, enabled = projection != null, narrow = narrow, onSaved = { saved = it })
+                    } else {
+                        Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ModeChip("Whole screen", !useArea) { useArea = false; Shots.setUseArea(context, game, false) }
+                            Spacer(Modifier.width(8.dp))
+                            ModeChip("Area", useArea) { useArea = true; Shots.setUseArea(context, game, true); Shots.setArea(context, game, area) }
+                            Spacer(Modifier.weight(1f))
+                            CaptureButton(enabled = frame != null && !busy, size = if (narrow) 48.dp else 60.dp, onClick = ::take)
+                        }
+                        Text(
+                            if (useArea) "Drag the frame over the part you want; it's kept for this game. Saved to Pictures/WalkThor."
+                            else "The whole top screen. Saved to Pictures/WalkThor.",
+                            color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
                 // ---- this game's screenshots ----
                 Column(Modifier.weight(if (narrow) 0.4f else 0.38f).fillMaxHeight()) {
                     Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                         Text("This game", color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                        Text("${shots.size} shot${if (shots.size == 1) "" else "s"}", color = BookColors.TextMuted, fontSize = 12.sp)
+                        Text(
+                            listOfNotNull(
+                                "${shots.size} shot${if (shots.size == 1) "" else "s"}",
+                                clips.size.takeIf { it > 0 }?.let { "$it clip${if (it == 1) "" else "s"}" },
+                            ).joinToString(" · "),
+                            color = BookColors.TextMuted, fontSize = 12.sp,
+                        )
                     }
-                    if (shots.isEmpty()) {
-                        Text("Your screenshots of this game appear here.", color = BookColors.TextMuted.copy(alpha = 0.7f), fontSize = 12.sp)
+                    if (items.isEmpty()) {
+                        Text("Your screenshots and clips of this game appear here.", color = BookColors.TextMuted.copy(alpha = 0.7f), fontSize = 12.sp)
                     }
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(if (narrow) 1 else 2),
@@ -194,13 +235,19 @@ fun ShotsScreen(
                         contentPadding = PaddingValues(bottom = 12.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        items(shots, key = { it.uri.toString() }) { s -> ShotThumb(s) { viewing = s } }
+                        items(items, key = { (if (it is Shots.Shot) it.uri else (it as com.nerfherder.walkthor.data.Clips.Clip).uri).toString() }) { item ->
+                            when (item) {
+                                is Shots.Shot -> ShotThumb(item) { viewing = item }
+                                is com.nerfherder.walkthor.data.Clips.Clip -> ClipThumb(item) { viewingClip = item }
+                            }
+                        }
                     }
                 }
             }
         }
     }
     viewing?.let { s -> ShotViewer(s, onDismiss = { viewing = null }) }
+    viewingClip?.let { c -> ClipViewer(c, onDismiss = { viewingClip = null }) }
 }
 
 @Composable
@@ -215,6 +262,29 @@ private fun WholeScreen(img: ImageBitmap) {
             dstSize = IntSize(w.roundToInt(), h.roundToInt()),
             filterQuality = FilterQuality.Low,
         )
+    }
+}
+
+/** Remembers whether the Shots tab was last on Screenshot or Clip. */
+internal object ShotsPrefs {
+    private fun prefs(c: android.content.Context) = c.getSharedPreferences("shots", android.content.Context.MODE_PRIVATE)
+    fun clipMode(c: android.content.Context) = prefs(c).getBoolean("clipMode", false)
+    fun setClipMode(c: android.content.Context, on: Boolean) = prefs(c).edit().putBoolean("clipMode", on).apply()
+}
+
+@Composable
+private fun SegmentTab(label: String, on: Boolean, modifier: Modifier, dot: Boolean = false, onClick: () -> Unit) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (on) BookColors.Text else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dot) { Box(Modifier.size(7.dp).background(RecRed, CircleShape)); Spacer(Modifier.width(6.dp)) }
+        Text(label, fontSize = 13.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium, color = if (on) Color.Black else BookColors.Text)
     }
 }
 

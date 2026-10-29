@@ -29,6 +29,22 @@ object Mirror {
 
     /** The running capture session, or null. */
     val projection = MutableStateFlow<MediaProjection?>(null)
+
+    /**
+     * The one picture of the top screen this session may make (Android 14+ allows one display per
+     * screen-access session). Mirror, Shots and Stats read it through an image queue; clips borrow
+     * it and pass each frame on to that queue as well as to the video encoder.
+     */
+    class Shared(val display: android.hardware.display.VirtualDisplay, val width: Int, val height: Int, val dpi: Int)
+    val shared = MutableStateFlow<Shared?>(null)
+
+    /** Where the live picture goes when no clip is being kept (null while paused). */
+    @Volatile var previewSurface: android.view.Surface? = null
+
+    fun setPreviewSurface(surface: android.view.Surface?) {
+        previewSurface = surface
+        if (!com.nerfherder.walkthor.data.Clips.drawing) runCatching { shared.value?.display?.surface = surface }
+    }
     /** Why the last start failed, if it did. */
     val error = MutableStateFlow<String?>(null)
 
@@ -74,6 +90,7 @@ object Mirror {
 
     /** Ends the capture session (and the service holding it). */
     fun stop(context: Context) {
+        com.nerfherder.walkthor.data.Clips.stopAll()
         projection.value?.let { runCatching { it.stop() } }
         projection.value = null
         runCatching { context.stopService(Intent(context, MirrorService::class.java)) }
@@ -104,6 +121,7 @@ class MirrorService : Service() {
             // Android 14+ needs a callback registered before any capture starts.
             projection.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
+                    com.nerfherder.walkthor.data.Clips.stopAll()
                     if (Mirror.projection.value === projection) Mirror.projection.value = null
                     stopSelf()
                 }
@@ -118,6 +136,7 @@ class MirrorService : Service() {
     }
 
     override fun onDestroy() {
+        com.nerfherder.walkthor.data.Clips.stopAll()
         Mirror.projection.value?.let { runCatching { it.stop() } }
         Mirror.projection.value = null
         super.onDestroy()

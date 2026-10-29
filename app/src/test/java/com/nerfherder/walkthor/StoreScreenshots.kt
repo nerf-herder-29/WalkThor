@@ -361,6 +361,39 @@ class StoreScreenshots {
     }
 
     @Test
+    fun clipsTab() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, true)
+        // As it looks with the last seconds being kept.
+        com.nerfherder.walkthor.data.Clips.buffering.value = true
+        val frame = fakeGameFrame()
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.ShotsScreen(game, frame = frame, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.SHOTS) })
+        }
+        settle()
+        shot("23-clips")
+        com.nerfherder.walkthor.data.Clips.buffering.value = false
+        com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, false)
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun clipsTabDense() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, true)
+        com.nerfherder.walkthor.data.Clips.recording.value = true
+        com.nerfherder.walkthor.data.Clips.recordingSince.value = android.os.SystemClock.elapsedRealtime() - 83_000
+        val frame = fakeGameFrame()
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.ShotsScreen(game, frame = frame, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.SHOTS) })
+        }
+        settle()
+        shot("check-clips-dense")
+        com.nerfherder.walkthor.data.Clips.recording.value = false
+        com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, false)
+    }
+
+    @Test
     fun captionsTab() {
         // As if the speech model were downloaded (so its card isn't shown).
         java.io.File(com.nerfherder.walkthor.data.SpeechModel.dir(app), "am").apply { mkdirs() }.resolve("final.mdl").writeText("x")

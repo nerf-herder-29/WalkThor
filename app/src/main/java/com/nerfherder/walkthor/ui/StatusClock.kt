@@ -105,7 +105,12 @@ fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     } else Modifier
 
 
+    val keeping by com.nerfherder.walkthor.data.Clips.buffering.collectAsState()
+    val recordingClip by com.nerfherder.walkthor.data.Clips.recording.collectAsState()
+
     Row(modifier.then(placed), verticalAlignment = Alignment.CenterVertically) {
+        // While clips are kept or recorded, so it's never on without you seeing it.
+        if (keeping || recordingClip) ClipsBadge(recordingClip)
         val g = game
         if (showTimer && g != null && g.at > 0) {
             val played = playTime(now.time - g.at)
@@ -220,5 +225,28 @@ private fun PlayGlyph() {
             close()
         }
         drawPath(p, BookColors.Brass)
+    }
+}
+
+/** A red dot with "REC" while recording, or "Clips" while the last seconds are being kept. */
+@Composable
+private fun ClipsBadge(recording: Boolean) {
+    val context = LocalContext.current
+    Row(
+        Modifier
+            .clickable {
+                Toast.makeText(
+                    context,
+                    if (recording) "Recording a clip. Stop it in the Shots tab."
+                    else "Keeping the last seconds of the top screen in memory. Nothing is saved unless you press Save.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            .padding(end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(Modifier.size(8.dp)) { drawCircle(Color(0xFFE0483C)) }
+        Spacer(Modifier.width(5.dp))
+        Text(if (recording) "REC" else "Clips", color = Color(0xFFE88A80), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }

@@ -129,9 +129,14 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
                 )
                 reader = images
                 display = d
+                Mirror.shared.value = Mirror.Shared(d!!, w, h, dpi)
             }.onFailure { Mirror.error.value = "Couldn't capture the top screen (${it.javaClass.simpleName})" }
         }
         onDispose {
+            // Clips draw through this display too: they end with it.
+            com.nerfherder.walkthor.data.Clips.stopAll()
+            if (Mirror.shared.value?.display === d) Mirror.shared.value = null
+            Mirror.previewSurface = null
             reader = null
             display = null
             frame = null
@@ -143,7 +148,7 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
     // Paused on another tab: the virtual display stops drawing until it has somewhere to draw again.
     LaunchedEffect(display, reader, active, counting) {
         val d = display ?: return@LaunchedEffect
-        runCatching { d.surface = if (active || counting) reader?.surface else null }
+        Mirror.setPreviewSurface(if (active || counting) reader?.surface else null)
     }
 
     // Counting (Stats, or All): every new picture of the top screen is taken off the queue on a
