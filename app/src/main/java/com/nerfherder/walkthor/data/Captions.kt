@@ -132,7 +132,10 @@ object Captions {
         if (!canRecognizeStream) { recognizer.value = "needs Android 13 to caption game sound"; return }
         main.post {
             if (!on.value) return@post
-            if (!SpeechRecognizer.isRecognitionAvailable(context)) { recognizer.value = "no speech recognizer on this device"; return@post }
+            if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+                recognizer.value = "no speech recognizer on this device" + recognizers(context).let { if (it.isEmpty()) "" else " (found: $it)" }
+                return@post
+            }
             val onDevice = Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(context) }.getOrDefault(false)
             val sr = runCatching {
                 if (onDevice) SpeechRecognizer.createOnDeviceSpeechRecognizer(context) else SpeechRecognizer.createSpeechRecognizer(context)
@@ -142,7 +145,7 @@ object Captions {
             val pipe = runCatching { ParcelFileDescriptor.createPipe() }.getOrElse { recognizer.value = "couldn't connect the sound"; return@post }
             closePipe()
             pipeOut = FileOutputStream(pipe[1].fileDescriptor)
-            val mode = if (onDevice) "on-device" else "Google speech service"
+            val mode = if (onDevice) "on-device" else "speech service: " + recognizers(context).ifEmpty { "default" }
             sr.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) { recognizer.value = "listening ($mode)" }
                 override fun onBeginningOfSpeech() { recognizer.value = "hearing speech ($mode)" }
@@ -177,6 +180,12 @@ object Captions {
             runCatching { sr.startListening(intent) }.onFailure { recognizer.value = "couldn't start listening (${it.javaClass.simpleName})" }
         }
     }
+
+    /** The speech recognizer apps Android lists, for the readout. */
+    fun recognizers(context: Context): String = runCatching {
+        context.packageManager.queryIntentServices(Intent("android.speech.RecognitionService"), 0)
+            .joinToString(", ") { it.serviceInfo.packageName }
+    }.getOrDefault("")
 
     private fun restart(context: Context, old: Array<ParcelFileDescriptor>) {
         runCatching { old[0].close() }
