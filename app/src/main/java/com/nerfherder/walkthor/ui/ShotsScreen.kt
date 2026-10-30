@@ -141,8 +141,8 @@ fun ShotsScreen(
     Column(Modifier.fillMaxSize().background(backdropOr(Color.Black))) {
         topBar?.invoke()
         when {
-            Build.VERSION.SDK_INT < 29 -> CenterNote("Screenshots need Android 10 or newer.")
-            onMainDisplay -> CenterNote("WalkThor is on the top screen, so a screenshot would only show WalkThor. Move it to the bottom screen first.")
+            Build.VERSION.SDK_INT < 29 -> CenterNote("Screenshots and clips need Android 10 or newer.")
+            onMainDisplay -> CenterNote("WalkThor is on the top screen, so a screenshot or clip would only show WalkThor. Move it to the bottom screen first.")
             projection == null && frame == null -> StartShots(error, onStartCapture)
             else -> Row(
                 Modifier.fillMaxSize().padding(horizontal = if (narrow) 10.dp else 16.dp, vertical = 12.dp),
@@ -387,11 +387,13 @@ private fun StartShots(error: String?, onStart: () -> Unit) {
             Modifier.widthIn(max = 520.dp).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Screenshots of the top screen", fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = BookColors.Text)
+            Text("Screenshots and clips of the top screen", fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = BookColors.Text, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Save the whole top screen, or just the part you frame, without leaving your game. Android asks " +
-                    "for screen access each time. Screenshots are saved only when you press the button, to Pictures/WalkThor.",
+                "Save the whole top screen, or just the part you frame, without leaving your game. Or record clips " +
+                    "with the game's sound: keep the last few seconds and save them after something happens, or record " +
+                    "from now until you stop. Android asks for screen access each time. Nothing is saved until you press " +
+                    "a button: screenshots go to Pictures/WalkThor, clips to Movies/WalkThor.",
                 color = BookColors.TextMuted, fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center,
             )
             error?.let {

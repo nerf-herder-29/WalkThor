@@ -62,7 +62,7 @@ enum class GameTab(val label: String, val shortLabel: String = label) {
     MIRROR("Mirror"),
     FACE("Face Buttons", "Buttons"),
     STATS("Stats"),
-    /** Screenshots of the top screen. */
+    /** Screenshots and clips of the top screen. */
     SHOTS("Shots"),
     /** Captions of the game's speech (a test for now). */
     CAPTIONS("Captions"),

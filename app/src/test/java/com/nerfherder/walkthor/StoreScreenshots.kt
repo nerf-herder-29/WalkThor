@@ -361,6 +361,15 @@ class StoreScreenshots {
     }
 
     @Test
+    fun shotsStart() {
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.ShotsScreen("Lanterns of Emberfall", frame = null, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.SHOTS) })
+        }
+        settle()
+        shot("check-shots-start")
+    }
+
+    @Test
     fun clipsTab() {
         val game = "Lanterns of Emberfall"
         com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, true)
