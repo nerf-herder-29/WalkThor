@@ -218,7 +218,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 var beats = 0
+                ExitHistory.collect(this@MainActivity)
                 while (true) {
+                    ExitHistory.snapshot(this@MainActivity)
                     if (GameFocus.gameRunning.value) {
                         Revive.heartbeat(this@MainActivity)
                         // Every half minute, note the game's power draw (for the Stats tab's

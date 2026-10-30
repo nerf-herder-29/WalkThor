@@ -80,7 +80,7 @@ object Captions {
         record = rec
         level.value = 0f; peak.value = 0f; samples.value = 0L; partial.value = ""; lines.value = emptyList()
         on.value = true
-        runCatching { rec.startRecording() }.onFailure { error.value = "Couldn't start capturing (${it.javaClass.simpleName})"; stop(); return }
+        runCatching { rec.startRecording() }.onFailure { error.value = "Couldn't start capturing (${it.javaClass.simpleName})"; stop(); runCatching { rec.release() }; return }
         // WalkThor's own recognizer if you've downloaded it; otherwise the device's, if it has one.
         val builtIn = SpeechModel.isReady(app)
         thread = Thread({ readLoop(rec, if (builtIn) SpeechModel.dir(app).absolutePath else null) }, "WalkThor captions").apply { start() }
@@ -89,8 +89,9 @@ object Captions {
 
     fun stop() {
         on.value = false
+        // Only stopped here (which wakes a read waiting on a quiet game); the reading thread frees it
+        // once it's done. Freeing it mid-read crashes WalkThor.
         runCatching { record?.stop() }
-        runCatching { record?.release() }
         record = null
         thread = null
         closePipe()
@@ -146,6 +147,8 @@ object Captions {
             }
         }
         } finally {
+            runCatching { rec.stop() }
+            runCatching { rec.release() }
             runCatching { vosk?.close() }
             runCatching { model?.close() }
         }

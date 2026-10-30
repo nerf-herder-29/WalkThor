@@ -236,6 +236,18 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Section("Diagnostics")
                 // If Android has closed WalkThor to free memory (heavy games), what happened.
                 remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }
+                // Every recent time WalkThor closed, and why (for finding a pattern).
+                var closes by remember { mutableStateOf(com.nerfherder.walkthor.ExitHistory.lines(context)) }
+                if (closes.isNotEmpty()) {
+                    Text("Recent closes", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+                    closes.take(8).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp)) }
+                    Row {
+                        TextButton(onClick = { com.nerfherder.walkthor.ExitHistory.share(context) }) { Text("Share recent closes") }
+                        TextButton(onClick = { com.nerfherder.walkthor.ExitHistory.clear(context); closes = emptyList() }) {
+                            Text("Clear", color = BookColors.TextMuted)
+                        }
+                    }
+                }
                 val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
                 Body(
                     "Performance check shows on the dimmed screen whether WalkThor or your game has Android's " +

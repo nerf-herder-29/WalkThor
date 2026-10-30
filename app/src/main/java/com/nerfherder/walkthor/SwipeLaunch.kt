@@ -172,6 +172,7 @@ class SwipeGestureService : AccessibilityService() {
         super.onServiceConnected()
         instance = java.lang.ref.WeakReference(this)
         CrashLog.install(this)
+        runCatching { ExitHistory.collect(this) }
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()

@@ -398,10 +398,12 @@ object Clips {
             }
             display = null
             Thread({
-                threads.forEach { runCatching { it.join(1_000) } }
-                renderer?.let { it.release(); it.awaitReleased() }
+                // Stop the sound capture first: that wakes a read waiting on a quiet game, so its
+                // thread can finish. Freeing it while a read is still running crashes WalkThor.
                 runCatching { audioRecord?.stop() }
-                runCatching { audioRecord?.release() }
+                threads.forEach { runCatching { it.join(2_000) } }
+                renderer?.let { it.release(); it.awaitReleased() }
+                if (threads.none { it.isAlive }) runCatching { audioRecord?.release() }
                 runCatching { audioCodec?.stop() }
                 runCatching { audioCodec?.release() }
                 runCatching { videoCodec?.stop() }

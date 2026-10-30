@@ -112,7 +112,7 @@ scraper account and start a scrape (see below). Everything else stays on your de
 
 Your library of guides, cover images, reading positions, settings, which guide you linked to
 which game, the apps you pinned, the games and guides you picked for each emulator, your ROMs
-folder's list of game names, artwork you scraped and your scraper account details, the last time Android closed WalkThor and why, and — only if WalkThor crashes — a crash report (the error and device model) that you
+folder's list of game names, artwork you scraped and your scraper account details, a list of the recent times WalkThor's app closed and why (with how much memory it was using and what it was doing, such as a game running or clips on), and — only if WalkThor crashes — a crash report (the error and device model) that you
 can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 accessibility access at any time from the library's Settings (⋮) or Android's Accessibility settings.
 
