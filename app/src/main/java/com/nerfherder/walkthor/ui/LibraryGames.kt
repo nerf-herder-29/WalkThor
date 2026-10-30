@@ -53,7 +53,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.nerfherder.walkthor.data.Book
@@ -213,7 +212,7 @@ fun GamesGrid(roms: List<Rom>, books: List<Book>, coverFile: (Book) -> File?, ac
                     onClick = { if (hiddenView) menuFor = rom else if (guide != null) actions.onOpen(guide) else sheetFor = rom },
                     onLongClick = { menuFor = rom },
                 )
-                androidx.compose.material3.DropdownMenu(expanded = menuFor == rom, onDismissRequest = { menuFor = null }) {
+                DropdownMenu(expanded = menuFor == rom, onDismissRequest = { menuFor = null }) {
                     androidx.compose.material3.DropdownMenuItem(
                         text = { Text("Choose art") },
                         onClick = { menuFor = null; artFor = rom },
@@ -340,7 +339,7 @@ private fun GameSheet(
 ) {
     var picking by remember { mutableStateOf(false) }
     val cover = gameCover(rom.title, rom.file)
-    androidx.compose.material3.AlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = BookColors.Surface,
         title = {

@@ -21,6 +21,11 @@ object GameFocus {
     val gameRunning = MutableStateFlow(false)
     /** Something in WalkThor needs real focus right now (typing a search). */
     val wantFocus = MutableStateFlow(false)
+    /**
+     * WalkThor is leaving focus to a game right now (its window can't take focus). Its dialogs
+     * and menus then open without taking focus either (see GameSafeDialogs).
+     */
+    val yielding = MutableStateFlow(false)
 
     @Suppress("UNUSED_PARAMETER")
     fun init(context: Context) {

@@ -558,7 +558,7 @@ fun MultiMenu(onClose: () -> Unit) {
         androidx.compose.material3.IconButton(onClick = { open = true }) {
             Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = "More", tint = BookColors.TextMuted)
         }
-        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             androidx.compose.material3.DropdownMenuItem(
                 text = { Text("Choose panels…") },
                 onClick = { open = false; AllLayout.choosing.value = true },
@@ -572,7 +572,7 @@ fun MultiMenu(onClose: () -> Unit) {
 @Composable
 private fun ChoosePanelsDialog(current: List<GameTab>, onDone: (List<GameTab>?) -> Unit) {
     var picked by remember { mutableStateOf(current) }
-    androidx.compose.material3.AlertDialog(
+    AlertDialog(
         onDismissRequest = { onDone(null) },
         title = { Text("Multi panels", fontFamily = DisplayFont) },
         text = {

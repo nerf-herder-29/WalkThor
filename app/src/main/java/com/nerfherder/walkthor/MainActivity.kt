@@ -364,6 +364,7 @@ class MainActivity : ComponentActivity() {
         val yieldToGame = GameFocus.keepOnGame.value && GameFocus.gameRunning.value && gameInFront && !GameFocus.wantFocus.value
         if (yielding == yieldToGame) return
         yielding = yieldToGame
+        GameFocus.yielding.value = yieldToGame
         if (yieldToGame) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
         } else {
