@@ -32,7 +32,7 @@ object ExitHistory {
         val mem = ActivityManager.MemoryInfo().also { runCatching { am?.getMemoryInfo(it) } }
         val doing = buildList {
             add(if (GameFocus.gameRunning.value) "game running" else "no game")
-            PlaySession.current.value?.title?.let { add("\"$it\"") }
+            com.nerfherder.walkthor.ui.PlaySession.current.value?.title?.let { add("\"$it\"") }
             if (Mirror.projection.value != null) add("screen capture on")
             if (com.nerfherder.walkthor.data.Clips.recording.value) add("recording a clip")
             else if (com.nerfherder.walkthor.data.Clips.buffering.value) add("keeping clips")
