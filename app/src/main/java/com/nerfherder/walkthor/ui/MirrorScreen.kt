@@ -169,7 +169,9 @@ fun rememberMirrorFrame(active: Boolean, counting: Boolean = false): ImageBitmap
         val drain = Runnable {
             while (true) {
                 val img = runCatching { r.acquireNextImage() }.getOrNull() ?: break
-                FpsMeter.counter.incrementAndGet()
+                // While clips are on, these pictures are passed on at most ~30 a second, so clips
+                // count the top screen's frames themselves.
+                if (!com.nerfherder.walkthor.data.Clips.drawing) FpsMeter.counter.incrementAndGet()
                 val now = android.os.SystemClock.uptimeMillis()
                 if (show && now - lastShown >= FRAME_MS) {
                     val buffer = img.hardwareBuffer

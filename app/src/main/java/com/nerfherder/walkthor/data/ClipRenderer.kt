@@ -128,6 +128,8 @@ internal class ClipRenderer(
             st.updateTexImage()
             st.getTransformMatrix(matrix)
             val ts = st.timestamp
+            // Every frame of the top screen, for the FPS meter (which only sees the passed-on ones).
+            com.nerfherder.walkthor.ui.FpsMeter.counter.incrementAndGet()
             // No more frames than the clip keeps (the game may draw far more): skipped ones cost nothing.
             if (encoderEgl != EGL14.EGL_NO_SURFACE && ts - lastEncodedNs >= 1_000_000_000L / maxFps - 2_000_000L) {
                 EGL14.eglMakeCurrent(eglDisplay, encoderEgl, encoderEgl, eglContext)
