@@ -244,6 +244,7 @@ private fun PillAction(label: String, enabled: Boolean, modifier: Modifier = Mod
 private fun rememberClipThumb(clip: Clips.Clip): Bitmap? {
     val context = LocalContext.current
     val thumb by produceState<Bitmap?>(null, clip.uri) {
+        Clips.demoThumb?.let { value = it; return@produceState }
         value = withContext(Dispatchers.IO) {
             if (Build.VERSION.SDK_INT >= 29) runCatching { context.contentResolver.loadThumbnail(clip.uri, Size(480, 270), null) }.getOrNull() else null
         }

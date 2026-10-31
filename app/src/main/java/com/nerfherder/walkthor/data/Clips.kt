@@ -483,8 +483,14 @@ object Clips {
     /** One saved clip. */
     data class Clip(val uri: Uri, val name: String, val takenAt: Long, val durationMs: Long)
 
+    /** For store screenshots only: clips to list, a still to show for them, and controls switched on. */
+    internal var demoClips: List<Clip>? = null
+    internal var demoThumb: android.graphics.Bitmap? = null
+    internal var demoReady = false
+
     /** This game's clips, newest first. */
     suspend fun list(context: Context, game: String): List<Clip> = withContext(Dispatchers.IO) {
+        demoClips?.let { return@withContext it }
         if (Build.VERSION.SDK_INT < 29) return@withContext emptyList()
         val out = ArrayList<Clip>()
         runCatching {

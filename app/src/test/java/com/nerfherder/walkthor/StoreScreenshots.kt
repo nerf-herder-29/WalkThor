@@ -1,5 +1,6 @@
 package com.nerfherder.walkthor
 
+import androidx.compose.ui.graphics.asAndroidBitmap
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
@@ -382,6 +383,32 @@ class StoreScreenshots {
         settle()
         shot("23-clips")
         com.nerfherder.walkthor.data.Clips.buffering.value = false
+        com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, false)
+    }
+
+    @Test
+    fun promoClips() {
+        val game = "Lanterns of Emberfall"
+        com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, true)
+        val frame = fakeGameFrame()
+        val now = System.currentTimeMillis()
+        com.nerfherder.walkthor.data.Clips.demoReady = true
+        com.nerfherder.walkthor.data.Clips.demoThumb = frame.asAndroidBitmap()
+        com.nerfherder.walkthor.data.Clips.demoClips = listOf(
+            Triple(1L, 4L, 30_000L), Triple(2L, 19L, 45_000L), Triple(3L, 41L, 15_000L), Triple(4L, 63L, 92_000L),
+        ).map { (id, minsAgo, len) ->
+            com.nerfherder.walkthor.data.Clips.Clip(android.net.Uri.parse("content://media/external/video/media/$id"), "clip $id", now - minsAgo * 60_000, len)
+        }
+        com.nerfherder.walkthor.data.Clips.buffering.value = true
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.ShotsScreen(game, frame = frame, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.SHOTS) })
+        }
+        settle()
+        shot("24-promo-clips")
+        com.nerfherder.walkthor.data.Clips.buffering.value = false
+        com.nerfherder.walkthor.data.Clips.demoReady = false
+        com.nerfherder.walkthor.data.Clips.demoThumb = null
+        com.nerfherder.walkthor.data.Clips.demoClips = null
         com.nerfherder.walkthor.ui.ShotsPrefs.setClipMode(app, false)
     }
 

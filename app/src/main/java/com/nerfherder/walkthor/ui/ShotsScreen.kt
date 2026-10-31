@@ -198,7 +198,7 @@ fun ShotsScreen(
                         SegmentTab("Clip", clipMode, Modifier.weight(1f), dot = keepingClips || recordingClip) { clipMode = true; ShotsPrefs.setClipMode(context, true) }
                     }
                     if (clipMode) {
-                        ClipControls(game, enabled = projection != null, narrow = narrow, onSaved = { saved = it })
+                        ClipControls(game, enabled = projection != null || com.nerfherder.walkthor.data.Clips.demoReady, narrow = narrow, onSaved = { saved = it })
                     } else {
                         Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             ModeChip("Whole screen", !useArea) { useArea = false; Shots.setUseArea(context, game, false) }
