@@ -178,6 +178,7 @@ class SwipeGestureService : AccessibilityService() {
         CrashLog.install(this)
         runCatching { ExitHistory.collect(this) }
         AynButton.load(this)
+        applyEventTypes()
         // Start receiving button presses again if the AYN button is set to open WalkThor
         // (Android forgets this whenever the service restarts, as after a reboot).
         runCatching { setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) }
@@ -216,7 +217,9 @@ class SwipeGestureService : AccessibilityService() {
         val flags = info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS.inv()
         // While detecting, every app switch counts: don't let Android merge quick ones together
         // (a fast emulator launch could otherwise be missed).
-        val timeout = if (EmulatorWatch.active.value) 0L else 1000L
+        // The AYN button needs every switch too: Cocoon updates its own screen within a second of a
+        // game starting, and with merging only that update arrived, so the game was never seen.
+        val timeout = if (EmulatorWatch.active.value || AynButton.on) 0L else 1000L
         if (info.eventTypes != want || info.notificationTimeout != timeout || info.flags != flags) {
             info.eventTypes = want
             info.notificationTimeout = timeout
@@ -530,6 +533,7 @@ object AynButton {
     fun set(context: Context, value: Boolean) {
         on = value
         if (!value) Drawer.destroy()
+        SwipeGestureService.instance?.get()?.applyEventTypes()
         SwipeLauncher.prefs(context).edit().putBoolean("aynButton", value).apply()
         // Start or stop receiving button presses to match.
         val service = SwipeGestureService.instance?.get() ?: return
