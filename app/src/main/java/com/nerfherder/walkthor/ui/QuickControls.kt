@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -147,13 +148,180 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
     else FrostedSurface(backdrop, RoundedCornerShape(18.dp), modifier.widthIn(max = 560.dp).fillMaxWidth()) { body() }
 }
 
-/** The Light & Sound tab: each screen's brightness and the volume. */
+/**
+ * The Light & Sound tab, laid out like Stats: the top screen's brightness, the bottom screen's and
+ * the volume side by side, each a big number with a slider under it. "Both screens together" makes
+ * either brightness slider move both.
+ */
 @Composable
 fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
-    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
+    val context = LocalContext.current
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
+    var linked by remember { mutableStateOf(ScreenControls.target(context) == ScreenControls.Target.BOTH) }
+    var canTop by remember { mutableStateOf(ScreenControls.canSetTop(context)) }
+    var top by remember { mutableFloatStateOf(ScreenControls.top(context)) }
+    var bottom by remember { mutableFloatStateOf(1f) }
+    var bottomDimOnly by remember { mutableStateOf(true) }
+    var volume by remember { mutableFloatStateOf(ScreenControls.volume(context)) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            bottom = ScreenControls.bottom(context)
+            bottomDimOnly = ScreenControls.bottomDimOnly(context)
+        }
+        while (true) {
+            if (!dragging) {
+                canTop = ScreenControls.canSetTop(context)
+                top = ScreenControls.top(context)
+                volume = ScreenControls.volume(context)
+            }
+            delay(1_500)
+        }
+    }
+    // Stays bright while you're adjusting.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val holder = Any()
+        AutoDim.wake()
+        AutoDim.holdBright(holder, true)
+        onDispose { AutoDim.holdBright(holder, false) }
+    }
+    fun setTop(v: Float) {
+        top = v; ScreenControls.setTop(context, v)
+        if (linked) { bottom = v; ScreenControls.setBottom(context, v) }
+    }
+    fun setBottom(v: Float) {
+        bottom = v; ScreenControls.setBottom(context, v)
+        if (linked && canTop) { top = v; ScreenControls.setTop(context, v) }
+    }
+
+    Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
-        Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-            QuickControls(compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480)
+        Row(
+            Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = if (compact) 8.dp else 12.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        ) {
+            LevelColumn(
+                "Top screen",
+                top,
+                if (canTop) "brightness" else "WalkThor needs permission to change it",
+                compact,
+                Modifier.weight(1f),
+                onDrag = { dragging = it },
+                onChange = if (canTop) ::setTop else null,
+                action = if (canTop) null else ("Allow" to { ScreenControls.askTop(context) }),
+            )
+            LevelColumn(
+                "Bottom screen",
+                bottom,
+                if (bottomDimOnly) "brightness · dims below AYN's level" else "brightness",
+                compact,
+                Modifier.weight(1f),
+                onDrag = { dragging = it },
+                onChange = ::setBottom,
+            )
+            LevelColumn(
+                "Volume",
+                volume,
+                "media · both screens",
+                compact,
+                Modifier.weight(1f),
+                onDrag = { dragging = it },
+                onChange = { v -> volume = v; ScreenControls.setVolume(context, v) },
+            )
+        }
+        // Both screens together, then the time and battery (as on Stats).
+        Row(
+            Modifier.fillMaxWidth().height(if (compact) 36.dp else 44.dp).padding(start = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).clickable {
+                    linked = !linked
+                    ScreenControls.setTarget(context, if (linked) ScreenControls.Target.BOTH else ScreenControls.Target.TOP)
+                    if (linked) setTop(top)
+                }.padding(vertical = 4.dp, horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(width = 30.dp, height = 18.dp).clip(RoundedCornerShape(50))
+                        .background(if (linked) BookColors.Text else Color.White.copy(alpha = 0.18f)),
+                    contentAlignment = if (linked) Alignment.CenterEnd else Alignment.CenterStart,
+                ) {
+                    Box(Modifier.padding(2.dp).size(14.dp).clip(RoundedCornerShape(50)).background(if (linked) Color.Black else BookColors.Text))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    if (compact) "Both screens together" else "Move both screens' brightness together",
+                    color = BookColors.Text.copy(alpha = 0.85f),
+                    fontSize = if (compact) 11.sp else 13.sp,
+                    maxLines = 1,
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            StatusClock(Modifier.padding(start = 8.dp, end = 10.dp), anchor = false)
+        }
+    }
+}
+
+/** One level, Stats style: a label, a big number, a note, and a slider along the bottom. */
+@Composable
+private fun LevelColumn(
+    title: String,
+    value: Float,
+    sub: String,
+    compact: Boolean,
+    modifier: Modifier,
+    onDrag: (Boolean) -> Unit,
+    onChange: ((Float) -> Unit)?,
+    action: Pair<String, () -> Unit>? = null,
+) {
+    Column(modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp)) {
+        Text(title, style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 10.sp else 12.sp))
+        Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                if (onChange == null) "—" else "${(value * 100).roundToInt()}",
+                color = BookColors.Text,
+                fontWeight = FontWeight.Medium,
+                style = androidx.compose.ui.text.TextStyle(fontFamily = AppFont.family, fontFeatureSettings = "tnum"),
+                fontSize = if (compact) 40.sp else 64.sp,
+                lineHeight = if (compact) 42.sp else 66.sp,
+                maxLines = 1,
+                softWrap = false,
+            )
+            if (onChange != null) {
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "%",
+                    color = BookColors.Text.copy(alpha = 0.75f),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (compact) 14.sp else 20.sp,
+                    modifier = Modifier.padding(bottom = if (compact) 4.dp else 8.dp),
+                )
+            }
+        }
+        Text(
+            sub,
+            color = BookColors.Text.copy(alpha = 0.7f),
+            fontSize = if (compact) 10.sp else 12.sp,
+            lineHeight = if (compact) 12.sp else 15.sp,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.weight(1f))
+        when {
+            action != null -> Text(
+                action.first,
+                color = BookColors.Text,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .border(1.dp, BookColors.ButtonEdge, RoundedCornerShape(50))
+                    .clickable { action.second() }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            onChange != null -> ThinSlider(value, onDrag, onChange, Modifier.fillMaxWidth())
         }
     }
 }
