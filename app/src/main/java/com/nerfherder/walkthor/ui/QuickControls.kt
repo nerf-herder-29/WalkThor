@@ -240,7 +240,7 @@ private fun SpeakerIcon() {
  * Shows nothing if the device doesn't allow it (Diagnostics says which).
  */
 @Composable
-fun TopFpsBadge(modifier: Modifier = Modifier) {
+fun TopFpsBadge(modifier: Modifier = Modifier, compact: Boolean = false) {
     val driver by produceState<Float?>(null) {
         while (true) {
             value = withContext(Dispatchers.IO) { ScreenControls.topFps() }
@@ -252,13 +252,14 @@ fun TopFpsBadge(modifier: Modifier = Modifier) {
         modifier
             .background(Color(0xE00D0D10), RoundedCornerShape(50))
             .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 5.dp),
+            .padding(horizontal = if (compact) 9.dp else 12.dp, vertical = if (compact) 3.dp else 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Top screen", color = BookColors.Text, fontSize = 13.sp)
-        Spacer(Modifier.width(7.dp))
-        Text("${fps.roundToInt()}", color = Color(0xFF7FC48A), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        val small = if (compact) 11.sp else 13.sp
+        Text(if (compact) "Top" else "Top screen", color = BookColors.Text, fontSize = small)
+        Spacer(Modifier.width(if (compact) 5.dp else 7.dp))
+        Text("${fps.roundToInt()}", color = Color(0xFF7FC48A), fontSize = if (compact) 13.sp else 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(4.dp))
-        Text("FPS", color = BookColors.Text, fontSize = 13.sp)
+        Text("FPS", color = BookColors.Text, fontSize = small)
     }
 }
