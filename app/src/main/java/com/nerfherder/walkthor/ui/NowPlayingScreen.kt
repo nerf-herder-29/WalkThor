@@ -173,14 +173,14 @@ fun NowPlayingScreen(
             actOnDown = false,
             // Nudged up to leave room for the quick controls below.
             modifier = Modifier.align(Alignment.Center)
-                .offset(y = if (resting) 0.dp else if (compact) (-48).dp else (-44).dp)
+                .offset(y = if (resting) 0.dp else if (compact) (-34).dp else (-44).dp)
                 .graphicsLayer { alpha = enter.value },
         )
         // ---- brightness and volume, above the marquee and the clock ----
         if (!resting) {
             QuickControls(
                 Modifier.align(Alignment.BottomCenter)
-                    .padding(start = 16.dp, end = 16.dp, bottom = if (compact) 54.dp else 84.dp)
+                    .padding(start = 16.dp, end = 16.dp, bottom = if (compact) 50.dp else 84.dp)
                     .graphicsLayer { alpha = enter.value },
                 compact = compact,
             )
