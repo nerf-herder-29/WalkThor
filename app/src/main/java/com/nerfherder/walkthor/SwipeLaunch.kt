@@ -363,7 +363,12 @@ class SwipeGestureService : AccessibilityService() {
 
     /** A game is running on the top screen (as far as WalkThor can tell). */
     private fun gameRunningOnTop(): Boolean {
-        val top = DisplayHelper.gameDisplay(this)?.displayId ?: return GameFocus.gameRunning.value
+        val bottom = DisplayHelper.bottomDisplay(this)?.displayId
+        // The other (bigger) screen.
+        val top = getSystemService(DisplayManager::class.java)?.displays
+            ?.filter { it.displayId != bottom && it.state != android.view.Display.STATE_OFF }
+            ?.maxByOrNull { it.mode.physicalWidth.toLong() * it.mode.physicalHeight }?.displayId
+            ?: return GameFocus.gameRunning.value
         return EmulatorWatch.gameInFront(this, top) ?: GameFocus.gameRunning.value
     }
 
