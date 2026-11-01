@@ -282,31 +282,29 @@ class SwipeGestureService : AccessibilityService() {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
         }
         if (AynButton.on && AynButton.isAynButton(event)) {
-            // Just after a hold: this press is AYN's (its drawer), untouched.
-            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                AynButton.passing = android.os.SystemClock.uptimeMillis() < AynButton.passUntil
-                if (AynButton.passing) AynButton.passUntil = 0L
+            // A tap slides WalkThor's drawer up, or away. A double tap is AYN's own drawer: only AYN's
+            // software can open that, so the second press goes straight on to AYN, untouched. A tap
+            // waits a moment for a possible second one before acting. Never lets a problem here take
+            // the service (and with it the button) down.
+            val now = android.os.SystemClock.uptimeMillis()
+            when (event.action) {
+                android.view.KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
+                    AynButton.passing = now - AynButton.lastTapAt < AynButton.DOUBLE_TAP_MS
+                    if (AynButton.passing) {
+                        handler.removeCallbacks(aynTap)
+                        AynButton.lastTapAt = 0L
+                        handler.post { runCatching { if (Drawer.shown.value) Drawer.hide(); AynButton.note("double tap → AYN's drawer") } }
+                    }
+                }
+                android.view.KeyEvent.ACTION_UP -> if (!AynButton.passing) {
+                    AynButton.lastTapAt = now
+                    handler.removeCallbacks(aynTap)
+                    handler.postDelayed(aynTap, AynButton.DOUBLE_TAP_MS)
+                }
             }
             if (AynButton.passing) {
                 if (event.action == android.view.KeyEvent.ACTION_UP) AynButton.passing = false
                 return false
-            }
-            // The AYN button is WalkThor's: a tap slides WalkThor's drawer up, or away; holding it
-            // opens AYN's own drawer. Never lets a problem here take the service (and with it the
-            // button) down.
-            when (event.action) {
-                android.view.KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
-                    AynButton.held = false
-                    handler.removeCallbacks(aynHold)
-                    handler.postDelayed(aynHold, AynButton.HOLD_MS)
-                }
-                android.view.KeyEvent.ACTION_UP -> {
-                    handler.removeCallbacks(aynHold)
-                    if (!AynButton.held) handler.post {
-                        try { onAynButton() } catch (e: Throwable) { AynButton.note("couldn't open (${e.javaClass.simpleName}: ${e.message?.take(100)})") }
-                    }
-                    AynButton.held = false
-                }
             }
             return true
         }
@@ -443,18 +441,10 @@ class SwipeGestureService : AccessibilityService() {
         }, "WalkThor launch log").start()
     }
 
-    /**
-     * Held long enough: AYN's own drawer. Only AYN's software can open it, so WalkThor steps aside
-     * for the next press (within a few seconds), which then goes to AYN as if WalkThor weren't here.
-     */
-    private val aynHold = Runnable {
-        AynButton.held = true
-        if (Drawer.shown.value) Drawer.hide()
-        AynButton.passUntil = android.os.SystemClock.uptimeMillis() + AynButton.PASS_MS
-        AynButton.note("hold → next press goes to AYN's drawer")
-        runCatching {
-            android.widget.Toast.makeText(this, "Press the AYN button again for AYN's drawer", android.widget.Toast.LENGTH_SHORT).show()
-        }
+    /** A single tap (no second one came): WalkThor's drawer. */
+    private val aynTap = Runnable {
+        AynButton.lastTapAt = 0L
+        try { onAynButton() } catch (e: Throwable) { AynButton.note("couldn't open (${e.javaClass.simpleName}: ${e.message?.take(100)})") }
     }
 
     /** The AYN button during a game: WalkThor's drawer slides up over the bottom screen, or away. */
@@ -556,15 +546,12 @@ object AynButton {
         private set
     /** The current press is WalkThor's (decided when it went down). */
     @Volatile var ours = false
-    /** The current press has been held long enough to open AYN's drawer. */
-    @Volatile var held = false
-    const val HOLD_MS = 450L
     const val AYN_DRAWER = "com.odin.dualscreen.assistant"
-    /** After a hold, the next press until then (uptimeMillis) goes to AYN's drawer. */
-    @Volatile var passUntil = 0L
-    /** The current press is going to AYN. */
+    /** When the last single tap came (uptimeMillis), to spot a double tap. */
+    @Volatile var lastTapAt = 0L
+    /** The current press is going to AYN (the second of a double tap). */
     @Volatile var passing = false
-    const val PASS_MS = 4_000L
+    const val DOUBLE_TAP_MS = 300L
     /** The launch log says a game is running (read in the background). */
     @Volatile var logSaysGame = false
     @Volatile var logCheckedAt = 0L
