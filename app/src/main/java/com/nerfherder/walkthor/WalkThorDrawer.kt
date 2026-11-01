@@ -37,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.app.ActivityOptionsCompat
@@ -303,6 +302,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             }
             firstShow = false
             f.addView(compose, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            // Each time the window draws (it always does when it's shown again).
+            f.viewTreeObserver.addOnDrawListener { drewAt = android.os.SystemClock.uptimeMillis() }
             root = f
         }
         runCatching { wm.addView(frame, params()) }
@@ -345,7 +346,6 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer { translationY = size.height * (1f - slide.value) }
-                    .drawWithContent { drawContent(); drewAt = android.os.SystemClock.uptimeMillis() }
                     // The app's window paints this behind every screen; the drawer has to itself.
                     .background(androidx.compose.ui.graphics.Color.Black),
             ) {
