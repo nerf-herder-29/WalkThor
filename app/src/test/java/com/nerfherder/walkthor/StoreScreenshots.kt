@@ -919,6 +919,7 @@ class StoreScreenshots {
 
     @Test
     fun nowPlayingWithGuide() {
+        com.nerfherder.walkthor.ScreenControls.demoFps = 60f
         content {
             NowPlayingScreen(
                 game = noGuideGame,
@@ -931,6 +932,26 @@ class StoreScreenshots {
         }
         settle()
         shot("06b-now-playing-guide")
+        com.nerfherder.walkthor.ScreenControls.demoFps = null
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun nowPlayingDense() {
+        com.nerfherder.walkthor.ScreenControls.demoFps = 58f
+        content {
+            NowPlayingScreen(
+                game = noGuideGame,
+                art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
+                books = shelf,
+                coverFile = { null },
+                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
+                guide = shelf[0],
+            )
+        }
+        settle()
+        shot("check-now-playing-dense")
+        com.nerfherder.walkthor.ScreenControls.demoFps = null
     }
 
     @Test

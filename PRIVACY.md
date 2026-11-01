@@ -68,6 +68,13 @@ scraper account and start a scrape (see below). Everything else stays on your de
   half minute to learn how long that game usually lasts on a charge; only that average is kept,
   on the device.
 
+- **Brightness and volume, only when you move the sliders.** Now playing's quick controls change
+  Android's brightness setting (with the *Modify system settings* access you grant), the media
+  volume, and, where WalkThor can't change the bottom screen's brightness, dim it with a dark layer
+  drawn by the accessibility service. To find AYN's brightness setting, WalkThor looks at the names of
+  Android's system settings; it reads the top screen's frame rate from the display driver. Nothing is
+  stored except the levels you chose, and nothing is sent.
+
 - **The drawer, only if you switch it on.** With *Open as a drawer* on (Settings → General), the
   accessibility service draws WalkThor's own screens over the bottom screen instead of WalkThor
   opening as an app. It shows only WalkThor's screens and doesn't read anything on the screen.

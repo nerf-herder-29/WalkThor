@@ -236,6 +236,14 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Section("Diagnostics")
                 // If Android has closed WalkThor to free memory (heavy games), what happened.
                 remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }
+                // What the quick controls on Now playing can do on this device.
+                val controls by androidx.compose.runtime.produceState(emptyList<String>()) {
+                    value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.nerfherder.walkthor.ScreenControls.report(context) }
+                }
+                if (controls.isNotEmpty()) {
+                    Text("Brightness and FPS", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+                    controls.forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
+                }
                 // If the drawer couldn't open, why (WalkThor opened as an app instead).
                 com.nerfherder.walkthor.Drawer.problem.collectAsState().value?.let { Body(it) }
                 // Every recent time WalkThor closed, and why (for finding a pattern).

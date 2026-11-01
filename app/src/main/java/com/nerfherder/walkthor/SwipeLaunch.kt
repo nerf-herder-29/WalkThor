@@ -179,6 +179,8 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { ExitHistory.collect(this) }
         AynButton.load(this)
         applyEventTypes()
+        // The bottom screen's dimming, if you'd turned it down.
+        runCatching { BottomDim.restore(this) }
         // Start receiving button presses again if the AYN button is set to open WalkThor
         // (Android forgets this whenever the service restarts, as after a reboot).
         runCatching { setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) }
