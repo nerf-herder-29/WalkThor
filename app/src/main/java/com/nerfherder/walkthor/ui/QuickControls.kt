@@ -89,7 +89,9 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
 
     val body: @Composable () -> Unit = {
     Column(Modifier.padding(horizontal = if (plain) 2.dp else 14.dp, vertical = if (plain) 0.dp else if (compact) 8.dp else 12.dp)) {
-        // Which screen the brightness slider changes (on a short screen it sits on the brightness row).
+        // Which screen the brightness slider changes. On a short screen it sits on the brightness
+        // row, except in a Multi panel, where the slider needs the whole width to be easy to use.
+        val rowPick = compact && !plain
         val pick: @Composable (Modifier) -> Unit = { m ->
             Row(m.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(3.dp)) {
                 ScreenControls.Target.entries.forEach { t ->
@@ -102,18 +104,18 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
                         maxLines = 1,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier
-                            .then(if (compact) Modifier else Modifier.weight(1f))
+                            .then(if (rowPick) Modifier else Modifier.weight(1f))
                             .clip(RoundedCornerShape(50))
                             .background(if (on) BookColors.Text else Color.Transparent)
                             .clickable { target = t; ScreenControls.setTarget(context, t) }
-                            .padding(horizontal = if (compact) 10.dp else 0.dp, vertical = if (compact) 3.dp else 6.dp),
+                            .padding(horizontal = if (rowPick) 10.dp else 0.dp, vertical = if (compact) 4.dp else 6.dp),
                     )
                 }
             }
         }
-        if (!compact) {
+        if (!rowPick) {
             pick(Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
         }
         if (needsTop) {
             // Android asks once before an app can change the brightness.
@@ -126,10 +128,10 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
                 Spacer(Modifier.width(12.dp))
                 Text("Tap to let WalkThor change the brightness", color = BookColors.Text, fontSize = 13.sp, maxLines = 1, modifier = Modifier.weight(1f))
                 Text("Allow", color = BookColors.Brass, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                if (compact) { Spacer(Modifier.width(8.dp)); pick(Modifier) }
+                if (rowPick) { Spacer(Modifier.width(8.dp)); pick(Modifier) }
             }
         } else {
-            ControlRow(icon = { SunIcon() }, value = shown, compact = compact, onDrag = { dragging = it }, trailing = if (compact) ({ pick(Modifier) }) else null) { v ->
+            ControlRow(icon = { SunIcon() }, value = shown, compact = compact, onDrag = { dragging = it }, trailing = if (rowPick) ({ pick(Modifier) }) else null) { v ->
                 when (target) {
                     ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
                     ScreenControls.Target.BOTTOM -> { bottom = v; ScreenControls.setBottom(context, v) }
