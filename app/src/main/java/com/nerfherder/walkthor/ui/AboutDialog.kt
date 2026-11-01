@@ -212,7 +212,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "asks first); the picture is never sent, and saved only as a screenshot when you press the Shots tab's button, or as a clip " +
                         "when you switch clips on (the last seconds are kept in memory only until you press Save). The Stats tab reads the battery, heat, memory " +
                         "and CPU speed from Android, on the device only. Face Buttons can light up the buttons you press, only " +
-                        "while that screen is open; presses go straight on to the game and aren't kept."
+                        "while that screen is open; presses go straight on to the game and aren't kept. With AYN button opens WalkThor " +
+                        "on, it watches presses for the AYN button only; every other press goes straight on, and none are kept."
                 )
 
                 // A saved crash report, if WalkThor has crashed, for sharing in a bug report.

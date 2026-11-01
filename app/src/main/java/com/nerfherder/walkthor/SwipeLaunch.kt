@@ -173,6 +173,7 @@ class SwipeGestureService : AccessibilityService() {
         instance = java.lang.ref.WeakReference(this)
         CrashLog.install(this)
         runCatching { ExitHistory.collect(this) }
+        AynButton.load(this)
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
@@ -241,7 +242,9 @@ class SwipeGestureService : AccessibilityService() {
         val can = (info.capabilities and android.accessibilityservice.AccessibilityServiceInfo.CAPABILITY_CAN_REQUEST_FILTER_KEY_EVENTS) != 0
         if (on && !can) return false
         val flag = android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-        val wanted = if (on) info.flags or flag else info.flags and flag.inv()
+        // Also kept on while the AYN button opens WalkThor, or a button test is running.
+        val keep = on || AynButton.on || ButtonTest.active
+        val wanted = if (keep) info.flags or flag else info.flags and flag.inv()
         if (wanted != info.flags) {
             info.flags = wanted
             serviceInfo = info
@@ -252,6 +255,14 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onKeyEvent(event: android.view.KeyEvent): Boolean {
         runCatching { ButtonTest.onKey(event) }
+        // The AYN button opens WalkThor instead of AYN's drawer (when that's switched on). Only
+        // that button is ever kept from going on; everything else passes straight through.
+        if (AynButton.on && AynButton.isAynButton(event)) {
+            if (event.action == android.view.KeyEvent.ACTION_UP) {
+                DisplayHelper.bottomDisplay(this)?.displayId?.let { bottom -> handler.post { runCatching { onSwipe(bottom) } } }
+            }
+            return true
+        }
         if (com.nerfherder.walkthor.controls.ControllerInput.watching.value) {
             com.nerfherder.walkthor.controls.ControllerInput.onKey(event)
         }
@@ -399,4 +410,29 @@ class SwipeGestureService : AccessibilityService() {
         /** How far the finger has to travel down before WalkThor opens. */
         private const val TRIGGER_DP = 36f
     }
+}
+
+/**
+ * The AYN button (below the bottom screen) can open and put away WalkThor instead of AYN's
+ * drawer. It reaches Android as Home from the "gpio-keys" device with scan code 194; the
+ * controller's own Home button is scan code 102 from the controller, and is never touched.
+ */
+object AynButton {
+    private const val SCAN_CODE = 194
+    @Volatile var on = false
+        private set
+
+    fun load(context: Context) { on = SwipeLauncher.prefs(context).getBoolean("aynButton", false) }
+
+    fun set(context: Context, value: Boolean) {
+        on = value
+        SwipeLauncher.prefs(context).edit().putBoolean("aynButton", value).apply()
+        // Start or stop receiving button presses to match.
+        val service = SwipeGestureService.instance?.get() ?: return
+        service.setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value)
+    }
+
+    fun isAynButton(e: android.view.KeyEvent) =
+        e.keyCode == android.view.KeyEvent.KEYCODE_HOME && e.scanCode == SCAN_CODE &&
+            (e.source and android.view.InputDevice.SOURCE_GAMEPAD) != android.view.InputDevice.SOURCE_GAMEPAD
 }

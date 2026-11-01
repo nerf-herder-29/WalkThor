@@ -42,7 +42,7 @@ object ButtonTest {
         until = 0L
         running.value = false
         // Leave button watching on only if the Controls screen still wants it.
-        if (!com.nerfherder.walkthor.controls.ControllerInput.watching.value) SwipeGestureService.instance?.get()?.setKeyWatch(false)
+        SwipeGestureService.instance?.get()?.setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value)
         if (seen.value.isEmpty()) note("Nothing reached WalkThor.")
     }
 
@@ -68,5 +68,18 @@ object ButtonTest {
         appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, Android ${android.os.Build.VERSION.RELEASE}")
         appendLine()
         seen.value.forEach { appendLine(it) }
+        // What AYN's drawer app offers, in case WalkThor can open it (say, on a long press).
+        val ctx = SwipeGestureService.instance?.get() ?: return@buildString
+        val pm = ctx.packageManager
+        val pkg = "com.odin.dualscreen.assistant"
+        runCatching {
+            @Suppress("DEPRECATION")
+            val info = pm.getPackageInfo(pkg, android.content.pm.PackageManager.GET_ACTIVITIES or android.content.pm.PackageManager.GET_SERVICES or android.content.pm.PackageManager.GET_RECEIVERS)
+            appendLine()
+            appendLine("$pkg (exported):")
+            info.activities?.filter { it.exported }?.forEach { appendLine("  activity ${it.name}") }
+            info.services?.filter { it.exported }?.forEach { appendLine("  service ${it.name}") }
+            info.receivers?.filter { it.exported }?.forEach { appendLine("  receiver ${it.name}") }
+        }.onFailure { appendLine(); appendLine("$pkg: not visible (${it.javaClass.simpleName})") }
     }
 }

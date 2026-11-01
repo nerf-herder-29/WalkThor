@@ -476,6 +476,14 @@ private fun SettingsScreen(
                         checked = swipeToOpen,
                         divider = false,
                     ) { onToggleSwipe(it) }
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    var aynButton by remember { mutableStateOf(com.nerfherder.walkthor.AynButton.on || com.nerfherder.walkthor.SwipeLauncher.prefs(context).getBoolean("aynButton", false)) }
+                    SettingSwitch(
+                        "AYN button opens WalkThor",
+                        if (swipeToOpen) "Instead of AYN's drawer. Press again to put WalkThor away."
+                        else "Needs accessibility access switched on",
+                        checked = aynButton && swipeToOpen,
+                    ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
                 }
                 SettingsGroup("If Android closes WalkThor") {
                     val context = androidx.compose.ui.platform.LocalContext.current

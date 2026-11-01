@@ -17,6 +17,8 @@
 
     <!-- The Apps tab lists apps with a home-screen icon so you can open them on either screen. -->
     <queries>
+        <!-- AYN's drawer app: only to list what it offers in the Diagnostics button test. -->
+        <package android:name="com.odin.dualscreen.assistant" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

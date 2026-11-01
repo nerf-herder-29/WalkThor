@@ -68,6 +68,12 @@ scraper account and start a scrape (see below). Everything else stays on your de
   half minute to learn how long that game usually lasts on a charge; only that average is kept,
   on the device.
 
+- **The AYN button, only if you switch it on.** With *AYN button opens WalkThor* on (Settings →
+  General), the accessibility service is handed each hardware button press just before your game
+  gets it, so it can spot the AYN button (Home from "gpio-keys", scan code 194). That one button
+  opens or puts away WalkThor instead of AYN's drawer; every other press, including the controller's
+  Home button, passes straight on. Nothing is recorded, stored or sent.
+
 - **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
   buttons you press. After you agree to the explanation shown the first time you open it,
   the accessibility service sees each controller button press just before your game does, and
