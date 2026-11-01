@@ -248,6 +248,27 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         }
                     }
                 }
+                // Button test: does the AYN button reach WalkThor?
+                val testing by com.nerfherder.walkthor.ButtonTest.running.collectAsState()
+                val testSeen by com.nerfherder.walkthor.ButtonTest.seen.collectAsState()
+                val testProblem by com.nerfherder.walkthor.ButtonTest.problem.collectAsState()
+                Text("Button test", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+                Body(
+                    if (testing) "Listening for 30 seconds. Tap the AYN button, then hold it, then close AYN's drawer and come back here."
+                    else "Shows which button presses and windows reach WalkThor for 30 seconds, to see whether WalkThor could open from the AYN button. Presses still work as normal."
+                )
+                testProblem?.let { Text(it, color = Color(0xFFE0A15A), fontSize = 12.sp) }
+                testSeen.forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
+                Row {
+                    TextButton(onClick = { if (testing) com.nerfherder.walkthor.ButtonTest.stop() else com.nerfherder.walkthor.ButtonTest.start() }) {
+                        Text(if (testing) "Stop button test" else "Start button test")
+                    }
+                    if (!testing && testSeen.isNotEmpty()) TextButton(onClick = {
+                        val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                            .putExtra(android.content.Intent.EXTRA_TEXT, com.nerfherder.walkthor.ButtonTest.report())
+                        runCatching { context.startActivity(android.content.Intent.createChooser(send, "Share button test").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    }) { Text("Share result") }
+                }
                 val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
                 Body(
                     "Performance check shows on the dimmed screen whether WalkThor or your game has Android's " +

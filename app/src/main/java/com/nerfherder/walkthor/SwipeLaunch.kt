@@ -184,6 +184,7 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        runCatching { ButtonTest.onWindow(event) }
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         // Never let a bad event take the service down: Android turns off an accessibility
         // service that keeps crashing, and WalkThor would lose its access.
@@ -250,6 +251,7 @@ class SwipeGestureService : AccessibilityService() {
     }
 
     override fun onKeyEvent(event: android.view.KeyEvent): Boolean {
+        runCatching { ButtonTest.onKey(event) }
         if (com.nerfherder.walkthor.controls.ControllerInput.watching.value) {
             com.nerfherder.walkthor.controls.ControllerInput.onKey(event)
         }
