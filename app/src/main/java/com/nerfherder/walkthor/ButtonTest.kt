@@ -68,6 +68,8 @@ object ButtonTest {
         appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, Android ${android.os.Build.VERSION.RELEASE}")
         appendLine()
         seen.value.forEach { appendLine(it) }
+        AynButton.log.value.takeIf { it.isNotEmpty() }?.let { appendLine(); it.forEach { l -> appendLine(l) } }
+        Drawer.problem.value?.let { appendLine(); appendLine(it) }
         // What AYN's drawer app offers, in case WalkThor can open it (say, on a long press).
         val ctx = SwipeGestureService.instance?.get() ?: return@buildString
         val pm = ctx.packageManager

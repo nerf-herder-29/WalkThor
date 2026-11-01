@@ -261,11 +261,14 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 )
                 testProblem?.let { Text(it, color = Color(0xFFE0A15A), fontSize = 12.sp) }
                 testSeen.forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
+                // The last few AYN button presses and what WalkThor made of them.
+                val aynLog by com.nerfherder.walkthor.AynButton.log.collectAsState()
+                aynLog.forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
                 Row {
                     TextButton(onClick = { if (testing) com.nerfherder.walkthor.ButtonTest.stop() else com.nerfherder.walkthor.ButtonTest.start() }) {
                         Text(if (testing) "Stop button test" else "Start button test")
                     }
-                    if (!testing && testSeen.isNotEmpty()) TextButton(onClick = {
+                    if (!testing && (testSeen.isNotEmpty() || aynLog.isNotEmpty())) TextButton(onClick = {
                         val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
                             .putExtra(android.content.Intent.EXTRA_TEXT, com.nerfherder.walkthor.ButtonTest.report())
                         runCatching { context.startActivity(android.content.Intent.createChooser(send, "Share button test").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }

@@ -358,6 +358,7 @@ class MainActivity : ComponentActivity(), WalkThorHost {
 
     override fun onResume() {
         openedAt = android.os.SystemClock.elapsedRealtime()
+        AppState.appMovedAt = openedAt
         super.onResume()
         hasOtherScreen.value = DisplayHelper.otherDisplay(this) != null
         AppState.activityDisplayId = DisplayHelper.currentDisplayId(this)
@@ -370,6 +371,7 @@ class MainActivity : ComponentActivity(), WalkThorHost {
 
     override fun onPause() {
         AppState.resumedDisplayId = null
+        AppState.appMovedAt = android.os.SystemClock.elapsedRealtime()
         super.onPause()
     }
 

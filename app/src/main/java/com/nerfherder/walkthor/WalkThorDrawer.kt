@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.app.ActivityOptionsCompat
@@ -77,13 +78,13 @@ object Drawer {
     val problem = MutableStateFlow<String?>(null)
 
     /** Slides the drawer up on [displayId]. Returns false if it couldn't (the caller opens the app instead). */
-    fun show(service: AccessibilityService, displayId: Int, opened: Boolean): Boolean {
+    fun show(service: AccessibilityService, displayId: Int, opened: Boolean, onFail: () -> Unit = {}): Boolean {
         return try {
             val d = current?.takeIf { it.displayId == displayId } ?: run {
                 current?.destroy()
                 WalkThorDrawer(service, displayId).also { current = it }
             }
-            val ok = d.show(opened)
+            val ok = d.show(opened, onFail)
             if (ok) problem.value = null
             ok
         } catch (e: Throwable) {
@@ -205,9 +206,21 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         }
     }
 
-    fun show(opened: Boolean): Boolean {
+    /** When the drawer's screens last drew (uptimeMillis). */
+    @Volatile private var drewAt = 0L
+
+    fun show(opened: Boolean, onFail: () -> Unit = {}): Boolean {
         if (!attached) attach()
         if (!attached) return false
+        // Safety net: if it hasn't actually drawn shortly after, take it away and fall back.
+        val askedAt = android.os.SystemClock.uptimeMillis()
+        main.postDelayed({
+            if (up && drewAt < askedAt) {
+                Drawer.problem.value = "The drawer opened but didn't draw, so WalkThor opened as an app instead."
+                Drawer.destroy()
+                onFail()
+            }
+        }, 2_000)
         if (opened) swipeTickFlow.value = System.currentTimeMillis()
         com.nerfherder.walkthor.ui.AutoDim.wake()
         up = true
@@ -315,6 +328,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer { translationY = size.height * (1f - slide.value) }
+                    .drawWithContent { drawContent(); drewAt = android.os.SystemClock.uptimeMillis() }
                     // The app's window paints this behind every screen; the drawer has to itself.
                     .background(androidx.compose.ui.graphics.Color.Black),
             ) {

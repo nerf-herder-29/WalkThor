@@ -126,6 +126,8 @@ object AppState {
     @Volatile var resumedDisplayId: Int? = null
     /** The screen WalkThor's drawer is up on, if it is (see Drawer). */
     @Volatile var drawerDisplayId: Int? = null
+    /** When the app last came up or went away (elapsedRealtime), to tell its effects on other apps apart. */
+    @Volatile var appMovedAt = 0L
     /** Guide open in the reader, if any. */
     @Volatile var openBookId: String? = null
     @Volatile var activity: WeakReference<Activity>? = null
@@ -190,6 +192,7 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        if (AynButton.on && event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) runCatching { refreshGameFromLog() }
         runCatching { ButtonTest.onWindow(event) }
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         // Never let a bad event take the service down: Android turns off an accessibility
@@ -225,6 +228,11 @@ class SwipeGestureService : AccessibilityService() {
     /** An emulator just started a game: bring WalkThor up on the bottom screen (it then works out the game). */
     private fun openForGame(session: EmulatorWatch.Session) {
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
+        // With the AYN button set up, as the drawer (Cocoon stays put underneath).
+        if (AynButton.on) {
+            if (!Drawer.shown.value && AppState.resumedDisplayId != bottom) openDrawerOrApp(bottom)
+            return
+        }
         // Already showing there: it picks the new game up by itself.
         if (AppState.resumedDisplayId == bottom) return
         val intent = Intent(this, MainActivity::class.java)
@@ -266,7 +274,14 @@ class SwipeGestureService : AccessibilityService() {
             // Decided when it's pressed: during a game (or with WalkThor up) it's WalkThor's;
             // otherwise the press goes on to AYN's drawer as usual.
             if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                AynButton.ours = Drawer.shown.value || isWalkThorUpOnBottom() || gameRunningOnTop()
+                val drawer = Drawer.shown.value
+                val app = isWalkThorUpOnBottom()
+                val game = gameRunningOnTop()
+                AynButton.ours = drawer || app || game
+                AynButton.note(
+                    "drawer up: $drawer, app up: $app, game: $game (${gameWhy}) → " +
+                        if (AynButton.ours) "WalkThor" else "AYN's drawer"
+                )
             }
             if (!AynButton.ours) return false
             if (event.action == android.view.KeyEvent.ACTION_UP) handler.post { runCatching { onAynButton() } }
@@ -361,15 +376,48 @@ class SwipeGestureService : AccessibilityService() {
 
     private fun isWalkThorUpOnBottom() = DisplayHelper.bottomDisplay(this)?.displayId.let { it != null && AppState.resumedDisplayId == it }
 
-    /** A game is running on the top screen (as far as WalkThor can tell). */
+    /** Why [gameRunningOnTop] answered as it did, for Diagnostics. */
+    private var gameWhy = ""
+
+    /**
+     * A game is running on the top screen, as far as WalkThor can tell: one is in front there, or
+     * one was until opening WalkThor made your frontend come forward over it (Cocoon does), or,
+     * when the screen hasn't been seen yet, the launch log or a running emulator says so.
+     */
     private fun gameRunningOnTop(): Boolean {
+        val r = gameRunningOnTopInner()
+        return r
+    }
+
+    private fun gameRunningOnTopInner(): Boolean {
+        if (EmulatorWatch.gameCovered) { gameWhy = "covered by the frontend after WalkThor opened"; return true }
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId
         // The other (bigger) screen.
         val top = getSystemService(DisplayManager::class.java)?.displays
             ?.filter { it.displayId != bottom && it.state != android.view.Display.STATE_OFF }
             ?.maxByOrNull { it.mode.physicalWidth.toLong() * it.mode.physicalHeight }?.displayId
-            ?: return GameFocus.gameRunning.value
-        return EmulatorWatch.gameInFront(this, top) ?: GameFocus.gameRunning.value
+        val front = top?.let { EmulatorWatch.gameInFront(this, it) }
+        gameWhy = when (front) {
+            true -> "a game is in front on the top screen"
+            false -> "no game in front on the top screen (${top?.let { EmulatorWatch.frontOn(it) }})"
+            null -> "top screen not seen yet; launch log ${if (AynButton.logSaysGame) "says a game" else "says none"}"
+        }
+        return front ?: (AynButton.logSaysGame || EmulatorWatch.session.value != null)
+    }
+
+    /** Reads the launch log in the background, so the AYN button can know about a game straight away. */
+    private fun refreshGameFromLog() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - AynButton.logCheckedAt < 3_000) return
+        AynButton.logCheckedAt = now
+        val app = applicationContext
+        Thread({
+            runCatching {
+                val game = kotlinx.coroutines.runBlocking { com.nerfherder.walkthor.data.LaunchLogs.lastLaunch(app) }
+                AynButton.logSaysGame = game != null && !game.ended &&
+                    (game.at <= 0 || System.currentTimeMillis() - game.at <= 6 * 60 * 60 * 1000L)
+            }
+        }, "WalkThor launch log").start()
     }
 
     /** The AYN button during a game: WalkThor's drawer slides up over the bottom screen, or away. */
@@ -380,8 +428,12 @@ class SwipeGestureService : AccessibilityService() {
             // The app's already up there (opened from its icon): put it away, as the button would.
             AppState.resumedDisplayId == bottom -> AppState.close()
             // If the drawer can't open, open the app instead so the button still does something.
-            !Drawer.show(this, bottom, opened = true) -> onSwipe(bottom)
+            else -> openDrawerOrApp(bottom)
         }
+    }
+
+    private fun openDrawerOrApp(bottom: Int) {
+        if (!Drawer.show(this, bottom, opened = true, onFail = { onSwipe(bottom) })) onSwipe(bottom)
     }
 
     private fun onSwipe(bottomDisplayId: Int) {
@@ -462,6 +514,16 @@ object AynButton {
         private set
     /** The current press is WalkThor's (decided when it went down). */
     @Volatile var ours = false
+    /** The launch log says a game is running (read in the background). */
+    @Volatile var logSaysGame = false
+    @Volatile var logCheckedAt = 0L
+    /** The last few presses and what WalkThor made of them, for Diagnostics. */
+    val log = kotlinx.coroutines.flow.MutableStateFlow<List<String>>(emptyList())
+
+    fun note(line: String) {
+        val t = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        log.value = (log.value + "$t AYN: $line").takeLast(10)
+    }
 
     fun load(context: Context) { on = SwipeLauncher.prefs(context).getBoolean("aynButton", false) }
 

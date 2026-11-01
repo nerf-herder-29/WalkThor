@@ -191,14 +191,32 @@ object EmulatorWatch {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || android.os.Build.VERSION.SDK_INT < 30) return
         val pkg = event.packageName?.toString() ?: return
         if (pkg != context.packageName && !isApp(context, pkg)) return // keyboards, system overlays
-        frontByDisplay[event.displayId] = pkg
         val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
+        if (event.displayId != bottom) {
+            val wasGame = frontByDisplay[event.displayId]?.let { isGamePkg(context, it) } == true
+            if (isGamePkg(context, pkg)) {
+                gameCovered = false
+            } else {
+                // Your frontend came forward over the game just as WalkThor opened or closed (Cocoon
+                // does this): the game is still running underneath.
+                val walkThorJustMoved = AppState.resumedDisplayId != null ||
+                    android.os.SystemClock.elapsedRealtime() - AppState.appMovedAt < 4_000
+                gameCovered = if (walkThorJustMoved) gameCovered || wasGame else false
+            }
+        }
+        frontByDisplay[event.displayId] = pkg
         val others = frontByDisplay.filterKeys { it != bottom }.values
         if (others.isNotEmpty()) {
             frontKnown.value = true
             gameShowing.value = others.any { isGamePkg(context, it) }
         }
     }
+
+    /** A game was in front on the top screen until your frontend came over it as WalkThor opened. */
+    @Volatile var gameCovered = false
+
+    /** The app last seen in front on [displayId], for Diagnostics. */
+    fun frontOn(displayId: Int): String? = frontByDisplay[displayId]
 
     /** Whether the accessibility service has seen what's in front on the game screen yet. */
     val frontKnown = MutableStateFlow(false)
