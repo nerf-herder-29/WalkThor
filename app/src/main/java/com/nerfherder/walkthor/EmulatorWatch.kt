@@ -215,22 +215,6 @@ object EmulatorWatch {
     /** A game was in front on the top screen until your frontend came over it as WalkThor opened. */
     @Volatile var gameCovered = false
 
-    /**
-     * Whether a game is showing on the top screen: true if one is in front there (or was until
-     * your frontend came over it as WalkThor opened), false if something else is, null if
-     * WalkThor hasn't seen yet.
-     */
-    fun gameOnTopScreen(context: Context): Boolean? {
-        if (gameCovered) return true
-        val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
-        val top = runCatching {
-            context.getSystemService(android.hardware.display.DisplayManager::class.java)?.displays
-                ?.filter { it.displayId != bottom && it.state != android.view.Display.STATE_OFF }
-                ?.maxByOrNull { it.mode.physicalWidth.toLong() * it.mode.physicalHeight }?.displayId
-        }.getOrNull() ?: return null
-        return gameInFront(context, top)
-    }
-
     /** The app last seen in front on [displayId], for Diagnostics. */
     fun frontOn(displayId: Int): String? = frontByDisplay[displayId]
 
