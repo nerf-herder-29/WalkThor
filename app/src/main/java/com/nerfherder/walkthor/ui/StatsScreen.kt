@@ -203,7 +203,9 @@ fun StatsScreen(
     val error by Mirror.error.collectAsState()
     val liveFps by FpsMeter.history.collectAsState()
     val fps = preview?.fps ?: liveFps
-    val capturing = preview != null || projection != null
+    // Read from the display driver where the device allows it (no screen capture needed).
+    val driver = rememberDriverFps(enabled = preview == null)
+    val capturing = preview != null || projection != null || driver == true
     val onMainDisplay = remember {
         preview == null &&
             (com.nerfherder.walkthor.AppState.activityDisplayId ?: Display.DEFAULT_DISPLAY) == Display.DEFAULT_DISPLAY &&
@@ -212,7 +214,7 @@ fun StatsScreen(
     }
 
     // Counting needs the screen capture; ask for it as the tab opens (once per game's screens).
-    LaunchedEffect(Unit) { if (preview == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
+    LaunchedEffect(driver) { if (preview == null && driver == false && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
     // Stays bright while you watch it.
     DisposableEffect(Unit) {
         val holder = Any()

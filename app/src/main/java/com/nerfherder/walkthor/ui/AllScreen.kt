@@ -109,8 +109,16 @@ fun AllScreen(
             com.nerfherder.walkthor.DisplayHelper.bottomDisplay(context)?.displayId != Display.DEFAULT_DISPLAY &&
             com.nerfherder.walkthor.AppState.activityDisplayId != null
     }
-    // Mirror and the FPS meter need the screen capture; ask as the tab opens (once per game's screens).
-    LaunchedEffect(Unit) { if (preview == null && Mirror.projection.value == null && !onMainDisplay) onStartCapture() }
+    // Mirror and Shots need the screen capture, and the FPS meter does where the display driver
+    // can't be read; ask as the tab opens (once per game's screens).
+    val panelsNow by AllLayout.panels(context).collectAsState()
+    val driver = rememberDriverFps(enabled = false)
+    LaunchedEffect(driver, panelsNow) {
+        val needs = GameTab.MIRROR in panelsNow || GameTab.SHOTS in panelsNow || (GameTab.STATS in panelsNow && driver == false)
+        if (preview == null && needs && Mirror.projection.value == null && !onMainDisplay) {
+            if (driver == null && GameTab.MIRROR !in panelsNow && GameTab.SHOTS !in panelsNow) DriverFps.check() else onStartCapture()
+        }
+    }
     // Stays bright while you watch it.
     DisposableEffect(Unit) {
         val holder = Any()
@@ -454,6 +462,7 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
 private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
     val context = LocalContext.current
     val live by FpsMeter.history.collectAsState()
+    rememberDriverFps(enabled = preview == null)
     val fps = preview?.fps ?: live
     var snap by remember { mutableStateOf(preview?.snapshot) }
     var recent by remember { mutableStateOf(listOf<Float>()) }

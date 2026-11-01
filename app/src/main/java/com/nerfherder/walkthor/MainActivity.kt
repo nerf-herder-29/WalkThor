@@ -968,10 +968,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         // The mirror's capture keeps running (paused) while you're on other tabs.
         // Multi only needs the capture when it shows the Mirror or Stats panel.
         val multiPanels by com.nerfherder.walkthor.ui.AllLayout.panels(context).collectAsState()
+        // Where the display driver gives the frame rate, Stats doesn't need to count captured frames.
+        val driverFps by com.nerfherder.walkthor.ui.DriverFps.available.collectAsState()
         val mirrorFrame = rememberMirrorFrame(
             active = current == null && (gameTab == GameTab.MIRROR || gameTab == GameTab.SHOTS ||
                 (gameTab == GameTab.ALL && (GameTab.MIRROR in multiPanels || GameTab.SHOTS in multiPanels))),
-            counting = current == null && (gameTab == GameTab.STATS || (gameTab == GameTab.ALL && GameTab.STATS in multiPanels)),
+            counting = driverFps != true && current == null && (gameTab == GameTab.STATS || (gameTab == GameTab.ALL && GameTab.STATS in multiPanels)),
         )
         val toNowPlaying = { openId = null; gameTab = null; fromAll = false }
         // Back from a tab: to All if that's where you came from, else to Now playing.

@@ -29,7 +29,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -51,7 +57,7 @@ import kotlin.math.sin
  * top screen needs Android's "Modify system settings" for WalkThor once; the panel asks for it.
  */
 @Composable
-fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false) {
+fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backdrop: String? = null) {
     val context = LocalContext.current
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
     var canTop by remember { mutableStateOf(ScreenControls.canSetTop(context)) }
@@ -79,14 +85,8 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false) {
         ScreenControls.Target.BOTH -> top
     }
 
-    Column(
-        modifier
-            .widthIn(max = 560.dp)
-            .fillMaxWidth()
-            .background(Color(0xE60D0D10), RoundedCornerShape(18.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(18.dp))
-            .padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp),
-    ) {
+    FrostedSurface(backdrop, RoundedCornerShape(18.dp), modifier.widthIn(max = 560.dp).fillMaxWidth()) {
+    Column(Modifier.padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp)) {
         // Which screen the brightness slider changes (on a short screen it sits on the brightness row).
         val pick: @Composable (Modifier) -> Unit = { m ->
             Row(m.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(3.dp)) {
@@ -139,6 +139,7 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false) {
             volume = v
             ScreenControls.setVolume(context, v)
         }
+    }
     }
 }
 
@@ -240,7 +241,7 @@ private fun SpeakerIcon() {
  * Shows nothing if the device doesn't allow it (Diagnostics says which).
  */
 @Composable
-fun TopFpsBadge(modifier: Modifier = Modifier, compact: Boolean = false) {
+fun TopFpsBadge(modifier: Modifier = Modifier, compact: Boolean = false, backdrop: String? = null) {
     val driver by produceState<Float?>(null) {
         while (true) {
             value = withContext(Dispatchers.IO) { ScreenControls.topFps() }
@@ -248,18 +249,88 @@ fun TopFpsBadge(modifier: Modifier = Modifier, compact: Boolean = false) {
         }
     }
     val fps = driver ?: return
+    FrostedSurface(backdrop, RoundedCornerShape(50), modifier) {
     Row(
-        modifier
-            .background(Color(0xE00D0D10), RoundedCornerShape(50))
-            .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(50))
-            .padding(horizontal = if (compact) 9.dp else 12.dp, vertical = if (compact) 3.dp else 5.dp),
+        Modifier.padding(horizontal = if (compact) 9.dp else 12.dp, vertical = if (compact) 3.dp else 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val small = if (compact) 11.sp else 13.sp
-        Text(if (compact) "Top" else "Top screen", color = BookColors.Text, fontSize = small)
-        Spacer(Modifier.width(if (compact) 5.dp else 7.dp))
         Text("${fps.roundToInt()}", color = Color(0xFF7FC48A), fontSize = if (compact) 13.sp else 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(4.dp))
         Text("FPS", color = BookColors.Text, fontSize = small)
     }
+    }
+}
+
+/**
+ * Frosted glass: a blurred copy of [backdrop] (the screen's background art, lined up with where
+ * this sits over it), a soft tint and a light edge. Without art, just the tint.
+ */
+@Composable
+fun FrostedSurface(
+    backdrop: String?,
+    shape: androidx.compose.ui.graphics.Shape,
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
+) {
+    var at by remember { mutableStateOf(Offset.Zero) }
+    var screen by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val blur = backdrop != null && android.os.Build.VERSION.SDK_INT >= 31
+    Box(
+        modifier
+            .onGloballyPositioned {
+                at = it.positionInRoot()
+                screen = it.findRootCoordinates().size
+            }
+            .clip(shape)
+            .border(1.dp, Color.White.copy(alpha = 0.16f), shape),
+    ) {
+        if (blur && screen.width > 0) {
+            Box(Modifier.matchParentSize()) {
+                coil.compose.AsyncImage(
+                    model = android.net.Uri.parse(backdrop),
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .layout { m, c ->
+                            // The whole screen's worth of art, shifted so it lines up with the art behind.
+                            val p = m.measure(androidx.compose.ui.unit.Constraints.fixed(screen.width, screen.height))
+                            layout(c.maxWidth, c.maxHeight) { p.place(-at.x.roundToInt(), -at.y.roundToInt()) }
+                        }
+                        .blur(28.dp),
+                )
+            }
+            Box(Modifier.matchParentSize().background(Color(0x730D0D10)))
+            Box(Modifier.matchParentSize().background(Color.White.copy(alpha = 0.06f)))
+        } else {
+            Box(Modifier.matchParentSize().background(Color(0xCC1A1A1F)))
+            Box(Modifier.matchParentSize().background(Color.White.copy(alpha = 0.05f)))
+        }
+        content()
+    }
+}
+
+/** Whether the top screen's frame rate can be read from the display driver (null until checked). */
+object DriverFps {
+    val available = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
+
+    suspend fun check(): Boolean = available.value ?: withContext(Dispatchers.IO) { ScreenControls.topFps() != null }.also { available.value = it }
+}
+
+/**
+ * Feeds the FPS meter (Stats, and Multi's Stats panel) from the display driver once a second while
+ * shown, so it needs no screen capture. Returns whether that works here (null until known).
+ */
+@Composable
+fun rememberDriverFps(enabled: Boolean = true): Boolean? {
+    val ok by DriverFps.available.collectAsState()
+    LaunchedEffect(enabled) {
+        if (!enabled || !DriverFps.check()) return@LaunchedEffect
+        FpsMeter.resetIfStale()
+        while (true) {
+            withContext(Dispatchers.IO) { ScreenControls.topFps() }?.let { FpsMeter.push(it.roundToInt()) }
+            delay(1_000)
+        }
+    }
+    return ok
 }

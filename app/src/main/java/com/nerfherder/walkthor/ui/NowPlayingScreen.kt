@@ -183,13 +183,14 @@ fun NowPlayingScreen(
                     .padding(start = 16.dp, end = 16.dp, bottom = if (compact) 50.dp else 84.dp)
                     .graphicsLayer { alpha = enter.value },
                 compact = compact,
+                backdrop = banner,
             )
         }
 
         // ---- over everything: the tabs at the top, the status corner at the bottom ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         // The top screen's frame rate, just under the tabs on the right.
-        if (!resting) TopFpsBadge(Modifier.align(Alignment.TopEnd).padding(top = if (compact) 52.dp else 66.dp, end = 12.dp), compact = compact)
+        if (!resting) TopFpsBadge(Modifier.align(Alignment.TopEnd).padding(top = if (compact) 52.dp else 66.dp, end = 12.dp), compact = compact, backdrop = banner)
         // The game's logo (marquee) in the bottom-left corner; the dimmed screen leaves it out.
         if (art.logo != null && !resting) {
             AsyncImage(
