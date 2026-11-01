@@ -223,6 +223,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         }, 2_000)
         if (opened) swipeTickFlow.value = System.currentTimeMillis()
         com.nerfherder.walkthor.ui.AutoDim.wake()
+        reveal()
         up = true
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
         Drawer.shown.value = true
@@ -236,11 +237,26 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         AppState.drawerDisplayId = null
     }
 
-    /** Slid all the way down: take the window off the screen (the screens stay as they were for next time). */
+    /** Slid all the way down: put away (the screens stay as they were for next time). */
     private fun hidden() {
         if (up) return
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        detach()
+        conceal()
+    }
+
+    /*
+     * The window stays on the screen the whole time, and is only made invisible and see-through
+     * to touches when the drawer's away. Taking it off the screen and back again is what kept
+     * it from coming back.
+     */
+    private fun conceal() {
+        root?.visibility = android.view.View.GONE
+        setFlag(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, true)
+    }
+
+    private fun reveal() {
+        root?.visibility = android.view.View.VISIBLE
+        setFlag(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, false)
     }
 
     fun destroy() {
@@ -300,12 +316,13 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         attached = false
     }
 
-    private fun setFocusable(on: Boolean) {
+    private fun setFocusable(on: Boolean) = setFlag(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, !on)
+
+    private fun setFlag(flag: Int, on: Boolean) {
         val r = root ?: return
         if (!attached) return
         val p = (r.layoutParams as? WindowManager.LayoutParams) ?: return
-        val flags = if (on) p.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
-        else p.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        val flags = if (on) p.flags or flag else p.flags and flag.inv()
         if (flags != p.flags) {
             p.flags = flags
             runCatching { wm.updateViewLayout(r, p) }
@@ -357,9 +374,10 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         main.post {
             if (up) return@post
             lifecycleRegistry.currentState = Lifecycle.State.CREATED
-            detach()
+            conceal()
         }
     }
+
 
     /** Starting another app (sharing, playing a clip, an app from Apps): the drawer gets out of the way. */
     private inner class DrawerContext(base: Context) : ContextWrapper(base) {

@@ -193,7 +193,6 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        if (AynButton.on && event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) runCatching { refreshGameFromLog() }
         runCatching { ButtonTest.onWindow(event) }
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         // Never let a bad event take the service down: Android turns off an accessibility
@@ -274,20 +273,13 @@ class SwipeGestureService : AccessibilityService() {
         // The AYN button opens WalkThor instead of AYN's drawer (when that's switched on). Only
         // that button is ever kept from going on; everything else passes straight through.
         if (AynButton.on && AynButton.isAynButton(event)) {
-            // Decided when it's pressed: during a game (or with WalkThor up) it's WalkThor's;
-            // otherwise the press goes on to AYN's drawer as usual.
-            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                val drawer = Drawer.shown.value
-                val app = isWalkThorUpOnBottom()
-                val game = gameRunningOnTop()
-                AynButton.ours = drawer || app || game
-                AynButton.note(
-                    "drawer up: $drawer, app up: $app, game: $game (${gameWhy}) → " +
-                        if (AynButton.ours) "WalkThor" else "AYN's drawer"
-                )
+            // The AYN button is WalkThor's: it slides the drawer up, or away. Never lets a problem
+            // here take the service (and with it the button) down.
+            if (event.action == android.view.KeyEvent.ACTION_UP) {
+                handler.post {
+                    try { onAynButton() } catch (e: Throwable) { AynButton.note("couldn't open (${e.javaClass.simpleName}: ${e.message?.take(100)})") }
+                }
             }
-            if (!AynButton.ours) return false
-            if (event.action == android.view.KeyEvent.ACTION_UP) handler.post { runCatching { onAynButton() } }
             return true
         }
         if (com.nerfherder.walkthor.controls.ControllerInput.watching.value) {
@@ -425,13 +417,18 @@ class SwipeGestureService : AccessibilityService() {
 
     /** The AYN button during a game: WalkThor's drawer slides up over the bottom screen, or away. */
     private fun onAynButton() {
-        val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
+        val bottom = DisplayHelper.bottomDisplay(this)?.displayId
+        if (bottom == null) { AynButton.note("no bottom screen found"); return }
         when {
-            Drawer.shown.value -> Drawer.hide()
+            Drawer.shown.value -> { AynButton.note("drawer up → put away"); Drawer.hide() }
             // The app's already up there (opened from its icon): put it away, as the button would.
-            AppState.resumedDisplayId == bottom -> AppState.close()
+            AppState.resumedDisplayId == bottom -> { AynButton.note("app up → closed"); AppState.close() }
             // If the drawer can't open, open the app instead so the button still does something.
-            else -> openDrawerOrApp(bottom)
+            else -> {
+                val ok = Drawer.show(this, bottom, opened = true, onFail = { AynButton.note("drawer didn't appear → app"); onSwipe(bottom) })
+                AynButton.note(if (ok) "drawer opened" else "drawer couldn't open (${Drawer.problem.value}) → app")
+                if (!ok) onSwipe(bottom)
+            }
         }
     }
 
