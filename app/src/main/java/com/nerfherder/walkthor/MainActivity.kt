@@ -672,7 +672,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
 
     suspend fun checkEmulator(force: Boolean): Acted? {
         val s = EmulatorWatch.session.value
-        if (s == null) { PlaySession.current.value = null; GameFocus.gameRunning.value = false; return null }
+        if (s == null) {
+            PlaySession.current.value = null
+            GameFocus.gameRunning.value = false
+            // Opened with no emulator running: the library, not the last game's screens.
+            if (force) { noGuide = null; gameTab = null; fromAll = false }
+            return null
+        }
         GameFocus.gameRunning.value = true
         val showing = noGuide?.game?.takeIf { it.emulatorPkg == s.pkg && it.at == s.at }
         // Same session: only revisit it while the game is still unknown (new text may name it).
@@ -755,6 +761,16 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         val recent = game != null && !game.ended && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
         // ES-DE says its last game has ended, but an emulator is running: started some other way.
         if (game?.ended == true && EmulatorWatch.session.value != null) return@withLock checkEmulator(force)
+        // Cocoon's log never says a game ended. If your frontend is what's in front on the top
+        // screen (no emulator), the game has been closed: back to the library, not its screens.
+        // (Not in the first minute after a launch, while the emulator may still be starting.)
+        val justLaunched = game != null && game.at > 0 && System.currentTimeMillis() - game.at < 60_000L
+        if (recent && !justLaunched && EmulatorWatch.gameOnTopScreen(context) == false) {
+            PlaySession.current.value = null
+            GameFocus.gameRunning.value = false
+            if (force) { noGuide = null; gameTab = null; fromAll = false }
+            return@withLock null
+        }
         PlaySession.current.value = if (recent) game else null
         GameFocus.gameRunning.value = recent
         if (!gameGuideNow) return@withLock null
