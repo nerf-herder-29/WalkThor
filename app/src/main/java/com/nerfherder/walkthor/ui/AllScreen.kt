@@ -202,6 +202,7 @@ fun AllScreen(
                 GameTab.APPS -> Panel("Apps", compact, m) { AppsPanel(preview?.apps, compact) }
                 GameTab.SHOTS -> Panel("Shots", compact, m) { ShotsPanel(game, frame, preview != null) }
                 GameTab.CAPTIONS -> Panel("Captions", compact, m) { CaptionsPanel(onStartCapture, preview != null) }
+                GameTab.LEVELS -> Panel("Light & Sound", compact, m) { QuickControls(compact = true, plain = true) }
                 else -> Panel("Stats", compact, m) { StatsPanel(preview?.stats, compact) }
             }
         }
@@ -628,7 +629,7 @@ private fun ChoosePanelsDialog(current: List<GameTab>, onDone: (List<GameTab>?) 
 /** Which panels the Multi tab shows, and in what order (the same for every game). */
 object AllLayout {
     /** The tabs that can be a panel, in the order they're offered. */
-    val CHOICES = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS, GameTab.SHOTS, GameTab.CAPTIONS, GameTab.APPS)
+    val CHOICES = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS, GameTab.SHOTS, GameTab.CAPTIONS, GameTab.LEVELS, GameTab.APPS)
     private val DEFAULT = listOf(GameTab.MIRROR, GameTab.GUIDE, GameTab.FACE, GameTab.STATS)
     private var flow: kotlinx.coroutines.flow.MutableStateFlow<List<GameTab>>? = null
     /** True while the "Choose panels" dialog is open (⋮ on the Multi tab). */

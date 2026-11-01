@@ -13,8 +13,8 @@ android {
         // AYN Thor ships with Android 13 (API 33); 26 keeps it usable on other handhelds too.
         minSdk = 26
         targetSdk = 35
-        versionCode = 129
-        versionName = "1.61.1"
+        versionCode = 130
+        versionName = "1.62.0"
         // ScreenScraper developer credentials, if the build has them (GitHub secrets
         // SCREENSCRAPER_DEV_ID / SCREENSCRAPER_DEV_PASSWORD). Without them, users enter their own.
         buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${System.getenv("SCREENSCRAPER_DEV_ID").orEmpty()}\"")

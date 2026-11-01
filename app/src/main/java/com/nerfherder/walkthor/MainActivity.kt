@@ -704,8 +704,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         noGuide = Showing(game, art, book)
         scrapeIfBare(game, art, pick?.rom)
         if (newSession && !game.unknown) {
+            // Otherwise Multi, after the launch screen.
             when (val first = GameTabs.openOn(context, game.title)) {
-                null -> Unit
+                null -> gameTab = GameTab.ALL
                 GameTab.GUIDE -> if (book != null) { lastOpened = book.id; openId = book.id } else gameTab = GameTab.GUIDE
                 else -> gameTab = first
             }
@@ -791,8 +792,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             noGuide = Showing(game, art, book)
             scrapeIfBare(game, art, null)
             // Opens straight on the tab you chose for this game (long-press a tab), if any.
+            // Otherwise Multi, after the launch screen.
             when (val first = GameTabs.openOn(context, game.title)) {
-                null -> Unit
+                null -> gameTab = GameTab.ALL
                 GameTab.GUIDE -> if (book != null) { lastOpened = book.id; openId = book.id } else gameTab = GameTab.GUIDE
                 else -> gameTab = first
             }
@@ -1058,6 +1060,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                     shownTab == GameTab.CAPTIONS -> {
                         BackHandler { back() }
                         com.nerfherder.walkthor.ui.CaptionsScreen(onStartCapture = host::requestMirror, topBar = bar)
+                    }
+                    shownTab == GameTab.LEVELS -> {
+                        BackHandler { back() }
+                        com.nerfherder.walkthor.ui.LevelsScreen(topBar = bar)
                     }
                     shownTab == GameTab.STATS -> {
                         BackHandler { back() }

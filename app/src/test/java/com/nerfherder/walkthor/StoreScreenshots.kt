@@ -430,6 +430,15 @@ class StoreScreenshots {
     }
 
     @Test
+    fun levelsTab() {
+        content(hero = fakeHero()) {
+            com.nerfherder.walkthor.ui.LevelsScreen(topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.LEVELS) })
+        }
+        settle()
+        shot("25-light-and-sound")
+    }
+
+    @Test
     fun captionsTab() {
         // As if the speech model were downloaded (so its card isn't shown).
         java.io.File(com.nerfherder.walkthor.data.SpeechModel.dir(app), "am").apply { mkdirs() }.resolve("final.mdl").writeText("x")

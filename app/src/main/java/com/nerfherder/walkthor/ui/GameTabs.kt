@@ -66,6 +66,8 @@ enum class GameTab(val label: String, val shortLabel: String = label) {
     SHOTS("Shots"),
     /** Captions of the game's speech (a test for now). */
     CAPTIONS("Captions"),
+    /** Brightness (top screen, bottom screen or both) and volume. */
+    LEVELS("Light & Sound", "Levels"),
     /** Your apps, opened on the bottom (or top) screen. */
     APPS("Apps"),
 }
@@ -352,6 +354,14 @@ private fun TabIcon(tab: GameTab, tint: Color) {
             drawLine(tint, Offset(size.width * 0.3f, size.height * 0.72f), Offset(size.width * 0.22f, size.height * 0.9f), 1.6.dp.toPx(), StrokeCap.Round)
             drawLine(tint, Offset(size.width * 0.24f, size.height * 0.36f), Offset(size.width * 0.76f, size.height * 0.36f), 1.6.dp.toPx(), StrokeCap.Round)
             drawLine(tint, Offset(size.width * 0.24f, size.height * 0.52f), Offset(size.width * 0.6f, size.height * 0.52f), 1.6.dp.toPx(), StrokeCap.Round)
+        }
+        GameTab.LEVELS -> Canvas(Modifier.size(20.dp)) {
+            // Two slider lines with knobs: levels.
+            val w = 1.6.dp.toPx()
+            listOf(0.32f to 0.66f, 0.7f to 0.34f).forEach { (y, k) ->
+                drawLine(tint, Offset(size.width * 0.08f, size.height * y), Offset(size.width * 0.92f, size.height * y), w, StrokeCap.Round)
+                drawCircle(tint, size.minDimension * 0.12f, Offset(size.width * k, size.height * y))
+            }
         }
         GameTab.APPS -> Canvas(Modifier.size(20.dp)) {
             // Nine dots: an app grid.

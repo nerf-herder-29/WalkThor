@@ -171,26 +171,11 @@ fun NowPlayingScreen(
             link = link,
             linkVisible = true,
             actOnDown = false,
-            // Nudged up to leave room for the quick controls below.
-            modifier = Modifier.align(Alignment.Center)
-                .offset(y = if (resting) 0.dp else if (compact) (-34).dp else (-44).dp)
-                .graphicsLayer { alpha = enter.value },
+            modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = enter.value },
         )
-        // ---- brightness and volume, above the marquee and the clock ----
-        if (!resting) {
-            QuickControls(
-                Modifier.align(Alignment.BottomCenter)
-                    .padding(start = 16.dp, end = 16.dp, bottom = if (compact) 50.dp else 84.dp)
-                    .graphicsLayer { alpha = enter.value },
-                compact = compact,
-                backdrop = banner,
-            )
-        }
 
         // ---- over everything: the tabs at the top, the status corner at the bottom ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
-        // The top screen's frame rate, just under the tabs on the right.
-        if (!resting) TopFpsBadge(Modifier.align(Alignment.TopEnd).padding(top = if (compact) 52.dp else 66.dp, end = 12.dp), compact = compact, backdrop = banner)
         // The game's logo (marquee) in the bottom-left corner; the dimmed screen leaves it out.
         if (art.logo != null && !resting) {
             AsyncImage(

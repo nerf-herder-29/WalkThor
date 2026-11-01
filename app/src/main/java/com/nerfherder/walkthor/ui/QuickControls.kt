@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,7 +58,7 @@ import kotlin.math.sin
  * top screen needs Android's "Modify system settings" for WalkThor once; the panel asks for it.
  */
 @Composable
-fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backdrop: String? = null) {
+fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backdrop: String? = null, plain: Boolean = false) {
     val context = LocalContext.current
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
     var canTop by remember { mutableStateOf(ScreenControls.canSetTop(context)) }
@@ -85,8 +86,8 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
         ScreenControls.Target.BOTH -> top
     }
 
-    FrostedSurface(backdrop, RoundedCornerShape(18.dp), modifier.widthIn(max = 560.dp).fillMaxWidth()) {
-    Column(Modifier.padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp)) {
+    val body: @Composable () -> Unit = {
+    Column(Modifier.padding(horizontal = if (plain) 2.dp else 14.dp, vertical = if (plain) 0.dp else if (compact) 8.dp else 12.dp)) {
         // Which screen the brightness slider changes (on a short screen it sits on the brightness row).
         val pick: @Composable (Modifier) -> Unit = { m ->
             Row(m.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(3.dp)) {
@@ -140,6 +141,20 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
             ScreenControls.setVolume(context, v)
         }
     }
+    }
+    // In a Multi panel it sits on the panel's own background; elsewhere on frosted glass.
+    if (plain) Box(modifier) { body() }
+    else FrostedSurface(backdrop, RoundedCornerShape(18.dp), modifier.widthIn(max = 560.dp).fillMaxWidth()) { body() }
+}
+
+/** The Light & Sound tab: each screen's brightness and the volume. */
+@Composable
+fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
+    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
+        topBar?.invoke()
+        Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+            QuickControls(compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480)
+        }
     }
 }
 
