@@ -69,21 +69,45 @@ object ScreenControls {
     /** Settings names that look like the bottom screen's brightness. */
     private val BOTTOM_HINTS = listOf("second", "sub", "bottom", "external", "aux", "dual", "lower", "secondary")
 
+    /** Why AYN's bottom-screen setting couldn't be changed, for Diagnostics. */
+    @Volatile var bottomKeyProblem: String? = null
+
+    /** AYN's settings that look like the bottom screen's brightness. */
+    private fun bottomCandidates(c: Context) = systemSettingNames(c).filter { n ->
+        val l = n.lowercase()
+        "bright" in l && BOTTOM_HINTS.any { it in l } && "mode" !in l && "auto" !in l
+    }
+
     private fun findBottomKey(c: Context): String? {
         if (bottomKeyChecked) return bottomKey
+        // Changing any system setting needs "Modify system settings": until it's allowed, look
+        // again next time (checking now would fail and wrongly rule AYN's setting out for good).
+        if (!canSetTop(c)) { bottomKeyProblem = "needs Modify system settings"; return null }
         bottomKeyChecked = true
-        val names = systemSettingNames(c).filter { n ->
-            val l = n.lowercase()
-            "bright" in l && BOTTOM_HINTS.any { it in l } && "mode" !in l && "auto" !in l
-        }
-        for (name in names) {
-            val ok = runCatching {
+        for (name in bottomCandidates(c)) {
+            val result = runCatching {
                 val now = Settings.System.getInt(c.contentResolver, name)
                 Settings.System.putInt(c.contentResolver, name, now)
-            }.getOrDefault(false)
-            if (ok) { bottomKey = name; break }
+            }
+            if (result.getOrDefault(false)) { bottomKey = name; bottomKeyProblem = null; break }
+            bottomKeyProblem = "$name: " + (result.exceptionOrNull()?.let { "${it.javaClass.simpleName}: ${it.message?.take(120)}" } ?: "not changed")
         }
         return bottomKey
+    }
+
+    /**
+     * The top of AYN's bottom-screen scale. Android's own brightness runs 0–255; if AYN's setting
+     * already holds a bigger number, it uses a bigger scale.
+     */
+    private fun bottomMax(c: Context, key: String): Int {
+        val now = runCatching { Settings.System.getInt(c.contentResolver, key) }.getOrDefault(0)
+        return when {
+            now <= 255 -> 255
+            now <= 1023 -> 1023
+            now <= 2047 -> 2047
+            else -> 4095
+        }.also { max -> prefs(c).edit().putInt("bottomMax", maxOf(max, prefs(c).getInt("bottomMax", 0))).apply() }
+            .let { maxOf(it, prefs(c).getInt("bottomMax", 0)) }
     }
 
     /** The names of Android's system settings (for finding AYN's; also listed in Diagnostics). */
@@ -97,7 +121,7 @@ object ScreenControls {
     fun bottom(c: Context): Float {
         findBottomKey(c)?.let { key ->
             val v = runCatching { Settings.System.getInt(c.contentResolver, key) }.getOrNull()
-            if (v != null) return (v / 255f).coerceIn(0f, 1f)
+            if (v != null) return (v / bottomMax(c, key).toFloat()).coerceIn(0f, 1f)
         }
         return prefs(c).getFloat("bottomDim", 1f)
     }
@@ -105,7 +129,8 @@ object ScreenControls {
     fun setBottom(c: Context, level: Float) {
         val l = level.coerceIn(0f, 1f)
         val key = findBottomKey(c)
-        if (key != null && canSetTop(c) && runCatching { Settings.System.putInt(c.contentResolver, key, (1 + l * 254).toInt()) }.getOrDefault(false)) {
+        val max = key?.let { bottomMax(c, it) } ?: 255
+        if (key != null && canSetTop(c) && runCatching { Settings.System.putInt(c.contentResolver, key, (1 + l * (max - 1)).toInt()) }.getOrDefault(false)) {
             bottomHow.value = "AYN's setting \"$key\""
             BottomDim.set(c, 1f)
             return
@@ -158,9 +183,11 @@ object ScreenControls {
     fun report(c: Context): List<String> = buildList {
         add("Top brightness: " + if (canSetTop(c)) "can change (Modify system settings allowed)" else "needs Modify system settings")
         val key = findBottomKey(c)
-        add("Bottom brightness: " + if (key != null) "AYN's setting \"$key\"" else "no AYN setting WalkThor may change; WalkThor dims it")
+        add("Bottom brightness: " + if (key != null) "AYN's setting \"$key\" (scale 0–${bottomMax(c, key)})" else "WalkThor dims it" + (bottomKeyProblem?.let { " ($it)" } ?: ""))
         val bright = systemSettingNames(c).filter { "bright" in it.lowercase() }
-        add("Brightness settings on this device: " + bright.ifEmpty { listOf("none visible") }.joinToString(", "))
+        add("Brightness settings on this device: " + bright.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
+            n + "=" + (runCatching { Settings.System.getString(c.contentResolver, n) }.getOrNull() ?: "?")
+        })
         FPS_FILES.forEach { p ->
             val f = File(p)
             add("$p: " + when {
