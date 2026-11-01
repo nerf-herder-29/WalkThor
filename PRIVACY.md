@@ -18,9 +18,9 @@ scraper account and start a scrape (see below). Everything else stays on your de
 - **The ES-DE folder you link** is read only for ES-DE's `logs/es_log.txt`, for the same purpose:
   the game ES-DE started most recently (its name, ROM file and system) and when it ended. Nothing in
   the folder is changed.
-- **Accessibility access ("WalkThor", an Android accessibility service), if you turn it on,** places a thin
-  invisible strip along the top edge of the bottom screen and responds only to swipes that start
-  there, to open or close WalkThor. While a game is running, it also taps the very top edge of
+- **Accessibility access ("WalkThor", an Android accessibility service), if you turn it on,** opens WalkThor
+  from the AYN button during games (if you switch that on; see below) and draws WalkThor's drawer.
+  While a game is running, it also taps the very top edge of
   the game's screen once, a couple of seconds after WalkThor opens or after you finish typing a
   search, because Android gives top
   performance priority to the screen last touched (turning off accessibility access stops it too).

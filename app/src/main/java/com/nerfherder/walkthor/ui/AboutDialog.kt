@@ -62,8 +62,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     "WalkThor uses an Android accessibility service, “WalkThor”, for two things: " +
-                        "noticing when you swipe down from the top edge of the bottom screen, so it can open or " +
-                        "close WalkThor, and handing your game back Android's top performance priority after " +
+                        "opening WalkThor from the AYN button during games (if you switch that on), and handing your game back Android's top performance priority after " +
                         "WalkThor opens, so the game doesn't slow down.",
                     color = BookColors.Text,
                 )
@@ -203,7 +202,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "It reads only what you point it at: guides you import, an artwork folder you link, the file names " +
                         "in a ROMs folder you link, and Cocoon's launch_debug.log or ES-DE's es_log.txt (to see which game you launched). The " +
                         "accessibility service responds " +
-                        "only to swipes from the top edge of the bottom screen, and, during a game, taps the top edge " +
+                        "to the AYN button during games (if you switch that on), and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority, only when a game is in front there " +
                         "(so it notes which app is in front on each screen); with Open when an emulator starts " +
                         "on, it uses that to see an emulator start (and, without Cocoon, the running emulator's window " +
@@ -237,6 +236,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Section("Diagnostics")
                 // If Android has closed WalkThor to free memory (heavy games), what happened.
                 remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }
+                // If the drawer couldn't open, why (WalkThor opened as an app instead).
+                com.nerfherder.walkthor.Drawer.problem.collectAsState().value?.let { Body(it) }
                 // Every recent time WalkThor closed, and why (for finding a pattern).
                 var closes by remember { mutableStateOf(com.nerfherder.walkthor.ExitHistory.lines(context)) }
                 if (closes.isNotEmpty()) {

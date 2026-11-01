@@ -176,6 +176,9 @@ class SwipeGestureService : AccessibilityService() {
         CrashLog.install(this)
         runCatching { ExitHistory.collect(this) }
         AynButton.load(this)
+        // Start receiving button presses again if the AYN button is set to open WalkThor
+        // (Android forgets this whenever the service restarts, as after a reboot).
+        runCatching { setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) }
         SwipeLauncher.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
         getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
         attach()
@@ -222,7 +225,6 @@ class SwipeGestureService : AccessibilityService() {
     /** An emulator just started a game: bring WalkThor up on the bottom screen (it then works out the game). */
     private fun openForGame(session: EmulatorWatch.Session) {
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
-        if (Drawer.enabled(this)) { if (!Drawer.shown.value) Drawer.show(this, bottom, opened = true); return }
         // Already showing there: it picks the new game up by itself.
         if (AppState.resumedDisplayId == bottom) return
         val intent = Intent(this, MainActivity::class.java)
@@ -261,9 +263,13 @@ class SwipeGestureService : AccessibilityService() {
         // The AYN button opens WalkThor instead of AYN's drawer (when that's switched on). Only
         // that button is ever kept from going on; everything else passes straight through.
         if (AynButton.on && AynButton.isAynButton(event)) {
-            if (event.action == android.view.KeyEvent.ACTION_UP) {
-                DisplayHelper.bottomDisplay(this)?.displayId?.let { bottom -> handler.post { runCatching { onSwipe(bottom) } } }
+            // Decided when it's pressed: during a game (or with WalkThor up) it's WalkThor's;
+            // otherwise the press goes on to AYN's drawer as usual.
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                AynButton.ours = Drawer.shown.value || isWalkThorUpOnBottom() || gameRunningOnTop()
             }
+            if (!AynButton.ours) return false
+            if (event.action == android.view.KeyEvent.ACTION_UP) handler.post { runCatching { onAynButton() } }
             return true
         }
         if (com.nerfherder.walkthor.controls.ControllerInput.watching.value) {
@@ -292,6 +298,8 @@ class SwipeGestureService : AccessibilityService() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun attach() {
+        // The swipe down to open is gone (the AYN button opens WalkThor during games now).
+        if (!SWIPE_STRIP) return
         if (strip != null) return
         // Stays inert until the user has both switched the feature on and agreed to the disclosure.
         if (!SwipeLauncher.prefs(this).getBoolean(SwipeLauncher.KEY_ENABLED, false) || !SwipeLauncher.hasConsent(this)) return
@@ -351,9 +359,27 @@ class SwipeGestureService : AccessibilityService() {
         attachedSignature = null
     }
 
+    private fun isWalkThorUpOnBottom() = DisplayHelper.bottomDisplay(this)?.displayId.let { it != null && AppState.resumedDisplayId == it }
+
+    /** A game is running on the top screen (as far as WalkThor can tell). */
+    private fun gameRunningOnTop(): Boolean {
+        val top = DisplayHelper.gameDisplay(this)?.displayId ?: return GameFocus.gameRunning.value
+        return EmulatorWatch.gameInFront(this, top) ?: GameFocus.gameRunning.value
+    }
+
+    /** The AYN button during a game: WalkThor's drawer slides up over the bottom screen, or away. */
+    private fun onAynButton() {
+        val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
+        when {
+            Drawer.shown.value -> Drawer.hide()
+            // The app's already up there (opened from its icon): put it away, as the button would.
+            AppState.resumedDisplayId == bottom -> AppState.close()
+            // If the drawer can't open, open the app instead so the button still does something.
+            !Drawer.show(this, bottom, opened = true) -> onSwipe(bottom)
+        }
+    }
+
     private fun onSwipe(bottomDisplayId: Int) {
-        // As a drawer: slide it up, or away if it's up.
-        if (Drawer.enabled(this)) { Drawer.toggle(this, bottomDisplayId); return }
         // Swiping again while WalkThor is up on the bottom screen puts it away.
         if (AppState.resumedDisplayId == bottomDisplayId) {
             AppState.close()
@@ -411,6 +437,8 @@ class SwipeGestureService : AccessibilityService() {
         /** The running service, for [handBack]. */
         @Volatile var instance: java.lang.ref.WeakReference<SwipeGestureService>? = null
 
+        /** The swipe-down strip (no longer used). */
+        private const val SWIPE_STRIP = false
         /** Height of the invisible touch strip; thin so it rarely gets in the way of other apps. */
         private const val STRIP_DP = 12f
         /** How far the finger has to travel down before WalkThor opens. */
@@ -427,11 +455,14 @@ object AynButton {
     private const val SCAN_CODE = 194
     @Volatile var on = false
         private set
+    /** The current press is WalkThor's (decided when it went down). */
+    @Volatile var ours = false
 
     fun load(context: Context) { on = SwipeLauncher.prefs(context).getBoolean("aynButton", false) }
 
     fun set(context: Context, value: Boolean) {
         on = value
+        if (!value) Drawer.destroy()
         SwipeLauncher.prefs(context).edit().putBoolean("aynButton", value).apply()
         // Start or stop receiving button presses to match.
         val service = SwipeGestureService.instance?.get() ?: return

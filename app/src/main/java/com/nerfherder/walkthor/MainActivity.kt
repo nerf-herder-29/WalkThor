@@ -139,17 +139,8 @@ class MainActivity : ComponentActivity(), WalkThorHost {
         PlaySession.init(this)
         GameFocus.init(this)
         PerfCheck.init(this)
-        // WalkThor opens as a drawer over the bottom screen: show that instead (files handed
-        // over from other apps still open here).
-        if (savedInstanceState == null && intent?.action != Intent.ACTION_VIEW && intent?.action != Intent.ACTION_SEND && Drawer.usable(this)) {
-            val service = SwipeGestureService.instance?.get()
-            val bottom = DisplayHelper.bottomDisplay(this)?.displayId
-            if (service != null && bottom != null) {
-                Drawer.show(service, bottom, opened = true)
-                finish()
-                return
-            }
-        }
+        // Opening the app puts away the drawer, so there's only ever one WalkThor on screen.
+        if (Drawer.shown.value) Drawer.hide()
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         // Until the launch log has been checked, assume a game may be running (when Cocoon is
         // linked) so WalkThor never grabs focus from it while starting up as its companion.

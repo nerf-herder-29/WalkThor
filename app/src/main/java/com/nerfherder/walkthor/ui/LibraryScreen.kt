@@ -472,25 +472,19 @@ private fun SettingsScreen(
                 SettingsGroup("Access") {
                     SettingSwitch(
                         "Accessibility access",
-                        "Swipe down to open, and keeps games at full speed",
+                        "Opens WalkThor from the AYN button, and keeps games at full speed",
                         checked = swipeToOpen,
                         divider = false,
                     ) { onToggleSwipe(it) }
                     val context = androidx.compose.ui.platform.LocalContext.current
                     var aynButton by remember { mutableStateOf(com.nerfherder.walkthor.AynButton.on || com.nerfherder.walkthor.SwipeLauncher.prefs(context).getBoolean("aynButton", false)) }
                     SettingSwitch(
-                        "AYN button opens WalkThor",
-                        if (swipeToOpen) "Instead of AYN's drawer. Press again to put WalkThor away."
+                        "AYN button opens WalkThor during games",
+                        if (swipeToOpen) "Slides WalkThor up over the bottom screen while a game is running; press again to put it away. Otherwise the button opens AYN's drawer as usual."
                         else "Needs accessibility access switched on",
                         checked = aynButton && swipeToOpen,
                     ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
-                    var drawer by remember { mutableStateOf(com.nerfherder.walkthor.Drawer.enabled(context)) }
-                    SettingSwitch(
-                        "Open as a drawer",
-                        if (swipeToOpen) "Slides up over the bottom screen instead of opening as an app, so nothing underneath moves"
-                        else "Needs accessibility access switched on",
-                        checked = drawer && swipeToOpen,
-                    ) { if (swipeToOpen) { drawer = it; com.nerfherder.walkthor.Drawer.setEnabled(context, it) } }
+
                 }
                 SettingsGroup("If Android closes WalkThor") {
                     val context = androidx.compose.ui.platform.LocalContext.current

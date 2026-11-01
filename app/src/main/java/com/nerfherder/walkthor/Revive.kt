@@ -148,11 +148,6 @@ object Revive {
     private fun reopen(context: Context) {
         run {
             val bottom = DisplayHelper.bottomDisplay(context)?.displayId ?: return
-            // As a drawer: just slide it back up.
-            if (Drawer.enabled(context)) {
-                SwipeGestureService.instance?.get()?.let { Drawer.show(it, bottom, opened = true) }
-                return
-            }
             val intent = Intent(context, MainActivity::class.java)
                 .setAction(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LAUNCHER)

@@ -66,34 +66,31 @@ import kotlinx.coroutines.launch
  * WalkThor as a drawer: instead of opening as an app, it slides up over the bottom screen, drawn
  * by WalkThor's accessibility service (like AYN's own drawer). Whatever is on the bottom screen
  * stays where it is underneath, and the game keeps its priority, since nothing new comes to the
- * front. The AYN button (or the swipe) slides it in and out. Switched on in Settings → General.
+ * front. During a game, the AYN button slides it in and out (Settings → General → AYN button).
  */
 object Drawer {
     /** The drawer is up on the bottom screen. */
     val shown = MutableStateFlow(false)
     private var current: WalkThorDrawer? = null
 
-    fun enabled(context: Context) = SwipeLauncher.prefs(context).getBoolean("drawer", false)
+    /** Why the drawer last couldn't open, for Diagnostics; null if it's been fine. */
+    val problem = MutableStateFlow<String?>(null)
 
-    fun setEnabled(context: Context, on: Boolean) {
-        SwipeLauncher.prefs(context).edit().putBoolean("drawer", on).apply()
-        if (!on) destroy()
-    }
-
-    /** The drawer is in use right now (so the app version shouldn't open). */
-    fun usable(context: Context) = enabled(context) && SwipeGestureService.instance?.get() != null
-
-    fun toggle(service: AccessibilityService, displayId: Int) {
-        if (shown.value) hide() else show(service, displayId, opened = true)
-    }
-
-    /** Slides the drawer up on [displayId]. [opened]: by you (or a game starting), so it checks what's playing. */
-    fun show(service: AccessibilityService, displayId: Int, opened: Boolean) {
-        val d = current?.takeIf { it.displayId == displayId } ?: run {
-            current?.destroy()
-            WalkThorDrawer(service, displayId).also { current = it }
+    /** Slides the drawer up on [displayId]. Returns false if it couldn't (the caller opens the app instead). */
+    fun show(service: AccessibilityService, displayId: Int, opened: Boolean): Boolean {
+        return try {
+            val d = current?.takeIf { it.displayId == displayId } ?: run {
+                current?.destroy()
+                WalkThorDrawer(service, displayId).also { current = it }
+            }
+            val ok = d.show(opened)
+            if (ok) problem.value = null
+            ok
+        } catch (e: Throwable) {
+            problem.value = "Couldn't open the drawer (${e.javaClass.simpleName}: ${e.message?.take(120)})"
+            runCatching { destroy() }
+            false
         }
-        d.show(opened)
     }
 
     fun hide() { current?.hide() }
@@ -157,6 +154,15 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     /** Where the drawer is headed: up (true) or away (false). */
     private var up by mutableStateOf(false)
     private var firstShow = true
+    /**
+     * The drawer's own update loop for its screens. Compose's usual one ends whenever the window
+     * comes off the screen, which froze the screens the next time the drawer slid up.
+     */
+    private val uiJob = kotlinx.coroutines.SupervisorJob()
+    private val uiContext = androidx.compose.ui.platform.AndroidUiDispatcher.Main + uiJob
+    private val recomposer = androidx.compose.runtime.Recomposer(uiContext).also { r ->
+        kotlinx.coroutines.CoroutineScope(uiContext).launch { r.runRecomposeAndApplyChanges() }
+    }
     private var coverFor: String? = null
 
     private val guidePicker = activityResultRegistry.register("guide", ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) incomingFlow.value = uri }
@@ -182,7 +188,6 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                     if (beats % 2 == 0) {
                         ExitHistory.snapshot(app)
                         if (GameFocus.gameRunning.value) {
-                            Revive.heartbeat(app)
                             if (beats % 12 == 0) {
                                 com.nerfherder.walkthor.ui.PlaySession.current.value?.takeIf { !it.unknown }?.title
                                     ?.let { com.nerfherder.walkthor.ui.PlayStats.record(app, it) }
@@ -200,14 +205,16 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         }
     }
 
-    fun show(opened: Boolean) {
+    fun show(opened: Boolean): Boolean {
         if (!attached) attach()
+        if (!attached) return false
         if (opened) swipeTickFlow.value = System.currentTimeMillis()
         com.nerfherder.walkthor.ui.AutoDim.wake()
         up = true
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
         Drawer.shown.value = true
         AppState.drawerDisplayId = displayId
+        return true
     }
 
     fun hide() {
@@ -228,6 +235,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         detach()
         if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.CREATED)) lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         viewModelStore.clear()
+        runCatching { recomposer.cancel() }
+        uiJob.cancel()
         if (AppState.drawerDisplayId == displayId) AppState.drawerDisplayId = null
     }
 
@@ -259,6 +268,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             val compose = ComposeView(context).apply {
                 // Kept between openings (so it reopens where you were); ended only with the drawer.
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(this@WalkThorDrawer))
+                setParentCompositionContext(recomposer)
                 val boot = firstShow
                 setContent { DrawerContent(boot) }
             }
@@ -266,7 +276,9 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             f.addView(compose, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             root = f
         }
-        runCatching { wm.addView(frame, params()) }.onSuccess { attached = true }
+        runCatching { wm.addView(frame, params()) }
+            .onSuccess { attached = true }
+            .onFailure { Drawer.problem.value = "Android didn't allow the drawer's window (${it.javaClass.simpleName}: ${it.message?.take(120)})" }
     }
 
     private fun detach() {

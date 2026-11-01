@@ -108,8 +108,9 @@ step that's done.
   sit at the bottom left, so the tab bar stays centred.
 - **Artwork from your folders** — link your artwork folder for guide covers, Now playing
   backgrounds (hero, fan art or screenshots) and game logos.
-- **Swipe down to open** — swipe from the top edge of the bottom screen to bring WalkThor up or
-  put it away.
+- **The AYN button opens WalkThor during games** — switch it on in Settings → General and, while a
+  game is running, the AYN button slides WalkThor up over the bottom screen like a drawer (whatever is
+  underneath stays put) and slides it away again. Otherwise the button opens AYN's drawer as usual.
 - **OLED-friendly** — true black, auto-dim after the time you choose to the darkness you choose,
   and a status bar with the time, battery and how long you've been playing.
 - **Controller support** — L1/R1 (or D-pad left/right) turn pages, in the book and in the lens.
