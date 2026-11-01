@@ -274,6 +274,13 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { ButtonTest.onKey(event) }
         // The AYN button opens WalkThor instead of AYN's drawer (when that's switched on). Only
         // that button is ever kept from going on; everything else passes straight through.
+        // The controller's Home button (not the AYN button): whatever it does goes on as usual (in
+        // Cocoon, its app switcher), and the drawer gets out of the way so you can see it.
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_HOME && !AynButton.isAynButton(event) &&
+            event.action == android.view.KeyEvent.ACTION_DOWN && Drawer.shown.value
+        ) {
+            handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
+        }
         if (AynButton.on && AynButton.isAynButton(event)) {
             // The AYN button is WalkThor's: it slides the drawer up, or away. Never lets a problem
             // here take the service (and with it the button) down.
