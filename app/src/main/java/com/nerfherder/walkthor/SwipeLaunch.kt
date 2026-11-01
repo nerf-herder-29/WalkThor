@@ -124,6 +124,8 @@ object AppState {
     @Volatile var activityDisplayId: Int? = null
     /** Display WalkThor is currently in front on, or null when it's in the background. */
     @Volatile var resumedDisplayId: Int? = null
+    /** The screen WalkThor's drawer is up on, if it is (see Drawer). */
+    @Volatile var drawerDisplayId: Int? = null
     /** Guide open in the reader, if any. */
     @Volatile var openBookId: String? = null
     @Volatile var activity: WeakReference<Activity>? = null
@@ -220,6 +222,7 @@ class SwipeGestureService : AccessibilityService() {
     /** An emulator just started a game: bring WalkThor up on the bottom screen (it then works out the game). */
     private fun openForGame(session: EmulatorWatch.Session) {
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
+        if (Drawer.enabled(this)) { if (!Drawer.shown.value) Drawer.show(this, bottom, opened = true); return }
         // Already showing there: it picks the new game up by itself.
         if (AppState.resumedDisplayId == bottom) return
         val intent = Intent(this, MainActivity::class.java)
@@ -271,6 +274,7 @@ class SwipeGestureService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        runCatching { Drawer.destroy() }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
         if (instance?.get() === this) instance = null
         SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
@@ -348,6 +352,8 @@ class SwipeGestureService : AccessibilityService() {
     }
 
     private fun onSwipe(bottomDisplayId: Int) {
+        // As a drawer: slide it up, or away if it's up.
+        if (Drawer.enabled(this)) { Drawer.toggle(this, bottomDisplayId); return }
         // Swiping again while WalkThor is up on the bottom screen puts it away.
         if (AppState.resumedDisplayId == bottomDisplayId) {
             AppState.close()

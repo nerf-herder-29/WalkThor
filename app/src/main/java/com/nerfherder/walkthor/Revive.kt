@@ -126,7 +126,7 @@ object Revive {
         var calm = 0
         val check = object : Runnable {
             override fun run() {
-                if (AppState.activity?.get() != null) return // already back (e.g. you swiped it open)
+                if (AppState.activity?.get() != null || Drawer.shown.value) return // already back (e.g. you swiped it open)
                 val waited = android.os.SystemClock.elapsedRealtime() - started
                 calm = if (memoryCalm(am)) calm + 1 else 0
                 when {
@@ -148,6 +148,11 @@ object Revive {
     private fun reopen(context: Context) {
         run {
             val bottom = DisplayHelper.bottomDisplay(context)?.displayId ?: return
+            // As a drawer: just slide it back up.
+            if (Drawer.enabled(context)) {
+                SwipeGestureService.instance?.get()?.let { Drawer.show(it, bottom, opened = true) }
+                return
+            }
             val intent = Intent(context, MainActivity::class.java)
                 .setAction(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LAUNCHER)

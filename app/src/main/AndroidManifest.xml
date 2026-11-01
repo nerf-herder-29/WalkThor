@@ -37,6 +37,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WalkThor">
 
+        <!-- Shows Android's prompts and pickers for the drawer (only an app screen can), then closes. -->
+        <activity
+            android:name=".PromptActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="false"
+            android:taskAffinity="com.nerfherder.walkthor.prompt"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

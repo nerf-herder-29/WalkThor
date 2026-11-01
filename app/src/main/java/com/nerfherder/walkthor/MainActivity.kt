@@ -75,7 +75,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), WalkThorHost {
 
     /** A document handed to us by "Open with" / "Share", waiting to be imported. */
     private val incoming = MutableStateFlow<Uri?>(null)
@@ -105,18 +105,7 @@ class MainActivity : ComponentActivity() {
     }
     /** Your ROMs folder: read its games, then scrape their artwork if you've added an account. */
     private val romFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) lifecycleScope.launch {
-            val lib = com.nerfherder.walkthor.data.RomLibrary.get(this@MainActivity)
-            lib.link(uri)
-            val n = lib.roms.value.size
-            if (n == 0) {
-                Toast.makeText(this@MainActivity, "No games found. Pick the folder that holds your system folders (3ds, gba, switch…).", Toast.LENGTH_LONG).show()
-            } else if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(this@MainActivity)) {
-                com.nerfherder.walkthor.data.Scraper.scrapeAll(this@MainActivity)
-            } else {
-                Toast.makeText(this@MainActivity, "Found $n games. Add a scraper account (Settings → Artwork) to fetch their artwork.", Toast.LENGTH_LONG).show()
-            }
-        }
+        if (uri != null) onRomFolderPicked(this, lifecycleScope, uri)
     }
     private val imagePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val id = coverForBookId
@@ -130,14 +119,8 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Asks Android for permission to capture the top screen (it asks every time). */
-    internal fun requestMirror() {
-        val mpm = getSystemService(android.media.projection.MediaProjectionManager::class.java) ?: return
-        val intent = if (Build.VERSION.SDK_INT >= 34) {
-            // The whole top screen, never "a single app".
-            mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
-        } else {
-            mpm.createScreenCaptureIntent()
-        }
+    override fun requestMirror() {
+        val intent = screenCaptureIntent(this) ?: return
         runCatching { captureConsent.launch(intent) }
             .onFailure { Mirror.error.value = "Couldn't ask for screen capture (${it.javaClass.simpleName})" }
     }
@@ -156,6 +139,17 @@ class MainActivity : ComponentActivity() {
         PlaySession.init(this)
         GameFocus.init(this)
         PerfCheck.init(this)
+        // WalkThor opens as a drawer over the bottom screen: show that instead (files handed
+        // over from other apps still open here).
+        if (savedInstanceState == null && intent?.action != Intent.ACTION_VIEW && intent?.action != Intent.ACTION_SEND && Drawer.usable(this)) {
+            val service = SwipeGestureService.instance?.get()
+            val bottom = DisplayHelper.bottomDisplay(this)?.displayId
+            if (service != null && bottom != null) {
+                Drawer.show(service, bottom, opened = true)
+                finish()
+                return
+            }
+        }
         if (DisplayHelper.ensureOnBottomScreen(this, savedInstanceState)) return
         // Until the launch log has been checked, assume a game may be running (when Cocoon is
         // linked) so WalkThor never grabs focus from it while starting up as its companion.
@@ -234,21 +228,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        setContent {
-            WalkThorTheme {
-                val darkPages by PageStyle.dark.collectAsState()
-                CompositionLocalProvider(LocalPageColors provides if (darkPages) DarkPages else LightPages) {
-                    Box(Modifier.fillMaxSize()) {
-                        WalkThorApp(
-                            initialBookId = initialBook,
-                            boot = boot,
-                            host = this@MainActivity,
-                        )
-                        AutoDimOverlay()
-                    }
-                }
-            }
-        }
+        setContent { WalkThorRoot(initialBookId = initialBook, boot = boot, host = this@MainActivity) }
     }
 
     private var yielding: Boolean? = null
@@ -437,34 +417,35 @@ class MainActivity : ComponentActivity() {
 
     // ---- used by the UI ----------------------------------------------------------------------
 
-    internal val incomingFlow get() = incoming
-    internal val hasOtherScreenFlow get() = hasOtherScreen
-    internal val pickedArtFolderFlow get() = pickedArtFolder
-    internal val pickedCocoonFolderFlow get() = pickedCocoonFolder
-    internal val pickedEsdeFolderFlow get() = pickedEsdeFolder
-    internal val swipeTickFlow get() = swipeTick
-    internal val pollTickFlow get() = pollTick
-    internal val pickedCoverFlow get() = pickedCover
+    override val incomingFlow get() = incoming
+    override val hasOtherScreenFlow get() = hasOtherScreen
+    override val pickedArtFolderFlow get() = pickedArtFolder
+    override val pickedCocoonFolderFlow get() = pickedCocoonFolder
+    override val pickedEsdeFolderFlow get() = pickedEsdeFolder
+    override val swipeTickFlow get() = swipeTick
+    override val pollTickFlow get() = pollTick
+    override val pickedCoverFlow get() = pickedCover
+    override val hostScope get() = lifecycleScope
 
     /** Closes WalkThor (removing it from the screen it's on). */
-    internal fun closeApp() = finishAndRemoveTask()
+    override fun closeApp() = finishAndRemoveTask()
 
-    internal fun pickGuide() {
+    override fun pickGuide() {
         // Some file managers label .txt guides as octet-stream; the repository checks the content.
-        guidePicker.launch(arrayOf("application/pdf", "text/plain", "text/*", "application/octet-stream"))
+        guidePicker.launch(GUIDE_TYPES)
     }
 
-    internal fun pickArtFolder() = folderPicker.launch(null)
-    internal fun pickCocoonFolder() = cocoonFolderPicker.launch(null)
-    internal fun pickEsdeFolder() = esdeFolderPicker.launch(null)
-    internal fun pickRomFolder() = romFolderPicker.launch(null)
+    override fun pickArtFolder() = folderPicker.launch(null)
+    override fun pickCocoonFolder() = cocoonFolderPicker.launch(null)
+    override fun pickEsdeFolder() = esdeFolderPicker.launch(null)
+    override fun pickRomFolder() = romFolderPicker.launch(null)
 
-    internal fun pickCoverImage(bookId: String) {
+    override fun pickCoverImage(bookId: String) {
         coverForBookId = bookId
         imagePicker.launch(arrayOf("image/*"))
     }
 
-    internal fun swapScreen(bookId: String?) = DisplayHelper.moveToOtherScreen(this, bookId)
+    override fun swapScreen(bookId: String?) = DisplayHelper.moveToOtherScreen(this, bookId)
 
     // Shoulder buttons (L1/R1), page keys and the D-pad turn pages while a guide is open.
     /** Key that only woke the dimmed screen; its key-up is swallowed too. */
@@ -502,8 +483,22 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** WalkThor's screens with its theme and the auto-dim layer, in the app or the drawer. */
 @Composable
-private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivity) {
+internal fun WalkThorRoot(initialBookId: String?, boot: Boolean, host: WalkThorHost) {
+    WalkThorTheme {
+        val darkPages by PageStyle.dark.collectAsState()
+        CompositionLocalProvider(LocalPageColors provides if (darkPages) DarkPages else LightPages) {
+            Box(Modifier.fillMaxSize()) {
+                WalkThorApp(initialBookId = initialBookId, boot = boot, host = host)
+                AutoDimOverlay()
+            }
+        }
+    }
+}
+
+@Composable
+private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHost) {
     val library: LibraryViewModel = viewModel()
     val context = LocalContext.current
     val books by library.books.collectAsState()
@@ -553,7 +548,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: MainActivit
                 val rest = bookId.removePrefix(GAME_COVER)
                 val kind = com.nerfherder.walkthor.data.GameCovers.Kind.entries.firstOrNull { rest.startsWith(it.name + "|") }
                 val title = if (kind != null) rest.substringAfter('|') else rest
-                host.lifecycleScope.launch {
+                host.hostScope.launch {
                     com.nerfherder.walkthor.data.GameCovers.setUser(context, title, uri, kind ?: com.nerfherder.walkthor.data.GameCovers.Kind.COVER)
                 }
             } else {

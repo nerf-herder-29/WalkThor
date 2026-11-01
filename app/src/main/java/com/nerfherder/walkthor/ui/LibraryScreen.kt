@@ -484,6 +484,13 @@ private fun SettingsScreen(
                         else "Needs accessibility access switched on",
                         checked = aynButton && swipeToOpen,
                     ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
+                    var drawer by remember { mutableStateOf(com.nerfherder.walkthor.Drawer.enabled(context)) }
+                    SettingSwitch(
+                        "Open as a drawer",
+                        if (swipeToOpen) "Slides up over the bottom screen instead of opening as an app, so nothing underneath moves"
+                        else "Needs accessibility access switched on",
+                        checked = drawer && swipeToOpen,
+                    ) { if (swipeToOpen) { drawer = it; com.nerfherder.walkthor.Drawer.setEnabled(context, it) } }
                 }
                 SettingsGroup("If Android closes WalkThor") {
                     val context = androidx.compose.ui.platform.LocalContext.current

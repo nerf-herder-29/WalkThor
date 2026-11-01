@@ -51,6 +51,9 @@ import com.nerfherder.walkthor.GameFocus
  * can't take focus; otherwise they're the usual ones (so typing in them works).
  */
 
+/** True inside WalkThor's drawer, which has no app window for ordinary dialogs to attach to. */
+val LocalInDrawer = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 /** Places a popup over the whole window. */
 private object WholeWindow : PopupPositionProvider {
     override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize) = IntOffset.Zero
@@ -60,7 +63,7 @@ private object WholeWindow : PopupPositionProvider {
 @Composable
 fun Dialog(onDismissRequest: () -> Unit, properties: DialogProperties = DialogProperties(), content: @Composable () -> Unit) {
     val yielding by GameFocus.yielding.collectAsState()
-    if (!yielding) {
+    if (!yielding && !LocalInDrawer.current) {
         androidx.compose.ui.window.Dialog(onDismissRequest, properties, content)
         return
     }
@@ -100,7 +103,7 @@ fun AlertDialog(
     containerColor: Color = AlertDialogDefaults.containerColor,
 ) {
     val yielding by GameFocus.yielding.collectAsState()
-    if (!yielding) {
+    if (!yielding && !LocalInDrawer.current) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = onDismissRequest, confirmButton = confirmButton, modifier = modifier,
             dismissButton = dismissButton, title = title, text = text, containerColor = containerColor,
@@ -150,7 +153,7 @@ fun DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
-        properties = PopupProperties(focusable = !yielding),
+        properties = PopupProperties(focusable = !yielding && !LocalInDrawer.current),
         content = content,
     )
 }
