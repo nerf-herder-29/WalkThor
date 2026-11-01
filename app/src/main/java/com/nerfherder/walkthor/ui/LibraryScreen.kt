@@ -480,7 +480,7 @@ private fun SettingsScreen(
                     var aynButton by remember { mutableStateOf(com.nerfherder.walkthor.AynButton.on || com.nerfherder.walkthor.SwipeLauncher.prefs(context).getBoolean("aynButton", false)) }
                     SettingSwitch(
                         "AYN button opens WalkThor",
-                        if (swipeToOpen) "Instead of AYN's drawer: WalkThor slides up over the bottom screen, and slides away when you press it again"
+                        if (swipeToOpen) "Tap: WalkThor slides up over the bottom screen, and away again. Hold: AYN's own drawer"
                         else "Needs accessibility access switched on",
                         checked = aynButton && swipeToOpen,
                     ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
