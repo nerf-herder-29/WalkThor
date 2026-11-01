@@ -282,6 +282,15 @@ class SwipeGestureService : AccessibilityService() {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
         }
         if (AynButton.on && AynButton.isAynButton(event)) {
+            // Just after a hold: this press is AYN's (its drawer), untouched.
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                AynButton.passing = android.os.SystemClock.uptimeMillis() < AynButton.passUntil
+                if (AynButton.passing) AynButton.passUntil = 0L
+            }
+            if (AynButton.passing) {
+                if (event.action == android.view.KeyEvent.ACTION_UP) AynButton.passing = false
+                return false
+            }
             // The AYN button is WalkThor's: a tap slides WalkThor's drawer up, or away; holding it
             // opens AYN's own drawer. Never lets a problem here take the service (and with it the
             // button) down.
@@ -434,60 +443,19 @@ class SwipeGestureService : AccessibilityService() {
         }, "WalkThor launch log").start()
     }
 
-    /** Held long enough: AYN's own drawer instead of WalkThor's. */
+    /**
+     * Held long enough: AYN's own drawer. Only AYN's software can open it, so WalkThor steps aside
+     * for the next press (within a few seconds), which then goes to AYN as if WalkThor weren't here.
+     */
     private val aynHold = Runnable {
         AynButton.held = true
-        try { openAynDrawer() } catch (e: Throwable) { AynButton.note("hold: couldn't open AYN's drawer (${e.javaClass.simpleName})") }
-    }
-
-    /**
-     * Opens AYN's drawer (its app, com.odin.dualscreen.assistant), as the AYN button would without
-     * WalkThor: whatever that app lets other apps open, most drawer-like first. Notes what worked.
-     */
-    private fun openAynDrawer() {
         if (Drawer.shown.value) Drawer.hide()
-        val pkg = AynButton.AYN_DRAWER
-        val bottom = DisplayHelper.bottomDisplay(this)?.displayId
-        val options = bottom?.let { ActivityOptions.makeBasic().setLaunchDisplayId(it).toBundle() }
-        // What worked last time goes first.
-        AynButton.lastWay(this)?.let { way -> if (tryWay(way, options)) { AynButton.note("hold → AYN's drawer ($way)"); return } }
-        @Suppress("DEPRECATION")
-        val info = runCatching {
-            packageManager.getPackageInfo(pkg, android.content.pm.PackageManager.GET_ACTIVITIES or android.content.pm.PackageManager.GET_SERVICES)
-        }.getOrNull()
-        if (info == null) { AynButton.note("hold: AYN's drawer app isn't visible to WalkThor"); return }
-        val likely = Regex("(?i)drawer|side|dock|panel|assist|menu|float|bar|quick")
-        val ways = buildList {
-            info.services?.filter { it.exported }?.sortedByDescending { likely.containsMatchIn(it.name) }?.forEach { add("service:" + it.name) }
-            info.activities?.filter { it.exported }?.sortedByDescending { likely.containsMatchIn(it.name) }?.forEach { add("activity:" + it.name) }
-            add("launch")
+        AynButton.passUntil = android.os.SystemClock.uptimeMillis() + AynButton.PASS_MS
+        AynButton.note("hold → next press goes to AYN's drawer")
+        runCatching {
+            android.widget.Toast.makeText(this, "Press the AYN button again for AYN's drawer", android.widget.Toast.LENGTH_SHORT).show()
         }
-        for (way in ways) {
-            if (tryWay(way, options)) {
-                AynButton.setLastWay(this, way)
-                AynButton.note("hold → AYN's drawer ($way)")
-                return
-            }
-        }
-        AynButton.note("hold: nothing in AYN's drawer app could be opened (tried ${ways.size})")
     }
-
-    private fun tryWay(way: String, options: android.os.Bundle?): Boolean = runCatching {
-        val pkg = AynButton.AYN_DRAWER
-        when {
-            way.startsWith("service:") -> startService(Intent().setClassName(pkg, way.removePrefix("service:"))) != null
-            way.startsWith("activity:") -> {
-                startActivity(Intent().setClassName(pkg, way.removePrefix("activity:")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), options)
-                true
-            }
-            way == "launch" -> {
-                val i = packageManager.getLaunchIntentForPackage(pkg) ?: return@runCatching false
-                startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), options)
-                true
-            }
-            else -> false
-        }
-    }.getOrDefault(false)
 
     /** The AYN button during a game: WalkThor's drawer slides up over the bottom screen, or away. */
     private fun onAynButton() {
@@ -592,9 +560,11 @@ object AynButton {
     @Volatile var held = false
     const val HOLD_MS = 450L
     const val AYN_DRAWER = "com.odin.dualscreen.assistant"
-    /** The way of opening AYN's drawer that worked last (so it's tried first next time). */
-    fun lastWay(context: Context): String? = SwipeLauncher.prefs(context).getString("aynDrawerWay", null)
-    fun setLastWay(context: Context, way: String) = SwipeLauncher.prefs(context).edit().putString("aynDrawerWay", way).apply()
+    /** After a hold, the next press until then (uptimeMillis) goes to AYN's drawer. */
+    @Volatile var passUntil = 0L
+    /** The current press is going to AYN. */
+    @Volatile var passing = false
+    const val PASS_MS = 4_000L
     /** The launch log says a game is running (read in the background). */
     @Volatile var logSaysGame = false
     @Volatile var logCheckedAt = 0L
