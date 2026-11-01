@@ -826,12 +826,15 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     val bootLight = remember { (com.nerfherder.walkthor.data.LaunchLogs.anyLinked(context) || EmulatorWatch.session.value != null) && gameGuideOn }
     // A swipe that opened WalkThor is handled by the boot check, not the effect below.
     val bootSwipeTick = remember { if (boot) swipeTick else 0L }
+    // Opening alongside a game: no launch screen at all. A plain black screen covers the moment
+    // it takes to find the game, then WalkThor goes straight to the game's tab.
+    var quietBoot by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!booting) return@LaunchedEffect
         val start = System.currentTimeMillis()
         val linked = com.nerfherder.walkthor.data.LaunchLogs.anyLinked(context)
         if ((linked || EmulatorWatch.session.value != null) && gameGuideNow) {
-            bootStatus = BootStatus.Checking
+            quietBoot = true
             // Cocoon may start WalkThor (as a companion app) a moment before it finishes writing
             // the launch to its log, so keep looking briefly for a launch we haven't seen yet.
             var force = bootSwipeTick != 0L
@@ -851,14 +854,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                 val guide = noGuide?.guide ?: openId?.let { id -> booksNow.firstOrNull { it.id == id } }
                 if (game != null) found = Acted(game, guide, noGuide?.art)
             }
-            found?.let { (game, guide, art) ->
-                // The game's title card: its wide art (or box art) fades in behind its name.
-                val cover = art?.cover
-                bootStatus = BootStatus.Playing(
-                    game.title, guide, guide?.let(library::coverFile), cover,
-                    if (game.unknown) null else game.player, hero = art?.hero, unknown = game.unknown,
-                )
-                delay(if (art?.hero != null || cover != null) 1_300 else 900)
+            if (found == null) {
+                // No game after all: the usual launch screen, as when opening WalkThor by itself.
+                quietBoot = false
+            } else {
+                booting = false
+                return@LaunchedEffect
             }
         } else {
             checkGame(force = false) // just refreshes the play-time readout
@@ -1149,7 +1150,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         )
     }
 
-    if (booting) {
+    if (booting && quietBoot) {
+        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black))
+    } else if (booting) {
         BootScreen(
             light = bootLight,
             status = bootStatus,
