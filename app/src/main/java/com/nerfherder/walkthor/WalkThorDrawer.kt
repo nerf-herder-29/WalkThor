@@ -26,6 +26,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
@@ -299,7 +300,12 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             LocalOnBackPressedDispatcherOwner provides this,
             com.nerfherder.walkthor.ui.LocalInDrawer provides true,
         ) {
-            Box(Modifier.fillMaxSize().graphicsLayer { translationY = size.height * (1f - slide.value) }) {
+            Box(
+                Modifier.fillMaxSize()
+                    .graphicsLayer { translationY = size.height * (1f - slide.value) }
+                    // The app's window paints this behind every screen; the drawer has to itself.
+                    .background(androidx.compose.ui.graphics.Color.Black),
+            ) {
                 WalkThorRoot(initialBookId = null, boot = boot, host = this@WalkThorDrawer)
             }
         }
