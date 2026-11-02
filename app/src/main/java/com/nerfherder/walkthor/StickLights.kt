@@ -101,18 +101,10 @@ object StickLights {
         val app = c.applicationContext
         val color = prefs(app).getInt("color", COLORS[0])
         val level = prefs(app).getFloat("level", level(app))
-        latest = color to level
-        if (!writing) {
-            writing = true
-            worker.execute {
-                // Only the newest level, however many came in while writing.
-                while (true) {
-                    val (c, l) = latest
-                    writeRings(c, l)
-                    if (latest == (c to l)) break
-                }
-                writing = false
-            }
+        // The newest colour and level; a write is queued only if none is waiting already, and it
+        // takes whatever is newest when it runs (so nothing is ever dropped, and none pile up).
+        if (pending.getAndSet(color to level) == null) {
+            worker.execute { pending.getAndSet(null)?.let { (c, l) -> writeRings(c, l) } }
         }
         if (syncAyn) {
             syncLater?.cancel(false)
@@ -120,8 +112,7 @@ object StickLights {
         }
     }
 
-    @Volatile private var latest: Pair<Int, Float> = 0 to 0f
-    @Volatile private var writing = false
+    private val pending = java.util.concurrent.atomic.AtomicReference<Pair<Int, Float>?>(null)
 
     /**
      * Writes both rings. The lights look brighter than the number suggests at low levels, so the
