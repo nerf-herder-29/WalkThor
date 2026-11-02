@@ -207,11 +207,11 @@ object ScreenBrightnessTool {
      */
     private fun serve(dm: Any, pipe: String) {
         val set = dm.javaClass.getMethod("setBrightness", Int::class.javaPrimitiveType, Float::class.javaPrimitiveType)
-        @Volatile var last = System.currentTimeMillis()
+        val last = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
         Thread {
             while (true) {
                 Thread.sleep(2_000)
-                if (System.currentTimeMillis() - last > 30_000) { System.exit(0) }
+                if (System.currentTimeMillis() - last.get() > 30_000) { System.exit(0) }
             }
         }.apply { isDaemon = true; start() }
         while (true) {
@@ -219,7 +219,7 @@ object ScreenBrightnessTool {
             java.io.File(pipe).bufferedReader().use { r ->
                 while (true) {
                     val line = r.readLine() ?: break
-                    last = System.currentTimeMillis()
+                    last.set(System.currentTimeMillis())
                     val p = line.trim().split(' ')
                     when {
                         p.firstOrNull() == "q" -> System.exit(0)
