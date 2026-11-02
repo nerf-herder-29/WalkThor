@@ -179,6 +179,10 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { ExitHistory.collect(this) }
         AynButton.load(this)
         applyEventTypes()
+        // AYN puts its own stick lights back when the screen wakes: put yours back after it.
+        runCatching {
+            registerReceiver(screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON))
+        }
         // The bottom screen's dimming, if you'd turned it down.
         // (Not if the bottom screen's real brightness can be changed: then it isn't dimmed.)
         Thread({ if (!AynSystem.available()) handler.post { runCatching { BottomDim.restore(this) } } }, "WalkThor brightness check").start()
@@ -316,7 +320,14 @@ class SwipeGestureService : AccessibilityService() {
     }
     override fun onInterrupt() = Unit
 
+    private val screenOn = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            handler.postDelayed({ runCatching { StickLights.restore(this@SwipeGestureService) } }, 1_500)
+        }
+    }
+
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenOn) }
         runCatching { Drawer.destroy() }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
         if (instance?.get() === this) instance = null

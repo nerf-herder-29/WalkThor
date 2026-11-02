@@ -51,6 +51,7 @@ object ScreenControls {
         runCatching { Settings.System.getInt(c.contentResolver, Settings.System.SCREEN_BRIGHTNESS) / 255f }.getOrDefault(0.5f)
 
     fun setTop(c: Context, level: Float) {
+        StickLights.screensChanged(c, level)
         if (!canSetTop(c)) return
         runCatching {
             Settings.System.putInt(c.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
@@ -128,6 +129,7 @@ object ScreenControls {
     }
 
     fun setBottom(c: Context, level: Float) {
+        if (!canSetTop(c)) StickLights.screensChanged(c, level)
         val l = level.coerceIn(0f, 1f)
         // The real brightness, through the Thor's system helper (as AYN's drawer does it).
         val id = bottomDisplay(c)

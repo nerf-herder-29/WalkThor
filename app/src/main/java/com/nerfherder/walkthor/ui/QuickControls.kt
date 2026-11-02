@@ -171,6 +171,7 @@ fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
     var bottomDimOnly by remember { mutableStateOf(true) }
     var volume by remember { mutableFloatStateOf(ScreenControls.volume(context)) }
     var dragging by remember { mutableStateOf(false) }
+    val lightsAvailable = remember { com.nerfherder.walkthor.StickLights.available() }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             bottom = ScreenControls.bottom(context)
@@ -240,6 +241,10 @@ fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
                 onDrag = { dragging = it },
                 onChange = { v -> volume = v; ScreenControls.setVolume(context, v) },
             )
+        }
+        // The stick lights: colour and brightness (on their own, or following the screens).
+        if (lightsAvailable) {
+            StickLightsRow(compact, Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = if (compact) 2.dp else 6.dp))
         }
         // Both screens together, then the time and battery (as on Stats).
         Row(
@@ -528,4 +533,66 @@ fun rememberDriverFps(enabled: Boolean = true): Boolean? {
         }
     }
     return ok
+}
+
+/** The stick lights: a brightness slider, colour swatches, and "follow the screens". */
+@Composable
+private fun StickLightsRow(compact: Boolean, modifier: Modifier) {
+    val context = LocalContext.current
+    var color by remember { mutableStateOf(com.nerfherder.walkthor.StickLights.color(context)) }
+    var level by remember { mutableFloatStateOf(com.nerfherder.walkthor.StickLights.level(context)) }
+    var follow by remember { mutableStateOf(com.nerfherder.walkthor.StickLights.followsScreens(context)) }
+    // While following, keep up with the brightness sliders.
+    LaunchedEffect(follow) {
+        while (follow) { level = com.nerfherder.walkthor.StickLights.level(context); delay(400) }
+    }
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Stick lights", style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.6f), fontSize = if (compact) 10.sp else 12.sp))
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (color == 0) "off" else "${(level * 100).roundToInt()}%",
+                color = BookColors.Text.copy(alpha = 0.75f), fontSize = if (compact) 11.sp else 13.sp,
+            )
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The colours; the last is off.
+            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(if (compact) 6.dp else 8.dp)) {
+                com.nerfherder.walkthor.StickLights.COLORS.forEach { c ->
+                    val on = c == color
+                    Box(
+                        Modifier.size(if (compact) 22.dp else 28.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (c == 0) Color.Transparent else Color(c))
+                            .border(if (on) 3.dp else 1.dp, if (on) BookColors.Text else Color.White.copy(alpha = 0.25f), androidx.compose.foundation.shape.CircleShape)
+                            .clickable { color = c; com.nerfherder.walkthor.StickLights.setColor(context, c) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (c == 0) Text("off", color = BookColors.Text.copy(alpha = 0.7f), fontSize = 9.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            if (follow) {
+                Text("Following the screens", color = BookColors.Text.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.weight(1f))
+            } else {
+                ThinSlider(level, onDrag = {}, onChange = { v -> level = v; com.nerfherder.walkthor.StickLights.setLevel(context, v) }, modifier = Modifier.weight(1f))
+            }
+        }
+        Row(
+            Modifier.padding(top = 2.dp).clip(RoundedCornerShape(50)).clickable {
+                follow = !follow
+                com.nerfherder.walkthor.StickLights.setFollowsScreens(context, follow)
+                if (follow) com.nerfherder.walkthor.StickLights.setLevel(context, ScreenControls.top(context))
+            }.padding(vertical = 4.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(width = 26.dp, height = 16.dp).clip(RoundedCornerShape(50))
+                    .background(if (follow) BookColors.Text else Color.White.copy(alpha = 0.18f)),
+                contentAlignment = if (follow) Alignment.CenterEnd else Alignment.CenterStart,
+            ) { Box(Modifier.padding(2.dp).size(12.dp).clip(RoundedCornerShape(50)).background(if (follow) Color.Black else BookColors.Text)) }
+            Spacer(Modifier.width(8.dp))
+            Text("Follow the screens' brightness", color = BookColors.Text.copy(alpha = 0.8f), fontSize = if (compact) 11.sp else 12.sp)
+        }
+    }
 }
