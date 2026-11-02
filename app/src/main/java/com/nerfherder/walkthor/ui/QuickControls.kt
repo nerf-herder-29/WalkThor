@@ -67,6 +67,11 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
     var bottom by remember { mutableFloatStateOf(1f) }
     var volume by remember { mutableFloatStateOf(ScreenControls.volume(context)) }
     var dragging by remember { mutableStateOf(false) }
+    // While these controls are on screen, keep the bottom screen's brightness program running.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        com.nerfherder.walkthor.AynSystem.liveStart(context)
+        onDispose { com.nerfherder.walkthor.AynSystem.liveStop() }
+    }
     // Keep up with changes made elsewhere (AYN's drawer, the volume buttons), and with the
     // permission being granted while you were in Android's settings.
     LaunchedEffect(Unit) {
@@ -179,6 +184,11 @@ fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
             }
             delay(1_500)
         }
+    }
+    // While these controls are on screen, keep the bottom screen's brightness program running.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        com.nerfherder.walkthor.AynSystem.liveStart(context)
+        onDispose { com.nerfherder.walkthor.AynSystem.liveStop() }
     }
     // Stays bright while you're adjusting.
     androidx.compose.runtime.DisposableEffect(Unit) {

@@ -75,7 +75,9 @@ scraper account and start a scrape (see below). Everything else stays on your de
   through the system helper AYN builds into the Thor's firmware (the one behind its "Run Script as
   Root" feature and its drawer), which runs commands with system rights. WalkThor uses it only to
   read and set each screen's brightness, with commands made from numbers it works out itself; it
-  doesn't use it for anything else. If the helper isn't available (for example with the Thor's
+  doesn't use it for anything else. While the brightness controls are on screen, a small brightness
+  program runs through the helper and takes levels from a pipe in WalkThor's private storage (which
+  no other app can reach); it stops when you leave them. If the helper isn't available (for example with the Thor's
   *Force SELinux* setting on), WalkThor dims the bottom screen instead. To find AYN's brightness setting, WalkThor looks at the names of
   Android's system settings; it reads the top screen's frame rate from the display driver. Nothing is
   stored except the levels you chose, and nothing is sent.
