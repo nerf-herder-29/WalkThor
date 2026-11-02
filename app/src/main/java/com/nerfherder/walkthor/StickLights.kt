@@ -18,6 +18,9 @@ object StickLights {
     private val SIDES = listOf("/sys/class/sn3112l/led", "/sys/class/sn3112r/led")
     private const val PREFS = "stick_lights"
 
+    /** For store screenshots only. */
+    internal var demo = false
+
     /** The colours offered: AYN's own teal first, then the rest; 0 = off. */
     val COLORS = listOf(
         0xFF2BE0D8.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF3B30.toInt(), 0xFFFF9500.toInt(), 0xFFFFD60A.toInt(),
@@ -27,7 +30,7 @@ object StickLights {
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor stick lights").apply { isDaemon = true } }
 
     /** Whether this device has the stick lights WalkThor can drive. */
-    fun available(): Boolean = SIDES.all { File("$it/brightness").let { f -> f.exists() && f.canWrite() } }
+    fun available(): Boolean = demo || SIDES.all { File("$it/brightness").let { f -> f.exists() && f.canWrite() } }
 
     private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

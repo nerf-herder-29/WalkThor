@@ -431,11 +431,13 @@ class StoreScreenshots {
 
     @Test
     fun levelsTab() {
+        com.nerfherder.walkthor.StickLights.demo = true
         content(hero = fakeHero()) {
             com.nerfherder.walkthor.ui.LevelsScreen(topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.LEVELS) })
         }
         settle()
         shot("25-light-and-sound")
+        com.nerfherder.walkthor.StickLights.demo = false
     }
 
     @Test
