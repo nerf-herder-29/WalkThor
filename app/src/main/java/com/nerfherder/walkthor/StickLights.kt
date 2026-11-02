@@ -10,9 +10,10 @@ import java.util.concurrent.Executors
  *
  * On the stock Thor each ring is driven through two system files that any app may write:
  * `enable` ("1" or "0") and `brightness` ("1-R:G:B", the ring's colour). There's no separate
- * brightness, so the colour is scaled down. AYN keeps its own colour and brightness settings and
- * puts them back (say, when the screen wakes), so WalkThor also updates those through the Thor's
- * system helper where it can, and puts your choice back when the screen wakes.
+ * brightness, so the colour is scaled down. AYN keeps its own stick-light settings and puts them
+ * back when the screen wakes, so WalkThor puts your choice back straight after. (It leaves AYN's
+ * settings alone: when they changed, AYN redrew the lights on its own brightness scale a moment
+ * later, so they jumped and lagged.)
  */
 object StickLights {
     private val SIDES = listOf("/sys/class/sn3112l/led", "/sys/class/sn3112r/led")
@@ -42,9 +43,6 @@ object StickLights {
 
     /** The lights themselves: written straight away. */
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor stick lights").apply { isDaemon = true } }
-    /** AYN's own settings: updated once you've stopped changing them (its own thread, so it never holds up the lights). */
-    private val syncer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "WalkThor stick lights sync").apply { isDaemon = true } }
-    @Volatile private var syncLater: java.util.concurrent.ScheduledFuture<*>? = null
 
     /** Whether this device has the stick lights WalkThor can drive. */
     fun available(): Boolean = demo || SIDES.all { File("$it/brightness").let { f -> f.exists() && f.canWrite() } }
@@ -96,7 +94,7 @@ object StickLights {
         if (chosen(c)) apply(c, syncAyn = false)
     }
 
-    /** Writes the rings now; AYN's own settings follow a moment later (once you've stopped dragging). */
+    /** Writes the rings now. */
     private fun apply(c: Context, syncAyn: Boolean) {
         val app = c.applicationContext
         val color = prefs(app).getInt("color", COLORS[0])
@@ -106,10 +104,7 @@ object StickLights {
         if (pending.getAndSet(color to level) == null) {
             worker.execute { pending.getAndSet(null)?.let { (c, l) -> writeRings(c, l) } }
         }
-        if (syncAyn) {
-            syncLater?.cancel(false)
-            syncLater = syncer.schedule({ runCatching { syncAynSettings(app) } }, 700, java.util.concurrent.TimeUnit.MILLISECONDS)
-        }
+
     }
 
     private val pending = java.util.concurrent.atomic.AtomicReference<Pair<Int, Float>?>(null)
@@ -134,17 +129,4 @@ object StickLights {
     }
     @Volatile private var enabledWritten: Boolean? = null
 
-    /** AYN's own settings to match (so AYN's drawer shows the same, and AYN keeps it). Worker thread. */
-    private fun syncAynSettings(c: Context) {
-        val color = prefs(c).getInt("color", COLORS[0])
-        val level = prefs(c).getFloat("level", 0.5f)
-        val on = color != 0
-        val hex = String.format("#%06X", color and 0xFFFFFF)
-        val raw = Settings.System.getString(c.contentResolver, "led_light_brightness_percent")?.toFloatOrNull()
-        // AYN's scale: 0–1, or 0–100 if that's what it holds now.
-        val levelText = if (raw != null && raw > 1f) (level * 100).toInt().toString() else "%.2f".format(java.util.Locale.US, level)
-        AynSystem.putSetting("joystick_light_enabled", if (on) "1,1" else "0,0")
-        if (on) AynSystem.putSetting("joystick_led_light_picker_color", "$hex,$hex")
-        AynSystem.putSetting("led_light_brightness_percent", levelText)
-    }
 }

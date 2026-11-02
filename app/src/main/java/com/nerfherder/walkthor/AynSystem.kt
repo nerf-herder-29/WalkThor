@@ -68,20 +68,6 @@ object AynSystem {
         return ok
     }
 
-    /** AYN's settings WalkThor may change through the helper: the stick lights' only. */
-    private val SETTINGS = setOf("joystick_light_enabled", "joystick_led_light_picker_color", "led_light_brightness_percent")
-
-    /**
-     * Sets one of AYN's own system settings (the stick lights'), which Android lets only system
-     * apps change. Only the names above, and only values made of digits, letters, '#', ',' and '.'.
-     * Not on the main thread. Returns whether it went through.
-     */
-    fun putSetting(name: String, value: String): Boolean {
-        if (name !in SETTINGS || !value.all { it.isLetterOrDigit() || it in "#,." }) return false
-        if (!available()) return false
-        return run("settings put system $name '$value'") != null
-    }
-
     /** Known without waiting: true if the helper has worked, false if it has failed, null if not tried. */
     fun knownAvailable(): Boolean? = works
 

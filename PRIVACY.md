@@ -79,9 +79,8 @@ scraper account and start a scrape (see below). Everything else stays on your de
   program runs through the helper and takes levels from a pipe in WalkThor's private storage (which
   no other app can reach); it stops when you leave them. If the helper isn't available (for example with the Thor's
   *Force SELinux* setting on), WalkThor dims the bottom screen instead.
-  The Light & Sound tab also sets the stick lights' colour and brightness: through the system files
-  that drive them, and AYN's own stick-light settings through the same helper (only those three
-  settings). To find AYN's brightness setting, WalkThor looks at the names of
+  The Light & Sound tab also sets the stick lights' colour and brightness, through the system files
+  that drive them (no special access needed); AYN's own stick-light settings are left alone. To find AYN's brightness setting, WalkThor looks at the names of
   Android's system settings; it reads the top screen's frame rate from the display driver. Nothing is
   stored except the levels you chose, and nothing is sent.
 
