@@ -61,6 +61,7 @@ import kotlin.math.sin
 @Composable
 fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backdrop: String? = null, plain: Boolean = false) {
     val context = LocalContext.current
+    val lightsHere = remember { com.nerfherder.walkthor.StickLights.available() }
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
     var canTop by remember { mutableStateOf(ScreenControls.canSetTop(context)) }
     var top by remember { mutableFloatStateOf(ScreenControls.top(context)) }
@@ -148,6 +149,7 @@ fun QuickControls(modifier: Modifier = Modifier, compact: Boolean = false, backd
             volume = v
             ScreenControls.setVolume(context, v)
         }
+        if (lightsHere) StickLightsMini(compact)
     }
     }
     // In a Multi panel it sits on the panel's own background; elsewhere on frosted glass.
@@ -562,7 +564,7 @@ private fun StickLightsRow(compact: Boolean, modifier: Modifier) {
                     val on = c == color
                     Box(
                         Modifier.size(if (compact) 22.dp else 28.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                            .background(if (c == 0) Color.Transparent else Color(c))
+                            .background(if (c == 0) Color.Transparent else Color(com.nerfherder.walkthor.StickLights.swatch(c)))
                             .border(if (on) 3.dp else 1.dp, if (on) BookColors.Text else Color.White.copy(alpha = 0.25f), androidx.compose.foundation.shape.CircleShape)
                             .clickable { color = c; com.nerfherder.walkthor.StickLights.setColor(context, c) },
                         contentAlignment = Alignment.Center,
@@ -594,5 +596,45 @@ private fun StickLightsRow(compact: Boolean, modifier: Modifier) {
             Spacer(Modifier.width(8.dp))
             Text("Follow the screens' brightness", color = BookColors.Text.copy(alpha = 0.8f), fontSize = if (compact) 11.sp else 12.sp)
         }
+    }
+}
+
+/** The stick lights in a panel: their brightness, and a dot to tap for the next colour. */
+@Composable
+private fun StickLightsMini(compact: Boolean) {
+    val context = LocalContext.current
+    var color by remember { mutableStateOf(com.nerfherder.walkthor.StickLights.color(context)) }
+    var level by remember { mutableFloatStateOf(com.nerfherder.walkthor.StickLights.level(context)) }
+    val follow = remember { com.nerfherder.walkthor.StickLights.followsScreens(context) }
+    LaunchedEffect(follow) { while (follow) { level = com.nerfherder.walkthor.StickLights.level(context); delay(400) } }
+    Row(Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The colour: tap for the next one (the last is off).
+        Box(
+            Modifier.width(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(18.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (color == 0) Color.Transparent else Color(com.nerfherder.walkthor.StickLights.swatch(color)))
+                    .border(1.dp, Color.White.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                    .clickable {
+                        val list = com.nerfherder.walkthor.StickLights.COLORS
+                        color = list[(list.indexOf(color) + 1).mod(list.size)]
+                        com.nerfherder.walkthor.StickLights.setColor(context, color)
+                    },
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        if (follow) {
+            Text("Stick lights follow the screens", color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+        } else {
+            ThinSlider(level, onDrag = {}, onChange = { v -> level = v; com.nerfherder.walkthor.StickLights.setLevel(context, v) }, modifier = Modifier.weight(1f))
+        }
+        Text(
+            if (color == 0) "off" else "${(level * 100).roundToInt()}%",
+            color = BookColors.TextMuted, fontSize = 13.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            modifier = Modifier.width(44.dp),
+        )
     }
 }

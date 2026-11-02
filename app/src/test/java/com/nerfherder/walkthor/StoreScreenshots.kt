@@ -1119,13 +1119,17 @@ class StoreScreenshots {
     )
 
     @Test
-    fun multiLevels() = allTab(
-        "check-multi-levels",
-        panels = listOf(
-            com.nerfherder.walkthor.ui.GameTab.MIRROR, com.nerfherder.walkthor.ui.GameTab.LEVELS,
-            com.nerfherder.walkthor.ui.GameTab.GUIDE, com.nerfherder.walkthor.ui.GameTab.STATS,
-        ),
-    )
+    fun multiLevels() {
+        com.nerfherder.walkthor.StickLights.demo = true
+        allTab(
+            "check-multi-levels",
+            panels = listOf(
+                com.nerfherder.walkthor.ui.GameTab.MIRROR, com.nerfherder.walkthor.ui.GameTab.LEVELS,
+                com.nerfherder.walkthor.ui.GameTab.GUIDE, com.nerfherder.walkthor.ui.GameTab.STATS,
+            ),
+        )
+        com.nerfherder.walkthor.StickLights.demo = false
+    }
 
     @Test
     fun multiThree() = allTab(

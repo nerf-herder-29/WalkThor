@@ -21,13 +21,30 @@ object StickLights {
     /** For store screenshots only. */
     internal var demo = false
 
-    /** The colours offered: AYN's own teal first, then the rest; 0 = off. */
+    /**
+     * The colours offered, as the lights should show them: AYN's own teal first, then the rest;
+     * 0 = off. The lights glow brightly even at low levels, so these are pure colours (a screen
+     * "red" with a little green and blue in it shows as pink on the lights).
+     */
     val COLORS = listOf(
-        0xFF2BE0D8.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF3B30.toInt(), 0xFFFF9500.toInt(), 0xFFFFD60A.toInt(),
-        0xFF34C759.toInt(), 0xFF0A84FF.toInt(), 0xFFAF52DE.toInt(), 0xFFFF2D92.toInt(), 0,
+        0xFF2BE0D8.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF0000.toInt(), 0xFFFF3000.toInt(), 0xFFFF9000.toInt(),
+        0xFF00FF00.toInt(), 0xFF0000FF.toInt(), 0xFF7000FF.toInt(), 0xFFFF0060.toInt(), 0,
     )
 
+    /** How each colour is shown on screen, to look like the lights. */
+    val SWATCHES = listOf(
+        0xFF2BE0D8.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF2A1F.toInt(), 0xFFFF6A1A.toInt(), 0xFFFFC21A.toInt(),
+        0xFF2EE05A.toInt(), 0xFF2A5BFF.toInt(), 0xFF9A3BFF.toInt(), 0xFFFF2D86.toInt(), 0,
+    )
+
+    /** How [color] is shown on screen. */
+    fun swatch(color: Int): Int = COLORS.indexOf(color).let { if (it >= 0) SWATCHES[it] else color }
+
+    /** The lights themselves: written straight away. */
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor stick lights").apply { isDaemon = true } }
+    /** AYN's own settings: updated once you've stopped changing them (its own thread, so it never holds up the lights). */
+    private val syncer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "WalkThor stick lights sync").apply { isDaemon = true } }
+    @Volatile private var syncLater: java.util.concurrent.ScheduledFuture<*>? = null
 
     /** Whether this device has the stick lights WalkThor can drive. */
     fun available(): Boolean = demo || SIDES.all { File("$it/brightness").let { f -> f.exists() && f.canWrite() } }
@@ -75,37 +92,56 @@ object StickLights {
 
     /** The screen woke (AYN puts its own lights back then): put yours back, if you chose them in WalkThor. */
     fun restore(c: Context) {
+        enabledWritten = null
         if (chosen(c)) apply(c, syncAyn = false)
     }
-
-    private var syncPending = false
 
     /** Writes the rings now; AYN's own settings follow a moment later (once you've stopped dragging). */
     private fun apply(c: Context, syncAyn: Boolean) {
         val app = c.applicationContext
         val color = prefs(app).getInt("color", COLORS[0])
         val level = prefs(app).getFloat("level", level(app))
-        worker.execute {
-            val on = color != 0
-            for (side in SIDES) {
-                runCatching { File("$side/enable").writeText(if (on) "1" else "0") }
-                if (on) {
-                    val r = (android.graphics.Color.red(color) * level).toInt()
-                    val g = (android.graphics.Color.green(color) * level).toInt()
-                    val b = (android.graphics.Color.blue(color) * level).toInt()
-                    runCatching { File("$side/brightness").writeText("1-$r:$g:$b") }
+        latest = color to level
+        if (!writing) {
+            writing = true
+            worker.execute {
+                // Only the newest level, however many came in while writing.
+                while (true) {
+                    val (c, l) = latest
+                    writeRings(c, l)
+                    if (latest == (c to l)) break
                 }
+                writing = false
             }
         }
-        if (syncAyn && !syncPending) {
-            syncPending = true
-            worker.execute {
-                Thread.sleep(600)
-                syncPending = false
-                syncAynSettings(app)
-            }
+        if (syncAyn) {
+            syncLater?.cancel(false)
+            syncLater = syncer.schedule({ runCatching { syncAynSettings(app) } }, 700, java.util.concurrent.TimeUnit.MILLISECONDS)
         }
     }
+
+    @Volatile private var latest: Pair<Int, Float> = 0 to 0f
+    @Volatile private var writing = false
+
+    /**
+     * Writes both rings. The lights look brighter than the number suggests at low levels, so the
+     * level is eased (squared, near enough) to make the slider feel even. Worker thread.
+     */
+    private fun writeRings(color: Int, level: Float) {
+        val on = color != 0 && level > 0.005f
+        val k = Math.pow(level.coerceIn(0f, 1f).toDouble(), 1.8).toFloat()
+        for (side in SIDES) {
+            if (enabledWritten != on) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }
+            if (on) {
+                val r = Math.round(android.graphics.Color.red(color) * k)
+                val g = Math.round(android.graphics.Color.green(color) * k)
+                val b = Math.round(android.graphics.Color.blue(color) * k)
+                runCatching { File("$side/brightness").writeText("1-$r:$g:$b") }
+            }
+        }
+        enabledWritten = on
+    }
+    @Volatile private var enabledWritten: Boolean? = null
 
     /** AYN's own settings to match (so AYN's drawer shows the same, and AYN keeps it). Worker thread. */
     private fun syncAynSettings(c: Context) {
