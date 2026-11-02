@@ -42,6 +42,7 @@ private val COMPONENTS = listOf(
     Component("PdfBox-Android (port of Apache PDFBox)", "Reading PDF text for search", "Apache License 2.0"),
     Component("Coil", "Showing cover artwork", "Apache License 2.0"),
     Component("Vosk & JNA", "Captions: offline speech recognition", "Apache License 2.0"),
+    Component("HiddenApiBypass (LSPosed)", "Reaching the Thor's system helper for brightness", "Apache License 2.0"),
     Component("Jetpack Compose & AndroidX", "Interface and app framework", "Apache License 2.0"),
     Component("Kotlin & kotlinx.coroutines", "Language runtime, background work", "Apache License 2.0"),
     Component("Space Grotesk", "The app's typeface", "SIL Open Font License 1.1"),

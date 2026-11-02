@@ -117,8 +117,9 @@ object ScreenControls {
         } ?: emptyList()
     }.getOrDefault(emptyList())
 
-    /** The bottom screen's level: AYN's setting if found (scaled to its range), else WalkThor's dimming. */
+    /** The bottom screen's level: its real brightness (through AYN's helper or setting), else WalkThor's dimming. Not on the main thread. */
     fun bottom(c: Context): Float {
+        bottomDisplay(c)?.let { id -> AynSystem.brightness(c, id)?.let { return it } }
         findBottomKey(c)?.let { key ->
             val v = runCatching { Settings.System.getInt(c.contentResolver, key) }.getOrNull()
             if (v != null) return (v / bottomMax(c, key).toFloat()).coerceIn(0f, 1f)
@@ -128,6 +129,14 @@ object ScreenControls {
 
     fun setBottom(c: Context, level: Float) {
         val l = level.coerceIn(0f, 1f)
+        // The real brightness, through the Thor's system helper (as AYN's drawer does it).
+        val id = bottomDisplay(c)
+        if (id != null && AynSystem.knownAvailable() == true) {
+            AynSystem.setBrightness(c, id, l)
+            bottomHow.value = "the Thor's system helper"
+            if (prefs(c).getFloat("bottomDim", 1f) < 0.99f) { prefs(c).edit().putFloat("bottomDim", 1f).apply(); BottomDim.set(c, 1f) }
+            return
+        }
         val key = findBottomKey(c)
         val max = key?.let { bottomMax(c, it) } ?: 255
         if (key != null && canSetTop(c) && runCatching { Settings.System.putInt(c.contentResolver, key, (1 + l * (max - 1)).toInt()) }.getOrDefault(false)) {
@@ -139,8 +148,10 @@ object ScreenControls {
         bottomHow.value = if (BottomDim.set(c, l)) "WalkThor dims it (darker only)" else "needs accessibility access to dim it"
     }
 
-    /** Whether the bottom slider can only make it darker (no AYN setting found). */
-    fun bottomDimOnly(c: Context) = findBottomKey(c) == null
+    /** Whether the bottom slider can only make it darker (no way to change its real brightness). Not on the main thread. */
+    fun bottomDimOnly(c: Context) = !AynSystem.available() && findBottomKey(c) == null
+
+    private fun bottomDisplay(c: Context): Int? = runCatching { DisplayHelper.bottomDisplay(c)?.displayId }.getOrNull()
 
     // ---- volume ----
 
@@ -182,8 +193,10 @@ object ScreenControls {
     /** What WalkThor can and can't do here, for Diagnostics. */
     fun report(c: Context): List<String> = buildList {
         add("Top brightness: " + if (canSetTop(c)) "can change (Modify system settings allowed)" else "needs Modify system settings")
+        val helper = AynSystem.available()
         val key = findBottomKey(c)
-        add("Bottom brightness: " + if (key != null) "AYN's setting \"$key\" (scale 0–${bottomMax(c, key)})" else "WalkThor dims it" + (bottomKeyProblem?.let { " ($it)" } ?: ""))
+        add("Bottom brightness: " + if (helper) "the Thor's system helper (real brightness)" else if (key != null) "AYN's setting \"$key\" (scale 0–${bottomMax(c, key)})" else "WalkThor dims it" + (bottomKeyProblem?.let { " ($it)" } ?: ""))
+        if (!helper) add("Thor's system helper: " + (AynSystem.problem ?: "not available"))
         val bright = systemSettingNames(c).filter { "bright" in it.lowercase() }
         add("Brightness settings on this device: " + bright.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
             n + "=" + (runCatching { Settings.System.getString(c.contentResolver, n) }.getOrNull() ?: "?")

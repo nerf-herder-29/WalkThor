@@ -71,7 +71,12 @@ scraper account and start a scrape (see below). Everything else stays on your de
 - **Brightness and volume, only when you move the sliders.** Now playing's quick controls change
   Android's brightness setting (with the *Modify system settings* access you grant), the media
   volume, and, where WalkThor can't change the bottom screen's brightness, dim it with a dark layer
-  drawn by the accessibility service. To find AYN's brightness setting, WalkThor looks at the names of
+  drawn by the accessibility service. On the Thor, the bottom screen's real brightness is changed
+  through the system helper AYN builds into the Thor's firmware (the one behind its "Run Script as
+  Root" feature and its drawer), which runs commands with system rights. WalkThor uses it only to
+  read and set each screen's brightness, with commands made from numbers it works out itself; it
+  doesn't use it for anything else. If the helper isn't available (for example with the Thor's
+  *Force SELinux* setting on), WalkThor dims the bottom screen instead. To find AYN's brightness setting, WalkThor looks at the names of
   Android's system settings; it reads the top screen's frame rate from the display driver. Nothing is
   stored except the levels you chose, and nothing is sent.
 

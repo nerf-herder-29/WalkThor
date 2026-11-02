@@ -180,7 +180,8 @@ class SwipeGestureService : AccessibilityService() {
         AynButton.load(this)
         applyEventTypes()
         // The bottom screen's dimming, if you'd turned it down.
-        runCatching { BottomDim.restore(this) }
+        // (Not if the bottom screen's real brightness can be changed: then it isn't dimmed.)
+        Thread({ if (!AynSystem.available()) handler.post { runCatching { BottomDim.restore(this) } } }, "WalkThor brightness check").start()
         // Start receiving button presses again if the AYN button is set to open WalkThor
         // (Android forgets this whenever the service restarts, as after a reboot).
         runCatching { setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) }
