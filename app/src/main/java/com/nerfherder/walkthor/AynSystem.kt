@@ -90,13 +90,20 @@ object AynSystem {
     /** How many brightness controls are on screen (the program runs while any is). */
     private val liveUsers = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile private var liveOut: java.io.FileDescriptor? = null
+    /** The live program couldn't be reached this time the controls are open: don't keep trying. */
+    @Volatile private var liveFailed = false
+    /** How the bottom screen's brightness is being set, for Diagnostics. */
+    @Volatile var liveNote: String = "not used yet"
 
     private fun fifo(context: Context) = java.io.File(context.filesDir, "bright.fifo")
 
     /** A brightness control came on screen: start the live program (in the background). */
     fun liveStart(context: Context) {
         val app = context.applicationContext
-        if (liveUsers.incrementAndGet() == 1) worker.execute { runCatching { openLive(app) } }
+        if (liveUsers.incrementAndGet() == 1) {
+            liveFailed = false
+            worker.execute { runCatching { openLive(app) } }
+        }
     }
 
     /** A brightness control left the screen: the program stops when none are left. */
@@ -112,7 +119,7 @@ object AynSystem {
      */
     private fun openLive(context: Context): Boolean {
         liveOut?.let { return true }
-        if (!available()) return false
+        if (liveFailed || !available()) return false
         val pipe = fifo(context)
         if (!pipe.exists()) runCatching { android.system.Os.mkfifo(pipe.absolutePath, 0x180 /* 0600 */) }
         fun tryOpen(): java.io.FileDescriptor? = runCatching {
@@ -123,12 +130,17 @@ object AynSystem {
         val apk = context.applicationInfo.sourceDir
         val path = pipe.absolutePath
         if ("'" in apk || "'" in path) return false
-        run("CLASSPATH='$apk' nohup app_process /system/bin ${ScreenBrightnessTool::class.java.name} serve '$path' >/dev/null 2>&1 &")
-        val until = android.os.SystemClock.uptimeMillis() + 3_000
+        // Fully detached (its own session, no ties to the helper's shell), so it keeps running
+        // after the helper's command finishes.
+        run("(CLASSPATH='$apk' setsid app_process /system/bin ${ScreenBrightnessTool::class.java.name} serve '$path' </dev/null >/dev/null 2>&1 &)")
+        val until = android.os.SystemClock.uptimeMillis() + 2_500
         while (android.os.SystemClock.uptimeMillis() < until) {
-            tryOpen()?.let { liveOut = it; return true }
+            tryOpen()?.let { liveOut = it; liveNote = "live (smooth)"; return true }
             Thread.sleep(60)
         }
+        // Couldn't reach it: one change at a time for now (slower, but it works).
+        liveFailed = true
+        liveNote = "one change at a time (the live program didn't start)"
         return false
     }
 
@@ -145,7 +157,7 @@ object AynSystem {
         if (liveOut == null && !openLive(context)) return false
         val line = "s $displayId ${"%.4f".format(java.util.Locale.US, level)}\n".toByteArray()
         return runCatching { android.system.Os.write(liveOut!!, line, 0, line.size); true }
-            .getOrElse { closeLive(sendQuit = false); false } // it quit (idle): the next level restarts it
+            .getOrElse { closeLive(sendQuit = false); false } // it quit (idle): the next level tries to restart it
     }
 
     private val pending = AtomicReference<Pair<Int, Float>?>(null)
@@ -163,6 +175,7 @@ object AynSystem {
             // Straight to the live program if it's running (or can start); otherwise one at a time.
             if (!sendLive(app, next.first, next.second) && !sendLive(app, next.first, next.second)) {
                 tool(app, "set", next.first.toString(), "%.4f".format(java.util.Locale.US, next.second))
+                if (liveUsers.get() <= 0) liveNote = "one change at a time"
             }
         }
     }
