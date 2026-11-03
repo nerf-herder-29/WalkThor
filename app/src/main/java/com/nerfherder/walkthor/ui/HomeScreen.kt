@@ -158,7 +158,7 @@ private fun ClockRow(preview: Pair<String, String>?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(time, color = BookColors.Text, fontSize = 54.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = 56.sp)
+                Text(time, color = BookColors.Text, fontSize = 50.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = 52.sp)
                 if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
             }
             Text(date, color = BookColors.TextMuted, fontSize = 15.sp, maxLines = 1)
@@ -211,7 +211,7 @@ private fun DeviceChips(preview: Boolean) {
             delay(5_000)
         }
     }
-    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         chips.forEach { (label, value) ->
             Row(
                 Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
@@ -260,7 +260,7 @@ private fun Dials() {
     val lightColor = if (color == 0) Color.White.copy(alpha = 0.3f) else Color(StickLights.swatch(color))
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF0D0B0E))
-            .border(1.dp, Color(0xFF1F1C20), RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+            .border(1.dp, Color(0xFF1F1C20), RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Light & Sound", color = BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -309,7 +309,7 @@ private fun Dials() {
                 StickLights.COLORS.forEach { c ->
                     val on = c == color
                     Box(
-                        Modifier.size(20.dp).clip(CircleShape)
+                        Modifier.size(18.dp).clip(CircleShape)
                             .background(if (c == 0) Color.Transparent else Color(StickLights.swatch(c)))
                             .border(if (on) 2.5.dp else 1.dp, if (on) BookColors.Text else Color.White.copy(alpha = 0.3f), CircleShape)
                             .clickable { color = c; StickLights.setColor(context, c) },
@@ -354,7 +354,7 @@ private fun Dial(
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(84.dp)
+            Modifier.size(74.dp)
                 .pointerInput(Unit) {
                     detectTapGestures { o ->
                         if (live) change(at(o, size.width.toFloat(), size.height.toFloat())) else tapOff?.invoke()
@@ -385,7 +385,7 @@ private fun Dial(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     if (value != null) "${(value * 100).roundToInt()}" else offText,
-                    color = BookColors.Text, fontSize = if (value != null) 24.sp else 15.sp, fontWeight = FontWeight.SemiBold,
+                    color = BookColors.Text, fontSize = if (value != null) 21.sp else 14.sp, fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
                 Box(Modifier.padding(top = 2.dp).size(16.dp), contentAlignment = Alignment.Center) { icon() }
