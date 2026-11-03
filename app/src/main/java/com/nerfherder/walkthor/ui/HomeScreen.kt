@@ -108,7 +108,7 @@ fun HomeScreen(
                 ClockRow(previewTime)
                 Spacer(Modifier.height(8.dp))
                 Dials()
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
                 Apps(Modifier.weight(1f), previewApps, onOpenApp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -437,7 +437,7 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
 @Composable
 private fun HomeApp(app: InstalledApp, onOpen: () -> Unit) {
     Column(
-        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp, horizontal = 2.dp),
+        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = 2.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val s = 42.dp
@@ -446,7 +446,7 @@ private fun HomeApp(app: InstalledApp, onOpen: () -> Unit) {
         Text(
             app.label, color = BookColors.Text, fontSize = 12.sp, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 5.dp).width(84.dp),
+            modifier = Modifier.padding(top = 3.dp).width(84.dp),
         )
     }
 }
