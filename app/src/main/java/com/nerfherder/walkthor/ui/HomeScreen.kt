@@ -104,11 +104,11 @@ fun HomeScreen(
         androidx.compose.runtime.CompositionLocalProvider(
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
         ) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 14.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 10.dp)) {
                 ClockRow(previewTime)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 Dials()
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 Apps(Modifier.weight(1f), previewApps, onOpenApp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -158,13 +158,13 @@ private fun ClockRow(preview: Pair<String, String>?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(time, color = BookColors.Text, fontSize = 60.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = 62.sp)
+                Text(time, color = BookColors.Text, fontSize = 54.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = 56.sp)
                 if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
             }
             Text(date, color = BookColors.TextMuted, fontSize = 15.sp, maxLines = 1)
         }
         if (level >= 0) {
-            Box(Modifier.size(66.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(60.dp), contentAlignment = Alignment.Center) {
                 val low = level <= 15 && !charging
                 val ring = if (low) Color(0xFFE0614A) else BookColors.Text
                 Canvas(Modifier.fillMaxSize()) {
@@ -313,7 +313,7 @@ private fun Dial(
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(96.dp)
+            Modifier.size(84.dp)
                 .pointerInput(Unit) {
                     detectTapGestures { o ->
                         if (live) change(at(o, size.width.toFloat(), size.height.toFloat())) else tapOff?.invoke()
@@ -381,7 +381,7 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
             return@Column
         }
         apps.take(12).chunked(6).forEach { row ->
-            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
                 row.forEach { app ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         HomeApp(app) { onOpenApp(app.packageName) }
