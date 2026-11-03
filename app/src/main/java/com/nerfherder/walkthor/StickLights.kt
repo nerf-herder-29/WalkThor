@@ -115,17 +115,72 @@ object StickLights {
      */
     private fun writeRings(color: Int, level: Float) {
         val on = color != 0 && level > 0.005f
-        val k = Math.pow(level.coerceIn(0f, 1f).toDouble(), 1.8).toFloat()
+        val drive = drive(color, level)
+        var failed: Throwable? = null
         for (side in SIDES) {
-            if (enabledWritten != on) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }
+            if (enabledWritten != on) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }.onFailure { failed = it }
+            if (on) runCatching { File("$side/brightness").writeText(drive) }.onFailure { failed = it }
+        }
+        enabledWritten = if (failed == null) on else null
+        failed?.let { note = "couldn't write the lights (${it.javaClass.simpleName}) at ${now()}" }
+    }
+
+    /** What the lights are sent for [color] at [level]: "1-R:G:B", eased so the slider feels even. */
+    private fun drive(color: Int, level: Float): String {
+        val k = Math.pow(level.coerceIn(0f, 1f).toDouble(), 1.8).toFloat()
+        val r = Math.round(android.graphics.Color.red(color) * k)
+        val g = Math.round(android.graphics.Color.green(color) * k)
+        val b = Math.round(android.graphics.Color.blue(color) * k)
+        return "1-$r:$g:$b"
+    }
+
+    /** What happened last when WalkThor checked the lights, for Diagnostics. */
+    @Volatile var note: String = "not checked yet"
+    private fun now() = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+
+    /**
+     * Whether the lights look as you set them: false if they've been changed (AYN switched them
+     * off, or put its own colour back), null if they can't be read. Worker thread.
+     */
+    private fun looksRight(color: Int, level: Float): Boolean? {
+        val on = color != 0 && level > 0.005f
+        val want = drive(color, level)
+        var readable = false
+        for (side in SIDES) {
+            val en = runCatching { File("$side/enable").readText().trim() }.getOrNull()
+            if (en != null && en.isNotEmpty()) {
+                readable = true
+                if (on != !en.startsWith("0")) return false
+            }
             if (on) {
-                val r = Math.round(android.graphics.Color.red(color) * k)
-                val g = Math.round(android.graphics.Color.green(color) * k)
-                val b = Math.round(android.graphics.Color.blue(color) * k)
-                runCatching { File("$side/brightness").writeText("1-$r:$g:$b") }
+                val b = runCatching { File("$side/brightness").readText().trim() }.getOrNull()
+                if (b != null && b.contains(':')) {
+                    readable = true
+                    if (!b.endsWith(want.substringAfter('-'))) return false
+                }
             }
         }
-        enabledWritten = on
+        return if (readable) true else null
+    }
+
+    /**
+     * Checks the lights (after a wake, and now and then while the screen's on) and puts yours back
+     * if they've been changed. With [evenIfUnknown], also when they can't be read.
+     */
+    fun check(c: Context, evenIfUnknown: Boolean) {
+        val app = c.applicationContext
+        if (!chosen(app) || !available()) return
+        val color = prefs(app).getInt("color", COLORS[0])
+        val level = prefs(app).getFloat("level", level(app))
+        worker.execute {
+            val right = looksRight(color, level)
+            if (right == false || (right == null && evenIfUnknown)) {
+                enabledWritten = null
+                writeRings(color, level)
+                if (!note.startsWith("couldn't")) note = "put back at ${now()}" + if (right == false) " (they'd been changed)" else ""
+                else Unit
+            } else if (right == true && !note.startsWith("put back")) note = "as you set them (${now()})"
+        }
     }
     @Volatile private var enabledWritten: Boolean? = null
 

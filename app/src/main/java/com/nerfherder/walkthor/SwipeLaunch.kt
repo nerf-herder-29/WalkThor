@@ -183,6 +183,7 @@ class SwipeGestureService : AccessibilityService() {
         runCatching {
             registerReceiver(screenOn, android.content.IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_USER_PRESENT)
             })
         }
@@ -325,16 +326,26 @@ class SwipeGestureService : AccessibilityService() {
 
     private val screenOn = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            // AYN puts its own lights back at no fixed time after a wake (sometimes a few seconds
-            // later), so put yours back several times over the first several seconds.
-            handler.removeCallbacks(restoreLights)
-            restoreAt.forEach { handler.postDelayed(restoreLights, it) }
+            handler.removeCallbacks(lightsWatch)
+            if (intent.action == Intent.ACTION_SCREEN_OFF) return
+            // AYN switches the lights off with the lid and puts its own back at no fixed time after
+            // a wake, so check them every couple of seconds for half a minute, then now and then.
+            lightsWatchFrom = android.os.SystemClock.uptimeMillis()
+            handler.postDelayed(lightsWatch, 300)
         }
     }
-    private val restoreAt = listOf(300L, 1_000L, 2_000L, 3_500L, 5_500L, 8_000L)
-    private val restoreLights = Runnable { runCatching { StickLights.restore(this@SwipeGestureService) } }
+    @Volatile private var lightsWatchFrom = 0L
+    private val lightsWatch = object : Runnable {
+        override fun run() {
+            val since = android.os.SystemClock.uptimeMillis() - lightsWatchFrom
+            val early = since < 30_000
+            runCatching { StickLights.check(this@SwipeGestureService, evenIfUnknown = early && since < 10_000) }
+            handler.postDelayed(this, if (early) 2_000 else 15_000)
+        }
+    }
 
     override fun onDestroy() {
+        handler.removeCallbacks(lightsWatch)
         runCatching { unregisterReceiver(screenOn) }
         runCatching { Drawer.destroy() }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
