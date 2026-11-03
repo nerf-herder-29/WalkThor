@@ -162,6 +162,7 @@ private fun ClockRow(preview: Pair<String, String>?) {
                 if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
             }
             Text(date, color = BookColors.TextMuted, fontSize = 15.sp, maxLines = 1)
+            DeviceChips(preview != null)
         }
         if (level >= 0) {
             Box(Modifier.size(60.dp), contentAlignment = Alignment.Center) {
@@ -178,6 +179,46 @@ private fun ClockRow(preview: Pair<String, String>?) {
                     Text("$level%", color = BookColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(if (charging) "charging" else "battery", color = BookColors.TextMuted, fontSize = 8.sp)
                 }
+            }
+        }
+    }
+}
+
+/** Temperature, free storage, memory in use and time played today, refreshed every few seconds. */
+@Composable
+private fun DeviceChips(preview: Boolean) {
+    val context = LocalContext.current
+    var chips by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    LaunchedEffect(preview) {
+        if (preview) {
+            chips = listOf("Temp" to "34°C", "Storage" to "212 GB free", "Memory" to "5.1 / 12 GB", "Played today" to "47m")
+            return@LaunchedEffect
+        }
+        while (true) {
+            chips = withContext(Dispatchers.IO) {
+                val s = runCatching { StatsReader.read(context) }.getOrNull()
+                val gb = 1024.0 * 1024 * 1024
+                buildList {
+                    s?.batteryTempC?.let { add("Temp" to "${it.roundToInt()}°C") }
+                    runCatching { android.os.StatFs(android.os.Environment.getDataDirectory().path).availableBytes }.getOrNull()
+                        ?.let { add("Storage" to "${(it / gb).roundToInt()} GB free") }
+                    if (s != null && s.memTotal > 0) {
+                        add("Memory" to "%.1f / %d GB".format(java.util.Locale.US, (s.memTotal - s.memFree) / gb, Math.ceil(s.memTotal / gb).toInt()))
+                    }
+                    add("Played today" to hoursMinutes(com.nerfherder.walkthor.PlayToday.minutes(context)))
+                }
+            }
+            delay(5_000)
+        }
+    }
+    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        chips.forEach { (label, value) ->
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
+                    .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 4.dp),
+            ) {
+                Text(label, color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1)
+                Text("  $value", color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
             }
         }
     }

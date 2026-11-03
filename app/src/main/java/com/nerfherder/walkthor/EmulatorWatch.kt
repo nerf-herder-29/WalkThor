@@ -172,6 +172,8 @@ object EmulatorWatch {
             val others = frontByDisplay.filterKeys { it != bottom }.values
             gameShowing.value = others.any { isGamePkg(context, it) }
             emulatorShowing.value = others.any { isEmulator(context, it) }
+            val screenOn = context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false
+            PlayToday.set(context, emulatorShowing.value && screenOn)
         }
     }
 
@@ -318,4 +320,41 @@ object EmulatorWatch {
         "xendroid", "xenon", "rpcs3", "lemuroid", "emubox", "nostalgia", "kenji", "uzuy", "eggns", "egg ns",
     )
     private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
+}
+
+/**
+ * How long you've played today: the time one of your emulators has been in front on the game
+ * screen with the screen on, added up per day (kept on this device only).
+ */
+object PlayToday {
+    private const val PREFS = "play_today"
+    @Volatile private var since = 0L
+
+    private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private fun today() = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+
+    /** An emulator is ([on]) or isn't in front with the screen on. */
+    @Synchronized fun set(c: Context, on: Boolean) {
+        val now = System.currentTimeMillis()
+        if (on && since == 0L) since = now
+        if (!on && since != 0L) {
+            add(c, now - since)
+            since = 0L
+        }
+    }
+
+    private fun add(c: Context, ms: Long) {
+        val p = prefs(c)
+        val day = today()
+        val before = if (p.getString("day", null) == day) p.getLong("ms", 0L) else 0L
+        p.edit().putString("day", day).putLong("ms", before + ms.coerceAtLeast(0L)).apply()
+    }
+
+    /** Minutes played today so far (including the game running now). */
+    @Synchronized fun minutes(c: Context): Int {
+        val p = prefs(c)
+        val stored = if (p.getString("day", null) == today()) p.getLong("ms", 0L) else 0L
+        val running = if (since != 0L) System.currentTimeMillis() - since else 0L
+        return ((stored + running) / 60_000L).toInt()
+    }
 }

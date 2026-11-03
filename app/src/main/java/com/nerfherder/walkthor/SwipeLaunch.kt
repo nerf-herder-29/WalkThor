@@ -334,6 +334,11 @@ class SwipeGestureService : AccessibilityService() {
     private val screenOn = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             StickLights.log("screen: " + intent.action?.substringAfterLast('.'))
+            // Play time today only counts while the screen's on.
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> PlayToday.set(context, false)
+                Intent.ACTION_SCREEN_ON -> PlayToday.set(context, EmulatorWatch.emulatorShowing.value)
+            }
             handler.removeCallbacks(lightsWatch)
             if (intent.action != Intent.ACTION_SCREEN_ON) return
             // AYN draws the lights from its own settings when the screen wakes; WalkThor keeps those
