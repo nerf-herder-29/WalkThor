@@ -200,7 +200,7 @@ object ScreenControls {
         add("Bottom brightness: " + if (helper) "the Thor's system helper (real brightness)" else if (key != null) "AYN's setting \"$key\" (scale 0–${bottomMax(c, key)})" else "WalkThor dims it" + (bottomKeyProblem?.let { " ($it)" } ?: ""))
         if (!helper) add("Thor's system helper: " + (AynSystem.problem ?: "not available"))
         else add("Bottom slider: " + AynSystem.liveNote)
-        if (StickLights.available()) add("Stick lights: " + StickLights.note)
+        if (StickLights.available()) add("Stick lights: " + StickLights.note + StickLights.aynNote.let { if (it.isEmpty()) "" else "; $it" })
         val bright = systemSettingNames(c).filter { "bright" in it.lowercase() }
         add("Brightness settings on this device: " + bright.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
             n + "=" + (runCatching { Settings.System.getString(c.contentResolver, n) }.getOrNull() ?: "?")

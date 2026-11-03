@@ -187,6 +187,8 @@ class SwipeGestureService : AccessibilityService() {
                 addAction(Intent.ACTION_USER_PRESENT)
             })
         }
+        // Bring AYN's own stick-light settings in line with yours, so AYN draws yours after a wake.
+        runCatching { StickLights.matchAynLater(this, 3_000) }
         // The bottom screen's dimming, if you'd turned it down.
         // (Not if the bottom screen's real brightness can be changed: then it isn't dimmed.)
         Thread({ if (!AynSystem.available()) handler.post { runCatching { BottomDim.restore(this) } } }, "WalkThor brightness check").start()

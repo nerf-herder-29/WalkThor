@@ -9,11 +9,14 @@ import java.util.concurrent.Executors
  * The lights around the Thor's sticks: their colour and brightness, from the Light & Sound tab.
  *
  * On the stock Thor each ring is driven through two system files that any app may write:
- * `enable` ("1" or "0") and `brightness` ("1-R:G:B", the ring's colour). There's no separate
- * brightness, so the colour is scaled down. AYN keeps its own stick-light settings and puts them
- * back when the screen wakes, so WalkThor puts your choice back straight after. (It leaves AYN's
- * settings alone: when they changed, AYN redrew the lights on its own brightness scale a moment
- * later, so they jumped and lagged.)
+ * `enable` ("1" or "0") and `brightness` ("Z-R:G:B:255", where Z is the half of the ring: 1 or 2).
+ * There's no separate brightness, so the colour is scaled down.
+ *
+ * AYN keeps its own stick-light settings and draws them whenever the screen wakes (and whenever
+ * they change). So once you've stopped changing yours, WalkThor sets AYN's to match, through the
+ * Thor's system helper: on/off, the colour, and the brightness already eased the way WalkThor eases
+ * it, so AYN draws exactly what you see and nothing jumps. If AYN's say "off", AYN switches the
+ * lights off after every wake.
  */
 object StickLights {
     private val SIDES = listOf("/sys/class/sn3112l/led", "/sys/class/sn3112r/led")
@@ -43,6 +46,9 @@ object StickLights {
 
     /** The lights themselves: written straight away. */
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor stick lights").apply { isDaemon = true } }
+    /** AYN's own settings: matched once you've stopped changing yours (its own thread, so it never holds up the lights). */
+    private val syncer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "WalkThor stick lights sync").apply { isDaemon = true } }
+    @Volatile private var syncLater: java.util.concurrent.ScheduledFuture<*>? = null
 
     /** Whether this device has the stick lights WalkThor can drive. */
     fun available(): Boolean = demo || SIDES.all { File("$it/brightness").let { f -> f.exists() && f.canWrite() } }
@@ -104,8 +110,54 @@ object StickLights {
         if (pending.getAndSet(color to level) == null) {
             worker.execute { pending.getAndSet(null)?.let { (c, l) -> writeRings(c, l) } }
         }
-
+        if (syncAyn) matchAynLater(app, 1_500)
     }
+
+    /** Sets AYN's settings to match yours after [delayMs] (restarting the wait if called again). */
+    fun matchAynLater(c: Context, delayMs: Long) {
+        val app = c.applicationContext
+        if (!chosen(app) || demo) return
+        syncLater?.cancel(false)
+        syncLater = syncer.schedule({ runCatching { matchAyn(app) } }, delayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+    }
+
+    /**
+     * AYN's own stick-light settings, set to what you chose in WalkThor (only those that differ), so
+     * AYN draws your lights after a wake instead of its own (or none). AYN redraws the lights when
+     * they change, so yours are written again straight after. Sync thread.
+     */
+    private fun matchAyn(c: Context) {
+        val cr = c.contentResolver
+        val color = prefs(c).getInt("color", COLORS[0])
+        val level = prefs(c).getFloat("level", 0.5f)
+        val on = color != 0 && level > 0.005f
+        val enabled = if (on) "1,1" else "0,0"
+        val hex = String.format("#FF%06X", color and 0xFFFFFF)
+        val k = eased(level)
+        val raw = Settings.System.getString(cr, "led_light_brightness_percent")
+        val hundred = (raw?.toFloatOrNull() ?: 0f) > 1f
+        val levelText = if (hundred) Math.round(k * 100).toString() else "%.3f".format(java.util.Locale.US, k)
+        val changes = buildList {
+            if (Settings.System.getString(cr, "joystick_light_enabled")?.replace(" ", "") != enabled) add("joystick_light_enabled" to enabled)
+            if (on) {
+                val now = Settings.System.getString(cr, "joystick_led_light_picker_color")?.split(",")?.map { s -> runCatching { android.graphics.Color.parseColor(s.trim()) }.getOrNull() }
+                if (now == null || now.size != 2 || now.any { it == null || (it and 0xFFFFFF) != (color and 0xFFFFFF) }) add("joystick_led_light_picker_color" to "$hex,$hex")
+                val cur = raw?.toFloatOrNull()?.let { if (hundred) it / 100f else it }
+                if (cur == null || Math.abs(cur - k) > 0.006f) add("led_light_brightness_percent" to levelText)
+            }
+        }
+        if (changes.isEmpty()) { aynNote = "AYN's settings match (${now()})"; return }
+        var ok = true
+        for ((name, value) in changes) if (!AynSystem.putSetting(name, value)) ok = false
+        aynNote = if (ok) "AYN's settings set to match at ${now()}" else "couldn't set AYN's settings (system helper unavailable) at ${now()}"
+        // AYN redraws on its own a moment after its settings change: make sure yours are what shows.
+        for (wait in longArrayOf(250, 900, 2_000)) {
+            Thread.sleep(wait)
+            worker.execute { if (pending.get() == null) writeRings(prefs(c).getInt("color", color), prefs(c).getFloat("level", level)) }
+        }
+    }
+    @Volatile var aynNote: String = ""
+
 
     private val pending = java.util.concurrent.atomic.AtomicReference<Pair<Int, Float>?>(null)
 
@@ -115,23 +167,33 @@ object StickLights {
      */
     private fun writeRings(color: Int, level: Float) {
         val on = color != 0 && level > 0.005f
-        val drive = drive(color, level)
         var failed: Throwable? = null
         for (side in SIDES) {
             if (enabledWritten != on) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }.onFailure { failed = it }
-            if (on) runCatching { File("$side/brightness").writeText(drive) }.onFailure { failed = it }
+            if (on) failed = writeColour(side, color, level) ?: failed
         }
         enabledWritten = if (failed == null) on else null
         failed?.let { note = "couldn't write the lights (${it.javaClass.simpleName}) at ${now()}" }
     }
 
-    /** What the lights are sent for [color] at [level]: "1-R:G:B", eased so the slider feels even. */
+    /** Writes the colour to both halves of one ring; the failure, if any. */
+    private fun writeColour(side: String, color: Int, level: Float): Throwable? {
+        var failed: Throwable? = null
+        val rgb = drive(color, level)
+        for (half in 1..2) runCatching { File("$side/brightness").writeText("$half-$rgb:255") }.onFailure { if (half == 1) failed = it }
+        return failed
+    }
+
+    /** The level eased (the lights look brighter than the number suggests at low levels), 0–1. */
+    private fun eased(level: Float) = Math.pow(level.coerceIn(0f, 1f).toDouble(), 1.8).toFloat()
+
+    /** What the lights are sent for [color] at [level]: "R:G:B", eased so the slider feels even. */
     private fun drive(color: Int, level: Float): String {
-        val k = Math.pow(level.coerceIn(0f, 1f).toDouble(), 1.8).toFloat()
+        val k = eased(level)
         val r = Math.round(android.graphics.Color.red(color) * k)
         val g = Math.round(android.graphics.Color.green(color) * k)
         val b = Math.round(android.graphics.Color.blue(color) * k)
-        return "1-$r:$g:$b"
+        return "$r:$g:$b"
     }
 
     /** What happened last when WalkThor checked the lights, for Diagnostics. */
@@ -161,12 +223,12 @@ object StickLights {
                 val br = runCatching { File("$side/brightness").readText().trim() }.getOrNull()?.takeIf { it.contains(':') }
                 seen.append(if (seen.isEmpty()) "" else ", ").append(side.substringAfterLast('/').removePrefix("sn3112")).append(' ').append(en ?: "?").append('/').append(br ?: "?")
                 val enOk = en?.let { on == !it.startsWith("0") }
-                val brOk = if (!on) true else br?.let { it.substringAfter('-') == want.substringAfter('-') }
+                val brOk = if (!on) true else br?.let { it.substringAfter('-').split(':').take(3).joinToString(":") == want }
                 if (enOk == null || brOk == null) unread++
                 val writeEn = enOk == false || (enOk == null && evenIfUnknown)
                 val writeBr = on && (brOk == false || (brOk == null && evenIfUnknown))
                 if (writeEn) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }.onFailure { failed = it }
-                if (writeBr) runCatching { File("$side/brightness").writeText(want) }.onFailure { failed = it }
+                if (writeBr) failed = writeColour(side, color, level) ?: failed
                 if (writeEn || writeBr) fixed++
             }
             if (failed == null) enabledWritten = on
