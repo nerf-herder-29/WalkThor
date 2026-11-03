@@ -181,7 +181,10 @@ class SwipeGestureService : AccessibilityService() {
         applyEventTypes()
         // AYN puts its own stick lights back when the screen wakes: put yours back after it.
         runCatching {
-            registerReceiver(screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON))
+            registerReceiver(screenOn, android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            })
         }
         // The bottom screen's dimming, if you'd turned it down.
         // (Not if the bottom screen's real brightness can be changed: then it isn't dimmed.)
@@ -322,9 +325,14 @@ class SwipeGestureService : AccessibilityService() {
 
     private val screenOn = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            handler.postDelayed({ runCatching { StickLights.restore(this@SwipeGestureService) } }, 1_500)
+            // AYN puts its own lights back at no fixed time after a wake (sometimes a few seconds
+            // later), so put yours back several times over the first several seconds.
+            handler.removeCallbacks(restoreLights)
+            restoreAt.forEach { handler.postDelayed(restoreLights, it) }
         }
     }
+    private val restoreAt = listOf(300L, 1_000L, 2_000L, 3_500L, 5_500L, 8_000L)
+    private val restoreLights = Runnable { runCatching { StickLights.restore(this@SwipeGestureService) } }
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(screenOn) }
