@@ -335,27 +335,21 @@ class SwipeGestureService : AccessibilityService() {
         override fun onReceive(context: Context, intent: Intent) {
             StickLights.log("screen: " + intent.action?.substringAfterLast('.'))
             handler.removeCallbacks(lightsWatch)
-            if (intent.action == Intent.ACTION_SCREEN_OFF) return
-            // AYN switches the lights off with the lid and puts its own back at no fixed time after
-            // a wake, so check them every couple of seconds for half a minute, then now and then.
-            lightsWatchFrom = android.os.SystemClock.uptimeMillis()
-            handler.postDelayed(lightsWatch, 300)
+            if (intent.action != Intent.ACTION_SCREEN_ON) return
+            // AYN draws the lights from its own settings when the screen wakes; WalkThor keeps those
+            // matching yours, so it only writes yours once more, quietly, after AYN's done.
+            handler.postDelayed(lightsWatch, 1_500)
         }
     }
-    @Volatile private var lightsWatchFrom = 0L
     private val aynLightsObserver = object : android.database.ContentObserver(handler) {
         override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
             val k = uri?.lastPathSegment ?: return
             StickLights.log("AYN changed $k=" + runCatching { android.provider.Settings.System.getString(contentResolver, k) }.getOrNull())
         }
     }
-    private val lightsWatch = object : Runnable {
-        override fun run() {
-            val since = android.os.SystemClock.uptimeMillis() - lightsWatchFrom
-            val early = since < 30_000
-            runCatching { StickLights.check(this@SwipeGestureService, evenIfUnknown = early && since < 10_000) }
-            handler.postDelayed(this, if (early) 2_000 else 15_000)
-        }
+    private val lightsWatch = Runnable {
+        runCatching { StickLights.touchUp(this@SwipeGestureService, "after wake") }
+            .onFailure { StickLights.log("after wake: ${it.javaClass.simpleName} ${it.message}") }
     }
 
     override fun onDestroy() {

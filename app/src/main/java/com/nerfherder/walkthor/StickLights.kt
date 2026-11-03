@@ -94,12 +94,6 @@ object StickLights {
         if (followsScreens(c)) setLevel(c, level)
     }
 
-    /** The screen woke (AYN puts its own lights back then): put yours back, if you chose them in WalkThor. */
-    fun restore(c: Context) {
-        enabledWritten = null
-        if (chosen(c)) apply(c, syncAyn = false)
-    }
-
     /** Writes the rings now. */
     private fun apply(c: Context, syncAyn: Boolean) {
         val app = c.applicationContext
@@ -111,6 +105,8 @@ object StickLights {
             worker.execute { pending.getAndSet(null)?.let { (c, l) -> writeRings(c, l) } }
         }
         if (syncAyn) matchAynLater(app, 1_500)
+        // Once you've stopped changing them, write them once more (a half of a ring can miss a change).
+        settleLater.getAndSet(syncer.schedule({ touchUp(app, "settled") }, 450, java.util.concurrent.TimeUnit.MILLISECONDS))?.cancel(false)
     }
 
     /** Sets AYN's settings to match yours after [delayMs] (restarting the wait if called again). */
@@ -241,47 +237,26 @@ object StickLights {
     private fun now() = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
 
     /**
-     * Checks the lights (after a wake, and now and then while the screen's on) and puts back only
-     * what's been changed, side by side: rewriting a light that's already right (even just
-     * switching it on again) makes it blink. With [evenIfUnknown], writes when they can't be read.
+     * Writes your colour to both rings again, as it already is (no switching on or off, so nothing
+     * blinks): after a change has settled, in case a half of a ring missed it, and once after a wake.
+     * The lights' files can't be read back, so WalkThor can't tell whether this was needed.
      */
-    fun check(c: Context, evenIfUnknown: Boolean) {
+    fun touchUp(c: Context, why: String) {
         val app = c.applicationContext
-        if (!chosen(app) || !available()) return
-        val color = prefs(app).getInt("color", COLORS[0])
-        val level = prefs(app).getFloat("level", level(app))
+        if (!chosen(app) || !available() || demo) return
         worker.execute {
             if (pending.get() != null) return@execute // a change of yours is on its way anyway
-            val on = color != 0 && level > 0.005f
-            val want = drive(color, level)
-            var fixed = 0
-            var unread = 0
+            val color = prefs(app).getInt("color", COLORS[0])
+            val level = prefs(app).getFloat("level", 0.5f)
+            if (color == 0 || level <= 0.005f) return@execute
+            log("again ($why):")
             var failed: Throwable? = null
-            val seen = StringBuilder()
-            for (side in SIDES) {
-                val en = runCatching { File("$side/enable").readText().trim() }.getOrNull()?.takeIf { it.isNotEmpty() }
-                val br = runCatching { File("$side/brightness").readText().trim() }.getOrNull()?.takeIf { it.contains(':') }
-                log("check ${tag(side)} read enable=${en ?: "?"} brightness=${br ?: "?"}")
-                seen.append(if (seen.isEmpty()) "" else ", ").append(side.substringAfterLast('/').removePrefix("sn3112")).append(' ').append(en ?: "?").append('/').append(br ?: "?")
-                val enOk = en?.let { on == !it.startsWith("0") }
-                val brOk = if (!on) true else br?.let { it.substringAfter('-').split(':').take(3).joinToString(":") == want }
-                if (enOk == null || brOk == null) unread++
-                val writeEn = enOk == false || (enOk == null && evenIfUnknown)
-                val writeBr = on && (brOk == false || (brOk == null && evenIfUnknown))
-                if (writeEn) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }.onFailure { failed = it }
-                if (writeBr) failed = writeColour(side, color, level) ?: failed
-                if (writeEn || writeBr) fixed++
-            }
-            if (failed == null) enabledWritten = on
-            note = when {
-                failed != null -> "couldn't write the lights (${failed!!.javaClass.simpleName}) at ${now()}"
-                fixed > 0 -> "put back at ${now()} (read $seen)"
-                note.startsWith("put back") || note.startsWith("couldn't") -> note
-                unread > 0 -> "couldn't read them (${now()})"
-                else -> "as you set them (${now()})"
-            }
+            for (side in SIDES) failed = writeColour(side, color, level) ?: failed
+            note = if (failed != null) "couldn't write the lights (${failed!!.javaClass.simpleName}) at ${now()}" else "last written again at ${now()} ($why)"
         }
     }
+    private val settleLater = java.util.concurrent.atomic.AtomicReference<java.util.concurrent.ScheduledFuture<*>?>(null)
+
     @Volatile private var enabledWritten: Boolean? = null
 
 }
