@@ -421,32 +421,43 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
             )
             return@Column
         }
-        apps.take(12).chunked(6).forEach { row ->
-            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-                row.forEach { app ->
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        HomeApp(app) { onOpenApp(app.packageName) }
+        // Fill the space there is: a few apps get bigger icons (and three to a row), up to twelve
+        // at six to a row; the rows spread out down to the bottom.
+        val shown = apps.take(12)
+        val cols = if (shown.size <= 6) 3 else 6
+        val rows = shown.chunked(cols)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val rowH = maxHeight / 2
+            val icon = (rowH * 0.5f).coerceIn(42.dp, if (cols == 3) 76.dp else 60.dp)
+            val label = (11f + (icon.value - 42f) / 34f * 4f).coerceIn(12f, 16f).sp
+            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
+                rows.forEach { row ->
+                    Row(Modifier.fillMaxWidth()) {
+                        row.forEach { app ->
+                            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                HomeApp(app, icon, label) { onOpenApp(app.packageName) }
+                            }
+                        }
+                        repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
-                repeat(6 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun HomeApp(app: InstalledApp, onOpen: () -> Unit) {
+private fun HomeApp(app: InstalledApp, s: androidx.compose.ui.unit.Dp, label: androidx.compose.ui.unit.TextUnit, onOpen: () -> Unit) {
     Column(
         Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = 2.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val s = 42.dp
         if (app.icon != null) androidx.compose.foundation.Image(app.icon, contentDescription = null, modifier = Modifier.size(s))
         else Box(Modifier.size(s).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
         Text(
-            app.label, color = BookColors.Text, fontSize = 12.sp, maxLines = 1,
+            app.label, color = BookColors.Text, fontSize = label, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 3.dp).width(84.dp),
+            modifier = Modifier.padding(top = 4.dp).width(s + 44.dp),
         )
     }
 }
