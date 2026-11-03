@@ -176,7 +176,7 @@ fun EmulatorsDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    "WalkThor opens when one of these comes to the front. Tick any it missed.",
+                    "These count as emulators: while one is open, the drawer shows the game; otherwise it shows Home. With Open when an emulator starts on, WalkThor also opens when one comes to the front. Tick any it missed.",
                     color = BookColors.TextMuted, fontSize = 13.sp,
                 )
                 SearchBox(query, { query = it }, Modifier.fillMaxWidth().padding(vertical = 8.dp))

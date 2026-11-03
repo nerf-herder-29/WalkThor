@@ -574,9 +574,8 @@ private fun SettingsScreen(
                         checked = detecting,
                         divider = false,
                     ) { onToggleEmulators(it) }
-                    if (detecting) {
-                        SettingLink("Choose emulators", "Tick any WalkThor doesn't know") { showEmulators = true }
-                    }
+                    // Always here: which apps are emulators also decides when the drawer shows Home.
+                    SettingLink("Choose emulators", "Tick any WalkThor doesn't know (the drawer shows Home when none is open)") { showEmulators = true }
                 }
                 if (detecting && (cocoonLinked || esdeLinked)) {
                     SettingsNote("With " + (if (cocoonLinked) "Cocoon" else "ES-DE") + " linked, WalkThor knows the game from its launch log.")

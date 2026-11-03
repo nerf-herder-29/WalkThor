@@ -441,6 +441,31 @@ class StoreScreenshots {
     }
 
     @Test
+    fun drawerHome() {
+        com.nerfherder.walkthor.StickLights.demo = true
+        val apps = fakeApps().take(12)
+        content {
+            com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = apps, previewTime = "7:42" to "Tuesday, Nov 3")
+        }
+        settle()
+        shot("26-drawer-home")
+        com.nerfherder.walkthor.StickLights.demo = false
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun drawerHomeDense() {
+        com.nerfherder.walkthor.StickLights.demo = true
+        val apps = fakeApps().take(12)
+        content {
+            com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = apps, previewTime = "7:42" to "Tuesday, Nov 3")
+        }
+        settle()
+        shot("check-drawer-home-dense")
+        com.nerfherder.walkthor.StickLights.demo = false
+    }
+
+    @Test
     fun captionsTab() {
         // As if the speech model were downloaded (so its card isn't shown).
         java.io.File(com.nerfherder.walkthor.data.SpeechModel.dir(app), "am").apply { mkdirs() }.resolve("final.mdl").writeText("x")

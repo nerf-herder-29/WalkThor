@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +73,17 @@ object Drawer {
     /** The drawer is up on the bottom screen. */
     val shown = MutableStateFlow(false)
     private var current: WalkThorDrawer? = null
+
+    /** The drawer shows Home (clock, levels, apps) over WalkThor's screens: no game is running. */
+    val home = MutableStateFlow(false)
+
+    /**
+     * None of your emulators is in front on the game screen (or, before anything's been seen there,
+     * no game is known to be running).
+     */
+    fun noGame(): Boolean =
+        if (EmulatorWatch.frontKnown.value) !EmulatorWatch.emulatorShowing.value
+        else EmulatorWatch.session.value == null && !GameFocus.gameRunning.value
 
     /** Why the drawer last couldn't open, for Diagnostics; null if it's been fine. */
     val problem = MutableStateFlow<String?>(null)
@@ -221,6 +233,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             }
         }, 2_000)
         if (opened) swipeTickFlow.value = System.currentTimeMillis()
+        // Opened with no game running: Home. (Opened for a game: the game's screens.)
+        Drawer.home.value = Drawer.noGame()
         com.nerfherder.walkthor.ui.AutoDim.wake()
         reveal()
         up = true
@@ -350,6 +364,18 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                     .background(androidx.compose.ui.graphics.Color.Black),
             ) {
                 WalkThorRoot(initialBookId = null, boot = boot, host = this@WalkThorDrawer)
+                // A game came to the front while Home was up: over to the game's screens.
+                val emulatorShowing by EmulatorWatch.emulatorShowing.collectAsState()
+                LaunchedEffect(emulatorShowing) { if (emulatorShowing) Drawer.home.value = false }
+                val home by Drawer.home.collectAsState()
+                if (home) {
+                    com.nerfherder.walkthor.ui.HomeScreen(
+                        onOpenWalkThor = { Drawer.home.value = false },
+                        onOpenApp = { pkg ->
+                            if (com.nerfherder.walkthor.ui.openFromHome(service, pkg, displayId)) hide()
+                        },
+                    )
+                }
             }
         }
     }

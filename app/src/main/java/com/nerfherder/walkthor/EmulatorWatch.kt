@@ -166,6 +166,13 @@ object EmulatorWatch {
         p.edit().putStringSet("emuYes", yes).putStringSet("emuNo", no).apply()
         synchronized(emulatorCache) { emulatorCache.clear() }
         appCache.clear()
+        // What's in front may count differently now.
+        if (frontByDisplay.isNotEmpty()) {
+            val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
+            val others = frontByDisplay.filterKeys { it != bottom }.values
+            gameShowing.value = others.any { isGamePkg(context, it) }
+            emulatorShowing.value = others.any { isEmulator(context, it) }
+        }
     }
 
     /** Whether [pkg] is an emulator: your choice if you made one, else a guess from its names. */
@@ -209,6 +216,7 @@ object EmulatorWatch {
         if (others.isNotEmpty()) {
             frontKnown.value = true
             gameShowing.value = others.any { isGamePkg(context, it) }
+            emulatorShowing.value = others.any { isEmulator(context, it) }
         }
     }
 
@@ -220,6 +228,8 @@ object EmulatorWatch {
 
     /** Whether the accessibility service has seen what's in front on the game screen yet. */
     val frontKnown = MutableStateFlow(false)
+    /** One of your emulators (Settings → Emulators) is in front on the game screen. */
+    val emulatorShowing = MutableStateFlow(false)
     /** A game (not Cocoon, a launcher or WalkThor itself) is in front on the game screen. */
     val gameShowing = MutableStateFlow(false)
 
