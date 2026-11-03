@@ -105,9 +105,13 @@ fun HomeScreen(
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
         ) {
             Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 10.dp)) {
-                ClockRow(previewTime)
+                // With six pinned apps or fewer they fit in one row, and the clock and dials get the
+                // room the second row would have taken.
+                val pinned by AppCatalog.pinned.collectAsState()
+                val roomy = (previewApps?.size ?: pinned.size) <= 6
+                ClockRow(previewTime, roomy)
                 Spacer(Modifier.height(8.dp))
-                Dials()
+                Dials(roomy)
                 Spacer(Modifier.height(6.dp))
                 Apps(Modifier.weight(1f), previewApps, onOpenApp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -130,7 +134,7 @@ fun HomeScreen(
 
 /** The time and date, and the battery as a ring. */
 @Composable
-private fun ClockRow(preview: Pair<String, String>?) {
+private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     var level by remember { mutableIntStateOf(if (preview != null) 78 else -1) }
@@ -158,7 +162,7 @@ private fun ClockRow(preview: Pair<String, String>?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(time, color = BookColors.Text, fontSize = 50.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = 52.sp)
+                Text(time, color = BookColors.Text, fontSize = if (roomy) 60.sp else 50.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = if (roomy) 62.sp else 52.sp)
                 if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
             }
             Text(date, color = BookColors.TextMuted, fontSize = 15.sp, maxLines = 1)
@@ -226,7 +230,7 @@ private fun DeviceChips(preview: Boolean) {
 
 /** Brightness (top, bottom or both), volume and the stick lights, as three dials. */
 @Composable
-private fun Dials() {
+private fun Dials(roomy: Boolean) {
     val context = LocalContext.current
     val lightsHere = remember { StickLights.available() }
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
@@ -281,7 +285,7 @@ private fun Dials() {
         Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceAround) {
             Dial(
                 if (needsTop) null else shown, "Brightness", BookColors.Text, icon = { SunIcon() },
-                onTapWhenOff = { ScreenControls.askTop(context) }, offText = "Allow", onDrag = { dragging = it },
+                onTapWhenOff = { ScreenControls.askTop(context) }, offText = "Allow", onDrag = { dragging = it }, big = roomy,
             ) { v ->
                 when (target) {
                     ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
@@ -290,14 +294,14 @@ private fun Dials() {
                 }
                 if (follow && target != ScreenControls.Target.BOTTOM) lights = v
             }
-            Dial(volume, "Volume", BookColors.Text, icon = { SpeakerIcon() }, onDrag = { dragging = it }) { v ->
+            Dial(volume, "Volume", BookColors.Text, icon = { SpeakerIcon() }, onDrag = { dragging = it }, big = roomy) { v ->
                 volume = v; ScreenControls.setVolume(context, v)
             }
             if (lightsHere) {
                 Dial(
                     if (color == 0) null else lights, if (follow) "Sticks · follow" else "Stick lights", lightColor,
                     icon = { Box(Modifier.size(12.dp).clip(CircleShape).background(lightColor)) },
-                    offText = "off", onDrag = {}, enabled = !follow,
+                    offText = "off", onDrag = {}, enabled = !follow, big = roomy,
                 ) { v -> lights = v; StickLights.setLevel(context, v) }
             }
         }
@@ -309,7 +313,7 @@ private fun Dials() {
                 StickLights.COLORS.forEach { c ->
                     val on = c == color
                     Box(
-                        Modifier.size(18.dp).clip(CircleShape)
+                        Modifier.size(if (roomy) 22.dp else 18.dp).clip(CircleShape)
                             .background(if (c == 0) Color.Transparent else Color(StickLights.swatch(c)))
                             .border(if (on) 2.5.dp else 1.dp, if (on) BookColors.Text else Color.White.copy(alpha = 0.3f), CircleShape)
                             .clickable { color = c; StickLights.setColor(context, c) },
@@ -337,7 +341,7 @@ private const val ARC_SWEEP = 270f
 @Composable
 private fun Dial(
     value: Float?, label: String, color: Color, icon: @Composable () -> Unit,
-    onTapWhenOff: (() -> Unit)? = null, offText: String = "", onDrag: (Boolean) -> Unit, enabled: Boolean = true,
+    onTapWhenOff: (() -> Unit)? = null, offText: String = "", onDrag: (Boolean) -> Unit, enabled: Boolean = true, big: Boolean = false,
     onChange: (Float) -> Unit,
 ) {
     val change by rememberUpdatedState(onChange)
@@ -354,7 +358,7 @@ private fun Dial(
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(74.dp)
+            Modifier.size(if (big) 104.dp else 74.dp)
                 .pointerInput(Unit) {
                     detectTapGestures { o ->
                         if (live) change(at(o, size.width.toFloat(), size.height.toFloat())) else tapOff?.invoke()
@@ -385,7 +389,7 @@ private fun Dial(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     if (value != null) "${(value * 100).roundToInt()}" else offText,
-                    color = BookColors.Text, fontSize = if (value != null) 21.sp else 14.sp, fontWeight = FontWeight.SemiBold,
+                    color = BookColors.Text, fontSize = if (value != null) (if (big) 28.sp else 21.sp) else 14.sp, fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
                 Box(Modifier.padding(top = 2.dp).size(16.dp), contentAlignment = Alignment.Center) { icon() }
@@ -421,14 +425,13 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
             )
             return@Column
         }
-        // Fill the space there is: a few apps get bigger icons (and three to a row), up to twelve
-        // at six to a row; the rows spread out down to the bottom.
+        // Six to a row, up to twelve; the rows spread out to fill the space.
         val shown = apps.take(12)
-        val cols = if (shown.size <= 6) 3 else 6
+        val cols = 6
         val rows = shown.chunked(cols)
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val rowH = maxHeight / 2
-            val icon = (rowH * 0.5f).coerceIn(42.dp, if (cols == 3) 76.dp else 60.dp)
+            val rowH = maxHeight / rows.size.coerceAtLeast(1)
+            val icon = (rowH * 0.5f).coerceIn(42.dp, 58.dp)
             val label = (11f + (icon.value - 42f) / 34f * 4f).coerceIn(12f, 16f).sp
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
                 rows.forEach { row ->
