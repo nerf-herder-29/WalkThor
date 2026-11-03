@@ -41,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -90,8 +92,29 @@ fun HomeScreen(
         )
         return
     }
+    // The stick lights' colour runs through the whole screen (cream when they're off).
+    var lightColor by remember { mutableStateOf(StickLights.color(context)) }
+    val accent by androidx.compose.animation.animateColorAsState(
+        if (lightColor == 0 || (!StickLights.available() && previewApps == null)) BookColors.Text else Color(StickLights.swatch(lightColor)),
+        androidx.compose.animation.core.tween(450), label = "accent",
+    )
     BoxWithConstraints(
         Modifier.fillMaxSize().background(Color.Black)
+            // A soft glow in the light's colour from the top left and the bottom right.
+            .drawBehind {
+                drawRect(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        listOf(accent.copy(alpha = 0.22f), Color.Transparent),
+                        center = Offset(size.width * 0.08f, 0f), radius = size.width * 0.5f,
+                    ),
+                )
+                drawRect(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        listOf(accent.copy(alpha = 0.13f), Color.Transparent),
+                        center = Offset(size.width, size.height), radius = size.width * 0.55f,
+                    ),
+                )
+            }
             // Taps on empty space stay here (nothing underneath reacts).
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
@@ -103,21 +126,21 @@ fun HomeScreen(
         androidx.compose.runtime.CompositionLocalProvider(
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
         ) {
-        Column(Modifier.fillMaxSize().padding(horizontal = d(22f)).padding(top = d(20f))) {
-            Row(Modifier.fillMaxWidth().weight(0.53f)) {
-                Clock(Modifier.weight(0.42f), d, t, previewTime, onOpenWalkThor)
-                Spacer(Modifier.width(d(26f)))
-                Levels(Modifier.weight(0.58f), d, t)
+        Column(Modifier.fillMaxSize().padding(horizontal = d(22f)).padding(top = d(24f), bottom = d(20f))) {
+            Row(Modifier.fillMaxWidth().weight(0.55f)) {
+                Clock(Modifier.weight(0.42f), d, t, previewTime, accent, onOpenWalkThor)
+                Spacer(Modifier.width(d(22f)))
+                Levels(Modifier.weight(0.58f).align(Alignment.Top).glass().padding(d(15f)), d, t, accent, lightColor) { lightColor = it }
             }
-            Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
-            Apps(Modifier.weight(0.47f).padding(top = d(14f)), d, t, previewApps, onAll = { allApps = true }, onOpenApp = onOpenApp)
+            Spacer(Modifier.height(d(16f)))
+            Apps(Modifier.weight(0.45f).fillMaxWidth().glass().padding(horizontal = d(14f), vertical = d(10f)), d, t, previewApps, onAll = { allApps = true }, onOpenApp = onOpenApp)
         }
         }
     }
 }
 
 @Composable
-private fun Clock(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, preview: Pair<String, String>?, onOpenWalkThor: () -> Unit) {
+private fun Clock(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, preview: Pair<String, String>?, accent: Color, onOpenWalkThor: () -> Unit) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
     var level by remember { mutableIntStateOf(-1) }
@@ -144,7 +167,17 @@ private fun Clock(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, 
     val date = preview?.second ?: remember(now) { DateFormat.format("EEEE, MMM d", now).toString() }
     Column(modifier) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(time, color = BookColors.Text, fontSize = t(76f), fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = t(80f))
+            // White at the top, fading into the light's colour at the foot of the numbers.
+            Text(
+                time, maxLines = 1,
+                style = androidx.compose.ui.text.TextStyle(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to Color.White, 0.55f to BookColors.Text, 1f to androidx.compose.ui.graphics.lerp(BookColors.Text, accent, 0.75f),
+                    ),
+                    fontSize = t(76f), fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, lineHeight = t(80f),
+                    shadow = androidx.compose.ui.graphics.Shadow(accent.copy(alpha = 0.25f), blurRadius = 40f),
+                ),
+            )
             if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = t(18f), modifier = Modifier.padding(start = d(6f), bottom = d(14f)))
         }
         Text(date, color = BookColors.TextMuted, fontSize = t(16f), maxLines = 1)
@@ -161,7 +194,7 @@ private fun Clock(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, 
         Text(
             "Open WalkThor  ›", color = BookColors.Text, fontSize = t(14f), fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(bottom = d(14f)).clip(RoundedCornerShape(50))
-                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(50))
+                .border(1.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(50))
                 .clickable(onClick = onOpenWalkThor).padding(horizontal = d(14f), vertical = d(8f)),
         )
     }
@@ -182,7 +215,7 @@ private fun Battery(level: Int, d: (Float) -> Dp) {
 
 /** Brightness (top, bottom or both), volume, and the stick lights. */
 @Composable
-private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit) {
+private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, accent: Color, color: Int, onColor: (Int) -> Unit) {
     val context = LocalContext.current
     val lightsHere = remember { StickLights.available() }
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
@@ -191,7 +224,6 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit)
     var bottom by remember { mutableFloatStateOf(1f) }
     var volume by remember { mutableFloatStateOf(ScreenControls.volume(context)) }
     var dragging by remember { mutableStateOf(false) }
-    var color by remember { mutableStateOf(StickLights.color(context)) }
     var lights by remember { mutableFloatStateOf(StickLights.level(context)) }
     val follow = remember { StickLights.followsScreens(context) }
     DisposableEffect(Unit) {
@@ -222,8 +254,8 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit)
                     Text(
                         tg.label.removeSuffix(" screen"), fontSize = t(12f),
                         fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (on) Color.Black else BookColors.TextMuted,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) BookColors.Text else Color.Transparent)
+                        color = if (on) onAccent(accent) else BookColors.TextMuted,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) accent else Color.Transparent)
                             .clickable { target = tg; ScreenControls.setTarget(context, tg) }
                             .padding(horizontal = d(10f), vertical = d(5f)),
                     )
@@ -239,7 +271,7 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit)
             }
         } else {
             Labelled("Brightness", "${(shown * 100).roundToInt()}%", t) {
-                ThinSlider(shown, onDrag = { dragging = it }, onChange = { v ->
+                ThinSlider(shown, accent = accent, onDrag = { dragging = it }, onChange = { v ->
                     when (target) {
                         ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
                         ScreenControls.Target.BOTTOM -> { bottom = v; ScreenControls.setBottom(context, v) }
@@ -250,20 +282,23 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit)
             }
         }
         Labelled("Volume", "${(volume * 100).roundToInt()}%", t) {
-            ThinSlider(volume, onDrag = { dragging = it }, onChange = { v -> volume = v; ScreenControls.setVolume(context, v) }, modifier = Modifier.fillMaxWidth())
+            ThinSlider(volume, accent = accent, onDrag = { dragging = it }, onChange = { v -> volume = v; ScreenControls.setVolume(context, v) }, modifier = Modifier.fillMaxWidth())
         }
         if (lightsHere) {
             Labelled("Stick lights", if (color == 0) "off" else if (follow) "follow the screens" else "${(lights * 100).roundToInt()}%", t) {
-                if (!follow) ThinSlider(lights, onDrag = {}, onChange = { v -> lights = v; StickLights.setLevel(context, v) }, modifier = Modifier.fillMaxWidth())
+                if (!follow) ThinSlider(lights, accent = accent, onDrag = {}, onChange = { v -> lights = v; StickLights.setLevel(context, v) }, modifier = Modifier.fillMaxWidth())
             }
             Row(horizontalArrangement = Arrangement.spacedBy(d(9f)), modifier = Modifier.padding(top = d(4f))) {
                 StickLights.COLORS.forEach { c ->
                     val on = c == color
                     Box(
-                        Modifier.size(d(22f)).clip(CircleShape)
+                        Modifier.size(d(22f))
+                            // The chosen colour glows.
+                            .drawBehind { if (on && c != 0) drawCircle(Color(StickLights.swatch(c)).copy(alpha = 0.45f), radius = size.minDimension * 0.85f) }
+                            .clip(CircleShape)
                             .background(if (c == 0) Color.Transparent else Color(StickLights.swatch(c)))
-                            .border(if (on) 2.5.dp else 1.dp, if (on) BookColors.Text else Color.White.copy(alpha = 0.3f), CircleShape)
-                            .clickable { color = c; StickLights.setColor(context, c) },
+                            .border(if (on) 2.5.dp else 1.dp, if (on) Color.White else Color.White.copy(alpha = 0.3f), CircleShape)
+                            .clickable { onColor(c); StickLights.setColor(context, c) },
                     ) {
                         // "Off": a circle with a line through it.
                         if (c == 0) Canvas(Modifier.fillMaxSize()) {
@@ -355,6 +390,15 @@ private fun HomeApp(app: InstalledApp, d: (Float) -> Dp, t: (Float) -> TextUnit,
         )
     }
 }
+
+/** Frosted glass: a faint light fill, a hairline edge. */
+private fun Modifier.glass(): Modifier {
+    val shape = RoundedCornerShape(16.dp)
+    return clip(shape).background(Color.White.copy(alpha = 0.045f)).border(1.dp, Color.White.copy(alpha = 0.09f), shape)
+}
+
+/** Text on the light's colour: dark on light colours, white on dark ones. */
+private fun onAccent(c: Color): Color = if (c.luminance() > 0.45f) Color(0xFF0A1414) else Color.White
 
 /**
  * Opens [pkg] from the drawer's Home: an emulator on the game screen, anything else on the bottom
