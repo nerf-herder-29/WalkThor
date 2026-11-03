@@ -67,6 +67,9 @@ scraper account and start a scrape (see below). Everything else stays on your de
   CPU speed from Android. While a game is played with WalkThor open, it notes the power draw every
   half minute to learn how long that game usually lasts on a charge; only that average is kept,
   on the device.
+  The drawer's Home shows the temperature, free storage and memory the same way, and adds up
+  how long one of your emulators has been in front each day ("Played today"); only that day's
+  total is kept, on the device.
 
 - **Brightness and volume, only when you move the sliders.** Now playing's quick controls change
   Android's brightness setting (with the *Modify system settings* access you grant), the media
