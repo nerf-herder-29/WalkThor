@@ -139,33 +139,9 @@ object StickLights {
     private fun now() = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
 
     /**
-     * Whether the lights look as you set them: false if they've been changed (AYN switched them
-     * off, or put its own colour back), null if they can't be read. Worker thread.
-     */
-    private fun looksRight(color: Int, level: Float): Boolean? {
-        val on = color != 0 && level > 0.005f
-        val want = drive(color, level)
-        var readable = false
-        for (side in SIDES) {
-            val en = runCatching { File("$side/enable").readText().trim() }.getOrNull()
-            if (en != null && en.isNotEmpty()) {
-                readable = true
-                if (on != !en.startsWith("0")) return false
-            }
-            if (on) {
-                val b = runCatching { File("$side/brightness").readText().trim() }.getOrNull()
-                if (b != null && b.contains(':')) {
-                    readable = true
-                    if (!b.endsWith(want.substringAfter('-'))) return false
-                }
-            }
-        }
-        return if (readable) true else null
-    }
-
-    /**
-     * Checks the lights (after a wake, and now and then while the screen's on) and puts yours back
-     * if they've been changed. With [evenIfUnknown], also when they can't be read.
+     * Checks the lights (after a wake, and now and then while the screen's on) and puts back only
+     * what's been changed, side by side: rewriting a light that's already right (even just
+     * switching it on again) makes it blink. With [evenIfUnknown], writes when they can't be read.
      */
     fun check(c: Context, evenIfUnknown: Boolean) {
         val app = c.applicationContext
@@ -173,13 +149,34 @@ object StickLights {
         val color = prefs(app).getInt("color", COLORS[0])
         val level = prefs(app).getFloat("level", level(app))
         worker.execute {
-            val right = looksRight(color, level)
-            if (right == false || (right == null && evenIfUnknown)) {
-                enabledWritten = null
-                writeRings(color, level)
-                if (!note.startsWith("couldn't")) note = "put back at ${now()}" + if (right == false) " (they'd been changed)" else ""
-                else Unit
-            } else if (right == true && !note.startsWith("put back")) note = "as you set them (${now()})"
+            if (pending.get() != null) return@execute // a change of yours is on its way anyway
+            val on = color != 0 && level > 0.005f
+            val want = drive(color, level)
+            var fixed = 0
+            var unread = 0
+            var failed: Throwable? = null
+            val seen = StringBuilder()
+            for (side in SIDES) {
+                val en = runCatching { File("$side/enable").readText().trim() }.getOrNull()?.takeIf { it.isNotEmpty() }
+                val br = runCatching { File("$side/brightness").readText().trim() }.getOrNull()?.takeIf { it.contains(':') }
+                seen.append(if (seen.isEmpty()) "" else ", ").append(side.substringAfterLast('/').removePrefix("sn3112")).append(' ').append(en ?: "?").append('/').append(br ?: "?")
+                val enOk = en?.let { on == !it.startsWith("0") }
+                val brOk = if (!on) true else br?.let { it.substringAfter('-') == want.substringAfter('-') }
+                if (enOk == null || brOk == null) unread++
+                val writeEn = enOk == false || (enOk == null && evenIfUnknown)
+                val writeBr = on && (brOk == false || (brOk == null && evenIfUnknown))
+                if (writeEn) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }.onFailure { failed = it }
+                if (writeBr) runCatching { File("$side/brightness").writeText(want) }.onFailure { failed = it }
+                if (writeEn || writeBr) fixed++
+            }
+            if (failed == null) enabledWritten = on
+            note = when {
+                failed != null -> "couldn't write the lights (${failed!!.javaClass.simpleName}) at ${now()}"
+                fixed > 0 -> "put back at ${now()} (read $seen)"
+                note.startsWith("put back") || note.startsWith("couldn't") -> note
+                unread > 0 -> "couldn't read them (${now()})"
+                else -> "as you set them (${now()})"
+            }
         }
     }
     @Volatile private var enabledWritten: Boolean? = null
