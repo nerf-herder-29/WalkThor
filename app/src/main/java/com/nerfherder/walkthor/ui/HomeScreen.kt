@@ -110,9 +110,9 @@ fun HomeScreen(
                 val pinned by AppCatalog.pinned.collectAsState()
                 val roomy = (previewApps?.size ?: pinned.size) <= 6
                 ClockRow(previewTime, roomy)
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Dials(roomy)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Apps(Modifier.weight(1f), previewApps, onOpenApp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -159,6 +159,8 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
     val time = preview?.first ?: remember(now) { DateFormat.format(if (h24) "H:mm" else "h:mm", now).toString() }
     val ampm = if (h24) "" else if (preview != null) "AM" else remember(now) { DateFormat.format("a", now).toString() }
     val date = preview?.second ?: remember(now) { DateFormat.format("EEEE, MMM d", now).toString() }
+    Column {
+    // The time and date on the left, the battery level beside them on the right.
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -166,10 +168,9 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
                 if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
             }
             Text(date, color = BookColors.TextMuted, fontSize = 15.sp, maxLines = 1)
-            DeviceChips(preview != null)
         }
         if (level >= 0) {
-            Box(Modifier.size(60.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
                 val low = level <= 15 && !charging
                 val ring = if (low) Color(0xFFE0614A) else BookColors.Text
                 Canvas(Modifier.fillMaxSize()) {
@@ -185,6 +186,9 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
                 }
             }
         }
+    }
+    // The device stats, in a row as wide as the dials below.
+    DeviceChips(preview != null)
     }
 }
 
@@ -215,11 +219,12 @@ private fun DeviceChips(preview: Boolean) {
             delay(5_000)
         }
     }
-    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         chips.forEach { (label, value) ->
             Row(
-                Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
-                    .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 4.dp),
+                Modifier.weight(1f).clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
+                    .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Text(label, color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1)
                 Text("  $value", color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
