@@ -95,10 +95,14 @@ fun HomeScreen(
             // Taps on empty space stay here (nothing underneath reacts).
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
-        // Everything is sized for a 620×540 dp screen and scaled to this one.
+        // Everything is sized for a 620×540 dp screen and scaled to this one (sliders and all).
         val k = minOf(maxWidth.value / 620f, maxHeight.value / 540f).coerceIn(0.55f, 1.6f)
-        val d: (Float) -> Dp = { (it * k).dp }
-        val t: (Float) -> TextUnit = { (it * k).sp }
+        val base = androidx.compose.ui.platform.LocalDensity.current
+        val d: (Float) -> Dp = { it.dp }
+        val t: (Float) -> TextUnit = { it.sp }
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
+        ) {
         Column(Modifier.fillMaxSize().padding(horizontal = d(22f)).padding(top = d(20f))) {
             Row(Modifier.fillMaxWidth().weight(0.53f)) {
                 Clock(Modifier.weight(0.42f), d, t, previewTime, onOpenWalkThor)
@@ -107,6 +111,7 @@ fun HomeScreen(
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
             Apps(Modifier.weight(0.47f).padding(top = d(14f)), d, t, previewApps, onAll = { allApps = true }, onOpenApp = onOpenApp)
+        }
         }
     }
 }
