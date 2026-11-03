@@ -370,8 +370,8 @@ private fun ControlRow(
 
 /** A slim slider: a thin track and a round knob; tap or drag anywhere along it. */
 @Composable
-internal fun ThinSlider(value: Float, onDrag: (Boolean) -> Unit, onChange: (Float) -> Unit, modifier: Modifier, accent: Color? = null) {
-    val track = Color.White.copy(alpha = if (accent != null) 0.1f else 0.18f)
+internal fun ThinSlider(value: Float, onDrag: (Boolean) -> Unit, onChange: (Float) -> Unit, modifier: Modifier) {
+    val track = Color.White.copy(alpha = 0.18f)
     val fill = BookColors.Text
     Canvas(
         modifier
@@ -402,25 +402,14 @@ internal fun ThinSlider(value: Float, onDrag: (Boolean) -> Unit, onChange: (Floa
         val x = left + (right - left) * value.coerceIn(0f, 1f)
         val h = 5.dp.toPx()
         drawRoundRect(track, topLeft = Offset(left, y - h / 2), size = androidx.compose.ui.geometry.Size(right - left, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2))
-        if (accent != null) {
-            // In the light's colour: a glowing fill, and a white knob with a halo.
-            drawRoundRect(accent.copy(alpha = 0.18f), topLeft = Offset(left, y - h * 1.2f), size = androidx.compose.ui.geometry.Size(x - left, h * 2.4f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 1.2f))
-            drawRoundRect(
-                androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(accent.copy(alpha = 0.35f), accent), startX = left, endX = maxOf(x, left + 1f)),
-                topLeft = Offset(left, y - h / 2), size = androidx.compose.ui.geometry.Size(x - left, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2),
-            )
-            drawCircle(accent.copy(alpha = 0.25f), radius = r + 5.dp.toPx(), center = Offset(x, y))
-            drawCircle(Color.White, radius = r, center = Offset(x, y))
-        } else {
-            drawRoundRect(fill, topLeft = Offset(left, y - h / 2), size = androidx.compose.ui.geometry.Size(x - left, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2))
-            drawCircle(Color.Black.copy(alpha = 0.35f), radius = r + 1.dp.toPx(), center = Offset(x, y + 1.dp.toPx()))
-            drawCircle(fill, radius = r, center = Offset(x, y))
-        }
+        drawRoundRect(fill, topLeft = Offset(left, y - h / 2), size = androidx.compose.ui.geometry.Size(x - left, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2))
+        drawCircle(Color.Black.copy(alpha = 0.35f), radius = r + 1.dp.toPx(), center = Offset(x, y + 1.dp.toPx()))
+        drawCircle(fill, radius = r, center = Offset(x, y))
     }
 }
 
 @Composable
-private fun SunIcon() {
+internal fun SunIcon() {
     val c = BookColors.Text.copy(alpha = 0.85f)
     Canvas(Modifier.size(18.dp)) {
         val r = size.minDimension / 2
@@ -435,7 +424,7 @@ private fun SunIcon() {
 }
 
 @Composable
-private fun SpeakerIcon() {
+internal fun SpeakerIcon() {
     val c = BookColors.Text.copy(alpha = 0.85f)
     Canvas(Modifier.size(18.dp)) {
         val w = size.width; val h = size.height

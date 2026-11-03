@@ -12,6 +12,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,19 +39,19 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -59,22 +61,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Date
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 /**
- * What the drawer shows when no game is running: a big clock, brightness, volume and the stick
- * lights, and your pinned apps. "Open WalkThor" goes on to the rest of the app (guides, library,
- * settings). Laid out for the bottom screen, scaled to its size.
+ * What the drawer shows when no game is running: a big clock and the battery, brightness, volume
+ * and the stick lights as dials, and your pinned apps. "Open WalkThor" goes on to the rest of the
+ * app (guides, library, settings). Laid out for a 620×540 dp screen and scaled to the real one.
  */
 @Composable
 fun HomeScreen(
     onOpenWalkThor: () -> Unit,
     onOpenApp: (String) -> Unit,
-    /** Fixed apps and time, for screenshots. */
+    /** Fixed apps, time and battery, for screenshots. */
     previewApps: List<InstalledApp>? = null,
     previewTime: Pair<String, String>? = null,
 ) {
-    val context = LocalContext.current
     var allApps by remember { mutableStateOf(false) }
     if (allApps) {
         // Every app, to pin the ones you want here (press and hold an app).
@@ -92,65 +94,53 @@ fun HomeScreen(
         )
         return
     }
-    // The stick lights' colour runs through the whole screen (cream when they're off).
-    var lightColor by remember { mutableStateOf(StickLights.color(context)) }
-    val accent by androidx.compose.animation.animateColorAsState(
-        if (lightColor == 0 || (!StickLights.available() && previewApps == null)) BookColors.Text else Color(StickLights.swatch(lightColor)),
-        androidx.compose.animation.core.tween(450), label = "accent",
-    )
     BoxWithConstraints(
         Modifier.fillMaxSize().background(Color.Black)
-            // A soft glow in the light's colour from the top left and the bottom right.
-            .drawBehind {
-                drawRect(
-                    androidx.compose.ui.graphics.Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.22f), Color.Transparent),
-                        center = Offset(size.width * 0.08f, 0f), radius = size.width * 0.5f,
-                    ),
-                )
-                drawRect(
-                    androidx.compose.ui.graphics.Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.13f), Color.Transparent),
-                        center = Offset(size.width, size.height), radius = size.width * 0.55f,
-                    ),
-                )
-            }
             // Taps on empty space stay here (nothing underneath reacts).
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
-        // Everything is sized for a 620×540 dp screen and scaled to this one (sliders and all).
         val k = minOf(maxWidth.value / 620f, maxHeight.value / 540f).coerceIn(0.55f, 1.6f)
         val base = androidx.compose.ui.platform.LocalDensity.current
-        val d: (Float) -> Dp = { it.dp }
-        val t: (Float) -> TextUnit = { it.sp }
         androidx.compose.runtime.CompositionLocalProvider(
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
         ) {
-        Column(Modifier.fillMaxSize().padding(horizontal = d(22f)).padding(top = d(24f), bottom = d(20f))) {
-            Row(Modifier.fillMaxWidth().weight(0.55f)) {
-                Clock(Modifier.weight(0.42f), d, t, previewTime, accent, onOpenWalkThor)
-                Spacer(Modifier.width(d(22f)))
-                Levels(Modifier.weight(0.58f).align(Alignment.Top).glass().padding(d(15f)), d, t, accent, lightColor) { lightColor = it }
+            Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 14.dp)) {
+                ClockRow(previewTime)
+                Spacer(Modifier.height(12.dp))
+                Dials()
+                Spacer(Modifier.height(16.dp))
+                Apps(Modifier.weight(1f), previewApps, onOpenApp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "All apps  ›", color = BookColors.TextMuted, fontSize = 13.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { allApps = true }.padding(horizontal = 4.dp, vertical = 6.dp),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "Open WalkThor  ›", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clip(RoundedCornerShape(50))
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(50))
+                            .clickable(onClick = onOpenWalkThor).padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
             }
-            Spacer(Modifier.height(d(16f)))
-            Apps(Modifier.weight(0.45f).fillMaxWidth().glass().padding(horizontal = d(14f), vertical = d(10f)), d, t, previewApps, onAll = { allApps = true }, onOpenApp = onOpenApp)
-        }
         }
     }
 }
 
+/** The time and date, and the battery as a ring. */
 @Composable
-private fun Clock(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, preview: Pair<String, String>?, accent: Color, onOpenWalkThor: () -> Unit) {
+private fun ClockRow(preview: Pair<String, String>?) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(Date()) }
-    var level by remember { mutableIntStateOf(-1) }
+    var level by remember { mutableIntStateOf(if (preview != null) 78 else -1) }
     var charging by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) { now = Date(); delay(60_000L - System.currentTimeMillis() % 60_000L + 50) }
     }
     DisposableEffect(context) {
         fun read(intent: Intent?) {
-            if (intent == null) return
+            if (intent == null || preview != null) return
             val l = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
             val s = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
             if (l >= 0 && s > 0) level = l * 100 / s
@@ -163,59 +153,39 @@ private fun Clock(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, 
     }
     val h24 = remember { DateFormat.is24HourFormat(context) }
     val time = preview?.first ?: remember(now) { DateFormat.format(if (h24) "H:mm" else "h:mm", now).toString() }
-    val ampm = if (preview != null) "" else if (h24) "" else remember(now) { DateFormat.format("a", now).toString() }
+    val ampm = if (h24) "" else if (preview != null) "AM" else remember(now) { DateFormat.format("a", now).toString() }
     val date = preview?.second ?: remember(now) { DateFormat.format("EEEE, MMM d", now).toString() }
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            // White at the top, fading into the light's colour at the foot of the numbers.
-            Text(
-                time, maxLines = 1,
-                style = androidx.compose.ui.text.TextStyle(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0f to Color.White, 0.55f to BookColors.Text, 1f to androidx.compose.ui.graphics.lerp(BookColors.Text, accent, 0.75f),
-                    ),
-                    fontSize = t(76f), fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, lineHeight = t(80f),
-                    shadow = androidx.compose.ui.graphics.Shadow(accent.copy(alpha = 0.25f), blurRadius = 40f),
-                ),
-            )
-            if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = t(18f), modifier = Modifier.padding(start = d(6f), bottom = d(14f)))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(time, color = BookColors.Text, fontSize = 60.sp, fontWeight = FontWeight.SemiBold, fontFamily = DisplayFont, letterSpacing = (-1.5).sp, maxLines = 1, lineHeight = 62.sp)
+                if (ampm.isNotEmpty()) Text(ampm, color = BookColors.TextMuted, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
+            }
+            Text(date, color = BookColors.TextMuted, fontSize = 15.sp, maxLines = 1)
         }
-        Text(date, color = BookColors.TextMuted, fontSize = t(16f), maxLines = 1)
-        if (level >= 0 || preview != null) {
-            Row(Modifier.padding(top = d(14f)), verticalAlignment = Alignment.CenterVertically) {
-                Battery(if (preview != null) 78 else level, d)
-                Text(
-                    "${if (preview != null) 78 else level}%" + if (charging) " · charging" else "",
-                    color = BookColors.TextMuted, fontSize = t(14f), modifier = Modifier.padding(start = d(8f)),
-                )
+        if (level >= 0) {
+            Box(Modifier.size(66.dp), contentAlignment = Alignment.Center) {
+                val low = level <= 15 && !charging
+                val ring = if (low) Color(0xFFE0614A) else BookColors.Text
+                Canvas(Modifier.fillMaxSize()) {
+                    val w = 4.5.dp.toPx()
+                    val tl = Offset(w / 2, w / 2)
+                    val sz = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+                    drawArc(Color.White.copy(alpha = 0.1f), 0f, 360f, false, tl, sz, style = Stroke(w))
+                    drawArc(ring, -90f, 360f * level / 100f, false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$level%", color = BookColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (charging) "charging" else "battery", color = BookColors.TextMuted, fontSize = 8.sp)
+                }
             }
         }
-        Spacer(Modifier.weight(1f))
-        Text(
-            "Open WalkThor  ›", color = BookColors.Text, fontSize = t(14f), fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = d(14f)).clip(RoundedCornerShape(50))
-                .border(1.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(50))
-                .clickable(onClick = onOpenWalkThor).padding(horizontal = d(14f), vertical = d(8f)),
-        )
     }
 }
 
+/** Brightness (top, bottom or both), volume and the stick lights, as three dials. */
 @Composable
-private fun Battery(level: Int, d: (Float) -> Dp) {
-    val c = BookColors.TextMuted
-    Canvas(Modifier.size(d(20f), d(11f))) {
-        val w = size.width - 2.dp.toPx()
-        val sw = 1.2.dp.toPx()
-        drawRoundRect(c, size = androidx.compose.ui.geometry.Size(w, size.height), cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
-        val inner = (w - 4 * sw) * (level.coerceIn(0, 100) / 100f)
-        drawRect(c, topLeft = Offset(2 * sw, 2 * sw), size = androidx.compose.ui.geometry.Size(inner, size.height - 4 * sw))
-        drawRect(c, topLeft = Offset(w + 0.5.dp.toPx(), size.height * 0.3f), size = androidx.compose.ui.geometry.Size(1.5.dp.toPx(), size.height * 0.4f))
-    }
-}
-
-/** Brightness (top, bottom or both), volume, and the stick lights. */
-@Composable
-private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, accent: Color, color: Int, onColor: (Int) -> Unit) {
+private fun Dials() {
     val context = LocalContext.current
     val lightsHere = remember { StickLights.available() }
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
@@ -224,6 +194,7 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit,
     var bottom by remember { mutableFloatStateOf(1f) }
     var volume by remember { mutableFloatStateOf(ScreenControls.volume(context)) }
     var dragging by remember { mutableStateOf(false) }
+    var color by remember { mutableStateOf(StickLights.color(context)) }
     var lights by remember { mutableFloatStateOf(StickLights.level(context)) }
     val follow = remember { StickLights.followsScreens(context) }
     DisposableEffect(Unit) {
@@ -244,61 +215,63 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit,
         }
     }
     val shown = if (target == ScreenControls.Target.BOTTOM) bottom else top
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(d(10f))) {
+    val needsTop = target != ScreenControls.Target.BOTTOM && !canTop
+    val lightColor = if (color == 0) Color.White.copy(alpha = 0.3f) else Color(StickLights.swatch(color))
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF0D0B0E))
+            .border(1.dp, Color(0xFF1F1C20), RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Light & Sound", color = BookColors.TextMuted, fontSize = t(14f), fontWeight = FontWeight.Medium)
+            Text("Light & Sound", color = BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.weight(1f))
-            Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(d(3f))) {
-                ScreenControls.Target.entries.forEach { tg ->
-                    val on = tg == target
-                    Text(
-                        tg.label.removeSuffix(" screen"), fontSize = t(12f),
-                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (on) onAccent(accent) else BookColors.TextMuted,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) accent else Color.Transparent)
-                            .clickable { target = tg; ScreenControls.setTarget(context, tg) }
-                            .padding(horizontal = d(10f), vertical = d(5f)),
-                    )
-                }
-            }
-        }
-        if (target != ScreenControls.Target.BOTTOM && !canTop) {
-            Labelled("Brightness", "Allow", t) {
+            // Which screen the brightness dial changes.
+            ScreenControls.Target.entries.forEachIndexed { i, tg ->
+                if (i > 0) Text("·", color = BookColors.TextMuted, fontSize = 12.sp)
+                val on = tg == target
                 Text(
-                    "Tap to let WalkThor change the brightness", color = BookColors.Text, fontSize = t(13f),
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { ScreenControls.askTop(context) }.padding(vertical = d(6f)),
+                    tg.label.removeSuffix(" screen"), fontSize = 12.sp,
+                    fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                    color = if (on) BookColors.Text else BookColors.TextMuted,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { target = tg; ScreenControls.setTarget(context, tg) }
+                        .padding(horizontal = 5.dp, vertical = 4.dp),
                 )
             }
-        } else {
-            Labelled("Brightness", "${(shown * 100).roundToInt()}%", t) {
-                ThinSlider(shown, accent = accent, onDrag = { dragging = it }, onChange = { v ->
-                    when (target) {
-                        ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
-                        ScreenControls.Target.BOTTOM -> { bottom = v; ScreenControls.setBottom(context, v) }
-                        ScreenControls.Target.BOTH -> { top = v; bottom = v; ScreenControls.setTop(context, v); ScreenControls.setBottom(context, v) }
-                    }
-                    if (follow && target != ScreenControls.Target.BOTTOM) lights = v
-                }, modifier = Modifier.fillMaxWidth())
-            }
         }
-        Labelled("Volume", "${(volume * 100).roundToInt()}%", t) {
-            ThinSlider(volume, accent = accent, onDrag = { dragging = it }, onChange = { v -> volume = v; ScreenControls.setVolume(context, v) }, modifier = Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceAround) {
+            Dial(
+                if (needsTop) null else shown, "Brightness", BookColors.Text, icon = { SunIcon() },
+                onTapWhenOff = { ScreenControls.askTop(context) }, offText = "Allow", onDrag = { dragging = it },
+            ) { v ->
+                when (target) {
+                    ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
+                    ScreenControls.Target.BOTTOM -> { bottom = v; ScreenControls.setBottom(context, v) }
+                    ScreenControls.Target.BOTH -> { top = v; bottom = v; ScreenControls.setTop(context, v); ScreenControls.setBottom(context, v) }
+                }
+                if (follow && target != ScreenControls.Target.BOTTOM) lights = v
+            }
+            Dial(volume, "Volume", BookColors.Text, icon = { SpeakerIcon() }, onDrag = { dragging = it }) { v ->
+                volume = v; ScreenControls.setVolume(context, v)
+            }
+            if (lightsHere) {
+                Dial(
+                    if (color == 0) null else lights, if (follow) "Sticks · follow" else "Stick lights", lightColor,
+                    icon = { Box(Modifier.size(12.dp).clip(CircleShape).background(lightColor)) },
+                    offText = "off", onDrag = {}, enabled = !follow,
+                ) { v -> lights = v; StickLights.setLevel(context, v) }
+            }
         }
         if (lightsHere) {
-            Labelled("Stick lights", if (color == 0) "off" else if (follow) "follow the screens" else "${(lights * 100).roundToInt()}%", t) {
-                if (!follow) ThinSlider(lights, accent = accent, onDrag = {}, onChange = { v -> lights = v; StickLights.setLevel(context, v) }, modifier = Modifier.fillMaxWidth())
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(d(9f)), modifier = Modifier.padding(top = d(4f))) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            ) {
                 StickLights.COLORS.forEach { c ->
                     val on = c == color
                     Box(
-                        Modifier.size(d(22f))
-                            // The chosen colour glows.
-                            .drawBehind { if (on && c != 0) drawCircle(Color(StickLights.swatch(c)).copy(alpha = 0.45f), radius = size.minDimension * 0.85f) }
-                            .clip(CircleShape)
+                        Modifier.size(20.dp).clip(CircleShape)
                             .background(if (c == 0) Color.Transparent else Color(StickLights.swatch(c)))
-                            .border(if (on) 2.5.dp else 1.dp, if (on) Color.White else Color.White.copy(alpha = 0.3f), CircleShape)
-                            .clickable { onColor(c); StickLights.setColor(context, c) },
+                            .border(if (on) 2.5.dp else 1.dp, if (on) BookColors.Text else Color.White.copy(alpha = 0.3f), CircleShape)
+                            .clickable { color = c; StickLights.setColor(context, c) },
                     ) {
                         // "Off": a circle with a line through it.
                         if (c == 0) Canvas(Modifier.fillMaxSize()) {
@@ -311,24 +284,79 @@ private fun Levels(modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit,
     }
 }
 
+/** The dial's arc: three quarters of a circle, open at the bottom, from 135° round to 405°. */
+private const val ARC_START = 135f
+private const val ARC_SWEEP = 270f
+
+/**
+ * One dial: a three-quarter arc filled to [value] (0–1), the number in the middle, [label] under it.
+ * Drag round the arc, or tap a spot on it, to set it. A null [value] shows [offText] instead (tap
+ * for [onTapWhenOff]).
+ */
 @Composable
-private fun Labelled(label: String, value: String, t: (Float) -> TextUnit, content: @Composable () -> Unit) {
-    Column {
-        Row {
-            Text(label, color = BookColors.TextMuted, fontSize = t(13f))
-            Spacer(Modifier.weight(1f))
-            Text(value, color = BookColors.Text, fontSize = t(13f))
+private fun Dial(
+    value: Float?, label: String, color: Color, icon: @Composable () -> Unit,
+    onTapWhenOff: (() -> Unit)? = null, offText: String = "", onDrag: (Boolean) -> Unit, enabled: Boolean = true,
+    onChange: (Float) -> Unit,
+) {
+    val change by rememberUpdatedState(onChange)
+    val drag by rememberUpdatedState(onDrag)
+    val live by rememberUpdatedState(value != null && enabled)
+    val tapOff by rememberUpdatedState(onTapWhenOff)
+    // A touch at [o] in a box of [w]×[h]: where on the arc that is, 0–1 (ends clamp).
+    fun at(o: Offset, w: Float, h: Float): Float {
+        var a = Math.toDegrees(atan2((o.y - h / 2).toDouble(), (o.x - w / 2).toDouble())).toFloat()
+        if (a < 0) a += 360f
+        var rel = a - ARC_START
+        if (rel < 0) rel += 360f
+        return if (rel > ARC_SWEEP) (if (rel > ARC_SWEEP + (360f - ARC_SWEEP) / 2) 0f else 1f) else rel / ARC_SWEEP
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(96.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { o ->
+                        if (live) change(at(o, size.width.toFloat(), size.height.toFloat())) else tapOff?.invoke()
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { if (live) drag(true) },
+                        onDragEnd = { drag(false) },
+                        onDragCancel = { drag(false) },
+                    ) { ch, _ ->
+                        if (!live) return@detectDragGestures
+                        ch.consume()
+                        change(at(ch.position, size.width.toFloat(), size.height.toFloat()))
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val w = 8.dp.toPx()
+                val tl = Offset(w / 2, w / 2)
+                val sz = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+                drawArc(Color(0xFF1D1A1E), ARC_START, ARC_SWEEP, false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
+                if (value != null && value > 0.001f) {
+                    drawArc(color, ARC_START, ARC_SWEEP * value.coerceIn(0f, 1f), false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    if (value != null) "${(value * 100).roundToInt()}" else offText,
+                    color = BookColors.Text, fontSize = if (value != null) 24.sp else 15.sp, fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                )
+                Box(Modifier.padding(top = 2.dp).size(16.dp), contentAlignment = Alignment.Center) { icon() }
+            }
         }
-        content()
+        Text(label, color = BookColors.TextMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
-/** Your pinned apps, six to a row; "All apps" to pin more. */
+/** Your pinned apps, six to a row. */
 @Composable
-private fun Apps(
-    modifier: Modifier, d: (Float) -> Dp, t: (Float) -> TextUnit, preview: List<InstalledApp>?,
-    onAll: () -> Unit, onOpenApp: (String) -> Unit,
-) {
+private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (String) -> Unit) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         if (preview == null) {
@@ -345,27 +373,18 @@ private fun Apps(
         }
     }
     Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Apps", color = BookColors.TextMuted, fontSize = t(14f), fontWeight = FontWeight.Medium)
-            Spacer(Modifier.weight(1f))
-            Text(
-                "All apps  ›", color = BookColors.TextMuted, fontSize = t(14f),
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onAll).padding(horizontal = d(8f), vertical = d(4f)),
-            )
-        }
         if (apps.isEmpty()) {
             Text(
                 if (loaded == null && preview == null) "Loading…" else "Tap All apps, then press and hold an app to pin it here.",
-                color = BookColors.TextMuted, fontSize = t(14f), modifier = Modifier.padding(top = d(18f)),
+                color = BookColors.TextMuted, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp),
             )
             return@Column
         }
-        Spacer(Modifier.height(d(10f)))
         apps.take(12).chunked(6).forEach { row ->
-            Row(Modifier.fillMaxWidth().padding(bottom = d(8f))) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
                 row.forEach { app ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        HomeApp(app, d, t) { onOpenApp(app.packageName) }
+                        HomeApp(app) { onOpenApp(app.packageName) }
                     }
                 }
                 repeat(6 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -375,30 +394,21 @@ private fun Apps(
 }
 
 @Composable
-private fun HomeApp(app: InstalledApp, d: (Float) -> Dp, t: (Float) -> TextUnit, onOpen: () -> Unit) {
+private fun HomeApp(app: InstalledApp, onOpen: () -> Unit) {
     Column(
-        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = d(4f), horizontal = d(2f)),
+        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val s = d(46f)
+        val s = 42.dp
         if (app.icon != null) androidx.compose.foundation.Image(app.icon, contentDescription = null, modifier = Modifier.size(s))
         else Box(Modifier.size(s).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
         Text(
-            app.label, color = BookColors.Text, fontSize = t(12f), maxLines = 1,
+            app.label, color = BookColors.Text, fontSize = 12.sp, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = d(5f)).width(d(84f)),
+            modifier = Modifier.padding(top = 5.dp).width(84.dp),
         )
     }
 }
-
-/** Frosted glass: a faint light fill, a hairline edge. */
-private fun Modifier.glass(): Modifier {
-    val shape = RoundedCornerShape(16.dp)
-    return clip(shape).background(Color.White.copy(alpha = 0.045f)).border(1.dp, Color.White.copy(alpha = 0.09f), shape)
-}
-
-/** Text on the light's colour: dark on light colours, white on dark ones. */
-private fun onAccent(c: Color): Color = if (c.luminance() > 0.45f) Color(0xFF0A1414) else Color.White
 
 /**
  * Opens [pkg] from the drawer's Home: an emulator on the game screen, anything else on the bottom
