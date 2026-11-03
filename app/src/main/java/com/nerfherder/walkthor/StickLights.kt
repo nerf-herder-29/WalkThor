@@ -146,9 +146,13 @@ object StickLights {
                 if (cur == null || Math.abs(cur - k) > 0.006f) add("led_light_brightness_percent" to levelText)
             }
         }
-        if (changes.isEmpty()) { aynNote = "AYN's settings match (${now()})"; return }
+        if (changes.isEmpty()) { aynNote = "AYN's settings match (${now()})"; log("AYN settings already match"); return }
         var ok = true
-        for ((name, value) in changes) if (!AynSystem.putSetting(name, value)) ok = false
+        for ((name, value) in changes) {
+            val done = AynSystem.putSetting(name, value)
+            if (!done) ok = false
+            log("set AYN $name=$value" + if (done) "" else " FAILED")
+        }
         aynNote = if (ok) "AYN's settings set to match at ${now()}" else "couldn't set AYN's settings (system helper unavailable) at ${now()}"
         // AYN redraws on its own a moment after its settings change: make sure yours are what shows.
         for (wait in longArrayOf(250, 900, 2_000)) {
@@ -169,7 +173,9 @@ object StickLights {
         val on = color != 0 && level > 0.005f
         var failed: Throwable? = null
         for (side in SIDES) {
-            if (enabledWritten != on) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }.onFailure { failed = it }
+            if (enabledWritten != on) runCatching { File("$side/enable").writeText(if (on) "1" else "0") }
+                .onFailure { failed = it; log("${tag(side)} enable=${if (on) 1 else 0} FAILED ${it.javaClass.simpleName}") }
+                .onSuccess { log("${tag(side)} enable=${if (on) 1 else 0}") }
             if (on) failed = writeColour(side, color, level) ?: failed
         }
         enabledWritten = if (failed == null) on else null
@@ -180,9 +186,19 @@ object StickLights {
     private fun writeColour(side: String, color: Int, level: Float): Throwable? {
         var failed: Throwable? = null
         val rgb = drive(color, level)
-        for (half in 1..2) runCatching { File("$side/brightness").writeText("$half-$rgb:255") }.onFailure { if (half == 1) failed = it }
+        val result = StringBuilder()
+        for (half in 1..2) {
+            // The second half straight after the first can be missed, so give the chip a moment.
+            if (half == 2) Thread.sleep(25)
+            runCatching { File("$side/brightness").writeText("$half-$rgb:255") }
+                .onSuccess { result.append(" $half-$rgb") }
+                .onFailure { failed = it; result.append(" $half-$rgb FAILED ${it.javaClass.simpleName}") }
+        }
+        log("${tag(side)} colour$result")
         return failed
     }
+
+    private fun tag(side: String) = if (side.endsWith("l/led")) "left" else "right"
 
     /** The level eased (the lights look brighter than the number suggests at low levels), 0–1. */
     private fun eased(level: Float) = Math.pow(level.coerceIn(0f, 1f).toDouble(), 1.8).toFloat()
@@ -194,6 +210,30 @@ object StickLights {
         val g = Math.round(android.graphics.Color.green(color) * k)
         val b = Math.round(android.graphics.Color.blue(color) * k)
         return "$r:$g:$b"
+    }
+
+    /** A running record of everything done to and seen of the lights, for Diagnostics (memory only). */
+    private val logLines = ArrayDeque<String>()
+    private val logStamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+    fun log(line: String) = synchronized(logLines) {
+        logLines.addLast(logStamp.format(java.util.Date()) + "  " + line)
+        while (logLines.size > 200) logLines.removeFirst()
+    }
+    fun logged(): List<String> = synchronized(logLines) { logLines.toList() }
+
+    /** What's in the lights' system folders (names, and contents where readable), for the log. */
+    fun probe(c: Context): List<String> = buildList {
+        for (side in SIDES) {
+            val dir = File(side)
+            add("$side: " + (dir.listFiles()?.sortedBy { it.name }?.joinToString(", ") { f ->
+                val v = if (f.isFile) runCatching { f.readText().trim().replace('\n', ' ').take(60) }.getOrElse { "(${it.javaClass.simpleName})" } else "(dir)"
+                "${f.name}${if (f.canWrite()) "[w]" else ""}=$v"
+            } ?: "can't list"))
+        }
+        val cr = c.contentResolver
+        for (k in listOf("joystick_light_enabled", "joystick_led_light_picker_color", "led_light_brightness_percent"))
+            add("AYN $k = " + Settings.System.getString(cr, k))
+        add("WalkThor: colour=" + String.format("#%06X", prefs(c).getInt("color", 0) and 0xFFFFFF) + " level=" + prefs(c).getFloat("level", -1f) + " helper=" + AynSystem.knownAvailable())
     }
 
     /** What happened last when WalkThor checked the lights, for Diagnostics. */
@@ -221,6 +261,7 @@ object StickLights {
             for (side in SIDES) {
                 val en = runCatching { File("$side/enable").readText().trim() }.getOrNull()?.takeIf { it.isNotEmpty() }
                 val br = runCatching { File("$side/brightness").readText().trim() }.getOrNull()?.takeIf { it.contains(':') }
+                log("check ${tag(side)} read enable=${en ?: "?"} brightness=${br ?: "?"}")
                 seen.append(if (seen.isEmpty()) "" else ", ").append(side.substringAfterLast('/').removePrefix("sn3112")).append(' ').append(en ?: "?").append('/').append(br ?: "?")
                 val enOk = en?.let { on == !it.startsWith("0") }
                 val brOk = if (!on) true else br?.let { it.substringAfter('-').split(':').take(3).joinToString(":") == want }

@@ -245,6 +245,23 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     Text("Brightness and FPS", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
                     controls.forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
                 }
+                // The stick lights' log: every write, check and AYN change, to share when they misbehave.
+                if (com.nerfherder.walkthor.StickLights.available()) {
+                    var lightsLog by remember { mutableStateOf(com.nerfherder.walkthor.StickLights.logged()) }
+                    Text("Stick lights log", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+                    Body("Everything WalkThor and AYN did to the stick lights since WalkThor started (kept in memory only). Close and open the lid, or change colours, then share it.")
+                    lightsLog.takeLast(12).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
+                    Row {
+                        TextButton(onClick = { lightsLog = com.nerfherder.walkthor.StickLights.logged() }) { Text("Refresh") }
+                        TextButton(onClick = {
+                            Thread({
+                                val text = (com.nerfherder.walkthor.StickLights.probe(context) + "" + com.nerfherder.walkthor.StickLights.logged()).joinToString("\n")
+                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                runCatching { context.startActivity(android.content.Intent.createChooser(send, "Share stick lights log").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                            }, "WalkThor stick lights share").start()
+                        }) { Text("Share log") }
+                    }
+                }
                 // If the drawer couldn't open, why (WalkThor opened as an app instead).
                 com.nerfherder.walkthor.Drawer.problem.collectAsState().value?.let { Body(it) }
                 // Every recent time WalkThor closed, and why (for finding a pattern).

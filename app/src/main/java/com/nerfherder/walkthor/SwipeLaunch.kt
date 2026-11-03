@@ -189,6 +189,11 @@ class SwipeGestureService : AccessibilityService() {
         }
         // Bring AYN's own stick-light settings in line with yours, so AYN draws yours after a wake.
         runCatching { StickLights.matchAynLater(this, 3_000) }
+        // Note in the stick lights' log whenever AYN's own stick-light settings change.
+        runCatching {
+            for (k in listOf("joystick_light_enabled", "joystick_led_light_picker_color", "led_light_brightness_percent"))
+                contentResolver.registerContentObserver(android.provider.Settings.System.getUriFor(k), false, aynLightsObserver)
+        }
         // The bottom screen's dimming, if you'd turned it down.
         // (Not if the bottom screen's real brightness can be changed: then it isn't dimmed.)
         Thread({ if (!AynSystem.available()) handler.post { runCatching { BottomDim.restore(this) } } }, "WalkThor brightness check").start()
@@ -328,6 +333,7 @@ class SwipeGestureService : AccessibilityService() {
 
     private val screenOn = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            StickLights.log("screen: " + intent.action?.substringAfterLast('.'))
             handler.removeCallbacks(lightsWatch)
             if (intent.action == Intent.ACTION_SCREEN_OFF) return
             // AYN switches the lights off with the lid and puts its own back at no fixed time after
@@ -337,6 +343,12 @@ class SwipeGestureService : AccessibilityService() {
         }
     }
     @Volatile private var lightsWatchFrom = 0L
+    private val aynLightsObserver = object : android.database.ContentObserver(handler) {
+        override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
+            val k = uri?.lastPathSegment ?: return
+            StickLights.log("AYN changed $k=" + runCatching { android.provider.Settings.System.getString(contentResolver, k) }.getOrNull())
+        }
+    }
     private val lightsWatch = object : Runnable {
         override fun run() {
             val since = android.os.SystemClock.uptimeMillis() - lightsWatchFrom
@@ -348,6 +360,7 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacks(lightsWatch)
+        runCatching { contentResolver.unregisterContentObserver(aynLightsObserver) }
         runCatching { unregisterReceiver(screenOn) }
         runCatching { Drawer.destroy() }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
