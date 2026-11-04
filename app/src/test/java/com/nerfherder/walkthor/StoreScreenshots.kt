@@ -1066,6 +1066,7 @@ class StoreScreenshots {
             snapshot = com.nerfherder.walkthor.ui.StatsSnapshot(
                 watts = 9.8f, charging = false, minutesLeft = 160, heatWord = "Normal", heatFraction = 0.35f,
                 batteryTempC = 34f, memFree = 3_100_000_000L, memTotal = 12_000_000_000L, cpuGhz = 2.84f,
+                cpuTempC = 62f, gpuTempC = 58f, fanPct = 40,
             ),
             fullChargeHours = 3.1f,
         )

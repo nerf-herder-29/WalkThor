@@ -86,10 +86,36 @@ data class StatsSnapshot(
     val memFree: Long,
     val memTotal: Long,
     val cpuGhz: Float?,
+    /** The hottest CPU and GPU sensors, °C, and how hard the fan is running, 0–100 %. */
+    val cpuTempC: Float? = null,
+    val gpuTempC: Float? = null,
+    val fanPct: Int? = null,
 )
 
 /** Reads the stats from Android. Nothing here needs special access. */
 object StatsReader {
+    // The chip's temperature sensors, by name: the CPU clusters ("cpuss-…", else the per-core
+    // "cpu-…" ones) and the GPU ("gpuss-…"). Found once; each reads in thousandths of a °C.
+    private val cpuZones by lazy { zonesNamed("cpuss-").ifEmpty { zonesNamed("cpu-") } }
+    private val gpuZones by lazy { zonesNamed("gpuss-") }
+
+    private fun zonesNamed(prefix: String): List<File> =
+        (File("/sys/class/thermal").listFiles() ?: emptyArray())
+            .filter { z -> z.name.startsWith("thermal_zone") && runCatching { File(z, "type").readText().trim().startsWith(prefix) }.getOrDefault(false) }
+
+    private fun hottest(zones: List<File>): Float? = zones.mapNotNull { z ->
+        runCatching { File(z, "temp").readText().trim().toLong() }.getOrNull()
+            ?.let { if (it > 1000) it / 1000f else it.toFloat() }?.takeIf { it in 1f..150f }
+    }.maxOrNull()
+
+    /** The Thor's fan: its drive now, from the PWM's duty over its period (both readable by any app). */
+    private const val FAN = "/sys/class/gpio5_pwm2"
+    private fun fanPercent(): Int? {
+        val duty = runCatching { File("$FAN/duty").readText().trim().toLong() }.getOrNull() ?: return null
+        val period = runCatching { File("$FAN/period").readText().trim().toLong() }.getOrNull()?.takeIf { it > 0 } ?: 50_000L
+        return (duty * 100 / period).takeIf { it in 0..100 }?.toInt()
+    }
+
     fun read(context: Context): StatsSnapshot {
         val bm = context.getSystemService(BatteryManager::class.java)
         val sticky = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -131,6 +157,9 @@ object StatsReader {
         }.maxOrNull()
 
         return StatsSnapshot(
+            cpuTempC = hottest(cpuZones),
+            gpuTempC = hottest(gpuZones),
+            fanPct = fanPercent(),
             watts = watts,
             charging = charging,
             minutesLeft = minutesLeft,
@@ -280,11 +309,18 @@ fun StatsScreen(
                             compact = compact,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
+                        // The CPU's temperature, with the GPU's and the fan under it, where the device
+                        // shows them; otherwise Android's heat level and the battery's temperature.
+                        val cpuT = s?.cpuTempC
                         StatTile(
                             "Heat",
-                            s?.heatWord ?: "—",
-                            "",
-                            s?.batteryTempC?.let { "battery %.0f°C".format(it) } ?: "",
+                            cpuT?.let { "%.0f".format(it) } ?: s?.heatWord ?: "—",
+                            if (cpuT != null) "°C CPU" else "",
+                            if (cpuT != null) listOfNotNull(
+                                s.gpuTempC?.let { "GPU %.0f°C".format(it) },
+                                s.fanPct?.let { if (it == 0) "fan off" else "fan $it%" },
+                            ).joinToString(" · ").ifEmpty { s.batteryTempC?.let { "battery %.0f°C".format(it) } ?: "" }
+                            else s?.batteryTempC?.let { "battery %.0f°C".format(it) } ?: "",
                             meter = s?.heatFraction,
                             compact = compact,
                             modifier = Modifier.weight(1f).fillMaxHeight(),

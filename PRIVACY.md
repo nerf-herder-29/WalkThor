@@ -63,8 +63,8 @@ scraper account and start a scrape (see below). Everything else stays on your de
 
 - **Stats.** The Stats tab counts how often the top screen changes (its frame rate) using the
   same screen capture as Mirror, with the same permission and the same rules: nothing is recorded,
-  saved or sent. It also reads the battery's power draw, the device's heat status, free memory and
-  CPU speed from Android. While a game is played with WalkThor open, it notes the power draw every
+  saved or sent. It also reads the battery's power draw, the device's heat status, the CPU and GPU
+  temperatures, the fan's speed, free memory and CPU speed from Android. While a game is played with WalkThor open, it notes the power draw every
   half minute to learn how long that game usually lasts on a charge; only that average is kept,
   on the device.
   The drawer's Home shows the temperature, free storage and memory the same way, and adds up
