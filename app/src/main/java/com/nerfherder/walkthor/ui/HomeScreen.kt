@@ -199,7 +199,7 @@ private fun DeviceChips(preview: Boolean) {
     var chips by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     LaunchedEffect(preview) {
         if (preview) {
-            chips = listOf("Temp" to "34°C", "Storage" to "212 GB free", "Memory" to "5.1 / 12 GB", "Played today" to "47m")
+            chips = listOf("CPU" to "62°C", "Storage" to "212 GB free", "Memory" to "5.1 / 12 GB", "Played today" to "47m")
             return@LaunchedEffect
         }
         while (true) {
@@ -207,7 +207,8 @@ private fun DeviceChips(preview: Boolean) {
                 val s = runCatching { StatsReader.read(context) }.getOrNull()
                 val gb = 1024.0 * 1024 * 1024
                 buildList {
-                    s?.batteryTempC?.let { add("Temp" to "${it.roundToInt()}°C") }
+                    // The CPU's temperature where the device shares it, else the battery's.
+                    (s?.cpuTempC?.let { "CPU" to it } ?: s?.batteryTempC?.let { "Temp" to it })?.let { (label, c) -> add(label to "${c.roundToInt()}°C") }
                     runCatching { android.os.StatFs(android.os.Environment.getDataDirectory().path).availableBytes }.getOrNull()
                         ?.let { add("Storage" to "${(it / gb).roundToInt()} GB free") }
                     if (s != null && s.memTotal > 0) {
