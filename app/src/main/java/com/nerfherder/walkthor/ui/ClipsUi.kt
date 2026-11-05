@@ -172,7 +172,7 @@ internal fun ClipControls(game: String, enabled: Boolean, narrow: Boolean, onSav
             }
         }
         if (!compact || error != null) Text(
-            error ?: "Saved to Movies/WalkThor. Lightest on game performance when you switch to another tab while it runs.",
+            error ?: "Saved to ${com.nerfherder.walkthor.data.SaveFolders.clips(context)}. Lightest on game performance when you switch to another tab while it runs.",
             color = if (error != null) Color(0xFFE0A15A) else BookColors.TextMuted,
             fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp),
         )

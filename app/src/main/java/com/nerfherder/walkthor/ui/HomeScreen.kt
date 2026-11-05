@@ -320,7 +320,7 @@ private fun Dials(roomy: Boolean, sliders: Boolean) {
         }
         if (sliders) {
             // The same three, as sliders.
-            Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
                 if (needsTop) {
                     SliderRow("Brightness", "Allow") {
                         Text(
@@ -341,7 +341,7 @@ private fun Dials(roomy: Boolean, sliders: Boolean) {
                 SliderRow("Volume", "${(volume * 100).roundToInt()}%") {
                     ThinSlider(volume, onDrag = { dragging = it }, onChange = { v -> volume = v; ScreenControls.setVolume(context, v) }, modifier = Modifier.fillMaxWidth())
                 }
-                if (lightsHere) SliderRow("Stick lights", if (color == 0) "off" else if (follow) "follow the screens" else "${(lights * 100).roundToInt()}%") {
+                if (lightsHere) SliderRow("Stick lights", if (color == 0) "off" else if (follow) "follow" else "${(lights * 100).roundToInt()}%") {
                     if (color != 0 && !follow) ThinSlider(lights, onDrag = {}, onChange = { v -> lights = v; StickLights.setLevel(context, v) }, modifier = Modifier.fillMaxWidth())
                 }
             }
@@ -392,16 +392,13 @@ private fun Dials(roomy: Boolean, sliders: Boolean) {
     }
 }
 
-/** A slider with its name and value above it. */
+/** A slider on one line: its name, the slider, and its value. */
 @Composable
 private fun SliderRow(label: String, value: String, content: @Composable () -> Unit) {
-    Column {
-        Row {
-            Text(label, color = BookColors.TextMuted, fontSize = 12.sp)
-            Spacer(Modifier.weight(1f))
-            Text(value, color = BookColors.Text, fontSize = 12.sp)
-        }
-        content()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = BookColors.TextMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.width(78.dp))
+        Box(Modifier.weight(1f)) { content() }
+        Text(value, color = BookColors.Text, fontSize = 12.sp, maxLines = 1, textAlign = TextAlign.End, modifier = Modifier.width(54.dp))
     }
 }
 
@@ -507,7 +504,7 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
         val rows = shown.chunked(cols)
         BoxWithConstraints(Modifier.fillMaxSize()) {
             // Only as many rows as fit in the room left (the rest are in All apps).
-            val fit = (maxHeight.value / 66f).toInt().coerceIn(1, 2)
+            val fit = (maxHeight.value / 66f).toInt().coerceIn(0, 2)
             val rows = rows.take(fit)
             val rowH = maxHeight / rows.size.coerceAtLeast(1)
             val icon = (rowH * 0.5f).coerceIn(42.dp, 58.dp)
@@ -574,7 +571,7 @@ enum class HomeSection(val label: String) {
 /** The stats Home can show (up to four). */
 enum class HomeStat(val label: String) {
     CPU("CPU temperature"), GPU("GPU temperature"), FAN("Fan"), STORAGE("Free storage"),
-    MEMORY("Memory"), PLAYED("Played today"), BATTERY("Battery temperature"), SPEED("CPU speed"),
+    MEMORY("Memory"), PLAYED("Played today"), BATTERY("Battery temp"), SPEED("CPU speed"),
 }
 
 /** How Home is laid out: which sections, in what order, which stats, and dials or sliders. */
