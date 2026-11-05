@@ -38,7 +38,6 @@ import kotlin.math.max
  * screen access, which ends when WalkThor is put away).
  */
 object Clips {
-    private const val FOLDER = "Movies/WalkThor"
     private const val PREFS = "clips"
     private const val SAMPLE_RATE = 48_000
     /** Longest "record from now" clip, so it can't fill the storage by being forgotten. */
@@ -463,7 +462,7 @@ object Clips {
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, "${prefix(game)} $stamp.mp4")
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, FOLDER)
+            put(MediaStore.Video.Media.RELATIVE_PATH, SaveFolders.clips(context))
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
         val r = context.contentResolver
@@ -497,8 +496,9 @@ object Clips {
             context.contentResolver.query(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.DURATION),
-                "${MediaStore.Video.Media.RELATIVE_PATH} LIKE ? AND ${MediaStore.Video.Media.DISPLAY_NAME} LIKE ?",
-                arrayOf("$FOLDER%", prefix(game) + " %"),
+                SaveFolders.clipFolders(context).joinToString(" OR ", "(", ")") { "${MediaStore.Video.Media.RELATIVE_PATH} LIKE ?" } +
+                    " AND ${MediaStore.Video.Media.DISPLAY_NAME} LIKE ?",
+                (SaveFolders.clipFolders(context).map { "$it%" } + (prefix(game) + " %")).toTypedArray(),
                 "${MediaStore.Video.Media.DATE_ADDED} DESC",
             )?.use { c ->
                 while (c.moveToNext()) {

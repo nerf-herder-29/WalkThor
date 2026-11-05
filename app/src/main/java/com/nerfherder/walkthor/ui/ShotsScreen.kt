@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -101,6 +102,9 @@ fun ShotsScreen(
     val keepingClips by com.nerfherder.walkthor.data.Clips.buffering.collectAsState()
     val recordingClip by com.nerfherder.walkthor.data.Clips.recording.collectAsState()
     var clipMode by remember { mutableStateOf(keepingClips || recordingClip || ShotsPrefs.clipMode(context)) }
+    // Plain buttons by default; the live view is there when you want to frame an area.
+    var showPreview by remember { mutableStateOf(ShotsPrefs.preview(context)) }
+    fun setPreview(on: Boolean) { showPreview = on; ShotsPrefs.setPreview(context, on) }
     // Screenshots and clips together, newest first.
     val items = remember(shots, clips) {
         (shots.map { it.takenAt to (it as Any) } + clips.map { it.takenAt to (it as Any) }).sortedByDescending { it.first }.map { it.second }
@@ -143,6 +147,16 @@ fun ShotsScreen(
             Build.VERSION.SDK_INT < 29 -> CenterNote("Screenshots and clips need Android 10 or newer.")
             onMainDisplay -> CenterNote("WalkThor is on the top screen, so a screenshot or clip would only show WalkThor. Move it to the bottom screen first.")
             projection == null && frame == null -> StartShots(error, onStartCapture)
+            !showPreview -> ShotButtons(
+                game = game, items = items, shotsCount = shots.size, clipsCount = clips.size, narrow = narrow,
+                ready = frame != null || projection != null, busy = busy, useArea = useArea, saved = saved,
+                recording = recordingClip,
+                onShot = ::take,
+                onArea = { on -> useArea = on; Shots.setUseArea(context, game, on); if (on) Shots.setArea(context, game, area) },
+                onPreview = { setPreview(true) },
+                onSaved = { saved = it },
+                onView = { item -> if (item is Shots.Shot) viewing = item else viewingClip = item as com.nerfherder.walkthor.data.Clips.Clip },
+            )
             else -> Row(
                 Modifier.fillMaxSize().padding(horizontal = if (narrow) 10.dp else 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (narrow) 10.dp else 16.dp),
@@ -208,11 +222,15 @@ fun ShotsScreen(
                             CaptureButton(enabled = frame != null && !busy, size = if (narrow) 48.dp else 60.dp, onClick = ::take)
                         }
                         Text(
-                            if (useArea) "Drag the frame over the part you want; it's kept for this game. Saved to Pictures/WalkThor."
-                            else "The whole top screen. Saved to Pictures/WalkThor.",
+                            if (useArea) "Drag the frame over the part you want; it's kept for this game."
+                            else "The whole top screen.",
                             color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp),
                         )
                     }
+                    Text(
+                        "Hide the live view", color = BookColors.TextMuted, fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).clickable { setPreview(false) }.padding(vertical = 4.dp),
+                    )
                 }
                 // ---- this game's screenshots ----
                 Column(Modifier.weight(if (narrow) 0.4f else 0.38f).fillMaxHeight()) {
@@ -266,11 +284,140 @@ private fun WholeScreen(img: ImageBitmap) {
     }
 }
 
-/** Remembers whether the Shots tab was last on Screenshot or Clip. */
+/** Remembers whether the Shots tab was last on Screenshot or Clip, and whether it shows the live view. */
 internal object ShotsPrefs {
     private fun prefs(c: android.content.Context) = c.getSharedPreferences("shots", android.content.Context.MODE_PRIVATE)
     fun clipMode(c: android.content.Context) = prefs(c).getBoolean("clipMode", false)
     fun setClipMode(c: android.content.Context, on: Boolean) = prefs(c).edit().putBoolean("clipMode", on).apply()
+    fun preview(c: android.content.Context) = prefs(c).getBoolean("preview", false)
+    fun setPreview(c: android.content.Context, on: Boolean) = prefs(c).edit().putBoolean("preview", on).apply()
+}
+
+/**
+ * The Shots tab without the live view: a screenshot button, the clip controls, where they're
+ * saved (and a way to change it), and this game's screenshots and clips beside them.
+ */
+@Composable
+private fun ShotButtons(
+    game: String, items: List<Any>, shotsCount: Int, clipsCount: Int, narrow: Boolean,
+    ready: Boolean, busy: Boolean, useArea: Boolean, saved: String?, recording: Boolean,
+    onShot: () -> Unit, onArea: (Boolean) -> Unit, onPreview: () -> Unit, onSaved: (String) -> Unit, onView: (Any) -> Unit,
+) {
+    val context = LocalContext.current
+    Row(
+        Modifier.fillMaxSize().padding(horizontal = if (narrow) 10.dp else 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (narrow) 10.dp else 16.dp),
+    ) {
+        Column(Modifier.weight(0.6f).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+            // ---- screenshot ----
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(BookColors.Surface)
+                    .border(1.dp, BookColors.Hairline, RoundedCornerShape(14.dp)).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CaptureButton(enabled = ready && !busy, size = if (narrow) 52.dp else 62.dp, onClick = onShot)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Screenshot", color = BookColors.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        saved ?: if (useArea) "The area you framed for this game" else "The whole top screen",
+                        color = if (saved != null) BookColors.Text else BookColors.TextMuted, fontSize = 12.sp,
+                    )
+                    Row(Modifier.padding(top = 8.dp)) {
+                        ModeChip("Whole screen", !useArea) { onArea(false) }
+                        Spacer(Modifier.width(8.dp))
+                        ModeChip("Area", useArea) { onArea(true) }
+                    }
+                }
+            }
+            // ---- clips ----
+            Column(
+                Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(14.dp)).background(BookColors.Surface)
+                    .border(1.dp, BookColors.Hairline, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Clip", color = BookColors.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    if (recording) {
+                        Box(Modifier.size(8.dp).background(RecRed, CircleShape))
+                        Spacer(Modifier.width(6.dp))
+                        Text("REC", color = BookColors.Text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                ClipControls(game, enabled = ready || com.nerfherder.walkthor.data.Clips.demoReady, narrow = narrow, onSaved = onSaved)
+            }
+            // ---- where they go ----
+            SaveFolderRows(Modifier.padding(top = 10.dp))
+            Text(
+                "Show the live view (to frame an area)", color = BookColors.TextMuted, fontSize = 12.sp,
+                modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).clickable(onClick = onPreview).padding(vertical = 4.dp),
+            )
+        }
+        // ---- this game's screenshots and clips ----
+        Column(Modifier.weight(0.4f).fillMaxHeight()) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Text("This game", color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text(
+                    listOfNotNull(
+                        "$shotsCount shot${if (shotsCount == 1) "" else "s"}",
+                        clipsCount.takeIf { it > 0 }?.let { "$it clip${if (it == 1) "" else "s"}" },
+                    ).joinToString(" · "),
+                    color = BookColors.TextMuted, fontSize = 12.sp,
+                )
+            }
+            if (items.isEmpty()) {
+                Text("Your screenshots and clips of this game appear here.", color = BookColors.TextMuted.copy(alpha = 0.7f), fontSize = 12.sp)
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (narrow) 1 else 2),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 12.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(items, key = { (if (it is Shots.Shot) it.uri else (it as com.nerfherder.walkthor.data.Clips.Clip).uri).toString() }) { item ->
+                    when (item) {
+                        is Shots.Shot -> ShotThumb(item) { onView(item) }
+                        is com.nerfherder.walkthor.data.Clips.Clip -> ClipThumb(item) { onView(item) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Where screenshots and clips are saved, each with Change (Android's folder picker). */
+@Composable
+internal fun SaveFolderRows(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var shots by remember { mutableStateOf(com.nerfherder.walkthor.data.SaveFolders.shots(context)) }
+    var clips by remember { mutableStateOf(com.nerfherder.walkthor.data.SaveFolders.clips(context)) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    var picking by remember { mutableStateOf("shots") }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val path = com.nerfherder.walkthor.data.SaveFolders.pathOf(uri)
+        val ok = path != null && if (picking == "shots") com.nerfherder.walkthor.data.SaveFolders.setShots(context, path)
+        else com.nerfherder.walkthor.data.SaveFolders.setClips(context, path)
+        problem = if (ok) null else if (picking == "shots") "Screenshots can go in a folder inside Pictures or DCIM." else "Clips can go in a folder inside Movies or DCIM."
+        shots = com.nerfherder.walkthor.data.SaveFolders.shots(context)
+        clips = com.nerfherder.walkthor.data.SaveFolders.clips(context)
+    }
+    Column(modifier) {
+        listOf("shots" to ("Screenshots" to shots), "clips" to ("Clips" to clips)).forEach { (kind, pair) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(pair.first, color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.width(84.dp))
+                Text(pair.second, color = BookColors.Text, fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Text(
+                    "Change", color = BookColors.Text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { picking = kind; runCatching { picker.launch(null) } }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+        problem?.let { Text(it, color = Color(0xFFE0675A), fontSize = 12.sp) }
+    }
 }
 
 @Composable

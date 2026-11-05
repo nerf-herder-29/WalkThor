@@ -466,6 +466,32 @@ class StoreScreenshots {
     }
 
     @Test
+    fun drawerHomeSliders() {
+        com.nerfherder.walkthor.StickLights.demo = true
+        val ui = com.nerfherder.walkthor.ui.HomePrefs
+        ui.save(app, ui.DEFAULT.copy(sliders = true, shown = com.nerfherder.walkthor.ui.HomeSection.entries.toSet()))
+        val apps = fakeApps().take(12)
+        content {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalInspectionMode provides true) {
+                com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = apps, previewTime = "7:42" to "Tuesday, Nov 3")
+            }
+        }
+        settle()
+        shot("check-drawer-home-sliders")
+        ui.save(app, ui.DEFAULT)
+        com.nerfherder.walkthor.StickLights.demo = false
+    }
+
+    @Test
+    fun drawerHomeEditor() {
+        content {
+            com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = fakeApps().take(6), previewTime = "7:42" to "Tuesday, Nov 3", startEditing = true)
+        }
+        settle()
+        shot("check-drawer-home-editor")
+    }
+
+    @Test
     fun drawerHomeFewApps() {
         com.nerfherder.walkthor.StickLights.demo = true
         val apps = fakeApps().take(5)

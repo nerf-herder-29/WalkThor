@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -76,8 +77,17 @@ fun HomeScreen(
     /** Fixed apps, time and battery, for screenshots. */
     previewApps: List<InstalledApp>? = null,
     previewTime: Pair<String, String>? = null,
+    /** Opens on Edit Home (for screenshots). */
+    startEditing: Boolean = false,
 ) {
     var allApps by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(startEditing) }
+    val context = LocalContext.current
+    val config by HomePrefs.config(context).collectAsState()
+    if (editing) {
+        HomeEditor(config, onDone = { next -> if (next != null) HomePrefs.save(context, next); editing = false })
+        return
+    }
     if (allApps) {
         // Every app, to pin the ones you want here (press and hold an app).
         AppsScreen(
@@ -108,16 +118,27 @@ fun HomeScreen(
                 // With six pinned apps or fewer they fit in one row, and the clock and dials get the
                 // room the second row would have taken.
                 val pinned by AppCatalog.pinned.collectAsState()
-                val roomy = (previewApps?.size ?: pinned.size) <= 6
+                val shown = config.order.filter { it in config.shown }
+                val roomy = (previewApps?.size ?: pinned.size) <= 6 && HomeSection.DEVICE !in shown
                 ClockRow(previewTime, roomy)
-                Spacer(Modifier.height(10.dp))
-                Dials(roomy)
-                Spacer(Modifier.height(8.dp))
-                Apps(Modifier.weight(1f), previewApps, onOpenApp)
+                // The sections you chose (Edit Home), in your order; apps take the room that's left.
+                shown.forEach { sec ->
+                    when (sec) {
+                        HomeSection.STATS -> DeviceChips(previewTime != null, config.stats)
+                        HomeSection.LEVELS -> { Spacer(Modifier.height(10.dp)); Dials(roomy, config.sliders) }
+                        HomeSection.DEVICE -> DeviceControls(compact = true, modifier = Modifier.padding(top = 10.dp))
+                        HomeSection.APPS -> { Spacer(Modifier.height(8.dp)); Apps(Modifier.weight(1f), previewApps, onOpenApp) }
+                    }
+                }
+                if (HomeSection.APPS !in shown) Spacer(Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "All apps  ›", color = BookColors.TextMuted, fontSize = 13.sp,
                         modifier = Modifier.clip(RoundedCornerShape(50)).clickable { allApps = true }.padding(horizontal = 4.dp, vertical = 6.dp),
+                    )
+                    Text(
+                        "Edit Home", color = BookColors.TextMuted, fontSize = 13.sp,
+                        modifier = Modifier.padding(start = 10.dp).clip(RoundedCornerShape(50)).clickable { editing = true }.padding(horizontal = 4.dp, vertical = 6.dp),
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
@@ -187,39 +208,48 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
             }
         }
     }
-    // The device stats, in a row as wide as the dials below.
-    DeviceChips(preview != null)
     }
 }
 
-/** Temperature, free storage, memory in use and time played today, refreshed every few seconds. */
+/** The stats you chose for Home (up to four), refreshed every few seconds. */
 @Composable
-private fun DeviceChips(preview: Boolean) {
+private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
     val context = LocalContext.current
     var chips by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-    LaunchedEffect(preview) {
+    LaunchedEffect(preview, which) {
         if (preview) {
-            chips = listOf("CPU" to "62°C", "Storage" to "212 GB free", "Memory" to "5.1 / 12 GB", "Played today" to "47m")
+            val sample = mapOf(
+                HomeStat.CPU to ("CPU" to "62°C"), HomeStat.GPU to ("GPU" to "58°C"), HomeStat.FAN to ("Fan" to "40%"),
+                HomeStat.STORAGE to ("Storage" to "212 GB free"), HomeStat.MEMORY to ("Memory" to "5.1 / 12 GB"),
+                HomeStat.PLAYED to ("Played today" to "47m"), HomeStat.BATTERY to ("Battery" to "34°C"), HomeStat.SPEED to ("CPU" to "2.84 GHz"),
+            )
+            chips = which.mapNotNull { sample[it] }
             return@LaunchedEffect
         }
         while (true) {
             chips = withContext(Dispatchers.IO) {
                 val s = runCatching { StatsReader.read(context) }.getOrNull()
                 val gb = 1024.0 * 1024 * 1024
-                buildList {
-                    // The CPU's temperature where the device shares it, else the battery's.
-                    (s?.cpuTempC?.let { "CPU" to it } ?: s?.batteryTempC?.let { "Temp" to it })?.let { (label, c) -> add(label to "${c.roundToInt()}°C") }
-                    runCatching { android.os.StatFs(android.os.Environment.getDataDirectory().path).availableBytes }.getOrNull()
-                        ?.let { add("Storage" to "${(it / gb).roundToInt()} GB free") }
-                    if (s != null && s.memTotal > 0) {
-                        add("Memory" to "%.1f / %d GB".format(java.util.Locale.US, (s.memTotal - s.memFree) / gb, Math.ceil(s.memTotal / gb).toInt()))
+                which.mapNotNull { stat ->
+                    when (stat) {
+                        HomeStat.CPU -> s?.cpuTempC?.let { "CPU" to "${it.roundToInt()}°C" }
+                        HomeStat.GPU -> s?.gpuTempC?.let { "GPU" to "${it.roundToInt()}°C" }
+                        HomeStat.FAN -> s?.fanPct?.let { "Fan" to if (it == 0) "off" else "$it%" }
+                        HomeStat.STORAGE -> runCatching { android.os.StatFs(android.os.Environment.getDataDirectory().path).availableBytes }.getOrNull()
+                            ?.let { "Storage" to "${(it / gb).roundToInt()} GB free" }
+                        HomeStat.MEMORY -> s?.takeIf { it.memTotal > 0 }?.let {
+                            "Memory" to "%.1f / %d GB".format(java.util.Locale.US, (it.memTotal - it.memFree) / gb, Math.ceil(it.memTotal / gb).toInt())
+                        }
+                        HomeStat.PLAYED -> "Played today" to hoursMinutes(com.nerfherder.walkthor.PlayToday.minutes(context))
+                        HomeStat.BATTERY -> s?.batteryTempC?.let { "Battery" to "${it.roundToInt()}°C" }
+                        HomeStat.SPEED -> s?.cpuGhz?.let { "CPU" to "%.2f GHz".format(it) }
                     }
-                    add("Played today" to hoursMinutes(com.nerfherder.walkthor.PlayToday.minutes(context)))
                 }
             }
             delay(5_000)
         }
     }
+    if (chips.isEmpty()) return
     Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         chips.forEach { (label, value) ->
             Row(
@@ -236,7 +266,7 @@ private fun DeviceChips(preview: Boolean) {
 
 /** Brightness (top, bottom or both), volume and the stick lights, as three dials. */
 @Composable
-private fun Dials(roomy: Boolean) {
+private fun Dials(roomy: Boolean, sliders: Boolean) {
     val context = LocalContext.current
     val lightsHere = remember { StickLights.available() }
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
@@ -288,7 +318,34 @@ private fun Dials(roomy: Boolean) {
                 )
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceAround) {
+        if (sliders) {
+            // The same three, as sliders.
+            Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (needsTop) {
+                    SliderRow("Brightness", "Allow") {
+                        Text(
+                            "Tap to let WalkThor change the brightness", color = BookColors.Text, fontSize = 13.sp,
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { ScreenControls.askTop(context) }.padding(vertical = 6.dp),
+                        )
+                    }
+                } else SliderRow("Brightness", "${(shown * 100).roundToInt()}%") {
+                    ThinSlider(shown, onDrag = { dragging = it }, onChange = { v ->
+                        when (target) {
+                            ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
+                            ScreenControls.Target.BOTTOM -> { bottom = v; ScreenControls.setBottom(context, v) }
+                            ScreenControls.Target.BOTH -> { top = v; bottom = v; ScreenControls.setTop(context, v); ScreenControls.setBottom(context, v) }
+                        }
+                        if (follow && target != ScreenControls.Target.BOTTOM) lights = v
+                    }, modifier = Modifier.fillMaxWidth())
+                }
+                SliderRow("Volume", "${(volume * 100).roundToInt()}%") {
+                    ThinSlider(volume, onDrag = { dragging = it }, onChange = { v -> volume = v; ScreenControls.setVolume(context, v) }, modifier = Modifier.fillMaxWidth())
+                }
+                if (lightsHere) SliderRow("Stick lights", if (color == 0) "off" else if (follow) "follow the screens" else "${(lights * 100).roundToInt()}%") {
+                    if (color != 0 && !follow) ThinSlider(lights, onDrag = {}, onChange = { v -> lights = v; StickLights.setLevel(context, v) }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        } else Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceAround) {
             Dial(
                 if (needsTop) null else shown, "Brightness", BookColors.Text, icon = { SunIcon() },
                 onTapWhenOff = { ScreenControls.askTop(context) }, offText = "Allow", onDrag = { dragging = it }, big = roomy,
@@ -332,6 +389,19 @@ private fun Dials(roomy: Boolean) {
                 }
             }
         }
+    }
+}
+
+/** A slider with its name and value above it. */
+@Composable
+private fun SliderRow(label: String, value: String, content: @Composable () -> Unit) {
+    Column {
+        Row {
+            Text(label, color = BookColors.TextMuted, fontSize = 12.sp)
+            Spacer(Modifier.weight(1f))
+            Text(value, color = BookColors.Text, fontSize = 12.sp)
+        }
+        content()
     }
 }
 
@@ -436,6 +506,9 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
         val cols = 6
         val rows = shown.chunked(cols)
         BoxWithConstraints(Modifier.fillMaxSize()) {
+            // Only as many rows as fit in the room left (the rest are in All apps).
+            val fit = (maxHeight.value / 66f).toInt().coerceIn(1, 2)
+            val rows = rows.take(fit)
             val rowH = maxHeight / rows.size.coerceAtLeast(1)
             val icon = (rowH * 0.5f).coerceIn(42.dp, 58.dp)
             val label = (11f + (icon.value - 42f) / 34f * 4f).coerceIn(12f, 16f).sp
@@ -491,4 +564,163 @@ fun openFromHome(context: Context, pkg: String, drawerDisplay: Int?): Boolean {
     return runCatching { context.startActivity(launch, options) }
         .onFailure { Toast.makeText(context, "Couldn't open that app", Toast.LENGTH_SHORT).show() }
         .isSuccess
+}
+
+/** The parts of Home under the clock that can be shown, hidden and moved. */
+enum class HomeSection(val label: String) {
+    STATS("Device stats"), LEVELS("Light & Sound"), DEVICE("Performance, fan and buttons"), APPS("Apps"),
+}
+
+/** The stats Home can show (up to four). */
+enum class HomeStat(val label: String) {
+    CPU("CPU temperature"), GPU("GPU temperature"), FAN("Fan"), STORAGE("Free storage"),
+    MEMORY("Memory"), PLAYED("Played today"), BATTERY("Battery temperature"), SPEED("CPU speed"),
+}
+
+/** How Home is laid out: which sections, in what order, which stats, and dials or sliders. */
+data class HomeConfig(
+    val order: List<HomeSection>,
+    val shown: Set<HomeSection>,
+    val stats: List<HomeStat>,
+    val sliders: Boolean,
+)
+
+object HomePrefs {
+    val DEFAULT = HomeConfig(
+        order = listOf(HomeSection.STATS, HomeSection.LEVELS, HomeSection.DEVICE, HomeSection.APPS),
+        shown = setOf(HomeSection.STATS, HomeSection.LEVELS, HomeSection.APPS),
+        stats = listOf(HomeStat.CPU, HomeStat.STORAGE, HomeStat.MEMORY, HomeStat.PLAYED),
+        sliders = false,
+    )
+    private var flow: kotlinx.coroutines.flow.MutableStateFlow<HomeConfig>? = null
+    private fun prefs(c: Context) = c.getSharedPreferences("home", Context.MODE_PRIVATE)
+
+    fun config(c: Context): kotlinx.coroutines.flow.StateFlow<HomeConfig> = flow ?: kotlinx.coroutines.flow.MutableStateFlow(load(c)).also { flow = it }
+
+    private fun load(c: Context): HomeConfig {
+        val p = prefs(c)
+        val order = p.getString("order", null)?.split(',')?.mapNotNull { n -> HomeSection.entries.firstOrNull { it.name == n } }?.distinct()
+        val shown = p.getString("shown", null)?.split(',')?.mapNotNull { n -> HomeSection.entries.firstOrNull { it.name == n } }?.toSet()
+        val stats = p.getString("stats", null)?.split(',')?.mapNotNull { n -> HomeStat.entries.firstOrNull { it.name == n } }?.distinct()
+        return HomeConfig(
+            // Sections added later go at the end of a saved order.
+            order = (order ?: DEFAULT.order).let { o -> o + HomeSection.entries.filter { it !in o } },
+            shown = shown ?: DEFAULT.shown,
+            stats = stats?.take(4) ?: DEFAULT.stats,
+            sliders = p.getBoolean("sliders", DEFAULT.sliders),
+        )
+    }
+
+    fun save(c: Context, cfg: HomeConfig) {
+        prefs(c).edit()
+            .putString("order", cfg.order.joinToString(",") { it.name })
+            .putString("shown", cfg.shown.joinToString(",") { it.name })
+            .putString("stats", cfg.stats.take(4).joinToString(",") { it.name })
+            .putBoolean("sliders", cfg.sliders)
+            .apply()
+        (flow ?: kotlinx.coroutines.flow.MutableStateFlow(cfg).also { flow = it }).value = cfg
+    }
+}
+
+/** Edit Home: show, hide and reorder its sections, pick its stats, and dials or sliders. */
+@Composable
+private fun HomeEditor(start: HomeConfig, onDone: (HomeConfig?) -> Unit) {
+    var cfg by remember { mutableStateOf(start) }
+    Column(Modifier.fillMaxSize().background(Color.Black).padding(horizontal = 20.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Edit Home", fontFamily = DisplayFont, fontSize = 24.sp, color = BookColors.Text, modifier = Modifier.weight(1f))
+            Text(
+                "Reset", color = BookColors.TextMuted, fontSize = 14.sp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { cfg = HomePrefs.DEFAULT }.padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+            Text(
+                "Cancel", color = BookColors.TextMuted, fontSize = 14.sp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onDone(null) }.padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+            Text(
+                "Done", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(50)).background(BookColors.Text)
+                    .clickable { onDone(cfg) }.padding(horizontal = 16.dp, vertical = 7.dp),
+            )
+        }
+        Row(Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            // ---- sections: on/off and order (the clock always stays on top) ----
+            Column(Modifier.weight(1f)) {
+                Text("Sections, top to bottom", color = BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Text("Under the clock. Apps fill the room that's left.", color = BookColors.TextMuted, fontSize = 12.sp)
+                Spacer(Modifier.height(8.dp))
+                cfg.order.forEachIndexed { i, sec ->
+                    val on = sec in cfg.shown
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF121014)).border(1.dp, Color(0xFF221F23), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Switch(
+                            checked = on,
+                            onCheckedChange = { v -> cfg = cfg.copy(shown = if (v) cfg.shown + sec else cfg.shown - sec) },
+                            colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = BookColors.Text, checkedThumbColor = Color.Black),
+                        )
+                        Text(sec.label, color = if (on) BookColors.Text else BookColors.TextMuted, fontSize = 15.sp, modifier = Modifier.padding(start = 10.dp).weight(1f))
+                        MoveButton("↑", enabled = i > 0) {
+                            cfg = cfg.copy(order = cfg.order.toMutableList().also { it[i] = it[i - 1]; it[i - 1] = sec })
+                        }
+                        MoveButton("↓", enabled = i < cfg.order.lastIndex) {
+                            cfg = cfg.copy(order = cfg.order.toMutableList().also { it[i] = it[i + 1]; it[i + 1] = sec })
+                        }
+                    }
+                }
+            }
+            // ---- stats and controls ----
+            Column(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                Text("Stats (up to four)", color = BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                HomeStat.entries.chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        pair.forEach { st ->
+                            val on = st in cfg.stats
+                            val can = on || cfg.stats.size < 4
+                            Text(
+                                st.label, fontSize = 13.sp, maxLines = 1, textAlign = TextAlign.Center,
+                                fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (on) Color.Black else if (can) BookColors.Text else BookColors.TextMuted,
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
+                                    .background(if (on) BookColors.Text else Color(0xFF16131A))
+                                    .clickable(enabled = can) { cfg = cfg.copy(stats = if (on) cfg.stats - st else cfg.stats + st) }
+                                    .padding(vertical = 8.dp),
+                            )
+                        }
+                    }
+                }
+                Text("Brightness, volume and stick lights", color = BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 10.dp))
+                Row(
+                    Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.07f)).padding(3.dp),
+                ) {
+                    listOf(false to "Dials", true to "Sliders").forEach { (v, label) ->
+                        val on = cfg.sliders == v
+                        Text(
+                            label, fontSize = 13.sp, textAlign = TextAlign.Center,
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (on) Color.Black else BookColors.Text,
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
+                                .background(if (on) BookColors.Text else Color.Transparent)
+                                .clickable { cfg = cfg.copy(sliders = v) }.padding(vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoveButton(arrow: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(34.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(arrow, color = if (enabled) BookColors.Text else BookColors.TextMuted.copy(alpha = 0.4f), fontSize = 18.sp)
+    }
 }

@@ -34,7 +34,6 @@ import kotlin.math.roundToInt
  * the button; nothing is sent anywhere.
  */
 object Shots {
-    private const val FOLDER = "Pictures/WalkThor"
     private const val PREFS = "shots"
 
     /** One saved screenshot. */
@@ -136,7 +135,7 @@ object Shots {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, FOLDER)
+            put(MediaStore.Images.Media.RELATIVE_PATH, SaveFolders.shots(context))
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return null
@@ -157,8 +156,9 @@ object Shots {
             context.contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_ADDED),
-                "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? AND ${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?",
-                arrayOf("$FOLDER%", "$start%"),
+                SaveFolders.shotFolders(context).joinToString(" OR ", "(", ")") { "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?" } +
+                    " AND ${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?",
+                (SaveFolders.shotFolders(context).map { "$it%" } + "$start%").toTypedArray(),
                 "${MediaStore.Images.Media.DATE_ADDED} DESC",
             )?.use { c ->
                 while (c.moveToNext()) {

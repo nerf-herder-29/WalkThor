@@ -86,6 +86,8 @@ scraper account and start a scrape (see below). Everything else stays on your de
   that drive them (no special access needed); once you've set them, WalkThor also sets AYN's own stick-light settings (on/off, colour and brightness) to match, through the same system helper, so AYN shows your lights after the screen wakes. A stick lights log (in About, Diagnostics) notes those changes, changes to AYN's stick-light settings and when the screen turns off and on; it's kept in memory only and shared only if you press Share log. To find AYN's brightness setting, WalkThor looks at the names of
   Android's system settings; it reads the top screen's frame rate from the display driver. Nothing is
   stored except the levels you chose, and nothing is sent.
+  The Controls tab (and Home, if you add it) sets the performance mode, fan mode and
+  controller layout through the same system helper, only when you pick one.
 
 - **The drawer, only if you switch it on.** With *Open as a drawer* on (Settings → General), the
   accessibility service draws WalkThor's own screens over the bottom screen instead of WalkThor

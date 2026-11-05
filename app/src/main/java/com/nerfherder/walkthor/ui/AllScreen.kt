@@ -321,35 +321,37 @@ private fun ShotsPanel(game: LaunchedGame, frame: ImageBitmap?, still: Boolean) 
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(note) { if (note != null) { kotlinx.coroutines.delay(2_000); note = null } }
-    Box(Modifier.fillMaxSize()) {
-        when {
-            frame != null -> MirrorView(frame, listOf(area ?: floatArrayOf(0f, 0f, 1f, 1f)))
-            projection == null && !still -> Note("Tap to start Shots")
-            else -> Note("Starting…")
+    val keeping by com.nerfherder.walkthor.data.Clips.buffering.collectAsState()
+    val ready = frame != null || projection != null || still
+    fun shoot() {
+        busy = true
+        val copy = frame?.let { f -> runCatching { f.asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false) }.getOrNull() }
+        scope.launch {
+            val shot = runCatching {
+                com.nerfherder.walkthor.data.Shots.take(context, Mirror.projection.value, copy, game.title, area)
+            }.getOrNull()
+            note = if (shot != null) "Screenshot saved" else "Couldn't save"
+            busy = false
         }
-        if (frame != null || still) {
-            Box(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .size(44.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .border(3.dp, BookColors.Text, androidx.compose.foundation.shape.CircleShape)
-                    .clickable(enabled = !busy && frame != null) {
-                        busy = true
-                        val copy = frame?.let { f -> runCatching { f.asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false) }.getOrNull() }
-                        scope.launch {
-                            val shot = runCatching {
-                                com.nerfherder.walkthor.data.Shots.take(context, Mirror.projection.value, copy, game.title, area)
-                            }.getOrNull()
-                            note = if (shot != null) "Saved" else "Couldn't save"
-                            busy = false
-                        }
-                    }
-                    .padding(5.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(BookColors.Text),
-            )
+    }
+    fun saveClip() {
+        busy = true
+        scope.launch {
+            val secs = com.nerfherder.walkthor.data.Clips.seconds(context)
+            val uri = runCatching { com.nerfherder.walkthor.data.Clips.saveLast(context, game.title, secs) }.getOrNull()
+            note = if (uri != null) "Clip saved" else "Couldn't save the clip"
+            busy = false
+        }
+    }
+    // Two plain buttons: a screenshot, and the last few seconds as a clip (once clips are being kept).
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (!ready) Note("Tap to start Shots")
+        else Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PanelButton("Screenshot", enabled = !busy, modifier = Modifier.weight(1f)) { shoot() }
+            PanelButton(
+                if (keeping) "Save last ${com.nerfherder.walkthor.data.Clips.seconds(context)} s" else "Clips: open Shots",
+                enabled = !busy && keeping, modifier = Modifier.weight(1f), red = keeping,
+            ) { saveClip() }
         }
         note?.let {
             Text(
@@ -358,6 +360,20 @@ private fun ShotsPanel(game: LaunchedGame, frame: ImageBitmap?, still: Boolean) 
                     .background(Color(0xEE0D0D10), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 3.dp),
             )
         }
+    }
+}
+
+/** A big plain button for a panel. */
+@Composable
+private fun PanelButton(label: String, enabled: Boolean, modifier: Modifier, red: Boolean = false, onClick: () -> Unit) {
+    Box(
+        modifier.height(54.dp).clip(RoundedCornerShape(14.dp))
+            .background(if (enabled) (if (red) Color(0xFF3A1714) else BookColors.SurfaceHigh) else Color.White.copy(alpha = 0.04f))
+            .border(1.dp, if (enabled) (if (red) Color(0xFFE0483C) else BookColors.ButtonEdge) else BookColors.Hairline, RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = if (enabled) BookColors.Text else BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
