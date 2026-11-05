@@ -146,7 +146,9 @@ fun AllScreen(
         topBar?.invoke()
         // The panels, in your order: press and hold one and drag it onto another to swap them.
         val order by AllLayout.panels(context).collectAsState()
-        val shape by AllLayout.shape(context).collectAsState()
+        val savedShape by AllLayout.shape(context).collectAsState()
+        // A shape always has a space for each panel.
+        val shape = if (savedShape.slots.size == order.size) savedShape else PanelShape.forCount(order.size)
         val choosing by AllLayout.choosing.collectAsState()
         if (choosing) ArrangePanelsDialog(shape, order, onDone = { picked ->
             AllLayout.choosing.value = false
@@ -481,12 +483,21 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
             }
         }
     }
-    // The same diagram as the Controls tab, with the performance, fan and button layout under it.
-    Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 4.dp)) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            FaceDiagram(style, faceCodes, if (agreed || still) pressed else emptySet(), null)
+    // The same diagram as the Controls tab, with the performance, fan and button layout beside it
+    // (a wide panel) or under it (a tall one).
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
+        val shown = if (agreed || still) pressed else emptySet()
+        if (maxWidth > maxHeight * 1.15f) {
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(0.55f).fillMaxHeight()) { FaceDiagram(style, faceCodes, shown, null) }
+                DeviceControls(compact = true, vertical = true, modifier = Modifier.weight(0.45f).padding(start = 6.dp))
+            }
+        } else {
+            Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f).fillMaxWidth()) { FaceDiagram(style, faceCodes, shown, null) }
+                DeviceControls(compact = true, small = true, modifier = Modifier.padding(top = 4.dp))
+            }
         }
-        DeviceControls(compact = true, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

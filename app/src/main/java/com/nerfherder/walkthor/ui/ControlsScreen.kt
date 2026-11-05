@@ -138,7 +138,9 @@ fun ControlsScreen(
                 while (true) { kotlinx.coroutines.delay(1_000); layout.value = com.nerfherder.walkthor.DeviceModes.layout(context) }
             }
             val codes = remember(layout.value) { ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) } }
-            Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            // Laid out for a 620 dp wide screen and scaled to this one, so it never crowds.
+            ScaledToFit(620f, 440f, Modifier.weight(1f).fillMaxWidth()) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                 Column(Modifier.weight(0.46f).fillMaxHeight().verticalScroll(rememberScrollState())) {
                     Text("This handheld", style = EyebrowStyle, modifier = Modifier.padding(bottom = 10.dp))
                     DeviceControls(compact = false)
@@ -173,6 +175,7 @@ fun ControlsScreen(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     )
                 }
+            }
             }
         }
     }

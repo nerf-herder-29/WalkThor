@@ -26,11 +26,14 @@ object DeviceModes {
     fun fan(c: Context): Fan? = int(c, "fan_mode", 4).let { v -> Fan.entries.firstOrNull { it.value == v } }
     fun layout(c: Context): Layout = if (int(c, "temp_abxy_layout_mode", 1) == 0) Layout.XBOX else Layout.NINTENDO
 
+    /** For screenshots: show the controls as if the helper were there. */
+    @Volatile var demo = false
+
     /** Whether these can be changed here: the Thor's system helper is reachable (checked before, or now off the main thread). */
-    fun canChange(): Boolean = AynSystem.knownAvailable() == true
+    fun canChange(): Boolean = demo || AynSystem.knownAvailable() == true
 
     /** Checks the helper (not on the main thread). */
-    fun check(): Boolean = AynSystem.available()
+    fun check(): Boolean = demo || AynSystem.available()
 
     fun setPerformance(m: Performance, done: (Boolean) -> Unit = {}) = worker.execute { done(AynSystem.setPerformance(m.value)) }
 

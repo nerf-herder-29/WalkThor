@@ -40,7 +40,7 @@ private class ModesState(val perf: DeviceModes.Performance, val fan: DeviceModes
  * short note where the Thor's system helper can't be reached.
  */
 @Composable
-fun DeviceControls(compact: Boolean, modifier: Modifier = Modifier) {
+fun DeviceControls(compact: Boolean, modifier: Modifier = Modifier, vertical: Boolean = false, small: Boolean = false) {
     val context = LocalContext.current
     val preview = LocalInspectionMode.current
     var helper by remember { mutableStateOf(if (preview) true else DeviceModes.canChange().takeIf { it }) }
@@ -68,18 +68,29 @@ fun DeviceControls(compact: Boolean, modifier: Modifier = Modifier) {
     val setLayout = { l: DeviceModes.Layout -> state = ModesState(state.perf, state.fan, l); DeviceModes.setLayout(l) { pending++ } }
 
     if (compact) {
+        val perfTap = {
+            val all = DeviceModes.Performance.entries
+            setPerf(all[(all.indexOf(state.perf) + 1) % all.size])
+        }
+        val fanTap = {
+            val all = DeviceModes.Fan.entries
+            setFan(all[((state.fan?.let { all.indexOf(it) } ?: -1) + 1) % all.size])
+        }
+        val layoutTap = { setLayout(if (state.layout == DeviceModes.Layout.XBOX) DeviceModes.Layout.NINTENDO else DeviceModes.Layout.XBOX) }
+        val layoutText = if (state.layout == DeviceModes.Layout.XBOX) "A at bottom" else "A on right"
+        if (vertical) {
+            // Stacked, for beside the face buttons in a Multi panel.
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                CyclePill("Performance", state.perf.label, Modifier.fillMaxWidth(), small = true, onTap = perfTap)
+                CyclePill("Fan", state.fan?.label ?: "Custom", Modifier.fillMaxWidth(), small = true, onTap = fanTap)
+                CyclePill("Buttons", layoutText, Modifier.fillMaxWidth(), small = true, onTap = layoutTap)
+            }
+            return
+        }
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            CyclePill("Performance", state.perf.label, Modifier.weight(1f)) {
-                val all = DeviceModes.Performance.entries
-                setPerf(all[(all.indexOf(state.perf) + 1) % all.size])
-            }
-            CyclePill("Fan", state.fan?.label ?: "Custom", Modifier.weight(1f)) {
-                val all = DeviceModes.Fan.entries
-                setFan(all[((state.fan?.let { all.indexOf(it) } ?: -1) + 1) % all.size])
-            }
-            CyclePill("Buttons", if (state.layout == DeviceModes.Layout.XBOX) "A at bottom" else "A on right", Modifier.weight(1f)) {
-                setLayout(if (state.layout == DeviceModes.Layout.XBOX) DeviceModes.Layout.NINTENDO else DeviceModes.Layout.XBOX)
-            }
+            CyclePill("Performance", state.perf.label, Modifier.weight(1f), small = small, onTap = perfTap)
+            CyclePill("Fan", state.fan?.label ?: "Custom", Modifier.weight(1f), small = small, onTap = fanTap)
+            CyclePill("Buttons", layoutText, Modifier.weight(1f), small = small, onTap = layoutTap)
         }
         return
     }
@@ -125,14 +136,29 @@ private fun Choices(label: String, options: List<String>, selected: Int, note: S
 
 /** A small pill naming a setting and its value; tapping it steps to the next value. */
 @Composable
-private fun CyclePill(label: String, value: String, modifier: Modifier, onTap: () -> Unit) {
+private fun CyclePill(label: String, value: String, modifier: Modifier, small: Boolean = false, onTap: () -> Unit) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF16131A))
-            .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(12.dp))
-            .clickable(onClick = onTap).padding(horizontal = 10.dp, vertical = 6.dp),
+        modifier.clip(RoundedCornerShape(if (small) 8.dp else 12.dp)).background(Color(0xFF16131A))
+            .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(if (small) 8.dp else 12.dp))
+            .clickable(onClick = onTap).padding(horizontal = if (small) 6.dp else 10.dp, vertical = if (small) 3.dp else 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(label, color = BookColors.TextMuted, fontSize = 10.sp, maxLines = 1)
-        Text(value, color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(label, color = BookColors.TextMuted, fontSize = if (small) 9.sp else 10.sp, maxLines = 1, lineHeight = if (small) 11.sp else 13.sp)
+        Text(value, color = BookColors.Text, fontSize = if (small) 11.sp else 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, lineHeight = if (small) 13.sp else 16.sp)
+    }
+}
+
+/**
+ * Lays [content] out as if the space were [designW] × [designH] dp, scaled to fit the real space,
+ * so a screen keeps its proportions on a denser display instead of crowding.
+ */
+@Composable
+fun ScaledToFit(designW: Float, designH: Float, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+        val k = minOf(maxWidth.value / designW, maxHeight.value / designH).coerceIn(0.55f, 1.4f)
+        val base = androidx.compose.ui.platform.LocalDensity.current
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
+        ) { content() }
     }
 }

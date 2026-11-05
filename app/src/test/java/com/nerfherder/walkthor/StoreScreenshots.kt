@@ -560,7 +560,25 @@ class StoreScreenshots {
     }
 
     @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun controlsDense() {
+        com.nerfherder.walkthor.DeviceModes.demo = true
+        com.nerfherder.walkthor.controls.ControlPrefs.setKeysConsent(app, true)
+        content(hero = fakeHero()) {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalInspectionMode provides true) {
+                com.nerfherder.walkthor.ui.ControlsScreen(
+                    game = LaunchedGame("Lanterns of Emberfall", "lanterns.iso", "NetherSX2", 0L), onBack = {},
+                    topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.FACE) },
+                )
+            }
+        }
+        settle()
+        shot("check-controls-dense")
+    }
+
+    @Test
     fun controlsShapes() {
+        com.nerfherder.walkthor.DeviceModes.demo = true
         // PlayStation-style shapes, as if the right face button (circle) is held.
         com.nerfherder.walkthor.controls.ControllerInput.pressed.value = setOf(android.view.KeyEvent.KEYCODE_BUTTON_A)
         com.nerfherder.walkthor.controls.ControllerInput.last.value = android.view.KeyEvent.KEYCODE_BUTTON_A
@@ -1138,6 +1156,7 @@ class StoreScreenshots {
         ),
         choosing: Boolean = false,
     ) {
+        com.nerfherder.walkthor.DeviceModes.demo = true
         com.nerfherder.walkthor.ui.AllLayout.setOrder(app, panels)
         com.nerfherder.walkthor.ui.AllLayout.choosing.value = choosing
         val title = "Lanterns of Emberfall"
