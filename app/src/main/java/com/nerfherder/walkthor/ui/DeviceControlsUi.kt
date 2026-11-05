@@ -55,6 +55,8 @@ fun DeviceControls(compact: Boolean, modifier: Modifier = Modifier) {
     LaunchedEffect(pending) { if (pending > 0) { delay(400); reread() } }
 
     if (helper == false) {
+        // Small places (Home, the Multi panel) just leave them out.
+        if (compact) return
         Text(
             "Performance, fan and button layout need the Thor's system helper. About → Diagnostics shows why it isn't reachable.",
             color = BookColors.TextMuted, fontSize = if (compact) 11.sp else 13.sp, modifier = modifier,

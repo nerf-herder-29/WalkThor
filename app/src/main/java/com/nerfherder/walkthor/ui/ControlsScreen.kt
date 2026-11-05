@@ -228,8 +228,8 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
 internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: Set<Int>, asking: String?) {
     val measurer = rememberTextMeasurer()
     Canvas(Modifier.fillMaxSize()) {
-        // A square diamond, as large as fits with room for the labels under the buttons.
-        val unit = min(size.width, size.height) / 3.9f
+        // A square diamond, as large as fits.
+        val unit = min(size.width, size.height) / 3.4f
         val r = unit * 0.6f
         val center = Offset(size.width / 2f, size.height / 2f)
         val spots = mapOf(
@@ -244,23 +244,22 @@ internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed:
             drawCircle(Line, r, c, style = Stroke(2.dp.toPx()))
             val ink = if (down) Color.Black else Color.White
             val label = style.labels?.get(i) ?: code?.let { buttonLabel(it) } ?: "?"
+            // Which Thor button this is, unless the label already says it: small, inside the
+            // button under its label, so it looks the same at any size and never overlaps.
+            val thor = code?.let { buttonLabel(it) }?.takeIf { style != FaceStyle.THOR && !it.equals(label, ignoreCase = true) }
+            val lc = if (thor != null) Offset(c.x, c.y - r * 0.14f) else c
             when (label) {
-                "triangle", "circle", "cross", "square" -> drawSymbol(label, c, r * 0.46f, ink)
+                "triangle", "circle", "cross", "square" -> drawSymbol(label, lc, r * (if (thor != null) 0.38f else 0.46f), ink)
                 else -> {
-                    val t = measurer.measure(label, TextStyle(fontFamily = AppFont.family, color = ink, fontSize = (r * 0.85f).toSp(), fontWeight = FontWeight.SemiBold))
-                    drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y - t.size.height / 2f))
+                    val t = measurer.measure(label, TextStyle(fontFamily = AppFont.family, color = ink, fontSize = (r * (if (thor != null) 0.7f else 0.85f)).toSp(), fontWeight = FontWeight.SemiBold))
+                    drawText(t, topLeft = Offset(lc.x - t.size.width / 2f, lc.y - t.size.height / 2f))
                 }
+            }
+            if (thor != null) {
+                val t = measurer.measure("Thor $thor", TextStyle(fontFamily = AppFont.family, color = if (down) Color.Black.copy(alpha = 0.7f) else BookColors.TextMuted, fontSize = (r * 0.2f).toSp(), fontWeight = FontWeight.SemiBold))
+                drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y + r * 0.5f - t.size.height / 2f))
             }
             if (pos == asking) drawCircle(Color.White, r * 1.18f, c, style = Stroke(3.dp.toPx()))
-            // Which Thor button this is, unless the label already says it: always just under the
-            // button, the same size relative to it, so the diagram looks the same everywhere.
-            if (style != FaceStyle.THOR && code != null) {
-                val thor = buttonLabel(code)
-                if (!thor.equals(label, ignoreCase = true)) {
-                    val t = measurer.measure("Thor $thor", TextStyle(fontFamily = AppFont.family, color = BookColors.TextMuted, fontSize = (r * 0.28f).coerceIn(9.dp.toPx(), 14.dp.toPx()).toSp(), fontWeight = FontWeight.SemiBold))
-                    drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y + r + 3.dp.toPx()))
-                }
-            }
         }
     }
 }
