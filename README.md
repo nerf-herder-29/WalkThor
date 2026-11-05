@@ -17,8 +17,8 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 |---|---|
 | ![Now playing: the game's art and logo, with its tabs across the top](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after the Auto-dim time, with the tabs still there](docs/screenshots/07b-dimmed-open-guide.png) |
 | ![Guide tab: a GameFAQs-style text guide during a game](docs/screenshots/03b-reader-tabs.png) | ![Mirror tab: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) |
-| ![Face Buttons tab: shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) | ![Picking the part of the top screen to mirror](docs/screenshots/11c-mirror-pick.png) |
-| ![Stats tab: the top screen's FPS, battery, heat, memory and CPU](docs/screenshots/13-stats.png) | ![Multi tab: Mirror, the guide, Face Buttons and Stats at a glance](docs/screenshots/14-all.png) |
+| ![Controls tab: performance, fan and button layout, and shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) | ![Picking the part of the top screen to mirror](docs/screenshots/11c-mirror-pick.png) |
+| ![Stats tab: the top screen's FPS, battery, heat, memory and CPU](docs/screenshots/13-stats.png) | ![Multi tab: Mirror, the guide, Controls and Stats at a glance](docs/screenshots/14-all.png) |
 | ![Your library](docs/screenshots/02-library.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
 
 ## Quick start
@@ -39,7 +39,7 @@ step that's done.
 
 - **Now playing** — start a game in Cocoon and the bottom screen shows the game's hero art and
   logo, the emulator, and tabs across the top: **Multi** (several at a glance), **Guide**,
-  **Mirror**, **Face Buttons**, **Stats** and **Apps** (swipe the tabs sideways to see them all). Switching tabs keeps your place in each, and Back takes you to Now playing.
+  **Mirror**, **Controls**, **Stats** and **Apps** (swipe the tabs sideways to see them all). Switching tabs keeps your place in each, and Back takes you to Now playing.
   Press and hold a tab to have that game open straight on it next time.
 - **Knows your game** — WalkThor reads Cocoon's `launch_debug.log`, or ES-DE's `logs/es_log.txt`
   (with ES-DE's *Custom Event Scripts* and *Debug Mode* on), to see what you launched and
@@ -85,11 +85,12 @@ step that's done.
   up to four areas per game, switch between them or see them all side by side, and WalkThor
   remembers them. Uses Android's screen capture (it asks the first time you open Mirror for a
   game, and pauses while you're on another tab); nothing is recorded or saved.
-- **Face Buttons** — the four face buttons labelled the way the game's system labels them
+- **Controls** — the Thor's performance mode, fan mode and button layout (the same settings as
+  AYN's own drawer), and the four face buttons labelled the way the game's system labels them
   (shapes, or letters with A at the bottom or on the right), picked automatically from the
   emulator, each where its Thor button sits and lighting up as you press it.
-- **Multi** — up to four tabs at once: choose from Mirror, your guide where you left off, Face
-  Buttons, Stats and your pinned apps (⋮ → *Choose panels*). Tap a panel to open that tab; Back
+- **Multi** — up to four tabs at once: choose from Mirror, your guide where you left off, Controls,
+  Stats and your pinned apps (⋮ → *Arrange panels*: pick a shape, then a panel for each space). Tap a panel to open that tab; Back
   returns to Multi. Press and hold a panel and drag it to rearrange them.
 - **Apps** — open any app on the bottom screen without leaving the game: Discord, a browser, a
   video. Pin the ones you use most; press and hold an app to open it on the top screen instead.
