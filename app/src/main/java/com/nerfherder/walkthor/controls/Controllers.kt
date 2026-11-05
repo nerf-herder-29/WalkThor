@@ -121,12 +121,19 @@ object ControlPrefs {
      * Nintendo-style layout (X top, A right, B bottom, Y left); "Set up face buttons" records the
      * real ones.
      */
-    fun faceCode(context: Context, position: String): Int = prefs(context).getInt("face/$position", when (position) {
-        "top" -> KeyEvent.KEYCODE_BUTTON_X
-        "right" -> KeyEvent.KEYCODE_BUTTON_A
-        "bottom" -> KeyEvent.KEYCODE_BUTTON_B
-        else -> KeyEvent.KEYCODE_BUTTON_Y
-    })
+    /**
+     * The button the Thor reports for the face button at [position]. AYN's controller layout swaps
+     * them: Nintendo style has A on the right, Xbox style has A at the bottom.
+     */
+    fun faceCode(context: Context, position: String): Int {
+        val xbox = com.nerfherder.walkthor.DeviceModes.layout(context) == com.nerfherder.walkthor.DeviceModes.Layout.XBOX
+        return prefs(context).getInt("face/$position", when (position) {
+            "top" -> if (xbox) KeyEvent.KEYCODE_BUTTON_Y else KeyEvent.KEYCODE_BUTTON_X
+            "right" -> if (xbox) KeyEvent.KEYCODE_BUTTON_B else KeyEvent.KEYCODE_BUTTON_A
+            "bottom" -> if (xbox) KeyEvent.KEYCODE_BUTTON_A else KeyEvent.KEYCODE_BUTTON_B
+            else -> if (xbox) KeyEvent.KEYCODE_BUTTON_X else KeyEvent.KEYCODE_BUTTON_Y
+        })
+    }
 
     fun setFaceCode(context: Context, position: String, code: Int) = prefs(context).edit().putInt("face/$position", code).apply()
 

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
@@ -78,12 +80,25 @@ import kotlinx.coroutines.launch
 /** Fixed content for store screenshots. */
 data class AllPreview(val guideText: String?, val stats: StatsPreview, val apps: List<InstalledApp>? = null)
 
-/** Where each of [n] panels sits, as fractions of the grid: left, top, right, bottom. */
-private fun slotsFor(n: Int): List<List<Float>> = when (n) {
-    1 -> listOf(listOf(0f, 0f, 1f, 1f))
-    2 -> listOf(listOf(0f, 0f, 0.5f, 1f), listOf(0.5f, 0f, 1f, 1f))
-    3 -> listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 1f, 1f))
-    else -> listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 0.5f, 1f), listOf(0.5f, 0.5f, 1f, 1f))
+/**
+ * The shapes the Multi tab's panels can be arranged in. Each slot is where one panel sits, as
+ * fractions of the space: left, top, right, bottom.
+ */
+enum class PanelShape(val slots: List<List<Float>>) {
+    ONE(listOf(listOf(0f, 0f, 1f, 1f))),
+    TWO_SIDE(listOf(listOf(0f, 0f, 0.5f, 1f), listOf(0.5f, 0f, 1f, 1f))),
+    TWO_STACK(listOf(listOf(0f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 1f, 1f))),
+    THREE_TOP(listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 1f, 1f))),
+    THREE_BOTTOM(listOf(listOf(0f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 0.5f, 1f), listOf(0.5f, 0.5f, 1f, 1f))),
+    THREE_LEFT(listOf(listOf(0f, 0f, 0.5f, 1f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0.5f, 0.5f, 1f, 1f))),
+    THREE_RIGHT(listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0f, 0.5f, 0.5f, 1f), listOf(0.5f, 0f, 1f, 1f))),
+    THREE_COLS(listOf(listOf(0f, 0f, 1f / 3, 1f), listOf(1f / 3, 0f, 2f / 3, 1f), listOf(2f / 3, 0f, 1f, 1f))),
+    FOUR(listOf(listOf(0f, 0f, 0.5f, 0.5f), listOf(0.5f, 0f, 1f, 0.5f), listOf(0f, 0.5f, 0.5f, 1f), listOf(0.5f, 0.5f, 1f, 1f)));
+
+    companion object {
+        /** The shape used before shapes could be chosen, for [n] panels. */
+        fun forCount(n: Int) = when (n) { 1 -> ONE; 2 -> TWO_SIDE; 3 -> THREE_TOP; else -> FOUR }
+    }
 }
 
 /**
@@ -131,12 +146,12 @@ fun AllScreen(
         topBar?.invoke()
         // The panels, in your order: press and hold one and drag it onto another to swap them.
         val order by AllLayout.panels(context).collectAsState()
+        val shape by AllLayout.shape(context).collectAsState()
         val choosing by AllLayout.choosing.collectAsState()
-        if (choosing) ChoosePanelsDialog(order, onDone = { picked ->
+        if (choosing) ArrangePanelsDialog(shape, order, onDone = { picked ->
             AllLayout.choosing.value = false
-            if (picked != null) AllLayout.choose(context, picked)
+            if (picked != null) AllLayout.arrange(context, picked.first, picked.second)
         })
-        val n = order.size
         var dragging by remember { mutableStateOf<GameTab?>(null) }
         var dragOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
         var grid by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
@@ -146,7 +161,7 @@ fun AllScreen(
             val from = order.indexOf(tab)
             if (from >= 0 && grid.width > 0 && grid.height > 0) {
                 // Where the middle of the dragged panel ended up decides the slot it lands in.
-                val slots = slotsFor(n)
+                val slots = shape.slots
                 val (l, t, r, b) = slots[from]
                 val cx = (l + r) / 2f * grid.width + dragOffset.x
                 val cy = (t + b) / 2f * grid.height + dragOffset.y
@@ -198,7 +213,7 @@ fun AllScreen(
                 GameTab.GUIDE -> Panel("Guide" + (guide?.let { "  ·  p. ${it.lastPage + 1}" } ?: ""), compact, m) {
                     GuidePanel(guide, preview?.guideText)
                 }
-                GameTab.FACE -> Panel("Face buttons", compact, m) { FacePanel(game, preview != null) }
+                GameTab.FACE -> Panel("Controls", compact, m) { FacePanel(game, preview != null) }
                 GameTab.APPS -> Panel("Apps", compact, m) { AppsPanel(preview?.apps, compact) }
                 GameTab.SHOTS -> Panel("Shots", compact, m) { ShotsPanel(game, frame, preview != null) }
                 GameTab.CAPTIONS -> Panel("Captions", compact, m) { CaptionsPanel(onStartCapture, preview != null) }
@@ -206,21 +221,25 @@ fun AllScreen(
                 else -> Panel("Stats", compact, m) { StatsPanel(preview?.stats, compact) }
             }
         }
-        Column(
+        // Each panel in its slot of the chosen shape, with an 8 dp gap between neighbours.
+        androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 10.dp)
                 .onSizeChanged { grid = it },
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // One or two panels: one row. Three: two on top, one across the bottom. Four: 2×2.
-            val rows = if (n <= 2) listOf(order) else listOf(order.take(2), order.drop(2))
-            for (row in rows) {
-                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (tab in row) {
-                        androidx.compose.runtime.key(tab) { PanelFor(tab, Modifier.weight(1f)) }
-                    }
+            val w = maxWidth
+            val h = maxHeight
+            val gap = 8.dp
+            order.zip(shape.slots).forEach { (tab, slot) ->
+                val (l, t, r, b) = slot
+                val x = w * l + if (l > 0f) gap / 2 else 0.dp
+                val y = h * t + if (t > 0f) gap / 2 else 0.dp
+                val pw = w * (r - l) - (if (l > 0f) gap / 2 else 0.dp) - (if (r < 1f) gap / 2 else 0.dp)
+                val ph = h * (b - t) - (if (t > 0f) gap / 2 else 0.dp) - (if (b < 1f) gap / 2 else 0.dp)
+                androidx.compose.runtime.key(tab) {
+                    PanelFor(tab, Modifier.offset(x, y).size(pw, ph))
                 }
             }
         }
@@ -428,7 +447,9 @@ private fun GuidePanel(guide: Book?, previewText: String?) {
 private fun FacePanel(game: LaunchedGame, still: Boolean) {
     val context = LocalContext.current
     val style = remember(game.player, game.file) { ControlPrefs.faceStyle(context, game.player, game.file) }
-    val faceCodes = remember { ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) } }
+    var layout by remember { mutableStateOf(com.nerfherder.walkthor.DeviceModes.layout(context)) }
+    LaunchedEffect(Unit) { while (true) { delay(1_000); layout = com.nerfherder.walkthor.DeviceModes.layout(context) } }
+    val faceCodes = remember(layout) { ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) } }
     val pressed by ControllerInput.pressed.collectAsState()
     val agreed = remember { ControlPrefs.keysConsent(context) }
     // Watch presses while this tab is open, once you've agreed on the Face Buttons tab.
@@ -444,17 +465,12 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
             }
         }
     }
-    // Room around the diamond for the "Thor X" labels drawn outside it.
-    Box(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 14.dp)) {
-        FaceDiagram(style, faceCodes, if (agreed || still) pressed else emptySet(), null)
-        if (!agreed && !still) {
-            Text(
-                "Open to light up presses",
-                color = BookColors.TextMuted,
-                fontSize = 11.sp,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+    // The same diagram as the Controls tab, with the performance, fan and button layout under it.
+    Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            FaceDiagram(style, faceCodes, if (agreed || still) pressed else emptySet(), null)
         }
+        DeviceControls(compact = true, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -570,7 +586,7 @@ fun MultiMenu(onClose: () -> Unit) {
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             androidx.compose.material3.DropdownMenuItem(
-                text = { Text("Choose panels…") },
+                text = { Text("Arrange panels…") },
                 onClick = { open = false; AllLayout.choosing.value = true },
             )
             androidx.compose.material3.DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; onClose() })
@@ -578,52 +594,123 @@ fun MultiMenu(onClose: () -> Unit) {
     }
 }
 
-/** Pick which tabs the Multi tab shows (one to four). */
+/**
+ * Arrange the Multi tab: pick a shape, then tap a space in it and the panel to put there. A panel
+ * already somewhere else swaps places with what was there.
+ */
 @Composable
-private fun ChoosePanelsDialog(current: List<GameTab>, onDone: (List<GameTab>?) -> Unit) {
-    var picked by remember { mutableStateOf(current) }
-    AlertDialog(
-        onDismissRequest = { onDone(null) },
-        title = { Text("Multi panels", fontFamily = DisplayFont) },
-        text = {
-            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                Text("Choose up to four.", color = BookColors.TextMuted, fontSize = 13.sp)
-                Spacer(Modifier.height(8.dp))
-                AllLayout.CHOICES.forEach { tab ->
-                    val on = tab in picked
-                    val enabled = on || picked.size < 4
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = enabled && !(on && picked.size == 1)) {
-                                picked = if (on) picked - tab else picked + tab
-                            }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+private fun ArrangePanelsDialog(current: PanelShape, currentOrder: List<GameTab>, onDone: (Pair<PanelShape, List<GameTab>>?) -> Unit) {
+    var shape by remember { mutableStateOf(current) }
+    var slots by remember { mutableStateOf<List<GameTab?>>(currentOrder.take(current.slots.size) + List((current.slots.size - currentOrder.size).coerceAtLeast(0)) { null }) }
+    var selected by remember { mutableStateOf(0) }
+    fun reshape(next: PanelShape) {
+        val n = next.slots.size
+        // Keep what's there in order (empties last), then fill or trim to the new shape's size.
+        val kept = slots.filterNotNull().take(n)
+        slots = kept + List(n - kept.size) { null }
+        shape = next
+        selected = slots.indexOfFirst { it == null }.takeIf { it >= 0 } ?: 0
+    }
+    fun put(tab: GameTab) {
+        val next = slots.toMutableList()
+        val was = next.indexOf(tab)
+        if (was >= 0) next[was] = next[selected]
+        next[selected] = tab
+        slots = next
+        // On to the next empty space, if there is one.
+        next.indexOfFirst { it == null }.takeIf { it >= 0 }?.let { selected = it }
+    }
+    Dialog(onDismissRequest = { onDone(null) }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier.fillMaxWidth(0.94f).clip(RoundedCornerShape(20.dp)).background(BookColors.Surface)
+                .border(1.dp, BookColors.Hairline, RoundedCornerShape(20.dp)).padding(18.dp),
+        ) {
+            Text("Arrange panels", fontFamily = DisplayFont, fontSize = 22.sp, color = BookColors.Text)
+            Text("Pick a shape, then tap a space and the panel to put there.", color = BookColors.TextMuted, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            // The shapes, as small drawings.
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PanelShape.entries.forEach { sh ->
+                    val on = sh == shape
+                    Box(
+                        Modifier.size(58.dp, 42.dp).clip(RoundedCornerShape(8.dp))
+                            .background(if (on) BookColors.Text.copy(alpha = 0.14f) else Color.Transparent)
+                            .border(if (on) 2.dp else 1.dp, if (on) BookColors.Text else BookColors.Hairline, RoundedCornerShape(8.dp))
+                            .clickable { reshape(sh) }.padding(5.dp),
                     ) {
-                        androidx.compose.material3.Checkbox(
-                            checked = on,
-                            onCheckedChange = null,
-                            enabled = enabled,
-                            colors = androidx.compose.material3.CheckboxDefaults.colors(
-                                checkedColor = BookColors.Text,
-                                checkmarkColor = Color.Black,
-                                uncheckedColor = BookColors.TextMuted,
-                            ),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(tab.label, color = if (enabled) BookColors.Text else BookColors.TextMuted, fontSize = 15.sp)
+                        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                            val g = 2.dp.toPx()
+                            sh.slots.forEach { (l, t, r, b) ->
+                                drawRoundRect(
+                                    if (on) BookColors.Text else BookColors.TextMuted,
+                                    topLeft = androidx.compose.ui.geometry.Offset(l * size.width + g, t * size.height + g),
+                                    size = androidx.compose.ui.geometry.Size((r - l) * size.width - 2 * g, (b - t) * size.height - 2 * g),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
+                                )
+                            }
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onDone(picked) }) { Text("Done", color = BookColors.Text) }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = { onDone(null) }) { Text("Cancel", color = BookColors.TextMuted) }
-        },
-    )
+            // The chosen shape, large: each space shows its panel.
+            androidx.compose.foundation.layout.BoxWithConstraints(
+                Modifier.fillMaxWidth().padding(top = 14.dp).height(190.dp),
+            ) {
+                val w = maxWidth
+                val h = maxHeight
+                val gap = 6.dp
+                shape.slots.forEachIndexed { i, (l, t, r, b) ->
+                    val on = i == selected
+                    val x = w * l + if (l > 0f) gap / 2 else 0.dp
+                    val y = h * t + if (t > 0f) gap / 2 else 0.dp
+                    val pw = w * (r - l) - (if (l > 0f) gap / 2 else 0.dp) - (if (r < 1f) gap / 2 else 0.dp)
+                    val ph = h * (b - t) - (if (t > 0f) gap / 2 else 0.dp) - (if (b < 1f) gap / 2 else 0.dp)
+                    Box(
+                        Modifier.offset(x, y).size(pw, ph).clip(RoundedCornerShape(10.dp))
+                            .background(if (on) BookColors.Text.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f))
+                            .border(if (on) 2.dp else 1.dp, if (on) BookColors.Text else BookColors.Hairline, RoundedCornerShape(10.dp))
+                            .clickable { selected = i },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            slots.getOrNull(i)?.label ?: "Tap, then pick a panel",
+                            color = if (slots.getOrNull(i) != null) BookColors.Text else BookColors.TextMuted,
+                            fontSize = if (slots.getOrNull(i) != null) 15.sp else 12.sp,
+                            fontWeight = if (slots.getOrNull(i) != null) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+            // The panels to choose from; the ones in use are marked.
+            Row(
+                Modifier.fillMaxWidth().padding(top = 14.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AllLayout.CHOICES.forEach { tab ->
+                    val used = tab in slots
+                    Text(
+                        tab.label, fontSize = 13.sp, maxLines = 1,
+                        fontWeight = if (used) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (used) Color.Black else BookColors.Text,
+                        modifier = Modifier.clip(RoundedCornerShape(50))
+                            .background(if (used) BookColors.Text else BookColors.SurfaceHigh)
+                            .clickable { put(tab) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (slots.any { it == null }) Text("Fill every space to save.", color = BookColors.TextMuted, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                androidx.compose.material3.TextButton(onClick = { onDone(null) }) { Text("Cancel", color = BookColors.TextMuted) }
+                androidx.compose.material3.TextButton(
+                    enabled = slots.none { it == null },
+                    onClick = { onDone(shape to slots.filterNotNull()) },
+                ) { Text("Done", color = if (slots.none { it == null }) BookColors.Text else BookColors.TextMuted) }
+            }
+        }
+    }
 }
 
 /** Which panels the Multi tab shows, and in what order (the same for every game). */
@@ -655,9 +742,22 @@ object AllLayout {
         (flow ?: kotlinx.coroutines.flow.MutableStateFlow(next).also { flow = it }).value = next
     }
 
-    /** Saves a new choice of panels: kept ones stay where they were, newly added ones go at the end. */
-    fun choose(context: android.content.Context, picked: List<GameTab>) {
-        val prev = order(context)
-        setOrder(context, prev.filter { it in picked } + picked.filter { it !in prev })
+    private var shapeFlow: kotlinx.coroutines.flow.MutableStateFlow<PanelShape>? = null
+
+    /** The shape the panels are arranged in (by count, for choices saved before shapes). */
+    fun shape(context: android.content.Context): kotlinx.coroutines.flow.StateFlow<PanelShape> =
+        shapeFlow ?: kotlinx.coroutines.flow.MutableStateFlow(
+            PanelShape.entries.firstOrNull { it.name == prefs(context).getString("allShape", null) }
+                ?.takeIf { it.slots.size == order(context).size }
+                ?: PanelShape.forCount(order(context).size),
+        ).also { shapeFlow = it }
+
+    /** Saves a shape and the panels in it, in slot order. */
+    fun arrange(context: android.content.Context, shape: PanelShape, panels: List<GameTab>) {
+        val list = panels.distinct().take(shape.slots.size)
+        if (list.size != shape.slots.size) return
+        prefs(context).edit().putString("allShape", shape.name).apply()
+        (shapeFlow ?: kotlinx.coroutines.flow.MutableStateFlow(shape).also { shapeFlow = it }).value = shape
+        setOrder(context, list)
     }
 }

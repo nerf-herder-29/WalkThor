@@ -68,8 +68,24 @@ object AynSystem {
         return ok
     }
 
-    /** AYN's settings WalkThor may change through the helper: the stick lights' only. */
-    private val SETTINGS = setOf("joystick_light_enabled", "joystick_led_light_picker_color", "led_light_brightness_percent")
+    /**
+     * AYN's settings WalkThor may change through the helper: the stick lights', and the performance
+     * mode, fan mode and controller layout (as AYN's own drawer sets them).
+     */
+    private val SETTINGS = setOf(
+        "joystick_light_enabled", "joystick_led_light_picker_color", "led_light_brightness_percent",
+        "performance_mode", "fan_mode", "temp_abxy_layout_mode", "flip_button_layout", "no_create_gamepad_button_layout",
+    )
+
+    /**
+     * The performance mode (0 Standard, 1 Medium, 2 High). AYN applies it through a system property
+     * as well as the setting, and puts the property back from the setting when apps change, so both
+     * are written. Not on the main thread.
+     */
+    fun setPerformance(mode: Int): Boolean {
+        if (mode !in 0..2 || !available()) return false
+        return run("settings put system performance_mode $mode; setprop persist.vendor.debug.mode $mode") != null
+    }
 
     /**
      * Sets one of AYN's own system settings (the stick lights'), which Android lets only system

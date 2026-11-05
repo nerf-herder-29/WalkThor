@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -86,8 +88,6 @@ fun ControlsScreen(
     var watchProblem by remember { mutableStateOf<String?>(null) }
     val pressed by ControllerInput.pressed.collectAsState()
     val last by ControllerInput.last.collectAsState()
-    val faceCodes = remember { ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) } }
-
     // Watch presses only while this screen is open with the option on; the screen stays bright
     // then, since you're looking at it while you play.
     val holder = remember { Any() }
@@ -128,36 +128,52 @@ fun ControlsScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.Text)
                 }
-                Text("Face buttons", style = EyebrowStyle, modifier = Modifier.weight(1f))
+                Text("Controls", style = EyebrowStyle, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
             }
-            // Which system's labels: guessed from the emulator, remembered if you change it.
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            ) {
-                FaceStyle.entries.filter { it != FaceStyle.THOR }.forEach { s ->
-                    Toggle(s.title, s == style) {
-                        style = s
-                        ControlPrefs.setFaceStyle(context, game?.player, s)
+            // Left: the Thor's performance, fan and button layout. Right: what this game calls each
+            // face button, at the spot of the Thor button that presses it.
+            val layout = remember { mutableStateOf(com.nerfherder.walkthor.DeviceModes.layout(context)) }
+            LaunchedEffect(Unit) {
+                while (true) { kotlinx.coroutines.delay(1_000); layout.value = com.nerfherder.walkthor.DeviceModes.layout(context) }
+            }
+            val codes = remember(layout.value) { ThorPad.FACE_ORDER.associateWith { ControlPrefs.faceCode(context, it) } }
+            Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(Modifier.weight(0.46f).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                    Text("This handheld", style = EyebrowStyle, modifier = Modifier.padding(bottom = 10.dp))
+                    DeviceControls(compact = false)
+                }
+                Column(Modifier.weight(0.54f).fillMaxHeight()) {
+                    Text("This game's buttons", style = EyebrowStyle, modifier = Modifier.padding(bottom = 8.dp))
+                    // Which system's labels: guessed from the emulator, remembered if you change it.
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FaceStyle.entries.filter { it != FaceStyle.THOR }.forEach { s ->
+                            Toggle(s.title, s == style) {
+                                style = s
+                                ControlPrefs.setFaceStyle(context, game?.player, s)
+                            }
+                        }
                     }
+                    Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
+                        FaceDiagram(style, codes, pressed, null)
+                    }
+                    val message = when {
+                        watchProblem != null -> watchProblem!!
+                        showPresses && last != null -> "You pressed ${buttonLabel(last!!)} · sent as ${keyName(last!!)}"
+                        else -> "Press a face button to see what the game calls it."
+                    }
+                    Text(
+                        message,
+                        color = if (watchProblem != null) Color(0xFFE0675A) else BookColors.TextMuted,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    )
                 }
             }
-            Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
-                FaceDiagram(style, faceCodes, pressed, null)
-            }
-            val message = when {
-                watchProblem != null -> watchProblem!!
-                showPresses && last != null -> "You pressed ${buttonLabel(last!!)} · sent as ${keyName(last!!)}"
-                else -> "Press A, B, X or Y on the Thor to see which button it is here."
-            }
-            Text(
-                message,
-                color = if (watchProblem != null) Color(0xFFE0675A) else BookColors.TextMuted,
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 12.dp, top = 4.dp),
-            )
         }
     }
 
@@ -212,7 +228,8 @@ private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
 internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed: Set<Int>, asking: String?) {
     val measurer = rememberTextMeasurer()
     Canvas(Modifier.fillMaxSize()) {
-        val unit = min(size.width / 4.6f, size.height / 3.6f)
+        // A square diamond, as large as fits with room for the labels under the buttons.
+        val unit = min(size.width, size.height) / 3.9f
         val r = unit * 0.6f
         val center = Offset(size.width / 2f, size.height / 2f)
         val spots = mapOf(
@@ -235,20 +252,13 @@ internal fun FaceDiagram(style: FaceStyle, faceCodes: Map<String, Int>, pressed:
                 }
             }
             if (pos == asking) drawCircle(Color.White, r * 1.18f, c, style = Stroke(3.dp.toPx()))
-            // Which Thor button this is, unless the label already says it.
+            // Which Thor button this is, unless the label already says it: always just under the
+            // button, the same size relative to it, so the diagram looks the same everywhere.
             if (style != FaceStyle.THOR && code != null) {
                 val thor = buttonLabel(code)
                 if (!thor.equals(label, ignoreCase = true)) {
-                    val t = measurer.measure("Thor $thor", TextStyle(fontFamily = AppFont.family, color = BookColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
-                    // Outward from the diamond, so it never sits between two buttons.
-                    val gap = 6.dp.toPx()
-                    val tl = when (pos) {
-                        "top" -> Offset(c.x - t.size.width / 2f, c.y - r - gap - t.size.height)
-                        "bottom" -> Offset(c.x - t.size.width / 2f, c.y + r + gap)
-                        "left" -> Offset(c.x - r - gap - t.size.width, c.y - t.size.height / 2f)
-                        else -> Offset(c.x + r + gap, c.y - t.size.height / 2f)
-                    }
-                    drawText(t, topLeft = tl)
+                    val t = measurer.measure("Thor $thor", TextStyle(fontFamily = AppFont.family, color = BookColors.TextMuted, fontSize = (r * 0.28f).coerceIn(9.dp.toPx(), 14.dp.toPx()).toSp(), fontWeight = FontWeight.SemiBold))
+                    drawText(t, topLeft = Offset(c.x - t.size.width / 2f, c.y + r + 3.dp.toPx()))
                 }
             }
         }
