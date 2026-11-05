@@ -485,6 +485,8 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
     }
     // The same diagram as the Controls tab, with the performance, fan and button layout beside it
     // (a wide panel) or under it (a tall one).
+    // Scaled like a panel on a 620 dp screen, so it looks the same at any screen density.
+    ScaledToFit(270f, 170f, Modifier.fillMaxSize()) {
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
         val shown = if (agreed || still) pressed else emptySet()
         if (maxWidth > maxHeight * 1.15f) {
@@ -498,6 +500,7 @@ private fun FacePanel(game: LaunchedGame, still: Boolean) {
                 DeviceControls(compact = true, small = true, modifier = Modifier.padding(top = 4.dp))
             }
         }
+    }
     }
 }
 
