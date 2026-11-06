@@ -220,7 +220,7 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
         if (preview) {
             val sample = mapOf(
                 HomeStat.CPU to ("CPU" to "62°C"), HomeStat.GPU to ("GPU" to "58°C"), HomeStat.FAN to ("Fan" to "40%"),
-                HomeStat.STORAGE to ("Storage" to "212 GB free"), HomeStat.MEMORY to ("Memory" to "5.1 / 12 GB"),
+                HomeStat.STORAGE to ("Storage" to "212 GB · SD 480 GB"), HomeStat.MEMORY to ("Memory" to "5.1 / 12 GB"),
                 HomeStat.PLAYED to ("Played today" to "47m"), HomeStat.BATTERY to ("Battery" to "34°C"), HomeStat.SPEED to ("CPU" to "2.84 GHz"),
             )
             chips = which.mapNotNull { sample[it] }
@@ -235,8 +235,7 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
                         HomeStat.CPU -> s?.cpuTempC?.let { "CPU" to "${it.roundToInt()}°C" }
                         HomeStat.GPU -> s?.gpuTempC?.let { "GPU" to "${it.roundToInt()}°C" }
                         HomeStat.FAN -> s?.fanPct?.let { "Fan" to if (it == 0) "off" else "$it%" }
-                        HomeStat.STORAGE -> runCatching { android.os.StatFs(android.os.Environment.getDataDirectory().path).availableBytes }.getOrNull()
-                            ?.let { "Storage" to "${(it / gb).roundToInt()} GB free" }
+                        HomeStat.STORAGE -> freeStorage(context)
                         HomeStat.MEMORY -> s?.takeIf { it.memTotal > 0 }?.let {
                             "Memory" to "%.1f / %d GB".format(java.util.Locale.US, (it.memTotal - it.memFree) / gb, Math.ceil(it.memTotal / gb).toInt())
                         }
@@ -253,7 +252,8 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
     Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         chips.forEach { (label, value) ->
             Row(
-                Modifier.weight(1f).clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
+                // Wider chips for longer text (storage with an SD card, say).
+                Modifier.weight((label.length + value.length + 6).toFloat()).clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
                     .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -262,6 +262,26 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
             }
         }
     }
+}
+
+/**
+ * Free space: the device's own storage, and an SD card's beside it when one's in
+ * ("212 GB · SD 480 GB"), or "212 GB free" with no card.
+ */
+private fun freeStorage(context: Context): Pair<String, String>? {
+    val gb = 1024.0 * 1024 * 1024
+    fun free(path: String) = runCatching { android.os.StatFs(path).availableBytes }.getOrNull()
+    val internal = free(android.os.Environment.getDataDirectory().path) ?: return null
+    val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
+    val sd = if (android.os.Build.VERSION.SDK_INT < 30) null else runCatching {
+        sm?.storageVolumes.orEmpty()
+            .filter { it.isRemovable && it.state == android.os.Environment.MEDIA_MOUNTED }
+            .mapNotNull { v -> v.directory?.path?.let(::free) }
+            .sum().takeIf { it > 0 }
+    }.getOrNull()
+    fun gbText(b: Long) = if (b >= 1000 * gb) "%.1f TB".format(b / (1024 * gb)) else "${(b / gb).roundToInt()} GB"
+    return if (sd == null) "Storage" to "${gbText(internal)} free"
+    else "Storage" to "${gbText(internal)} · SD ${gbText(sd)}"
 }
 
 /** Brightness (top, bottom or both), volume and the stick lights, as three dials. */
