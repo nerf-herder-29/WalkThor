@@ -469,7 +469,7 @@ class StoreScreenshots {
     fun drawerHomeSliders() {
         com.nerfherder.walkthor.StickLights.demo = true
         val ui = com.nerfherder.walkthor.ui.HomePrefs
-        ui.save(app, ui.DEFAULT.copy(sliders = true, shown = com.nerfherder.walkthor.ui.HomeSection.entries.toSet()))
+        ui.save(app, ui.DEFAULT.copy(sliders = true, shown = com.nerfherder.walkthor.ui.HomeSection.entries.toSet() - com.nerfherder.walkthor.ui.HomeSection.GLANCE))
         val apps = fakeApps().take(12)
         content {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalInspectionMode provides true) {
@@ -478,6 +478,22 @@ class StoreScreenshots {
         }
         settle()
         shot("check-drawer-home-sliders")
+        ui.save(app, ui.DEFAULT)
+        com.nerfherder.walkthor.StickLights.demo = false
+    }
+
+    @Test
+    fun drawerHomeDials() {
+        // Without play time and battery: the big dials.
+        com.nerfherder.walkthor.StickLights.demo = true
+        val ui = com.nerfherder.walkthor.ui.HomePrefs
+        ui.save(app, ui.DEFAULT.copy(shown = ui.DEFAULT.shown - com.nerfherder.walkthor.ui.HomeSection.GLANCE))
+        val apps = fakeApps().take(12)
+        content {
+            com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = apps, previewTime = "7:42" to "Tuesday, Nov 3")
+        }
+        settle()
+        shot("check-drawer-home-dials")
         ui.save(app, ui.DEFAULT)
         com.nerfherder.walkthor.StickLights.demo = false
     }

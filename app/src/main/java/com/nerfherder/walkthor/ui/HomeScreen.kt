@@ -47,6 +47,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -131,7 +140,9 @@ fun HomeScreen(
                     gap()
                     when (sec) {
                         HomeSection.STATS -> DeviceChips(previewTime != null, config.stats, top = 0.dp)
-                        HomeSection.LEVELS -> Dials(roomy, config.sliders)
+                        HomeSection.GLANCE -> PlayAndBattery(previewTime != null)
+                        // Beside play time and battery, the three sit on one line to make room.
+                        HomeSection.LEVELS -> Dials(roomy, config.sliders, oneLine = HomeSection.GLANCE in shown)
                         HomeSection.DEVICE -> DeviceControls(compact = true)
                         HomeSection.APPS -> Unit
                     }
@@ -288,7 +299,7 @@ private fun freeStorage(context: Context): Pair<String, String>? {
 
 /** Brightness (top, bottom or both), volume and the stick lights, as three dials. */
 @Composable
-private fun Dials(roomy: Boolean, sliders: Boolean) {
+private fun Dials(roomy: Boolean, sliders: Boolean, oneLine: Boolean = false) {
     val context = LocalContext.current
     val lightsHere = remember { StickLights.available() }
     var target by remember { mutableStateOf(ScreenControls.target(context)) }
@@ -340,7 +351,40 @@ private fun Dials(roomy: Boolean, sliders: Boolean) {
                 )
             }
         }
-        if (sliders) {
+        if (oneLine) {
+            // The three side by side, each a name, its value and a slider.
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                @Composable
+                fun Part(label: String, value: String, content: @Composable () -> Unit) {
+                    Column(Modifier.weight(1f)) {
+                        Row {
+                            Text(label, color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                            Text(value, color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
+                        }
+                        Box(Modifier.height(30.dp), contentAlignment = Alignment.CenterStart) { content() }
+                    }
+                }
+                Part("Brightness", if (needsTop) "" else "${(shown * 100).roundToInt()}") {
+                    if (needsTop) Text(
+                        "Tap to allow", color = BookColors.Text, fontSize = 12.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { ScreenControls.askTop(context) }.padding(vertical = 4.dp),
+                    ) else ThinSlider(shown, onDrag = { dragging = it }, onChange = { v ->
+                        when (target) {
+                            ScreenControls.Target.TOP -> { top = v; ScreenControls.setTop(context, v) }
+                            ScreenControls.Target.BOTTOM -> { bottom = v; ScreenControls.setBottom(context, v) }
+                            ScreenControls.Target.BOTH -> { top = v; bottom = v; ScreenControls.setTop(context, v); ScreenControls.setBottom(context, v) }
+                        }
+                        if (follow && target != ScreenControls.Target.BOTTOM) lights = v
+                    }, modifier = Modifier.fillMaxWidth())
+                }
+                Part("Volume", "${(volume * 100).roundToInt()}") {
+                    ThinSlider(volume, onDrag = { dragging = it }, onChange = { v -> volume = v; ScreenControls.setVolume(context, v) }, modifier = Modifier.fillMaxWidth())
+                }
+                if (lightsHere) Part("Stick lights", if (color == 0) "off" else if (follow) "follow" else "${(lights * 100).roundToInt()}") {
+                    if (color != 0 && !follow) ThinSlider(lights, onDrag = {}, onChange = { v -> lights = v; StickLights.setLevel(context, v) }, modifier = Modifier.fillMaxWidth(), fill = lightColor)
+                }
+            }
+        } else if (sliders) {
             // The same three, as sliders.
             Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
                 if (needsTop) {
@@ -496,7 +540,7 @@ private fun Dial(
 
 /**
  * The dock along the bottom of Home: your pinned apps (scroll for more), then All apps, Edit and
- * WalkThor, on a rounded bar.
+ * WalkThor, standing on a glass shelf with their reflections under them.
  */
 @Composable
 private fun Dock(
@@ -518,51 +562,82 @@ private fun Dock(
             pins.mapNotNull { byPkg[it] }
         }
     }
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF1A171D), Color(0xFF110F13))))
-            .border(1.dp, Color(0xFF2A262E), RoundedCornerShape(22.dp))
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (showApps) {
-            Row(
-                Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                if (apps.isEmpty()) {
-                    Text(
-                        if (loaded == null && preview == null) "Loading…" else "Pin apps from All apps (press and hold one).",
-                        color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 18.dp),
-                    )
-                }
-                apps.forEach { app ->
-                    DockItem(app.label, onClick = { onOpenApp(app.packageName) }) {
-                        if (app.icon != null) androidx.compose.foundation.Image(app.icon, contentDescription = null, modifier = Modifier.fillMaxSize())
-                        else Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
-                    }
-                }
+    val icon = 48.dp
+    BoxWithConstraints(Modifier.fillMaxWidth().height(icon + 22.dp)) {
+        // The shelf: a slab seen from a little above, so its back edge is narrower than its front.
+        Canvas(Modifier.fillMaxWidth().height(20.dp).align(Alignment.TopStart).padding(horizontal = 4.dp).offset(y = icon - 12.dp)) {
+            val inset = 14.dp.toPx()
+            val r = 6.dp.toPx()
+            val w = size.width
+            val h = size.height
+            val slab = androidx.compose.ui.graphics.Path().apply {
+                moveTo(inset + r, 0f); lineTo(w - inset - r, 0f)
+                quadraticTo(w - inset, 0f, w - inset + r * 0.4f, r * 0.8f)
+                lineTo(w, h - r); quadraticTo(w, h, w - r, h)
+                lineTo(r, h); quadraticTo(0f, h, 0f, h - r)
+                lineTo(inset - r * 0.4f, r * 0.8f); quadraticTo(inset, 0f, inset + r, 0f)
+                close()
             }
-            Box(Modifier.padding(horizontal = 6.dp).width(1.dp).height(44.dp).background(Color.White.copy(alpha = 0.1f)))
-        } else Spacer(Modifier.weight(1f))
-        DockItem("All apps", onClick = onAll) { DockGlyph(DockGlyphKind.GRID) }
-        DockItem("Edit", onClick = onEdit) { DockGlyph(DockGlyphKind.EDIT) }
-        DockItem("WalkThor", onClick = onWalkThor) { DockGlyph(DockGlyphKind.BOOK) }
+            drawPath(slab, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xE62B2730), Color(0xE6141217))))
+            drawPath(slab, Color(0xFF3A3540), style = Stroke(1.dp.toPx()))
+            // A faint highlight along the back edge.
+            drawLine(Color.White.copy(alpha = 0.08f), Offset(inset + r, 1.dp.toPx()), Offset(w - inset - r, 1.dp.toPx()), 1.dp.toPx())
+        }
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+        ) {
+            Row(
+                Modifier.widthIn(min = maxWidth).padding(horizontal = 26.dp),
+                horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally),
+            ) {
+                if (showApps) {
+                    if (apps.isEmpty()) {
+                        Text(
+                            if (loaded == null && preview == null) "Loading…" else "Pin apps from All apps (press and hold one).",
+                            color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 16.dp),
+                        )
+                    }
+                    apps.forEach { app ->
+                        ShelfItem(icon, app.label, onClick = { onOpenApp(app.packageName) }) {
+                            if (app.icon != null) androidx.compose.foundation.Image(app.icon, contentDescription = null, modifier = Modifier.fillMaxSize())
+                            else Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
+                        }
+                    }
+                    Box(Modifier.padding(horizontal = 3.dp).width(1.dp).height(icon).background(Color.White.copy(alpha = 0.13f)))
+                }
+                ShelfItem(icon, "All apps", onClick = onAll) { DockGlyph(DockGlyphKind.GRID) }
+                ShelfItem(icon, "Edit Home", onClick = onEdit) { DockGlyph(DockGlyphKind.EDIT) }
+                ShelfItem(icon, "WalkThor", onClick = onWalkThor) { DockGlyph(DockGlyphKind.BOOK) }
+            }
+        }
     }
 }
 
-/** One spot in the dock: an icon with its name under it. */
+/** One spot on the shelf: the icon, with a faded reflection of its lower part under it. */
 @Composable
-private fun DockItem(label: String, onClick: () -> Unit, icon: @Composable () -> Unit) {
+private fun ShelfItem(size: androidx.compose.ui.unit.Dp, label: String, onClick: () -> Unit, icon: @Composable () -> Unit) {
     Column(
-        Modifier.width(62.dp).clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
+        Modifier.semantics(mergeDescendants = true) { contentDescription = label },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { icon() }
-        Text(
-            label, color = BookColors.TextMuted, fontSize = 10.sp, maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp),
-        )
+        Box(Modifier.size(size).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) { icon() }
+        // The reflection: the icon upside down, fading out, cut short.
+        Box(
+            Modifier.padding(top = 3.dp).width(size).height(15.dp).clipToBounds()
+                .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen; alpha = 0.32f }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Black, Color.Transparent)),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                    )
+                },
+        ) {
+            Box(
+                Modifier.wrapContentHeight(Alignment.Top, unbounded = true).requiredSize(size)
+                    .graphicsLayer { scaleY = -1f },
+            ) { icon() }
+        }
     }
 }
 
@@ -690,7 +765,7 @@ fun openFromHome(context: Context, pkg: String, drawerDisplay: Int?): Boolean {
 
 /** The parts of Home under the clock that can be shown, hidden and moved. */
 enum class HomeSection(val label: String) {
-    STATS("Device stats"), LEVELS("Light & Sound"), DEVICE("Performance, fan and buttons"), APPS("Apps in the dock"),
+    STATS("Device stats"), GLANCE("Play time and battery"), LEVELS("Light & Sound"), DEVICE("Performance, fan and buttons"), APPS("Apps in the dock"),
 }
 
 /** The stats Home can show (up to four). */
@@ -709,8 +784,8 @@ data class HomeConfig(
 
 object HomePrefs {
     val DEFAULT = HomeConfig(
-        order = listOf(HomeSection.STATS, HomeSection.LEVELS, HomeSection.DEVICE, HomeSection.APPS),
-        shown = setOf(HomeSection.STATS, HomeSection.LEVELS, HomeSection.APPS),
+        order = listOf(HomeSection.STATS, HomeSection.GLANCE, HomeSection.LEVELS, HomeSection.DEVICE, HomeSection.APPS),
+        shown = setOf(HomeSection.STATS, HomeSection.GLANCE, HomeSection.LEVELS, HomeSection.APPS),
         stats = listOf(HomeStat.CPU, HomeStat.STORAGE, HomeStat.MEMORY, HomeStat.PLAYED),
         sliders = false,
     )
@@ -724,10 +799,13 @@ object HomePrefs {
         val order = p.getString("order", null)?.split(',')?.mapNotNull { n -> HomeSection.entries.firstOrNull { it.name == n } }?.distinct()
         val shown = p.getString("shown", null)?.split(',')?.mapNotNull { n -> HomeSection.entries.firstOrNull { it.name == n } }?.toSet()
         val stats = p.getString("stats", null)?.split(',')?.mapNotNull { n -> HomeStat.entries.firstOrNull { it.name == n } }?.distinct()
+        // Play time and battery came later: it starts out shown, under the stats, for everyone.
+        val fresh = p.getInt("v", 1) < 2
+        val saved = order?.let { o -> if (fresh && HomeSection.GLANCE !in o) o.toMutableList().apply { add(indexOf(HomeSection.STATS) + 1, HomeSection.GLANCE) } else o }
         return HomeConfig(
             // Sections added later go at the end of a saved order.
-            order = (order ?: DEFAULT.order).let { o -> o + HomeSection.entries.filter { it !in o } },
-            shown = shown ?: DEFAULT.shown,
+            order = (saved ?: DEFAULT.order).let { o -> o + HomeSection.entries.filter { it !in o } },
+            shown = shown?.let { if (fresh) it + HomeSection.GLANCE else it } ?: DEFAULT.shown,
             stats = stats?.take(4) ?: DEFAULT.stats,
             sliders = p.getBoolean("sliders", DEFAULT.sliders),
         )
@@ -739,6 +817,7 @@ object HomePrefs {
             .putString("shown", cfg.shown.joinToString(",") { it.name })
             .putString("stats", cfg.stats.take(4).joinToString(",") { it.name })
             .putBoolean("sliders", cfg.sliders)
+            .putInt("v", 2)
             .apply()
         (flow ?: kotlinx.coroutines.flow.MutableStateFlow(cfg).also { flow = it }).value = cfg
     }

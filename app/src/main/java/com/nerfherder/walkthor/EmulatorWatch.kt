@@ -347,7 +347,37 @@ object PlayToday {
         val p = prefs(c)
         val day = today()
         val before = if (p.getString("day", null) == day) p.getLong("ms", 0L) else 0L
-        p.edit().putString("day", day).putLong("ms", before + ms.coerceAtLeast(0L)).apply()
+        val total = before + ms.coerceAtLeast(0L)
+        val e = p.edit().putString("day", day).putLong("ms", total).putLong("d$day", total)
+        // Keep a week and a bit of days for Home's chart; drop older ones.
+        val keep = (0..8).map { dayKey(it) }.toSet()
+        p.all.keys.filter { it.startsWith("d2") && it.drop(1) !in keep }.forEach { e.remove(it) }
+        e.apply()
+    }
+
+    /** "yyyyMMdd" for [back] days before today. */
+    private fun dayKey(back: Int): String {
+        val cal = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -back) }
+        return java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(cal.time)
+    }
+
+    /**
+     * Minutes played on each of the last seven days, oldest first (today last, including the game
+     * running now), with each day's weekday initial.
+     */
+    @Synchronized fun week(c: Context): List<Pair<String, Int>> {
+        val p = prefs(c)
+        val fmt = java.text.SimpleDateFormat("EEEEE", java.util.Locale.getDefault())
+        return (6 downTo 0).map { back ->
+            val key = dayKey(back)
+            val cal = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -back) }
+            val mins = if (back == 0) minutes(c) else {
+                // Days from before this was kept per day only have the one "day" entry.
+                val ms = p.getLong("d$key", if (p.getString("day", null) == key) p.getLong("ms", 0L) else 0L)
+                (ms / 60_000L).toInt()
+            }
+            fmt.format(cal.time) to mins
+        }
     }
 
     /** Minutes played today so far (including the game running now). */

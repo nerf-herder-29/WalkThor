@@ -370,9 +370,8 @@ private fun ControlRow(
 
 /** A slim slider: a thin track and a round knob; tap or drag anywhere along it. */
 @Composable
-internal fun ThinSlider(value: Float, onDrag: (Boolean) -> Unit, onChange: (Float) -> Unit, modifier: Modifier) {
+internal fun ThinSlider(value: Float, onDrag: (Boolean) -> Unit, onChange: (Float) -> Unit, modifier: Modifier, fill: Color = BookColors.Text) {
     val track = Color.White.copy(alpha = 0.18f)
-    val fill = BookColors.Text
     Canvas(
         modifier
             .height(30.dp)
