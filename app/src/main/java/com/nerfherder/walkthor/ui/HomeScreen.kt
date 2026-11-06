@@ -564,6 +564,7 @@ private fun Dock(
     }
     val icon = 48.dp
     BoxWithConstraints(Modifier.fillMaxWidth().height(icon + 22.dp)) {
+        val full = maxWidth
         // The shelf: a slab seen from a little above, so its back edge is narrower than its front.
         Canvas(Modifier.fillMaxWidth().height(20.dp).align(Alignment.TopStart).padding(horizontal = 4.dp).offset(y = icon - 12.dp)) {
             val inset = 14.dp.toPx()
@@ -587,7 +588,7 @@ private fun Dock(
             Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
         ) {
             Row(
-                Modifier.widthIn(min = maxWidth).padding(horizontal = 26.dp),
+                Modifier.widthIn(min = full).padding(horizontal = 26.dp),
                 horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally),
             ) {
                 if (showApps) {
