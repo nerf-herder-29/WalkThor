@@ -1036,6 +1036,7 @@ class StoreScreenshots {
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
                 guide = shelf[0],
+                previewApps = fakeApps().take(6),
             )
         }
         settle()
@@ -1055,6 +1056,7 @@ class StoreScreenshots {
                 coverFile = { null },
                 onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
                 guide = shelf[0],
+                previewApps = fakeApps().take(6),
             )
         }
         settle()
@@ -1130,6 +1132,22 @@ class StoreScreenshots {
             ),
             fullChargeHours = 3.1f,
         )
+    }
+
+    @Test
+    fun statsTabAppsPulledUp() {
+        val game = LaunchedGame("Lanterns of Emberfall", "lanterns.nsp", "Eden", System.currentTimeMillis() - 47 * 60_000L)
+        content(hero = fakeHero()) {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                com.nerfherder.walkthor.ui.StatsScreen(
+                    game = game, onStartCapture = {}, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.STATS) },
+                    preview = statsPreview(),
+                )
+                com.nerfherder.walkthor.ui.ShelfPullUp(onOpenApp = {}, onAllApps = {}, startOpen = true, preview = fakeApps().take(6))
+            }
+        }
+        settle()
+        shot("13b-stats-apps-pulled-up")
     }
 
     @Test

@@ -539,142 +539,22 @@ private fun Dial(
 }
 
 /**
- * The dock along the bottom of Home: your pinned apps (scroll for more), then All apps, Edit and
- * WalkThor, standing on a glass shelf with their reflections under them.
+ * The dock along the bottom of Home: your pinned apps on the glass shelf (scroll for more), then
+ * All apps, Edit Home and WalkThor.
  */
 @Composable
 private fun Dock(
     showApps: Boolean, preview: List<InstalledApp>?, onOpenApp: (String) -> Unit,
     onAll: () -> Unit, onEdit: () -> Unit, onWalkThor: () -> Unit,
 ) {
-    val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        if (preview == null) {
-            AppCatalog.loadPins(context)
-            if (AppCatalog.apps.value == null) AppCatalog.refresh(context)
-        }
-    }
-    val loaded by AppCatalog.apps.collectAsState()
-    val pins by AppCatalog.pinned.collectAsState()
-    val apps = remember(loaded, pins, preview) {
-        preview ?: run {
-            val byPkg = loaded?.associateBy { it.packageName } ?: emptyMap()
-            pins.mapNotNull { byPkg[it] }
-        }
-    }
-    val icon = 48.dp
-    BoxWithConstraints(Modifier.fillMaxWidth().height(icon + 22.dp)) {
-        // The shelf: a slab seen from a little above, so its back edge is narrower than its front.
-        Canvas(Modifier.fillMaxWidth().height(20.dp).align(Alignment.TopStart).padding(horizontal = 4.dp).offset(y = icon - 12.dp)) {
-            val inset = 14.dp.toPx()
-            val r = 6.dp.toPx()
-            val w = size.width
-            val h = size.height
-            val slab = androidx.compose.ui.graphics.Path().apply {
-                moveTo(inset + r, 0f); lineTo(w - inset - r, 0f)
-                quadraticTo(w - inset, 0f, w - inset + r * 0.4f, r * 0.8f)
-                lineTo(w, h - r); quadraticTo(w, h, w - r, h)
-                lineTo(r, h); quadraticTo(0f, h, 0f, h - r)
-                lineTo(inset - r * 0.4f, r * 0.8f); quadraticTo(inset, 0f, inset + r, 0f)
-                close()
-            }
-            drawPath(slab, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xE62B2730), Color(0xE6141217))))
-            drawPath(slab, Color(0xFF3A3540), style = Stroke(1.dp.toPx()))
-            // A faint highlight along the back edge.
-            drawLine(Color.White.copy(alpha = 0.08f), Offset(inset + r, 1.dp.toPx()), Offset(w - inset - r, 1.dp.toPx()), 1.dp.toPx())
-        }
-        // Your apps scroll; All apps, Edit Home and WalkThor stay put at the end. With only a few
-        // apps, the lot sits in the middle of the shelf.
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 26.dp),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            if (showApps) {
-                Row(
-                    Modifier.weight(1f, fill = false).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    if (apps.isEmpty()) {
-                        Text(
-                            if (loaded == null && preview == null) "Loading…" else "Pin apps from All apps (press and hold one).",
-                            color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 16.dp),
-                        )
-                    }
-                    apps.forEach { app ->
-                        ShelfItem(icon, app.label, onClick = { onOpenApp(app.packageName) }) {
-                            if (app.icon != null) androidx.compose.foundation.Image(app.icon, contentDescription = null, modifier = Modifier.fillMaxSize())
-                            else Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
-                        }
-                    }
-                }
-                Box(Modifier.padding(horizontal = 12.dp).width(1.dp).height(icon).background(Color.White.copy(alpha = 0.13f)))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                ShelfItem(icon, "All apps", onClick = onAll) { DockGlyph(DockGlyphKind.GRID) }
-                ShelfItem(icon, "Edit Home", onClick = onEdit) { DockGlyph(DockGlyphKind.EDIT) }
-                ShelfItem(icon, "WalkThor", onClick = onWalkThor) { DockGlyph(DockGlyphKind.BOOK) }
-            }
-        }
-    }
-}
-
-/** One spot on the shelf: the icon, with a faded reflection of its lower part under it. */
-@Composable
-private fun ShelfItem(size: androidx.compose.ui.unit.Dp, label: String, onClick: () -> Unit, icon: @Composable () -> Unit) {
-    Column(
-        Modifier.semantics(mergeDescendants = true) { contentDescription = label },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.size(size).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) { icon() }
-        // The reflection: the icon upside down, fading out, cut short.
-        Box(
-            Modifier.padding(top = 3.dp).width(size).height(15.dp).clipToBounds()
-                .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen; alpha = 0.32f }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Black, Color.Transparent)),
-                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
-                    )
-                },
-        ) {
-            Box(
-                Modifier.wrapContentHeight(Alignment.Top, unbounded = true).requiredSize(size)
-                    .graphicsLayer { scaleY = -1f },
-            ) { icon() }
-        }
-    }
-}
-
-private enum class DockGlyphKind { GRID, EDIT, BOOK }
-
-/** WalkThor's own dock buttons: a soft tile with a simple line drawing. */
-@Composable
-private fun DockGlyph(kind: DockGlyphKind) {
-    val ink = BookColors.Text
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.08f))) {
-        Canvas(Modifier.fillMaxSize().padding(12.dp)) {
-            val w = size.width
-            val h = size.height
-            val sw = 1.8.dp.toPx()
-            when (kind) {
-                DockGlyphKind.GRID -> for (r in 0..2) for (c in 0..2) drawCircle(ink, sw * 1.15f, Offset(w * (0.12f + 0.38f * c), h * (0.12f + 0.38f * r)))
-                DockGlyphKind.EDIT -> {
-                    drawLine(ink, Offset(w * 0.2f, h * 0.8f), Offset(w * 0.8f, h * 0.2f), sw * 2.2f, StrokeCap.Round)
-                    drawLine(ink, Offset(w * 0.12f, h * 0.95f), Offset(w * 0.6f, h * 0.95f), sw, StrokeCap.Round)
-                }
-                DockGlyphKind.BOOK -> {
-                    val s = Stroke(sw, cap = StrokeCap.Round)
-                    val p = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(w * 0.5f, h * 0.22f); quadraticTo(w * 0.3f, h * 0.08f, w * 0.04f, h * 0.14f); lineTo(w * 0.04f, h * 0.84f)
-                        quadraticTo(w * 0.3f, h * 0.78f, w * 0.5f, h * 0.92f); quadraticTo(w * 0.7f, h * 0.78f, w * 0.96f, h * 0.84f)
-                        lineTo(w * 0.96f, h * 0.14f); quadraticTo(w * 0.7f, h * 0.08f, w * 0.5f, h * 0.22f); lineTo(w * 0.5f, h * 0.92f)
-                    }
-                    drawPath(p, ink, style = s)
-                }
-            }
-        }
-    }
+    AppShelf(
+        preview = preview, showApps = showApps, onOpenApp = onOpenApp,
+        tools = listOf(
+            ShelfTool("All apps", DockGlyphKind.GRID, onAll),
+            ShelfTool("Edit Home", DockGlyphKind.EDIT, onEdit),
+            ShelfTool("WalkThor", DockGlyphKind.BOOK, onWalkThor),
+        ),
+    )
 }
 
 /** Your pinned apps, six to a row. */

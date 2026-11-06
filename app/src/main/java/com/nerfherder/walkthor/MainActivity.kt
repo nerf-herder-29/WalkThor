@@ -1097,6 +1097,14 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                 }
               }
             }
+            // On the game's tabs (not Now playing, which has the shelf along its bottom, nor Apps
+            // or a guide): swipe up from the bottom edge for your apps.
+            if (gameTab != null && gameTab != GameTab.APPS && current == null) {
+                com.nerfherder.walkthor.ui.ShelfPullUp(
+                    onOpenApp = { pkg -> com.nerfherder.walkthor.ui.AppCatalog.open(context, pkg, here = true) },
+                    onAllApps = { selectTab(GameTab.APPS) },
+                )
+            }
         }
     } else if (current != null) {
         Reader(current, onBack = { openId = null }, tabs = null)
