@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 
 /** One of WalkThor's own buttons at the end of the shelf. */
 internal class ShelfTool(val label: String, val glyph: DockGlyphKind, val onClick: () -> Unit)
@@ -213,10 +214,10 @@ internal fun ShelfPullUp(
     fun settle(open: Boolean) { scope.launch { shown.animateTo(if (open) 1f else 0f, androidx.compose.animation.core.tween(240)) } }
     androidx.activity.compose.BackHandler(enabled = shown.value > 0f) { settle(false) }
     val drag = Modifier.pointerInput(Unit) {
-        androidx.compose.foundation.gestures.detectVerticalDragGestures(
+        detectVerticalDragGestures(
             onDragEnd = { settle(shown.value > 0.35f) },
             onDragCancel = { settle(shown.value > 0.5f) },
-        ) { change, dy ->
+        ) { change: androidx.compose.ui.input.pointer.PointerInputChange, dy: Float ->
             change.consume()
             scope.launch { shown.snapTo((shown.value - dy / panelPx).coerceIn(0f, 1f)) }
         }
