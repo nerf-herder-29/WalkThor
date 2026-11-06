@@ -46,7 +46,7 @@ import kotlin.math.abs
 /** Home's play time (this week, by day) and battery (time left, power draw) side by side. */
 @Composable
 internal fun PlayAndBattery(preview: Boolean, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().height(118.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+    Row(modifier.fillMaxWidth().height(124.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
         PlayCard(preview, Modifier.weight(1f).fillMaxHeight())
         BatteryCard(preview, Modifier.weight(1f).fillMaxHeight())
     }
@@ -173,14 +173,14 @@ private fun BatteryCard(preview: Boolean, modifier: Modifier) {
             b.charging -> "full in ${hoursMinutes(b.minutesLeft)}"
             else -> "about ${hoursMinutes(b.minutesLeft)}"
         }
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.Bottom) {
             Text(big, color = BookColors.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, maxLines = 1)
             if (b?.minutesLeft != null && !b.charging) Text(" left", color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 2.dp))
             if (b != null && b.minutesLeft == null) Text(if (b.charging) " charging" else " left", color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 2.dp))
         }
         // The level as a bar.
         Box(
-            Modifier.padding(top = 9.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))
+            Modifier.padding(top = 7.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))
                 .background(Color(0xFF2A262B)),
         ) {
             Box(Modifier.fillMaxWidth((b?.level ?: 0) / 100f).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(BookColors.Text))
@@ -194,7 +194,7 @@ private fun BatteryCard(preview: Boolean, modifier: Modifier) {
                 b.fullLasts?.let { "Full charge at this rate: ${hoursMinutes(it)}" },
             )
         }
-        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             lines.forEach { Text(it, color = BookColors.TextMuted, fontSize = 10.sp, lineHeight = 13.sp, maxLines = 1, textAlign = TextAlign.Start) }
         }
     }
