@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -117,37 +118,25 @@ fun HomeScreen(
             Column(Modifier.fillMaxSize().padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 10.dp)) {
                 // With six pinned apps or fewer they fit in one row, and the clock and dials get the
                 // room the second row would have taken.
-                val pinned by AppCatalog.pinned.collectAsState()
                 val shown = config.order.filter { it in config.shown }
-                val roomy = (previewApps?.size ?: pinned.size) <= 6 && HomeSection.DEVICE !in shown
+                // The apps sit in the dock now, so the clock and dials get the room, unless the
+                // performance row is shown too.
+                val roomy = HomeSection.DEVICE !in shown
                 ClockRow(previewTime, roomy)
-                // The sections you chose (Edit Home), in your order; apps take the room that's left.
+                // The sections you chose (Edit Home), in your order; the dock stays at the bottom.
                 shown.forEach { sec ->
                     when (sec) {
                         HomeSection.STATS -> DeviceChips(previewTime != null, config.stats)
                         HomeSection.LEVELS -> { Spacer(Modifier.height(10.dp)); Dials(roomy, config.sliders) }
                         HomeSection.DEVICE -> DeviceControls(compact = true, modifier = Modifier.padding(top = 10.dp))
-                        HomeSection.APPS -> { Spacer(Modifier.height(8.dp)); Apps(Modifier.weight(1f), previewApps, onOpenApp) }
+                        HomeSection.APPS -> Unit
                     }
                 }
-                if (HomeSection.APPS !in shown) Spacer(Modifier.weight(1f))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "All apps  ›", color = BookColors.TextMuted, fontSize = 13.sp,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { allApps = true }.padding(horizontal = 4.dp, vertical = 6.dp),
-                    )
-                    Text(
-                        "Edit Home", color = BookColors.TextMuted, fontSize = 13.sp,
-                        modifier = Modifier.padding(start = 10.dp).clip(RoundedCornerShape(50)).clickable { editing = true }.padding(horizontal = 4.dp, vertical = 6.dp),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        "Open WalkThor  ›", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                        modifier = Modifier.clip(RoundedCornerShape(50))
-                            .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(50))
-                            .clickable(onClick = onOpenWalkThor).padding(horizontal = 14.dp, vertical = 8.dp),
-                    )
-                }
+                Spacer(Modifier.weight(1f))
+                Dock(
+                    showApps = HomeSection.APPS in shown, preview = previewApps, onOpenApp = onOpenApp,
+                    onAll = { allApps = true }, onEdit = { editing = true }, onWalkThor = onOpenWalkThor,
+                )
             }
         }
     }
@@ -220,7 +209,7 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
         if (preview) {
             val sample = mapOf(
                 HomeStat.CPU to ("CPU" to "62°C"), HomeStat.GPU to ("GPU" to "58°C"), HomeStat.FAN to ("Fan" to "40%"),
-                HomeStat.STORAGE to ("Storage" to "212 GB · SD 480 GB"), HomeStat.MEMORY to ("Memory" to "5.1 / 12 GB"),
+                HomeStat.STORAGE to ("Internal" to "212 GB${PART_SD}480 GB"), HomeStat.MEMORY to ("Memory" to "5.1 / 12 GB"),
                 HomeStat.PLAYED to ("Played today" to "47m"), HomeStat.BATTERY to ("Battery" to "34°C"), HomeStat.SPEED to ("CPU" to "2.84 GHz"),
             )
             chips = which.mapNotNull { sample[it] }
@@ -253,16 +242,24 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
         chips.forEach { (label, value) ->
             Row(
                 // Wider chips for longer text (storage with an SD card, say).
-                Modifier.weight((label.length + value.length + 6).toFloat()).clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
+                Modifier.weight((label.length + value.length + (if (PART_SD in value) 9 else 6)).toFloat()).clip(RoundedCornerShape(50)).background(Color(0xFF16131A))
                     .border(1.dp, Color(0xFF2A262B), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.Center,
             ) {
                 Text(label, color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1)
-                Text("  $value", color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
+                // A second name in the value (the SD card) is gray too.
+                if (PART_SD in value) {
+                    Text("  " + value.substringBefore(PART_SD), color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
+                    Text(" · SD ", color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1)
+                    Text(value.substringAfter(PART_SD), color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
+                } else Text("  $value", color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
             }
         }
     }
 }
+
+/** Marks where the SD card's amount starts in the storage chip's value. */
+private const val PART_SD = "\u0000"
 
 /**
  * Free space: the device's own storage, and an SD card's beside it when one's in
@@ -280,8 +277,9 @@ private fun freeStorage(context: Context): Pair<String, String>? {
             .sum().takeIf { it > 0 }
     }.getOrNull()
     fun gbText(b: Long) = if (b >= 1000 * gb) "%.1f TB".format(b / (1024 * gb)) else "${(b / gb).roundToInt()} GB"
+    // Each name in gray and each amount in cream: "Internal 212 GB · SD 480 GB".
     return if (sd == null) "Storage" to "${gbText(internal)} free"
-    else "Storage" to "${gbText(internal)} · SD ${gbText(sd)}"
+    else "Internal" to "${gbText(internal)}$PART_SD${gbText(sd)}"
 }
 
 /** Brightness (top, bottom or both), volume and the stick lights, as three dials. */
@@ -492,6 +490,109 @@ private fun Dial(
     }
 }
 
+/**
+ * The dock along the bottom of Home: your pinned apps (scroll for more), then All apps, Edit and
+ * WalkThor, on a rounded bar.
+ */
+@Composable
+private fun Dock(
+    showApps: Boolean, preview: List<InstalledApp>?, onOpenApp: (String) -> Unit,
+    onAll: () -> Unit, onEdit: () -> Unit, onWalkThor: () -> Unit,
+) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        if (preview == null) {
+            AppCatalog.loadPins(context)
+            if (AppCatalog.apps.value == null) AppCatalog.refresh(context)
+        }
+    }
+    val loaded by AppCatalog.apps.collectAsState()
+    val pins by AppCatalog.pinned.collectAsState()
+    val apps = remember(loaded, pins, preview) {
+        preview ?: run {
+            val byPkg = loaded?.associateBy { it.packageName } ?: emptyMap()
+            pins.mapNotNull { byPkg[it] }
+        }
+    }
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF1A171D), Color(0xFF110F13))))
+            .border(1.dp, Color(0xFF2A262E), RoundedCornerShape(22.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showApps) {
+            Row(
+                Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (apps.isEmpty()) {
+                    Text(
+                        if (loaded == null && preview == null) "Loading…" else "Pin apps from All apps (press and hold one).",
+                        color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 18.dp),
+                    )
+                }
+                apps.forEach { app ->
+                    DockItem(app.label, onClick = { onOpenApp(app.packageName) }) {
+                        if (app.icon != null) androidx.compose.foundation.Image(app.icon, contentDescription = null, modifier = Modifier.fillMaxSize())
+                        else Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
+                    }
+                }
+            }
+            Box(Modifier.padding(horizontal = 6.dp).width(1.dp).height(44.dp).background(Color.White.copy(alpha = 0.1f)))
+        } else Spacer(Modifier.weight(1f))
+        DockItem("All apps", onClick = onAll) { DockGlyph(DockGlyphKind.GRID) }
+        DockItem("Edit", onClick = onEdit) { DockGlyph(DockGlyphKind.EDIT) }
+        DockItem("WalkThor", onClick = onWalkThor) { DockGlyph(DockGlyphKind.BOOK) }
+    }
+}
+
+/** One spot in the dock: an icon with its name under it. */
+@Composable
+private fun DockItem(label: String, onClick: () -> Unit, icon: @Composable () -> Unit) {
+    Column(
+        Modifier.width(62.dp).clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { icon() }
+        Text(
+            label, color = BookColors.TextMuted, fontSize = 10.sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp),
+        )
+    }
+}
+
+private enum class DockGlyphKind { GRID, EDIT, BOOK }
+
+/** WalkThor's own dock buttons: a soft tile with a simple line drawing. */
+@Composable
+private fun DockGlyph(kind: DockGlyphKind) {
+    val ink = BookColors.Text
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.08f))) {
+        Canvas(Modifier.fillMaxSize().padding(12.dp)) {
+            val w = size.width
+            val h = size.height
+            val sw = 1.8.dp.toPx()
+            when (kind) {
+                DockGlyphKind.GRID -> for (r in 0..2) for (c in 0..2) drawCircle(ink, sw * 1.15f, Offset(w * (0.12f + 0.38f * c), h * (0.12f + 0.38f * r)))
+                DockGlyphKind.EDIT -> {
+                    drawLine(ink, Offset(w * 0.2f, h * 0.8f), Offset(w * 0.8f, h * 0.2f), sw * 2.2f, StrokeCap.Round)
+                    drawLine(ink, Offset(w * 0.12f, h * 0.95f), Offset(w * 0.6f, h * 0.95f), sw, StrokeCap.Round)
+                }
+                DockGlyphKind.BOOK -> {
+                    val s = Stroke(sw, cap = StrokeCap.Round)
+                    val p = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(w * 0.5f, h * 0.22f); quadraticTo(w * 0.3f, h * 0.08f, w * 0.04f, h * 0.14f); lineTo(w * 0.04f, h * 0.84f)
+                        quadraticTo(w * 0.3f, h * 0.78f, w * 0.5f, h * 0.92f); quadraticTo(w * 0.7f, h * 0.78f, w * 0.96f, h * 0.84f)
+                        lineTo(w * 0.96f, h * 0.14f); quadraticTo(w * 0.7f, h * 0.08f, w * 0.5f, h * 0.22f); lineTo(w * 0.5f, h * 0.92f)
+                    }
+                    drawPath(p, ink, style = s)
+                }
+            }
+        }
+    }
+}
+
 /** Your pinned apps, six to a row. */
 @Composable
 private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (String) -> Unit) {
@@ -585,7 +686,7 @@ fun openFromHome(context: Context, pkg: String, drawerDisplay: Int?): Boolean {
 
 /** The parts of Home under the clock that can be shown, hidden and moved. */
 enum class HomeSection(val label: String) {
-    STATS("Device stats"), LEVELS("Light & Sound"), DEVICE("Performance, fan and buttons"), APPS("Apps"),
+    STATS("Device stats"), LEVELS("Light & Sound"), DEVICE("Performance, fan and buttons"), APPS("Apps in the dock"),
 }
 
 /** The stats Home can show (up to four). */
@@ -664,7 +765,7 @@ private fun HomeEditor(start: HomeConfig, onDone: (HomeConfig?) -> Unit) {
             // ---- sections: on/off and order (the clock always stays on top) ----
             Column(Modifier.weight(1f)) {
                 Text("Sections, top to bottom", color = BookColors.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Text("Under the clock. Apps fill the room that's left.", color = BookColors.TextMuted, fontSize = 12.sp)
+                Text("Under the clock. The dock always sits at the bottom.", color = BookColors.TextMuted, fontSize = 12.sp)
                 Spacer(Modifier.height(8.dp))
                 cfg.order.forEachIndexed { i, sec ->
                     val on = sec in cfg.shown
