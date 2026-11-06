@@ -361,7 +361,7 @@ private fun Dials(roomy: Boolean, sliders: Boolean, oneLine: Boolean = false) {
                             Text(label, color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1, modifier = Modifier.weight(1f))
                             Text(value, color = BookColors.Text, fontSize = 11.sp, maxLines = 1)
                         }
-                        Box(Modifier.height(30.dp), contentAlignment = Alignment.CenterStart) { content() }
+                        Box(Modifier.height(26.dp), contentAlignment = Alignment.CenterStart) { content() }
                     }
                 }
                 Part("Brightness", if (needsTop) "" else "${(shown * 100).roundToInt()}") {
@@ -564,7 +564,6 @@ private fun Dock(
     }
     val icon = 48.dp
     BoxWithConstraints(Modifier.fillMaxWidth().height(icon + 22.dp)) {
-        val full = maxWidth
         // The shelf: a slab seen from a little above, so its back edge is narrower than its front.
         Canvas(Modifier.fillMaxWidth().height(20.dp).align(Alignment.TopStart).padding(horizontal = 4.dp).offset(y = icon - 12.dp)) {
             val inset = 14.dp.toPx()
@@ -584,14 +583,17 @@ private fun Dock(
             // A faint highlight along the back edge.
             drawLine(Color.White.copy(alpha = 0.08f), Offset(inset + r, 1.dp.toPx()), Offset(w - inset - r, 1.dp.toPx()), 1.dp.toPx())
         }
+        // Your apps scroll; All apps, Edit Home and WalkThor stay put at the end. With only a few
+        // apps, the lot sits in the middle of the shelf.
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+            Modifier.fillMaxWidth().padding(horizontal = 26.dp),
+            horizontalArrangement = Arrangement.Center,
         ) {
-            Row(
-                Modifier.widthIn(min = full).padding(horizontal = 26.dp),
-                horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally),
-            ) {
-                if (showApps) {
+            if (showApps) {
+                Row(
+                    Modifier.weight(1f, fill = false).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
                     if (apps.isEmpty()) {
                         Text(
                             if (loaded == null && preview == null) "Loading…" else "Pin apps from All apps (press and hold one).",
@@ -604,8 +606,10 @@ private fun Dock(
                             else Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)))
                         }
                     }
-                    Box(Modifier.padding(horizontal = 3.dp).width(1.dp).height(icon).background(Color.White.copy(alpha = 0.13f)))
                 }
+                Box(Modifier.padding(horizontal = 12.dp).width(1.dp).height(icon).background(Color.White.copy(alpha = 0.13f)))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 ShelfItem(icon, "All apps", onClick = onAll) { DockGlyph(DockGlyphKind.GRID) }
                 ShelfItem(icon, "Edit Home", onClick = onEdit) { DockGlyph(DockGlyphKind.EDIT) }
                 ShelfItem(icon, "WalkThor", onClick = onWalkThor) { DockGlyph(DockGlyphKind.BOOK) }

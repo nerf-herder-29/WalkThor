@@ -46,7 +46,7 @@ import kotlin.math.abs
 /** Home's play time (this week, by day) and battery (time left, power draw) side by side. */
 @Composable
 internal fun PlayAndBattery(preview: Boolean, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().height(128.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+    Row(modifier.fillMaxWidth().height(118.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
         PlayCard(preview, Modifier.weight(1f).fillMaxHeight())
         BatteryCard(preview, Modifier.weight(1f).fillMaxHeight())
     }
