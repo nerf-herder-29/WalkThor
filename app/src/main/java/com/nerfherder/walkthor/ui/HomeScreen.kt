@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -124,15 +125,18 @@ fun HomeScreen(
                 val roomy = HomeSection.DEVICE !in shown
                 ClockRow(previewTime, roomy)
                 // The sections you chose (Edit Home), in your order; the dock stays at the bottom.
-                shown.forEach { sec ->
+                // Any spare height is shared out evenly between the sections, so nothing bunches up.
+                val gap = @Composable { Spacer(Modifier.weight(1f).heightIn(min = 10.dp)) }
+                shown.filter { it != HomeSection.APPS }.forEach { sec ->
+                    gap()
                     when (sec) {
-                        HomeSection.STATS -> DeviceChips(previewTime != null, config.stats)
-                        HomeSection.LEVELS -> { Spacer(Modifier.height(10.dp)); Dials(roomy, config.sliders) }
-                        HomeSection.DEVICE -> DeviceControls(compact = true, modifier = Modifier.padding(top = 10.dp))
+                        HomeSection.STATS -> DeviceChips(previewTime != null, config.stats, top = 0.dp)
+                        HomeSection.LEVELS -> Dials(roomy, config.sliders)
+                        HomeSection.DEVICE -> DeviceControls(compact = true)
                         HomeSection.APPS -> Unit
                     }
                 }
-                Spacer(Modifier.weight(1f))
+                gap()
                 Dock(
                     showApps = HomeSection.APPS in shown, preview = previewApps, onOpenApp = onOpenApp,
                     onAll = { allApps = true }, onEdit = { editing = true }, onWalkThor = onOpenWalkThor,
@@ -202,7 +206,7 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
 
 /** The stats you chose for Home (up to four), refreshed every few seconds. */
 @Composable
-private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
+private fun DeviceChips(preview: Boolean, which: List<HomeStat>, top: androidx.compose.ui.unit.Dp = 10.dp) {
     val context = LocalContext.current
     var chips by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     LaunchedEffect(preview, which) {
@@ -238,7 +242,7 @@ private fun DeviceChips(preview: Boolean, which: List<HomeStat>) {
         }
     }
     if (chips.isEmpty()) return
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth().padding(top = top), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         chips.forEach { (label, value) ->
             Row(
                 // Wider chips for longer text (storage with an SD card, say).
