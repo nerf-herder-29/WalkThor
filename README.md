@@ -114,8 +114,9 @@ step that's done.
   backgrounds (hero, fan art or screenshots) and game logos.
 - **The AYN button opens WalkThor** — switch it on in Settings → General and the AYN button slides
   WalkThor up over the bottom screen like a drawer, in place of AYN's (whatever is underneath stays
-  put), and slides it away again. With no emulator open, the drawer shows Home: a big clock, brightness,
-  volume and the stick lights, and your pinned apps (Settings → Emulators sets which apps count as
+  put), and slides it away again. With no emulator open, the drawer shows Home: a big clock, device stats,
+  your play time this week, battery time left and power draw, brightness, volume and the stick lights,
+  and your pinned apps on a shelf dock (Settings → Emulators sets which apps count as
   emulators).
 - **OLED-friendly** — true black, auto-dim after the time you choose to the darkness you choose,
   and a status bar with the time, battery and how long you've been playing.
