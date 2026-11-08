@@ -69,7 +69,7 @@ fun NowPlayingStack(
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
     if (logo != null && !logoFailed) {
         Column(
-            modifier.widthIn(max = 620.dp).padding(horizontal = 32.dp),
+            modifier.widthIn(max = 720.dp).padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             coil.compose.AsyncImage(
@@ -78,8 +78,8 @@ fun NowPlayingStack(
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 onError = { logoFailed = true },
                 modifier = Modifier
-                    .widthIn(max = if (compact) 440.dp else 540.dp)
-                    .heightIn(max = if (compact) 112.dp else 160.dp),
+                    .widthIn(max = if (compact) 540.dp else 660.dp)
+                    .heightIn(max = if (compact) 150.dp else 210.dp),
             )
             Spacer(Modifier.height(12.dp))
             Text(
