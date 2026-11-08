@@ -183,12 +183,11 @@ fun NowPlayingScreen(
             modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = enter.value },
         )
 
-        // ---- over everything: the tabs at the top, your apps on the shelf along the bottom, and
-        // under it the CPU and GPU temperatures and fan on the left, the play time, clock and
-        // battery on the right ----
+        // ---- over everything: the tabs at the top, with the CPU and GPU temperatures and fan on
+        // the left and the play time, clock and battery on the right just under them; your apps
+        // on the shelf along the bottom ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         val shelfIcon = if (compact) 40.dp else 48.dp
-        val clockRow = 26.dp
         if (!resting) {
             val ctx = androidx.compose.ui.platform.LocalContext.current
             AppShelf(
@@ -197,17 +196,15 @@ fun NowPlayingScreen(
                 tools = listOf(ShelfTool("All apps", DockGlyphKind.GRID) { onTab(GameTab.APPS) }),
                 icon = shelfIcon,
                 emptyText = "Press and hold an app in Apps to pin it here.",
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = clockRow + 2.dp).graphicsLayer { alpha = enter.value },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).graphicsLayer { alpha = enter.value },
             )
-        }
-        if (!resting) {
             HeatReadout(
                 preview = previewApps != null,
-                modifier = Modifier.align(Alignment.BottomStart).height(clockRow).padding(start = 16.dp, bottom = 6.dp)
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 18.dp, top = 58.dp).height(24.dp)
                     .graphicsLayer { alpha = enter.value },
             )
         }
-        StatusClock(Modifier.align(Alignment.BottomEnd).height(clockRow).padding(end = 16.dp, bottom = 6.dp))
+        StatusClock(Modifier.align(Alignment.TopEnd).padding(end = 18.dp, top = 58.dp).height(24.dp))
     }
 
     if (picking) {

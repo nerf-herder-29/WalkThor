@@ -78,8 +78,8 @@ fun NowPlayingStack(
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 onError = { logoFailed = true },
                 modifier = Modifier
-                    .widthIn(max = if (compact) 340.dp else 440.dp)
-                    .heightIn(max = if (compact) 84.dp else 118.dp),
+                    .widthIn(max = if (compact) 440.dp else 540.dp)
+                    .heightIn(max = if (compact) 112.dp else 160.dp),
             )
             Spacer(Modifier.height(12.dp))
             Text(

@@ -94,10 +94,13 @@ internal fun AppShelf(
                 lineTo(inset - r * 0.4f, r * 0.8f); quadraticTo(inset, 0f, inset + r, 0f)
                 close()
             }
-            drawPath(slab, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xE62B2730), Color(0xE6141217))))
-            drawPath(slab, Color(0xFF3A3540), style = Stroke(1.dp.toPx()))
-            // A faint highlight along the back edge.
-            drawLine(Color.White.copy(alpha = 0.08f), Offset(inset + r, 1.dp.toPx()), Offset(w - inset - r, 1.dp.toPx()), 1.dp.toPx())
+            // Dark smoked glass: see-through at the back, deeper at the front, with a bright edge.
+            drawPath(slab, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.25f), Color.Black.copy(alpha = 0.7f))))
+            drawPath(slab, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent)))
+            drawPath(slab, Color.White.copy(alpha = 0.16f), style = Stroke(1.dp.toPx()))
+            // Light catching the back edge and the front lip.
+            drawLine(Color.White.copy(alpha = 0.32f), Offset(inset + r, 0.5.dp.toPx()), Offset(w - inset - r, 0.5.dp.toPx()), 1.dp.toPx())
+            drawLine(Color.White.copy(alpha = 0.1f), Offset(r, h - 1.dp.toPx()), Offset(w - r, h - 1.dp.toPx()), 1.dp.toPx())
         }
         // Your apps scroll; All apps, Edit Home and WalkThor stay put at the end. With only a few
         // apps, the lot sits in the middle of the shelf.
