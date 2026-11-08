@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +58,39 @@ fun NowPlayingStack(
     linkVisible: Boolean,
     actOnDown: Boolean,
     modifier: Modifier = Modifier,
+    /**
+     * The game's logo (marquee): shown as the title, with "Now playing · emulator" on one line
+     * under it. Falls back to the name in text when it won't load.
+     */
+    logo: String? = null,
 ) {
+    // The logo can't be loaded (gone, or not an image): back to the name in text.
+    var logoFailed by remember(logo) { mutableStateOf(false) }
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
+    if (logo != null && !logoFailed) {
+        Column(
+            modifier.widthIn(max = 620.dp).padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            coil.compose.AsyncImage(
+                model = android.net.Uri.parse(logo),
+                contentDescription = displayTitle(title),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                onError = { logoFailed = true },
+                modifier = Modifier
+                    .widthIn(max = if (compact) 340.dp else 440.dp)
+                    .heightIn(max = if (compact) 84.dp else 118.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Now playing" + (player?.let { " · ${emulatorName(it)}" } ?: ""),
+                style = EyebrowStyle.copy(color = Color.White.copy(alpha = 0.75f)),
+                maxLines = 1,
+            )
+            StackLink(link, linkVisible)
+        }
+        return
+    }
     Column(
         modifier.widthIn(max = 620.dp).padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -84,6 +121,14 @@ fun NowPlayingStack(
                 buttons.forEach { b -> StackButtonView(b, actOnDown) }
             }
         }
+        StackLink(link, linkVisible)
+    }
+}
+
+/** "Other guide" / "Change game" under the rest; with [visible] false it still takes its space. */
+@Composable
+private fun StackLink(link: Pair<String, () -> Unit>?, visible: Boolean) {
+    val linkVisible = visible
         if (link != null) {
             Spacer(Modifier.height(10.dp))
             Text(
@@ -98,7 +143,6 @@ fun NowPlayingStack(
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
-    }
 }
 
 @Composable

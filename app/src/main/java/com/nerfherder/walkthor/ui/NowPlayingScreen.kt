@@ -119,7 +119,12 @@ fun NowPlayingScreen(
         onDispose {
             AutoDim.nowPlayingShown.value = false
             AutoDim.linkLabel.value = null
+            AutoDim.logo.value = null
         }
+    }
+    // The game's logo stands in for its name (not while asking which game it is).
+    val titleLogo = art.logo?.takeIf { !(game.unknown && choices) }
+    androidx.compose.runtime.SideEffect { AutoDim.logo.value = titleLogo }
     }
     // The Thor's bottom screen is short; at denser display settings tighten everything up.
     val compact = LocalConfiguration.current.screenHeightDp < 480
@@ -173,14 +178,15 @@ fun NowPlayingScreen(
             link = link,
             linkVisible = true,
             actOnDown = false,
+            logo = titleLogo,
             modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = enter.value },
         )
 
-        // ---- over everything: the tabs at the top, your apps on the shelf along the bottom, the
-        // logo and status corner just above it ----
+        // ---- over everything: the tabs at the top, your apps on the shelf along the bottom, and
+        // the play time, clock and battery under it ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         val shelfIcon = if (compact) 40.dp else 48.dp
-        val shelfRoom = if (resting) 0.dp else shelfIcon + 22.dp + 8.dp
+        val clockRow = 26.dp
         if (!resting) {
             val ctx = androidx.compose.ui.platform.LocalContext.current
             AppShelf(
@@ -189,30 +195,10 @@ fun NowPlayingScreen(
                 tools = listOf(ShelfTool("All apps", DockGlyphKind.GRID) { onTab(GameTab.APPS) }),
                 icon = shelfIcon,
                 emptyText = "Press and hold an app in Apps to pin it here.",
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).graphicsLayer { alpha = enter.value },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = clockRow + 2.dp).graphicsLayer { alpha = enter.value },
             )
         }
-        // The game's logo (marquee) in the bottom-left corner; the dimmed screen leaves it out.
-        if (art.logo != null && !resting) {
-            AsyncImage(
-                model = Uri.parse(art.logo),
-                contentDescription = displayTitle(game.title),
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.BottomStart,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 12.dp + shelfRoom)
-                    .widthIn(max = if (compact) 130.dp else 180.dp)
-                    .heightIn(max = if (compact) 44.dp else 64.dp)
-                    .graphicsLayer { alpha = enter.value },
-            )
-        }
-        Row(
-            Modifier.align(Alignment.BottomEnd).padding(bottom = shelfRoom).height(34.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            StatusClock(Modifier.padding(start = 4.dp, end = 16.dp))
-        }
+        StatusClock(Modifier.align(Alignment.BottomCenter).height(clockRow).padding(bottom = 6.dp))
     }
 
     if (picking) {

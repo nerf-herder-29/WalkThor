@@ -86,6 +86,9 @@ object AutoDim {
     const val REST_AFTER_MS = 30_000L
     /** True while the Now playing screen is under the dim (its name and tabs are already in place). */
     val nowPlayingShown = MutableStateFlow(false)
+
+    /** The game's logo, when Now playing shows it as the title (so the dimmed copy does too). */
+    val logo = MutableStateFlow<String?>(null)
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
     fun label(ms: Long) = when (ms) {
@@ -212,6 +215,7 @@ fun AutoDimOverlay() {
             val linkLabel by AutoDim.linkLabel.collectAsState()
             val tabs by GameTabs.state.collectAsState()
             val nowPlayingUnder by AutoDim.nowPlayingShown.collectAsState()
+            val logoNow by AutoDim.logo.collectAsState()
             // Over a guide page, the game's name would sit on top of the page's text, so darken
             // the whole screen evenly a little more (to at least READABLE_DIM). Over Now playing
             // the name is already in the same place underneath, so the dim stays as you set it.
@@ -243,6 +247,7 @@ fun AutoDimOverlay() {
                     link = linkLabel?.let { it to {} },
                     linkVisible = false,
                     actOnDown = true,
+                    logo = logoNow,
                 )
             }
         }
