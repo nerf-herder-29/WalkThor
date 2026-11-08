@@ -285,7 +285,8 @@ fun AutoDimOverlay() {
             "Tap to wake",
             color = BookColors.TextMuted.copy(alpha = 0.35f * alpha),
             fontSize = 12.sp,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp),
+            // During a game the clock sits along the bottom; this goes just above it.
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (game != null) 34.dp else 18.dp),
         )
     }
 }
