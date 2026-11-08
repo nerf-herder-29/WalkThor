@@ -117,11 +117,14 @@ fun NowPlayingScreen(
     androidx.compose.runtime.DisposableEffect(guide?.id) {
         AutoDim.wake()
         AutoDim.linkLabel.value = linkLabelFor(guide, books, game, choices)
-        AutoDim.nowPlayingShown.value = true
+        val holder = Any()
+        AutoDim.showingNowPlaying(holder, true)
         onDispose {
-            AutoDim.nowPlayingShown.value = false
-            AutoDim.linkLabel.value = null
-            AutoDim.logo.value = null
+            AutoDim.showingNowPlaying(holder, false)
+            if (!AutoDim.nowPlayingShown.value) {
+                AutoDim.linkLabel.value = null
+                AutoDim.logo.value = null
+            }
         }
     }
     // The game's logo stands in for its name (not while asking which game it is).

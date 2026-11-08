@@ -86,6 +86,25 @@ object AutoDim {
     const val REST_AFTER_MS = 30_000L
     /** True while the Now playing screen is under the dim (its name and tabs are already in place). */
     val nowPlayingShown = MutableStateFlow(false)
+    private val nowPlayingHolders = mutableSetOf<Any>()
+
+    /**
+     * Now playing is on screen ([on]) for [holder], or not. Counted, so the old copy going away
+     * as a new one comes in (a game changing, or a quick trip to a tab and back) can't leave it
+     * marked as gone.
+     */
+    fun showingNowPlaying(holder: Any, on: Boolean) = synchronized(nowPlayingHolders) {
+        if (on) nowPlayingHolders.add(holder) else nowPlayingHolders.remove(holder)
+        nowPlayingShown.value = nowPlayingHolders.isNotEmpty()
+    }
+
+    /** A game's screens (Now playing, its tabs, a guide opened for it) are up. */
+    val gameScreensShown = MutableStateFlow(false)
+    private val gameHolders = mutableSetOf<Any>()
+    fun showingGameScreens(holder: Any, on: Boolean) = synchronized(gameHolders) {
+        if (on) gameHolders.add(holder) else gameHolders.remove(holder)
+        gameScreensShown.value = gameHolders.isNotEmpty()
+    }
 
     /** The game's logo, when Now playing shows it as the title (so the dimmed copy does too). */
     val logo = MutableStateFlow<String?>(null)
@@ -143,10 +162,15 @@ object AutoDim {
 fun AutoDimOverlay() {
     val settingDelay by AutoDim.delayMs.collectAsState()
     val screenDelay by AutoDim.screenDelayMs.collectAsState()
-    // During a game, only Now playing dims; the game's tabs (and a guide) stay bright.
-    val playing by PlaySession.current.collectAsState()
+    // During a game, only Now playing dims, after the Auto-dim time; every other screen of the
+    // game (each tab, a guide) stays bright. Outside a game, screens can ask to stay bright.
     val onNowPlaying by AutoDim.nowPlayingShown.collectAsState()
-    val delayMs = if (playing != null && !onNowPlaying) 0L else screenDelay ?: settingDelay
+    val onGameScreens by AutoDim.gameScreensShown.collectAsState()
+    val delayMs = when {
+        onNowPlaying -> settingDelay
+        onGameScreens -> 0L
+        else -> screenDelay ?: settingDelay
+    }
     val dimmed by AutoDim.dimmed.collectAsState()
 
     // After a while dimmed fully black, free the memory held by what's under the dim, for the

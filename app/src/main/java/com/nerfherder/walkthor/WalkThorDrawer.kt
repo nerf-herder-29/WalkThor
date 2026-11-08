@@ -248,6 +248,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         up = false
         Drawer.shown.value = false
         AppState.drawerDisplayId = null
+        // Put away on purpose: if WalkThor closes now, it stays closed.
+        runCatching { Revive.closedOnPurpose(service) }
     }
 
     /** Slid all the way down: put away (the screens stay as they were for next time). */

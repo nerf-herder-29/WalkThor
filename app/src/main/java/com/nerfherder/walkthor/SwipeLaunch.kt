@@ -207,6 +207,16 @@ class SwipeGestureService : AccessibilityService() {
         EmulatorWatch.refresh(this)
         // If Android closed WalkThor mid-game to free memory, bring it back (see Revive).
         Revive.onServiceStart(this)
+        handler.removeCallbacks(drawerBeat)
+        handler.postDelayed(drawerBeat, 5_000)
+    }
+
+    /** While the drawer is up during a game, note it, so it can come back if Android closes WalkThor. */
+    private val drawerBeat = object : Runnable {
+        override fun run() {
+            if (Drawer.shown.value && GameFocus.gameRunning.value) runCatching { Revive.heartbeat(this@SwipeGestureService, drawer = true) }
+            handler.postDelayed(this, 5_000)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

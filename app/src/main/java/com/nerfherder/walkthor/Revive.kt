@@ -30,16 +30,18 @@ const val EXTRA_REVIVED = "walkthor.revived"
 
 object Revive {
     private const val PREFS = "revive"
-    /** Never sooner than this after its service comes back: the game is usually still loading. */
-    private const val MIN_WAIT_MS = 10_000L
+    /** After a crash, how long to wait before reopening (memory isn't the problem then). */
+    private const val CRASH_WAIT_MS = 1_000L
+    /** Closed for memory: never sooner than this after its service comes back. */
+    private const val MIN_WAIT_MS = 3_000L
     /** How often memory is checked while waiting. */
-    private const val CHECK_EVERY_MS = 2_000L
+    private const val CHECK_EVERY_MS = 1_000L
     /** Memory must look fine this many checks in a row. */
-    private const val CALM_CHECKS = 4
+    private const val CALM_CHECKS = 2
     /** Gives up (stays closed) if memory hasn't recovered by then. */
-    private const val GIVE_UP_MS = 3 * 60_000L
+    private const val GIVE_UP_MS = 90_000L
     /** Free memory, beyond Android's low-memory line, that WalkThor wants before it reopens. */
-    private const val SPARE_BYTES = 768L * 1024 * 1024
+    private const val SPARE_BYTES = 384L * 1024 * 1024
     /** At most this many reopens in [LIMIT_WINDOW_MS]. */
     private const val MAX_REOPENS = 3
     private const val LIMIT_WINDOW_MS = 10 * 60_000L
@@ -47,8 +49,8 @@ object Revive {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /** WalkThor is up during a game (called every few seconds while it's on screen). */
-    fun heartbeat(context: Context) {
-        prefs(context).edit().putLong("seen", System.currentTimeMillis()).apply()
+    fun heartbeat(context: Context, drawer: Boolean = false) {
+        prefs(context).edit().putLong("seen", System.currentTimeMillis()).putBoolean("drawer", drawer).apply()
     }
 
     /** You closed WalkThor yourself: don't bring it back. */
@@ -71,7 +73,7 @@ object Revive {
     fun lastNote(context: Context): String? = prefs(context).getString("note", null)
 
     /** Called by the accessibility service ([context]) when it starts, including after Android restarts it. */
-    fun onServiceStart(context: Context) {
+    fun onServiceStart(context: android.accessibilityservice.AccessibilityService) {
         if (Build.VERSION.SDK_INT < 30) return
         val p = prefs(context)
         val am = context.getSystemService(ActivityManager::class.java) ?: return
@@ -117,8 +119,10 @@ object Revive {
         }
         p.edit()
             .putString("reopens", (recent + now).joinToString(","))
-            .putString("note", "Android closed WalkThor $why at $at during a game; waiting for memory to recover before reopening.")
+            .putString("note", "Android closed WalkThor $why at $at during a game; reopening.")
             .apply()
+        val inDrawer = p.getBoolean("drawer", false)
+        val crashed = exit.reason == ApplicationExitInfo.REASON_CRASH || exit.reason == ApplicationExitInfo.REASON_CRASH_NATIVE
 
         // Wait until the device has memory to spare again (and the game has had time to load).
         val handler = Handler(Looper.getMainLooper())
@@ -130,10 +134,11 @@ object Revive {
                 val waited = android.os.SystemClock.elapsedRealtime() - started
                 calm = if (memoryCalm(am)) calm + 1 else 0
                 when {
-                    waited >= MIN_WAIT_MS && calm >= CALM_CHECKS -> {
-                        val secs = waited / 1000
-                        p.edit().putString("note", "Android closed WalkThor $why at $at during a game; WalkThor reopened itself ${secs}s later, once memory had recovered.").apply()
-                        reopen(context)
+                    // After a crash, straight back; after being closed for memory, once there's some to spare.
+                    (crashed && waited >= CRASH_WAIT_MS) || (waited >= MIN_WAIT_MS && calm >= CALM_CHECKS) -> {
+                        val secs = (System.currentTimeMillis() - exit.timestamp) / 1000
+                        p.edit().putString("note", "Android closed WalkThor $why at $at during a game; WalkThor was back ${secs}s later" + (if (crashed) "." else ", once memory had recovered.")).apply()
+                        reopen(context, inDrawer)
                     }
                     waited >= GIVE_UP_MS ->
                         p.edit().putString("note", "Android closed WalkThor $why at $at during a game. Memory stayed low, so it stayed closed to leave the game room. Swipe down to open it.").apply()
@@ -141,11 +146,20 @@ object Revive {
                 }
             }
         }
-        handler.postDelayed(check, CHECK_EVERY_MS)
+        handler.postDelayed(check, if (crashed) CRASH_WAIT_MS else CHECK_EVERY_MS)
     }
 
     /** Opened from the service itself (as a swipe does), which Android allows from the background. */
-    private fun reopen(context: Context) {
+    private fun reopen(context: android.accessibilityservice.AccessibilityService, inDrawer: Boolean) {
+        // Back in the drawer if that's where it was (the app if the drawer can't open).
+        if (inDrawer) {
+            val bottom = DisplayHelper.bottomDisplay(context)?.displayId ?: return
+            if (runCatching { Drawer.show(context, bottom, opened = true, onFail = { openApp(context) }) }.getOrDefault(false)) return
+        }
+        openApp(context)
+    }
+
+    private fun openApp(context: Context) {
         run {
             val bottom = DisplayHelper.bottomDisplay(context)?.displayId ?: return
             val intent = Intent(context, MainActivity::class.java)

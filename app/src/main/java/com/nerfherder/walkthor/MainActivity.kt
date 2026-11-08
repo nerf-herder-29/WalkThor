@@ -928,6 +928,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     val showing = noGuide
     if (showing != null) {
         // ---- a game is playing: Now playing, and its Guide, Mirror and Face Buttons tabs ----
+        // (Only Now playing dims while these are up.)
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            val holder = Any()
+            AutoDim.showingGameScreens(holder, true)
+            onDispose { AutoDim.showingGameScreens(holder, false) }
+        }
         val (game, art, guide) = showing
         val selectedTab = if (current != null) GameTab.GUIDE else gameTab
         fun selectTab(tab: GameTab) {

@@ -38,6 +38,10 @@ object CrashLog {
                     }
                 )
             }
+            // Ask to be started again in a moment. Android only restarts WalkThor's service after
+            // a delay that grows with each crash, but as soon as WalkThor's process is running
+            // again it restarts the service straight away; this brings that moment forward.
+            runCatching { ComeBack.schedule(app) }
             previous?.uncaughtException(thread, error)
         }
     }
@@ -75,4 +79,24 @@ object CrashLog {
     }
 
     fun clear(context: Context) { file(context)?.delete() }
+}
+
+/**
+ * Started by an alarm just after a crash: starting it starts WalkThor's process again, and Android
+ * then restarts its accessibility service (and so the drawer and the AYN button) right away
+ * instead of after its own wait. It does nothing else.
+ */
+class ComeBack : android.content.BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {}
+
+    companion object {
+        fun schedule(context: Context) {
+            val am = context.getSystemService(android.app.AlarmManager::class.java) ?: return
+            val pi = android.app.PendingIntent.getBroadcast(
+                context, 0, Intent(context, ComeBack::class.java),
+                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, android.os.SystemClock.elapsedRealtime() + 700, pi)
+        }
+    }
 }
