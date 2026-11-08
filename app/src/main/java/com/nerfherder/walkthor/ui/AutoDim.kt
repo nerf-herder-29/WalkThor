@@ -275,6 +275,7 @@ fun AutoDimOverlay() {
                     linkVisible = false,
                     actOnDown = true,
                     logo = logoNow,
+                    grayscale = true,
                 )
             }
         }

@@ -64,6 +64,8 @@ fun NowPlayingStack(
      * under it. Falls back to the name in text when it won't load.
      */
     logo: String? = null,
+    /** The logo in black and white (the dimmed screen). */
+    grayscale: Boolean = false,
 ) {
     // The logo can't be loaded (gone, or not an image): back to the name in text.
     var logoFailed by remember(logo) { mutableStateOf(false) }
@@ -78,6 +80,9 @@ fun NowPlayingStack(
                 model = android.net.Uri.parse(logo),
                 contentDescription = displayTitle(title),
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                colorFilter = if (grayscale) androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                    androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0f) }
+                ) else null,
                 onError = { logoFailed = true },
                 onSuccess = { st ->
                     val size = st.painter.intrinsicSize
