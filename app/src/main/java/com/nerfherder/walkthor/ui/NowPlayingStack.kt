@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +67,7 @@ fun NowPlayingStack(
 ) {
     // The logo can't be loaded (gone, or not an image): back to the name in text.
     var logoFailed by remember(logo) { mutableStateOf(false) }
+    var logoRatio by remember(logo) { mutableStateOf<Float?>(null) }
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
     if (logo != null && !logoFailed) {
         Column(
@@ -77,9 +79,16 @@ fun NowPlayingStack(
                 contentDescription = displayTitle(title),
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 onError = { logoFailed = true },
+                onSuccess = { st ->
+                    val size = st.painter.intrinsicSize
+                    if (size.width > 0f && size.height > 0f) logoRatio = size.width / size.height
+                },
+                // Scaled up to fill the space (a small logo file would otherwise stay small),
+                // keeping its shape.
                 modifier = Modifier
                     .widthIn(max = if (compact) 540.dp else 660.dp)
-                    .heightIn(max = if (compact) 150.dp else 210.dp),
+                    .heightIn(max = if (compact) 150.dp else 210.dp)
+                    .then(logoRatio?.let { Modifier.aspectRatio(it) } ?: Modifier),
             )
             Spacer(Modifier.height(12.dp))
             Text(
