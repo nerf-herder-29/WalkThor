@@ -704,9 +704,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         noGuide = Showing(game, art, book)
         scrapeIfBare(game, art, pick?.rom)
         if (newSession && !game.unknown) {
-            // Otherwise Multi, after the launch screen.
+            // Otherwise Now playing.
             when (val first = GameTabs.openOn(context, game.title)) {
-                null -> gameTab = GameTab.ALL
+                null -> gameTab = null
                 GameTab.GUIDE -> if (book != null) { lastOpened = book.id; openId = book.id } else gameTab = GameTab.GUIDE
                 else -> gameTab = first
             }
@@ -792,9 +792,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             noGuide = Showing(game, art, book)
             scrapeIfBare(game, art, null)
             // Opens straight on the tab you chose for this game (long-press a tab), if any.
-            // Otherwise Multi, after the launch screen.
+            // Otherwise Now playing.
             when (val first = GameTabs.openOn(context, game.title)) {
-                null -> gameTab = GameTab.ALL
+                null -> gameTab = null
                 GameTab.GUIDE -> if (book != null) { lastOpened = book.id; openId = book.id } else gameTab = GameTab.GUIDE
                 else -> gameTab = first
             }
