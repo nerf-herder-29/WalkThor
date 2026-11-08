@@ -202,12 +202,19 @@ fun NowPlayingScreen(
                 // Low, with the reflections running off the bottom edge.
                 modifier = Modifier.align(Alignment.BottomCenter).offset(y = 6.dp).graphicsLayer { alpha = enter.value },
             )
-            HeatReadout(
-                preview = previewApps != null,
-                modifier = Modifier.align(Alignment.TopStart).padding(start = 18.dp, top = 58.dp).height(24.dp)
-                    .graphicsLayer { alpha = enter.value },
-            )
         }
+        // Under the tabs: heat on the left, the top screen's frame rate in the middle, the time on
+        // the right. All three stay lit when the screen dims (see AutoDim).
+        HeatReadout(
+            preview = previewApps != null,
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 18.dp, top = 58.dp).height(24.dp)
+                .graphicsLayer { alpha = enter.value },
+        )
+        FpsReadout(
+            preview = previewApps != null,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 58.dp).height(24.dp)
+                .graphicsLayer { alpha = enter.value },
+        )
         StatusClock(Modifier.align(Alignment.TopEnd).padding(end = 18.dp, top = 58.dp).height(24.dp))
     }
 
@@ -415,31 +422,5 @@ fun NoGuidePanel(
     }
     if (picking) {
         GuidePickerDialog(game, books, coverFile, onPick = { picking = false; onPickGuide(it) }, onDismiss = { picking = false })
-    }
-}
-
-/** "62°C CPU  58°C GPU  40% fan", read every few seconds; whatever can't be read is left out. */
-@Composable
-private fun HeatReadout(preview: Boolean, modifier: Modifier = Modifier) {
-    var heat by remember { mutableStateOf<Triple<Float?, Float?, Int?>>(if (preview) Triple(62f, 58f, 40) else Triple(null, null, null)) }
-    LaunchedEffect(preview) {
-        if (preview) return@LaunchedEffect
-        while (true) {
-            heat = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { StatsReader.heat() }.getOrDefault(Triple(null, null, null)) }
-            kotlinx.coroutines.delay(3_000)
-        }
-    }
-    val (cpu, gpu, fan) = heat
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        @Composable
-        fun Part(value: String, label: String) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(value, color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Text(" $label", color = BookColors.TextMuted, fontSize = 12.sp)
-            }
-        }
-        cpu?.let { Part("${it.roundToInt()}°C", "CPU") }
-        gpu?.let { Part("${it.roundToInt()}°C", "GPU") }
-        fan?.let { Part("$it%", "fan") }
     }
 }

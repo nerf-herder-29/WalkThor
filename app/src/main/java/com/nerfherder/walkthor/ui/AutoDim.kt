@@ -232,6 +232,15 @@ fun AutoDimOverlay() {
         status?.let { b ->
             StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
         }
+        // Now playing's heat and frame rate, likewise.
+        val heatAt by GameReadings.heatBounds.collectAsState()
+        val fpsAt by GameReadings.fpsBounds.collectAsState()
+        heatAt?.let { b ->
+            HeatReadout(false, Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }.height(with(androidx.compose.ui.platform.LocalDensity.current) { b.height.toDp() }), anchor = false)
+        }
+        fpsAt?.let { b ->
+            FpsReadout(false, Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }.height(with(androidx.compose.ui.platform.LocalDensity.current) { b.height.toDp() }), anchor = false)
+        }
         // While dimmed during a game: what's playing, centred on the black screen, in full.
         val game by PlaySession.current.collectAsState()
         val g = game
