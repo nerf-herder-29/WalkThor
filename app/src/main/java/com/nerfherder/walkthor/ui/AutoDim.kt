@@ -143,7 +143,10 @@ object AutoDim {
 fun AutoDimOverlay() {
     val settingDelay by AutoDim.delayMs.collectAsState()
     val screenDelay by AutoDim.screenDelayMs.collectAsState()
-    val delayMs = screenDelay ?: settingDelay
+    // During a game, only Now playing dims; the game's tabs (and a guide) stay bright.
+    val playing by PlaySession.current.collectAsState()
+    val onNowPlaying by AutoDim.nowPlayingShown.collectAsState()
+    val delayMs = if (playing != null && !onNowPlaying) 0L else screenDelay ?: settingDelay
     val dimmed by AutoDim.dimmed.collectAsState()
 
     // After a while dimmed fully black, free the memory held by what's under the dim, for the

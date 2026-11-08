@@ -183,9 +183,9 @@ fun NowPlayingScreen(
             modifier = Modifier.align(Alignment.Center).graphicsLayer { alpha = enter.value },
         )
 
-        // ---- over everything: the tabs at the top; your apps on the shelf along the bottom, with
-        // the CPU and GPU temperatures and fan on the left and the play time, clock and battery on
-        // the right just above it ----
+        // ---- over everything: the tabs at the top, with the CPU and GPU temperatures and fan on
+        // the left and the play time, clock and battery on the right just under them; your apps
+        // on the shelf along the bottom ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         val shelfIcon = if (compact) 40.dp else 48.dp
         if (!resting) {
@@ -201,11 +201,11 @@ fun NowPlayingScreen(
             )
             HeatReadout(
                 preview = previewApps != null,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 18.dp, bottom = shelfIcon + 20.dp).height(24.dp)
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 18.dp, top = 58.dp).height(24.dp)
                     .graphicsLayer { alpha = enter.value },
             )
         }
-        StatusClock(Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = if (resting) 8.dp else shelfIcon + 20.dp).height(24.dp))
+        StatusClock(Modifier.align(Alignment.TopEnd).padding(end = 18.dp, top = 58.dp).height(24.dp))
     }
 
     if (picking) {
