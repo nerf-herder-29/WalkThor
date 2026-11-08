@@ -1027,6 +1027,7 @@ class StoreScreenshots {
 
     @Test
     fun nowPlayingWithGuide() {
+        com.nerfherder.walkthor.DeviceModes.demo = true
         com.nerfherder.walkthor.ScreenControls.demoFps = 60f
         content {
             NowPlayingScreen(
@@ -1047,6 +1048,7 @@ class StoreScreenshots {
     @Test
     @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
     fun nowPlayingDense() {
+        com.nerfherder.walkthor.DeviceModes.demo = true
         com.nerfherder.walkthor.ScreenControls.demoFps = 58f
         content {
             NowPlayingScreen(

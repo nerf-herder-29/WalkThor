@@ -182,10 +182,10 @@ fun NowPlayingScreen(
         )
 
         // ---- over everything: the tabs at the top, your apps on the shelf along the bottom, and
-        // the play time, clock and battery under it ----
+        // under it performance and fan on the left, the play time, clock and battery on the right ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         val shelfIcon = if (compact) 40.dp else 48.dp
-        val clockRow = 26.dp
+        val clockRow = 34.dp
         if (!resting) {
             val ctx = androidx.compose.ui.platform.LocalContext.current
             AppShelf(
@@ -197,7 +197,13 @@ fun NowPlayingScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = clockRow + 2.dp).graphicsLayer { alpha = enter.value },
             )
         }
-        StatusClock(Modifier.align(Alignment.BottomCenter).height(clockRow).padding(bottom = 6.dp))
+        if (!resting) {
+            DeviceControls(
+                compact = true, small = true, noLayout = true,
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 5.dp).graphicsLayer { alpha = enter.value },
+            )
+        }
+        StatusClock(Modifier.align(Alignment.BottomEnd).height(clockRow).padding(end = 16.dp, bottom = 4.dp))
     }
 
     if (picking) {

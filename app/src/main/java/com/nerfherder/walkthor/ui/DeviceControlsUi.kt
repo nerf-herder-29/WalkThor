@@ -40,7 +40,11 @@ private class ModesState(val perf: DeviceModes.Performance, val fan: DeviceModes
  * short note where the Thor's system helper can't be reached.
  */
 @Composable
-fun DeviceControls(compact: Boolean, modifier: Modifier = Modifier, vertical: Boolean = false, small: Boolean = false) {
+fun DeviceControls(
+    compact: Boolean, modifier: Modifier = Modifier, vertical: Boolean = false, small: Boolean = false,
+    /** Leave out the button layout pill (compact only). */
+    noLayout: Boolean = false,
+) {
     val context = LocalContext.current
     val preview = LocalInspectionMode.current
     var helper by remember { mutableStateOf(if (preview) true else DeviceModes.canChange().takeIf { it }) }
@@ -84,6 +88,14 @@ fun DeviceControls(compact: Boolean, modifier: Modifier = Modifier, vertical: Bo
                 CyclePill("Performance", state.perf.label, Modifier.fillMaxWidth(), small = true, onTap = perfTap)
                 CyclePill("Fan", state.fan?.label ?: "Custom", Modifier.fillMaxWidth(), small = true, onTap = fanTap)
                 CyclePill("Buttons", layoutText, Modifier.fillMaxWidth(), small = true, onTap = layoutTap)
+            }
+            return
+        }
+        if (noLayout) {
+            // Just the two, at their own width (along the bottom of Now playing).
+            Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                CyclePill("Performance", state.perf.label, Modifier, small = small, onTap = perfTap)
+                CyclePill("Fan", state.fan?.label ?: "Custom", Modifier, small = small, onTap = fanTap)
             }
             return
         }
