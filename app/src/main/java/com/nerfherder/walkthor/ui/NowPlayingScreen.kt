@@ -125,7 +125,6 @@ fun NowPlayingScreen(
     // The game's logo stands in for its name (not while asking which game it is).
     val titleLogo = art.logo?.takeIf { !(game.unknown && choices) }
     androidx.compose.runtime.SideEffect { AutoDim.logo.value = titleLogo }
-    }
     // The Thor's bottom screen is short; at denser display settings tighten everything up.
     val compact = LocalConfiguration.current.screenHeightDp < 480
     val enter = remember { Animatable(0f) }
