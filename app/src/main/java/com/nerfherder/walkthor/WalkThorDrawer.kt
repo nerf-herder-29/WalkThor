@@ -90,6 +90,14 @@ object Drawer {
 
     /** Slides the drawer up on [displayId]. Returns false if it couldn't (the caller opens the app instead). */
     fun show(service: AccessibilityService, displayId: Int, opened: Boolean, onFail: () -> Unit = {}): Boolean {
+        // Your settings, as the app reads them when it opens: the drawer can be the only WalkThor
+        // that's run since the device started (or since a crash), and without this it would have
+        // Auto-dim off, light pages and the play timer showing whatever you'd set.
+        runCatching {
+            com.nerfherder.walkthor.ui.PageStyle.init(service)
+            com.nerfherder.walkthor.ui.AutoDim.init(service)
+            com.nerfherder.walkthor.ui.PlaySession.init(service)
+        }
         return try {
             val d = current?.takeIf { it.displayId == displayId } ?: run {
                 current?.destroy()
