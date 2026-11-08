@@ -110,6 +110,9 @@ object StatsReader {
 
     /** The Thor's fan: its drive now, from the PWM's duty over its period (both readable by any app). */
     private const val FAN = "/sys/class/gpio5_pwm2"
+    /** The CPU and GPU temperatures (°C) and the fan (%), each null where it can't be read. */
+    fun heat(): Triple<Float?, Float?, Int?> = Triple(hottest(cpuZones), hottest(gpuZones), fanPercent())
+
     private fun fanPercent(): Int? {
         val duty = runCatching { File("$FAN/duty").readText().trim().toLong() }.getOrNull() ?: return null
         val period = runCatching { File("$FAN/period").readText().trim().toLong() }.getOrNull()?.takeIf { it > 0 } ?: 50_000L

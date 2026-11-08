@@ -1,5 +1,7 @@
 package com.nerfherder.walkthor.ui
 
+import kotlin.math.roundToInt
+
 import androidx.compose.ui.draw.drawWithContent
 
 import androidx.compose.ui.draw.blur
@@ -182,10 +184,11 @@ fun NowPlayingScreen(
         )
 
         // ---- over everything: the tabs at the top, your apps on the shelf along the bottom, and
-        // under it performance and fan on the left, the play time, clock and battery on the right ----
+        // under it the CPU and GPU temperatures and fan on the left, the play time, clock and
+        // battery on the right ----
         GameTabBar(selected = null, onSelect = onTab, onBack = onLibrary, onClose = onClose, overlay = true)
         val shelfIcon = if (compact) 40.dp else 48.dp
-        val clockRow = 34.dp
+        val clockRow = 26.dp
         if (!resting) {
             val ctx = androidx.compose.ui.platform.LocalContext.current
             AppShelf(
@@ -198,12 +201,13 @@ fun NowPlayingScreen(
             )
         }
         if (!resting) {
-            DeviceControls(
-                compact = true, small = true, noLayout = true,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 5.dp).graphicsLayer { alpha = enter.value },
+            HeatReadout(
+                preview = previewApps != null,
+                modifier = Modifier.align(Alignment.BottomStart).height(clockRow).padding(start = 16.dp, bottom = 6.dp)
+                    .graphicsLayer { alpha = enter.value },
             )
         }
-        StatusClock(Modifier.align(Alignment.BottomEnd).height(clockRow).padding(end = 16.dp, bottom = 4.dp))
+        StatusClock(Modifier.align(Alignment.BottomEnd).height(clockRow).padding(end = 16.dp, bottom = 6.dp))
     }
 
     if (picking) {
@@ -410,5 +414,31 @@ fun NoGuidePanel(
     }
     if (picking) {
         GuidePickerDialog(game, books, coverFile, onPick = { picking = false; onPickGuide(it) }, onDismiss = { picking = false })
+    }
+}
+
+/** "62°C CPU  58°C GPU  40% fan", read every few seconds; whatever can't be read is left out. */
+@Composable
+private fun HeatReadout(preview: Boolean, modifier: Modifier = Modifier) {
+    var heat by remember { mutableStateOf<Triple<Float?, Float?, Int?>>(if (preview) Triple(62f, 58f, 40) else Triple(null, null, null)) }
+    LaunchedEffect(preview) {
+        if (preview) return@LaunchedEffect
+        while (true) {
+            heat = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { StatsReader.heat() }.getOrDefault(Triple(null, null, null)) }
+            kotlinx.coroutines.delay(3_000)
+        }
+    }
+    val (cpu, gpu, fan) = heat
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        @Composable
+        fun Part(value: String, label: String) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(value, color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Text(" $label", color = BookColors.TextMuted, fontSize = 12.sp)
+            }
+        }
+        cpu?.let { Part("${it.roundToInt()}°C", "CPU") }
+        gpu?.let { Part("${it.roundToInt()}°C", "GPU") }
+        fan?.let { Part("$it%", "fan") }
     }
 }
