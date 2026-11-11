@@ -191,6 +191,8 @@ class RomLibrary private constructor(private val context: Context) {
         }
 
         val SYSTEMS = listOf(
+            // ScreenScraper has no Switch 2 system to search under (0: search by name alone).
+            GameSystem("switch2", "Nintendo Switch 2", 0, setOf("switch2", "nsw2", "ns2", "nintendoswitch2"), setOf("banananative", "banana native")),
             GameSystem("switch", "Nintendo Switch", 225, setOf("switch", "nsw", "ns"), setOf("eden", "citron", "yuzu", "sudachi", "suyu", "ryujinx", "torzu", "skyline", "strato")),
             GameSystem("3ds", "Nintendo 3DS", 17, setOf("3ds", "n3ds", "nintendo3ds"), setOf("azahar", "citra", "lime3ds", "borked3ds", "mandarine")),
             GameSystem("nds", "Nintendo DS", 15, setOf("nds", "ds", "nintendods"), setOf("melonds", "drastic", "desmume", "nooDS".lowercase())),
@@ -228,7 +230,7 @@ class RomLibrary private constructor(private val context: Context) {
             // PC games: usually one folder per game (or a shortcut file), run through Winlator and the like.
             GameSystem(
                 "windows", "Windows", 138, setOf("windows", "win", "win32", "win64", "pcgames", "steam", "winlator", "gamehub"),
-                setOf("winlator", "gamehub", "mobox", "gamenative", "banananative", "banana native", "pluvia", "box64", "exagear", "termux"),
+                setOf("winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64", "exagear", "termux"),
             ),
             GameSystem("pc", "PC (DOS)", 135, setOf("pc", "dos", "msdos", "pcdos"), setOf("dosbox", "magic dosbox")),
         )

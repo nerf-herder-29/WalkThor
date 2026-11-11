@@ -253,7 +253,7 @@ object Scraper {
     private fun scrape(c: Context, rom: Rom): Boolean {
         val system = RomLibrary.system(rom.system)
         val ss = if (ScraperPrefs.hasScreenScraper(c)) {
-            screenScraperRom(c, rom) ?: system?.let { screenScraperSearch(c, rom.title, it.screenScraperId) }
+            screenScraperRom(c, rom) ?: system?.let { screenScraperSearch(c, rom.title, it.screenScraperId.takeIf { id -> id > 0 }) }
         } else null
         return save(c, rom.title, ScrapedArt.dirFor(c, rom), ss)
     }
@@ -261,7 +261,7 @@ object Scraper {
     /** The same, by name only. */
     private fun scrapeByName(c: Context, title: String, system: String?): Boolean {
         val ss = if (ScraperPrefs.hasScreenScraper(c)) {
-            screenScraperSearch(c, title, system?.let { RomLibrary.system(it)?.screenScraperId })
+            screenScraperSearch(c, title, system?.let { RomLibrary.system(it)?.screenScraperId?.takeIf { id -> id > 0 } })
         } else null
         return save(c, title, ScrapedArt.dirFor(c, system, title), ss)
     }
@@ -312,7 +312,7 @@ object Scraper {
 
     /** ScreenScraper's media for a ROM, by system and file name: type → URL, best region first. */
     private fun screenScraperRom(c: Context, rom: Rom): Map<String, String>? {
-        val system = RomLibrary.system(rom.system) ?: return null
+        val system = RomLibrary.system(rom.system)?.takeIf { it.screenScraperId > 0 } ?: return null
         val body = ssGet("$SS_BASE/jeuInfos.php?${ssAuth(c)}&systemeid=${system.screenScraperId}&romtype=rom&romnom=${enc(rom.file)}") ?: return null
         val medias = runCatching { JSONObject(body).getJSONObject("response").getJSONObject("jeu").getJSONArray("medias") }.getOrNull()
             ?: return null
