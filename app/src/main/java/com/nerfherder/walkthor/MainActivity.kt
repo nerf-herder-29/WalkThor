@@ -670,8 +670,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
     }
 
-    suspend fun checkEmulator(force: Boolean): Acted? {
-        val s = EmulatorWatch.session.value
+    suspend fun checkEmulator(force: Boolean, session: EmulatorWatch.Session? = EmulatorWatch.session.value): Acted? {
+        val s = session
         if (s == null) { PlaySession.current.value = null; GameFocus.gameRunning.value = false; return null }
         GameFocus.gameRunning.value = true
         val showing = noGuide?.game?.takeIf { it.emulatorPkg == s.pkg && it.at == s.at }
@@ -755,6 +755,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         val recent = game != null && !game.ended && (game.at <= 0 || System.currentTimeMillis() - game.at <= GAME_RECENT_MS)
         // ES-DE says its last game has ended, but an emulator is running: started some other way.
         if (game?.ended == true && EmulatorWatch.session.value != null) return@withLock checkEmulator(force)
+        // The game in front isn't the one the log names: it was started some other way, e.g. from
+        // a shortcut, which Cocoon launches without logging. Go by the app in front instead.
+        val front = EmulatorWatch.topGame(context)
+        if (game?.playerPkg != null && front != null && front.pkg != game.playerPkg) {
+            return@withLock checkEmulator(force, EmulatorWatch.session.value?.takeIf { it.pkg == front.pkg } ?: front)
+        }
         PlaySession.current.value = if (recent) game else null
         GameFocus.gameRunning.value = recent
         if (!gameGuideNow) return@withLock null

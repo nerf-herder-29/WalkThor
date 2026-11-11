@@ -228,7 +228,7 @@ class RomLibrary private constructor(private val context: Context) {
             // PC games: usually one folder per game (or a shortcut file), run through Winlator and the like.
             GameSystem(
                 "windows", "Windows", 138, setOf("windows", "win", "win32", "win64", "pcgames", "steam", "winlator", "gamehub"),
-                setOf("winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64", "exagear", "termux"),
+                setOf("winlator", "gamehub", "mobox", "gamenative", "banananative", "banana native", "pluvia", "box64", "exagear", "termux"),
             ),
             GameSystem("pc", "PC (DOS)", 135, setOf("pc", "dos", "msdos", "pcdos"), setOf("dosbox", "magic dosbox")),
         )

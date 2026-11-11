@@ -25,6 +25,8 @@ data class LaunchedGame(
     val unknown: Boolean = false,
     /** The frontend logged that this game has ended (ES-DE does; Cocoon doesn't). */
     val ended: Boolean = false,
+    /** The package the frontend says it launched, when its log says (Cocoon's does). */
+    val playerPkg: String? = null,
 )
 
 /**
@@ -43,6 +45,10 @@ object CocoonLaunchLog {
     private val HEADER = Regex("""^\[([0-9-]+ [0-9:.]+)\] \[[^\]]*\] ═+ (Launch|Swap): (.+?) ═+\s*$""")
     private val GAME = Regex("""\] Game: (.+?) \| File: (.+)$""")
     private val PLAYER = Regex("""\] Player: (.+?) \(""")
+    /** "Player: Dolphin Emulator (org.dolphinemu.dolphinemu/…)" */
+    private val PLAYER_PKG = Regex("""\] Player: .+? \(([A-Za-z0-9_.]+)/""")
+    /** "Intent: …, component=ComponentInfo{xendroid.compose/xendroid.compose.EmulatorHostActivity}" */
+    private val INTENT_PKG = Regex("""component=ComponentInfo\{([A-Za-z0-9_.]+)/""")
 
     private const val PREFS = "cocoon"
     private const val KEY_TREE = "tree"
@@ -157,12 +163,14 @@ object CocoonLaunchLog {
         var title = header.groupValues[3].trim()
         var file: String? = null
         var player: String? = null
+        var pkg: String? = null
         for (line in lines.drop(start + 1).take(20)) {
             if (HEADER.containsMatchIn(line)) break
             GAME.find(line)?.let { title = it.groupValues[1].trim(); file = it.groupValues[2].trim() }
             PLAYER.find(line)?.let { player = it.groupValues[1].trim() }
+            (PLAYER_PKG.find(line) ?: INTENT_PKG.find(line))?.let { if (pkg == null) pkg = it.groupValues[1] }
         }
-        return LaunchedGame(title, file, player, at)
+        return LaunchedGame(title, file, player, at, playerPkg = pkg)
     }
 }
 

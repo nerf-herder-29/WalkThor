@@ -213,6 +213,7 @@ object EmulatorWatch {
                 gameCovered = if (walkThorJustMoved) gameCovered || wasGame else false
             }
         }
+        if (frontByDisplay[event.displayId] != pkg) frontSince[event.displayId] = System.currentTimeMillis()
         frontByDisplay[event.displayId] = pkg
         val others = frontByDisplay.filterKeys { it != bottom }.values
         if (others.isNotEmpty()) {
@@ -220,6 +221,18 @@ object EmulatorWatch {
             gameShowing.value = others.any { isGamePkg(context, it) }
             emulatorShowing.value = others.any { isEmulator(context, it) }
         }
+    }
+
+    private val frontSince = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    /**
+     * The game app in front on the game screen (not the bottom one), and since when, as a session;
+     * null when none is (or nothing's been seen there yet).
+     */
+    fun topGame(context: Context): Session? {
+        val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
+        val (display, pkg) = frontByDisplay.entries.firstOrNull { it.key != bottom && isGamePkg(context, it.value) }?.toPair() ?: return null
+        return Session(pkg, label(context, pkg), frontSince[display] ?: System.currentTimeMillis())
     }
 
     /** A game was in front on the top screen until your frontend came over it as WalkThor opened. */
@@ -316,7 +329,7 @@ object EmulatorWatch {
         "citron", "yuzu", "sudachi", "suyu", "ryujinx", "torzu", "skyline", "citra", "lime3ds", "azahar",
         "melonds", "drastic", "mupen", "m64plus", "flycast", "redream", "vita3k", "cemu", "xenia", "ax360",
         "mgba", "snes9x", "nestopia", "fceumm", "epsxe", "fpse", "mame4droid", "scummvm", "dosbox", "yabasanshiro",
-        "gearboy", "my boy", "john gba", "pizza boy", "rpcsx", "shadps4", "winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64",
+        "gearboy", "my boy", "john gba", "pizza boy", "rpcsx", "shadps4", "winlator", "gamehub", "mobox", "gamenative", "banananative", "banana native", "pluvia", "box64",
         "xendroid", "xenon", "rpcs3", "lemuroid", "emubox", "nostalgia", "kenji", "uzuy", "eggns", "egg ns",
     )
     private const val OPENED_HERE_MS = 6 * 60 * 60 * 1000L
