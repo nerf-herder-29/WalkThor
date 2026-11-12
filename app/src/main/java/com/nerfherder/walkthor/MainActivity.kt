@@ -670,7 +670,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
     }
 
-    suspend fun checkEmulator(force: Boolean, session: EmulatorWatch.Session? = EmulatorWatch.session.value): Acted? {
+    /**
+     * The game in the emulator in front. [generic]: a game we can't know (one started from a
+     * shortcut, which Cocoon doesn't log), so the drawer just shows the app, with no game's art
+     * and no question about which game it is.
+     */
+    suspend fun checkEmulator(force: Boolean, session: EmulatorWatch.Session? = EmulatorWatch.session.value, generic: Boolean = false): Acted? {
         val s = session
         if (s == null) { PlaySession.current.value = null; GameFocus.gameRunning.value = false; return null }
         GameFocus.gameRunning.value = true
@@ -680,12 +685,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             PlaySession.current.value = showing ?: PlaySession.current.value
             return null
         }
-        val pick = withContext(Dispatchers.Default) { identifyFromEmulator(s) }
+        val pick = if (generic) null else withContext(Dispatchers.Default) { identifyFromEmulator(s) }
         if (s.at == emuActedAt && pick == null && !force) return null
         val newSession = s.at != emuActedAt
         emuActedAt = s.at
         if (newSession) emuPicked = false
-        val game = emulatorGame(s, pick)
+        val game = if (generic) LaunchedGame(s.name, null, s.name, s.at, emulatorPkg = s.pkg) else emulatorGame(s, pick)
         val book = pick?.book
         PlaySession.current.value = game
         swipeGame = game
@@ -695,14 +700,14 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             com.nerfherder.walkthor.data.PdfSource.trimAll()
             runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
         }
-        val art = if (game.unknown) GameArt(null) else ArtworkRepository.get(context).gameArt(game.title, game.file)
+        val art = if (game.unknown || generic) GameArt(null) else ArtworkRepository.get(context).gameArt(game.title, game.file)
         if (newSession) {
             openId = null
             gameTab = null
             fromAll = false
         }
         noGuide = Showing(game, art, book)
-        scrapeIfBare(game, art, pick?.rom)
+        if (!generic) scrapeIfBare(game, art, pick?.rom)
         if (newSession && !game.unknown) {
             // Otherwise Now playing.
             when (val first = GameTabs.openOn(context, game.title)) {
@@ -756,10 +761,11 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         // ES-DE says its last game has ended, but an emulator is running: started some other way.
         if (game?.ended == true && EmulatorWatch.session.value != null) return@withLock checkEmulator(force)
         // The game in front isn't the one the log names: it was started some other way, e.g. from
-        // a shortcut, which Cocoon launches without logging. Go by the app in front instead.
+        // a shortcut, which Cocoon launches without logging. There's no telling which game it is,
+        // so the drawer shows just the app in front, nothing game-specific.
         val front = EmulatorWatch.topGame(context)
         if (game?.playerPkg != null && front != null && front.pkg != game.playerPkg) {
-            return@withLock checkEmulator(force, EmulatorWatch.session.value?.takeIf { it.pkg == front.pkg } ?: front)
+            return@withLock checkEmulator(force, EmulatorWatch.session.value?.takeIf { it.pkg == front.pkg } ?: front, generic = true)
         }
         PlaySession.current.value = if (recent) game else null
         GameFocus.gameRunning.value = recent
