@@ -226,6 +226,8 @@ class SwipeGestureService : AccessibilityService() {
         // Never let a bad event take the service down: Android turns off an accessibility
         // service that keeps crashing, and WalkThor would lose its access.
         runCatching { EmulatorWatch.noteFront(this, event) }
+        // "Bottom screen off while a game plays": a game coming up or going.
+        if (EmulatorWatch.frontKnown.value) runCatching { BottomOff.gameFront(this, EmulatorWatch.gameShowing.value) }
         val started = try { EmulatorWatch.onEvent(this, event) } catch (_: Throwable) { null } ?: return
         runCatching { openForGame(started) }
     }
@@ -313,6 +315,18 @@ class SwipeGestureService : AccessibilityService() {
             // waits a moment for a possible second one before acting. Never lets a problem here take
             // the service (and with it the button) down.
             val now = android.os.SystemClock.uptimeMillis()
+            // Held: the bottom screen off (or on again), when that's switched on. The press then
+            // does nothing else.
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 && BottomOff.holdEnabled(this)) {
+                AynButton.held = false
+                handler.removeCallbacks(aynHold)
+                handler.postDelayed(aynHold, AynButton.HOLD_MS)
+            }
+            if (event.action == android.view.KeyEvent.ACTION_UP) handler.removeCallbacks(aynHold)
+            if (AynButton.held) {
+                if (event.action == android.view.KeyEvent.ACTION_UP) { AynButton.held = false; AynButton.passing = false }
+                return true
+            }
             when (event.action) {
                 android.view.KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
                     AynButton.passing = now - AynButton.lastTapAt < AynButton.DOUBLE_TAP_MS
@@ -351,6 +365,7 @@ class SwipeGestureService : AccessibilityService() {
             }
             handler.removeCallbacks(lightsWatch)
             if (intent.action != Intent.ACTION_SCREEN_ON) return
+            runCatching { BottomOff.afterWake(context) }
             // AYN draws the lights from its own settings when the screen wakes; WalkThor keeps those
             // matching yours, so it only writes yours once more, quietly, after AYN's done.
             handler.postDelayed(lightsWatch, 1_500)
@@ -496,9 +511,21 @@ class SwipeGestureService : AccessibilityService() {
         }, "WalkThor launch log").start()
     }
 
+    /** The AYN button held down: the bottom screen off, or back on. */
+    private val aynHold = Runnable {
+        // The second press of a double tap belongs to AYN's drawer, held or not.
+        if (AynButton.passing) return@Runnable
+        AynButton.held = true
+        handler.removeCallbacks(aynTap)
+        AynButton.lastTapAt = 0L
+        runCatching { BottomOff.toggle(this) }
+    }
+
     /** A single tap (no second one came): WalkThor's drawer. */
     private val aynTap = Runnable {
         AynButton.lastTapAt = 0L
+        // With the bottom screen off, a tap turns it back on, and the drawer comes up on it.
+        if (BottomOff.off.value) runCatching { BottomOff.turnOn(this) }
         try { onAynButton() } catch (e: Throwable) { AynButton.note("couldn't open (${e.javaClass.simpleName}: ${e.message?.take(100)})") }
     }
 
@@ -607,6 +634,10 @@ object AynButton {
     /** The current press is going to AYN (the second of a double tap). */
     @Volatile var passing = false
     const val DOUBLE_TAP_MS = 300L
+    /** How long a press counts as holding the button. */
+    const val HOLD_MS = 600L
+    /** The current press was a hold (it's done its job; its release does nothing). */
+    @Volatile var held = false
     /** The launch log says a game is running (read in the background). */
     @Volatile var logSaysGame = false
     @Volatile var logCheckedAt = 0L

@@ -484,6 +484,20 @@ private fun SettingsScreen(
                         else "Needs accessibility access switched on",
                         checked = aynButton && swipeToOpen,
                     ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
+                    var holdOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.holdEnabled(context)) }
+                    SettingSwitch(
+                        "Hold the AYN button: bottom screen off",
+                        if (aynButton && swipeToOpen) "Hold it again, tap it, or double-tap the screen to turn it back on"
+                        else "Needs \"AYN button opens WalkThor\" switched on",
+                        checked = holdOff && aynButton && swipeToOpen,
+                    ) { if (aynButton && swipeToOpen) { holdOff = it; com.nerfherder.walkthor.BottomOff.setHoldEnabled(context, it) } }
+                    var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }
+                    SettingSwitch(
+                        "Bottom screen off during games",
+                        if (swipeToOpen) "Turns off when a game or shortcut starts, and back on when it closes. Tap the AYN button to use WalkThor meanwhile"
+                        else "Needs accessibility access switched on",
+                        checked = gameOff && swipeToOpen,
+                    ) { if (swipeToOpen) { gameOff = it; com.nerfherder.walkthor.BottomOff.setGameEnabled(context, it) } }
 
                 }
                 SettingsGroup("If Android closes WalkThor") {
