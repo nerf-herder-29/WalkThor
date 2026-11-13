@@ -505,8 +505,8 @@ private fun SettingsScreen(
                     ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
                     var holdOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.holdEnabled(context)) }
                     SettingSwitch(
-                        "Hold the AYN button: bottom screen off",
-                        if (aynButton && swipeToOpen) "Hold it again, tap it, or double-tap the screen to turn it back on"
+                        "Hold the AYN button: dim the bottom screen",
+                        if (aynButton && swipeToOpen) "Dims it all the way down. Hold again, or tap, to bring it back to the top screen's brightness"
                         else "Needs \"AYN button opens WalkThor\" switched on",
                         checked = holdOff && aynButton && swipeToOpen,
                     ) { if (aynButton && swipeToOpen) { holdOff = it; com.nerfherder.walkthor.BottomOff.setHoldEnabled(context, it) } }

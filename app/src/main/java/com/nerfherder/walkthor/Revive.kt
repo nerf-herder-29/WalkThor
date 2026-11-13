@@ -41,7 +41,9 @@ object Revive {
     /** Free memory, beyond Android's low-memory line, that WalkThor would like before it reopens. */
     private const val SPARE_BYTES = 256L * 1024 * 1024
     /** At most this many reopens in [LIMIT_WINDOW_MS]. */
-    private const val MAX_REOPENS = 6
+    private const val MAX_REOPENS = 3
+    /** Closed again within this long of coming back: it stays down. */
+    private const val SETTLE_MS = 3 * 60_000L
     private const val LIMIT_WINDOW_MS = 10 * 60_000L
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -148,6 +150,14 @@ object Revive {
                 return
             }
         }
+        // It only just came back and Android has closed it again: the game needs the memory, and
+        // coming back again would just repeat that (with the bottom screen flicking between
+        // WalkThor and what's under it each time). Stay down; the AYN button still opens it.
+        val lastBack = p.getLong("lastBack", 0L)
+        if (now - lastBack in 0 until SETTLE_MS) {
+            p.edit().putString("note", "$closed, soon after it had come back, so it stayed down this time (the AYN button opens it).").apply()
+            return
+        }
         // Don't loop if Android keeps closing it.
         val recent = (p.getString("reopens", "") ?: "").split(',').mapNotNull { it.toLongOrNull() }
             .filter { now - it < LIMIT_WINDOW_MS }
@@ -171,7 +181,7 @@ object Revive {
                 val waited = android.os.SystemClock.elapsedRealtime() - started
                 if (crashed || (waited >= MIN_WAIT_MS && memoryCalm(am)) || waited >= MAX_WAIT_MS) {
                     val secs = (System.currentTimeMillis() - stopped) / 1000
-                    p.edit().putString("note", "$closed; WalkThor was back ${secs}s later.").apply()
+                    p.edit().putString("note", "$closed; WalkThor was back ${secs}s later.").putLong("lastBack", System.currentTimeMillis()).apply()
                     reopen(context, drawerWasUp)
                 } else handler.postDelayed(this, CHECK_EVERY_MS)
             }
@@ -181,10 +191,12 @@ object Revive {
 
     /** Opened from the service itself (as a swipe does), which Android allows from the background. */
     private fun reopen(context: android.accessibilityservice.AccessibilityService, inDrawer: Boolean) {
-        // Back in the drawer if that's where it was (the app if the drawer can't open).
+        // Back in the drawer if that's where it was. Never the app in its place: opening the app
+        // takes the front from the game, which your frontend reacts to.
         if (inDrawer) {
             val bottom = DisplayHelper.bottomDisplay(context)?.displayId ?: return
-            if (runCatching { Drawer.show(context, bottom, opened = true, onFail = { openApp(context) }) }.getOrDefault(false)) return
+            runCatching { Drawer.show(context, bottom, opened = true) }
+            return
         }
         openApp(context)
     }

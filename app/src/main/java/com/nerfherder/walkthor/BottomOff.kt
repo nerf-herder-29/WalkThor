@@ -40,7 +40,38 @@ object BottomOff {
     fun gameEnabled(c: Context) = prefs(c).getBoolean("bottomOffGame", false)
     fun setGameEnabled(c: Context, on: Boolean) = prefs(c).edit().putBoolean("bottomOffGame", on).apply()
 
-    fun toggle(service: AccessibilityService) { if (off.value) turnOn(service) else turnOff(service, game = false) }
+    // ---- holding the AYN button: the bottom screen dimmed all the way down, or back up ----
+
+    /** The bottom screen is dimmed right down by a hold (kept, so a hold undoes it even after a restart). */
+    fun dimmed(c: Context) = prefs(c).getBoolean("bottomHeldDim", false)
+
+    /** A hold: dims the bottom screen to 0%; again, back up to the top screen's level. */
+    fun holdToggle(service: AccessibilityService) {
+        if (off.value) { turnOn(service); return }
+        if (dimmed(service)) undim(service) else {
+            prefs(service).edit().putBoolean("bottomHeldDim", true).apply()
+            AynButton.note("held → bottom screen dimmed to 0%")
+            setBottom(service, 0f)
+        }
+    }
+
+    /** Back up to the top screen's brightness, if a hold had dimmed it. */
+    fun undim(c: Context) {
+        if (!dimmed(c)) return
+        prefs(c).edit().putBoolean("bottomHeldDim", false).apply()
+        AynButton.note("bottom screen back to the top screen's level")
+        setBottom(c, null)
+    }
+
+    /** [level], or the top screen's level when null. */
+    private fun setBottom(c: Context, level: Float?) {
+        val app = c.applicationContext
+        worker.execute {
+            // Finds out whether AYN's helper can be used (not on the main thread), then sets it.
+            runCatching { AynSystem.available() }
+            main.post { runCatching { ScreenControls.setBottom(app, level ?: ScreenControls.top(app).coerceAtLeast(0.05f)) } }
+        }
+    }
 
     fun turnOff(service: AccessibilityService, game: Boolean, note: Boolean = true) {
         if (off.value) { if (!game) byGame = false; return }

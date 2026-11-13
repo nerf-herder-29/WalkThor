@@ -216,7 +216,13 @@ object EmulatorWatch {
                 gameCovered = if (walkThorJustMoved) gameCovered || wasGame else false
             }
         }
-        if (frontByDisplay[event.displayId] != pkg) frontSince[event.displayId] = System.currentTimeMillis()
+        if (frontByDisplay[event.displayId] != pkg) {
+            frontSince[event.displayId] = System.currentTimeMillis()
+            // Kept, so that if Android closes WalkThor it still knows what's in front when it's back.
+            if (event.displayId != bottom) runCatching {
+                prefs(context).edit().putString("topFront", pkg).putInt("topFrontDisplay", event.displayId).putLong("topFrontBoot", bootStamp()).apply()
+            }
+        }
         frontByDisplay[event.displayId] = pkg
         val others = frontByDisplay.filterKeys { it != bottom }.values
         if (others.isNotEmpty()) {
@@ -227,6 +233,25 @@ object EmulatorWatch {
     }
 
     private val frontSince = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    private fun bootStamp() = (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 10_000L
+
+    /**
+     * WalkThor's service has just started again: Android only says what's in front when that
+     * changes, so pick up what was in front on the game screen when WalkThor was last running
+     * (since the device started). Without this, nothing that waits for a game (the FPS on the top
+     * screen, for one) would know one's still there until you left it and came back.
+     */
+    fun restoreFront(context: Context) {
+        if (frontByDisplay.isNotEmpty()) return
+        val p = prefs(context)
+        val pkg = p.getString("topFront", null) ?: return
+        if (kotlin.math.abs(p.getLong("topFrontBoot", -9L) - bootStamp()) > 1L) return
+        frontByDisplay[p.getInt("topFrontDisplay", 0)] = pkg
+        frontKnown.value = true
+        gameShowing.value = isGamePkg(context, pkg)
+        emulatorShowing.value = isEmulator(context, pkg)
+    }
 
     /**
      * The game app in front on the game screen (not the bottom one), and since when, as a session;

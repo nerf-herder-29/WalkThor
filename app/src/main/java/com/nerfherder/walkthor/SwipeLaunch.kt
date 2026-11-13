@@ -210,6 +210,8 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { bindService(Intent(this, Keeper::class.java), keeperLink, Context.BIND_AUTO_CREATE) }
         handler.removeCallbacks(standingAlarm)
         handler.post(standingAlarm)
+        // What's in front on the game screen, as it was (Android only reports changes).
+        runCatching { EmulatorWatch.restoreFront(this) }
         // The bottom screen off again, if it was (before the drawer's turn: it stays down then).
         runCatching { BottomOff.afterRestart(this) }
         // If Android closed WalkThor while it was up, bring it back (see Revive).
@@ -545,7 +547,7 @@ class SwipeGestureService : AccessibilityService() {
         AynButton.held = true
         handler.removeCallbacks(aynTap)
         AynButton.lastTapAt = 0L
-        runCatching { BottomOff.toggle(this) }
+        runCatching { BottomOff.holdToggle(this) }
     }
 
     /** A single tap (no second one came): WalkThor's drawer. */
@@ -553,6 +555,7 @@ class SwipeGestureService : AccessibilityService() {
         AynButton.lastTapAt = 0L
         // With the bottom screen off, a tap turns it back on, and the drawer comes up on it.
         if (BottomOff.off.value) runCatching { BottomOff.turnOn(this) }
+        runCatching { BottomOff.undim(this) }
         try { onAynButton() } catch (e: Throwable) { AynButton.note("couldn't open (${e.javaClass.simpleName}: ${e.message?.take(100)})") }
     }
 
