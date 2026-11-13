@@ -120,16 +120,14 @@ object TopFps {
             val w = ctx.getSystemService(WindowManager::class.java) ?: return
             val dp = { x: Float -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, ctx.resources.displayMetrics) }
             val tv = TextView(ctx).apply {
-                // Light glass: see-through, but enough of it that the dark number stands out over
-                // a dark scene as well as a bright one; a bright edge.
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.argb(125, 255, 255, 255), Color.argb(100, 240, 242, 246)),
-                ).apply {
+                // Smoked glass: a dark see-through pill with a faint light edge and a white number,
+                // which reads the same over dark, bright and busy scenes.
+                background = GradientDrawable().apply {
+                    setColor(Color.argb(158, 12, 12, 16))
                     cornerRadius = dp(10f)
-                    setStroke(dp(1f).roundToInt().coerceAtLeast(1), Color.argb(150, 255, 255, 255))
+                    setStroke(dp(1f).roundToInt().coerceAtLeast(1), Color.argb(56, 255, 255, 255))
                 }
-                setTextColor(Color.rgb(18, 18, 22))
+                setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 includeFontPadding = false
@@ -159,7 +157,7 @@ object TopFps {
         v.text = SpannableString(text).apply {
             val at = text.indexOf(" FPS")
             setSpan(RelativeSizeSpan(0.8f), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(ForegroundColorSpan(Color.rgb(60, 60, 68)), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(Color.rgb(200, 200, 208)), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 
