@@ -205,12 +205,32 @@ class SwipeGestureService : AccessibilityService() {
         attach()
         // "Open when an emulator starts": listen for apps coming to the front only while it's on.
         EmulatorWatch.refresh(this)
-        // If Android closed WalkThor mid-game to free memory, bring it back (see Revive).
-        Revive.onServiceStart(this)
+        // Coming back after Android closes WalkThor: a keeper process that notices at once, and a
+        // standing alarm behind it (see ComeBack).
+        runCatching { bindService(Intent(this, Keeper::class.java), keeperLink, Context.BIND_AUTO_CREATE) }
+        handler.removeCallbacks(standingAlarm)
+        handler.post(standingAlarm)
+        // The bottom screen off again, if it was (before the drawer's turn: it stays down then).
+        runCatching { BottomOff.afterRestart(this) }
+        // If Android closed WalkThor while it was up, bring it back (see Revive).
+        runCatching { Revive.onServiceStart(this) }
         // The top screen's FPS in its corner, if that's on.
         runCatching { TopFps.start(this) }
         handler.removeCallbacks(drawerBeat)
         handler.postDelayed(drawerBeat, 5_000)
+    }
+
+    private val keeperLink = object : android.content.ServiceConnection {
+        override fun onServiceConnected(name: android.content.ComponentName?, service: android.os.IBinder?) = Unit
+        override fun onServiceDisconnected(name: android.content.ComponentName?) = Unit
+    }
+
+    /** Pushes the standing alarm on while WalkThor's running (see ComeBack.arm). */
+    private val standingAlarm = object : Runnable {
+        override fun run() {
+            ComeBack.arm(this@SwipeGestureService, 12_000)
+            handler.postDelayed(this, 5_000)
+        }
     }
 
     /** While the drawer is up during a game, note it, so it can come back if Android closes WalkThor. */
@@ -229,7 +249,7 @@ class SwipeGestureService : AccessibilityService() {
         // service that keeps crashing, and WalkThor would lose its access.
         runCatching { EmulatorWatch.noteFront(this, event) }
         // "Bottom screen off while a game plays": a game coming up or going.
-        if (EmulatorWatch.frontKnown.value) runCatching { BottomOff.gameFront(this, EmulatorWatch.gameShowing.value) }
+        if (EmulatorWatch.frontKnown.value) runCatching { BottomOff.gameFront(this) }
         val started = try { EmulatorWatch.onEvent(this, event) } catch (_: Throwable) { null } ?: return
         runCatching { openForGame(started) }
     }
@@ -367,7 +387,6 @@ class SwipeGestureService : AccessibilityService() {
             }
             handler.removeCallbacks(lightsWatch)
             if (intent.action != Intent.ACTION_SCREEN_ON) return
-            runCatching { BottomOff.afterWake(context) }
             // AYN draws the lights from its own settings when the screen wakes; WalkThor keeps those
             // matching yours, so it only writes yours once more, quietly, after AYN's done.
             handler.postDelayed(lightsWatch, 1_500)
@@ -390,6 +409,11 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { unregisterReceiver(screenOn) }
         runCatching { Drawer.destroy() }
         runCatching { TopFps.stop() }
+        // Switched off on purpose: nothing should bring it back, and the bottom screen's on again.
+        handler.removeCallbacks(standingAlarm)
+        ComeBack.disarm(this)
+        runCatching { unbindService(keeperLink) }
+        runCatching { BottomOff.turnOn(this) }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
         if (instance?.get() === this) instance = null
         SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)

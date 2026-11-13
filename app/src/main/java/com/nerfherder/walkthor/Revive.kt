@@ -33,17 +33,15 @@ object Revive {
     /** After a crash, how long to wait before reopening (memory isn't the problem then). */
     private const val CRASH_WAIT_MS = 1_000L
     /** Closed for memory: never sooner than this after its service comes back. */
-    private const val MIN_WAIT_MS = 3_000L
+    private const val MIN_WAIT_MS = 2_000L
     /** How often memory is checked while waiting. */
     private const val CHECK_EVERY_MS = 1_000L
-    /** Memory must look fine this many checks in a row. */
-    private const val CALM_CHECKS = 2
-    /** Gives up (stays closed) if memory hasn't recovered by then. */
-    private const val GIVE_UP_MS = 90_000L
-    /** Free memory, beyond Android's low-memory line, that WalkThor wants before it reopens. */
-    private const val SPARE_BYTES = 384L * 1024 * 1024
+    /** Comes back by then whatever memory looks like. */
+    private const val MAX_WAIT_MS = 10_000L
+    /** Free memory, beyond Android's low-memory line, that WalkThor would like before it reopens. */
+    private const val SPARE_BYTES = 256L * 1024 * 1024
     /** At most this many reopens in [LIMIT_WINDOW_MS]. */
-    private const val MAX_REOPENS = 3
+    private const val MAX_REOPENS = 6
     private const val LIMIT_WINDOW_MS = 10 * 60_000L
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -72,81 +70,113 @@ object Revive {
     /** What happened last time Android closed WalkThor, for Diagnostics; null if it hasn't. */
     fun lastNote(context: Context): String? = prefs(context).getString("note", null)
 
-    /** Called by the accessibility service ([context]) when it starts, including after Android restarts it. */
-    fun onServiceStart(context: android.accessibilityservice.AccessibilityService) {
-        if (Build.VERSION.SDK_INT < 30) return
-        val p = prefs(context)
-        val am = context.getSystemService(ActivityManager::class.java) ?: return
-        val exit = runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 5) }.getOrNull()
-            ?.firstOrNull { it.processName == context.packageName } ?: return
-        if (exit.timestamp <= p.getLong("handled", 0L)) return
-        p.edit().putLong("handled", exit.timestamp).apply()
+    // ---- what was up when WalkThor was last running, kept so it can be put back ----
 
-        val why = when (exit.reason) {
-            ApplicationExitInfo.REASON_LOW_MEMORY -> "to free memory for the game"
+    /** When the device started, to the nearest few seconds: what was up before a restart doesn't count. */
+    private fun bootStamp() = (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 10_000L
+    private fun sameBoot(context: Context) = kotlin.math.abs(prefs(context).getLong("boot", -9L) - bootStamp()) <= 1L
+
+    /** The drawer went up, or was put away. */
+    fun noteDrawer(context: Context, up: Boolean) {
+        prefs(context).edit().putBoolean("drawerUp", up).putLong("boot", bootStamp()).apply()
+    }
+
+    /** The bottom screen was switched off ([byGame]: because a game started), or back on. */
+    fun noteBottomOff(context: Context, off: Boolean, byGame: Boolean) {
+        prefs(context).edit().putBoolean("bottomOff", off).putBoolean("bottomOffByGame", byGame).putLong("boot", bootStamp()).apply()
+    }
+
+    /** The bottom screen was off when WalkThor last ran (since the device started): null, or whether a game did it. */
+    fun bottomWasOff(context: Context): Boolean? =
+        if (sameBoot(context) && prefs(context).getBoolean("bottomOff", false)) prefs(context).getBoolean("bottomOffByGame", false) else null
+
+    /**
+     * Called by the accessibility service ([context]) when it starts, including after Android
+     * restarts it. If the drawer was up when WalkThor stopped (it didn't put it away itself, so
+     * Android closed it or it crashed), the drawer goes back up; if the app was up during a game,
+     * the app reopens.
+     */
+    fun onServiceStart(context: android.accessibilityservice.AccessibilityService) {
+        val p = prefs(context)
+        val drawerWasUp = sameBoot(context) && p.getBoolean("drawerUp", false)
+        // Whatever happens next, that drawer is gone now.
+        if (p.getBoolean("drawerUp", false)) p.edit().putBoolean("drawerUp", false).apply()
+        val am = context.getSystemService(ActivityManager::class.java) ?: return
+        val exit = if (Build.VERSION.SDK_INT >= 30) {
+            runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 5) }.getOrNull()
+                ?.firstOrNull { it.processName == context.packageName }
+                ?.takeIf { it.timestamp > p.getLong("handled", 0L) }
+        } else null
+        exit?.let { p.edit().putLong("handled", it.timestamp).apply() }
+        if (exit == null && !drawerWasUp) return
+
+        val now = System.currentTimeMillis()
+        val stopped = exit?.timestamp ?: now
+        val at = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(stopped))
+        val reason = exit?.reason
+        val crashed = Build.VERSION.SDK_INT >= 30 &&
+            (reason == ApplicationExitInfo.REASON_CRASH || reason == ApplicationExitInfo.REASON_CRASH_NATIVE)
+        val why = if (Build.VERSION.SDK_INT >= 30) when (reason) {
             ApplicationExitInfo.REASON_CRASH_NATIVE, ApplicationExitInfo.REASON_CRASH -> "after a crash"
             ApplicationExitInfo.REASON_ANR -> "because it stopped responding"
-            else -> return // closed by you, by an update, or by a restart: leave it closed
-        }
-        if (exit.reason == ApplicationExitInfo.REASON_CRASH_NATIVE || exit.reason == ApplicationExitInfo.REASON_ANR) {
-            CrashLog.recordExit(context, exit)
-        }
+            // Closed by you, by an update, or by you stopping it: only a drawer that was up comes back.
+            ApplicationExitInfo.REASON_USER_REQUESTED, ApplicationExitInfo.REASON_USER_STOPPED,
+            ApplicationExitInfo.REASON_PACKAGE_UPDATED, ApplicationExitInfo.REASON_EXIT_SELF,
+            ApplicationExitInfo.REASON_PERMISSION_CHANGE -> if (drawerWasUp) "" else return
+            // Low memory, and the other ways Android reports having closed an app itself (many
+            // devices report a low-memory close as just "signaled").
+            else -> "to free memory"
+        } else ""
+        if (Build.VERSION.SDK_INT >= 30 && exit != null &&
+            (reason == ApplicationExitInfo.REASON_CRASH_NATIVE || reason == ApplicationExitInfo.REASON_ANR)
+        ) CrashLog.recordExit(context, exit)
+        val closed = "Android closed WalkThor" + (if (why.isEmpty()) "" else " $why") + " at $at"
         // Stopped responding: reopening it could just do the same again, so leave it closed.
-        if (exit.reason == ApplicationExitInfo.REASON_ANR) {
-            val at = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(exit.timestamp))
-            p.edit().putString("note", "Android closed WalkThor $why at $at. A report was saved (About & licences).").apply()
+        if (Build.VERSION.SDK_INT >= 30 && reason == ApplicationExitInfo.REASON_ANR) {
+            p.edit().putString("note", "$closed. A report was saved (About & licences).").apply()
             return
         }
-
         if (!enabled(context)) {
-            p.edit().putString("note", "Android closed WalkThor $why at ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(exit.timestamp))}. Reopening is switched off in Settings, so it stayed closed.").apply()
+            p.edit().putString("note", "$closed. Reopening is switched off in Settings, so it stayed closed.").apply()
             return
         }
-        // Only when it was showing during a game right up to being closed, and only just now.
-        val seen = p.getLong("seen", 0L)
-        val now = System.currentTimeMillis()
-        val at = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(exit.timestamp))
-        if (seen == 0L || exit.timestamp - seen > 30_000L || now - exit.timestamp > 3 * 60_000L) {
-            p.edit().putString("note", "Android closed WalkThor $why at $at (not during a game, so it stayed closed).").apply()
-            return
+        // The app (not the drawer) only comes back if it was showing during a game right up to being closed.
+        if (!drawerWasUp) {
+            val seen = p.getLong("seen", 0L)
+            if (seen == 0L || stopped - seen > 30_000L || now - stopped > 3 * 60_000L) {
+                p.edit().putString("note", "$closed (WalkThor wasn't up, so there was nothing to bring back).").apply()
+                return
+            }
         }
         // Don't loop if Android keeps closing it.
         val recent = (p.getString("reopens", "") ?: "").split(',').mapNotNull { it.toLongOrNull() }
             .filter { now - it < LIMIT_WINDOW_MS }
         if (recent.size >= MAX_REOPENS) {
-            p.edit().putString("note", "Android closed WalkThor $why at $at. It had already reopened $MAX_REOPENS times in 10 minutes, so it stayed closed.").apply()
+            p.edit().putString("note", "$closed. It had already come back $MAX_REOPENS times in 10 minutes, so it stayed closed.").apply()
             return
         }
         p.edit()
             .putString("reopens", (recent + now).joinToString(","))
-            .putString("note", "Android closed WalkThor $why at $at during a game; reopening.")
+            .putString("note", "$closed; coming back.")
             .apply()
-        val inDrawer = p.getBoolean("drawer", false)
-        val crashed = exit.reason == ApplicationExitInfo.REASON_CRASH || exit.reason == ApplicationExitInfo.REASON_CRASH_NATIVE
 
-        // Wait until the device has memory to spare again (and the game has had time to load).
+        // After a crash, straight back. Closed for memory: as soon as there's a little to spare,
+        // and after a few seconds regardless, so it always does come back.
         val handler = Handler(Looper.getMainLooper())
         val started = android.os.SystemClock.elapsedRealtime()
-        var calm = 0
         val check = object : Runnable {
             override fun run() {
-                if (AppState.activity?.get() != null || Drawer.shown.value) return // already back (e.g. you swiped it open)
+                if (AppState.activity?.get() != null || Drawer.shown.value) return // already back (e.g. you opened it)
+                if (BottomOff.off.value) return // the bottom screen's off: nothing to show until it's on
                 val waited = android.os.SystemClock.elapsedRealtime() - started
-                calm = if (memoryCalm(am)) calm + 1 else 0
-                when {
-                    // After a crash, straight back; after being closed for memory, once there's some to spare.
-                    (crashed && waited >= CRASH_WAIT_MS) || (waited >= MIN_WAIT_MS && calm >= CALM_CHECKS) -> {
-                        val secs = (System.currentTimeMillis() - exit.timestamp) / 1000
-                        p.edit().putString("note", "Android closed WalkThor $why at $at during a game; WalkThor was back ${secs}s later" + (if (crashed) "." else ", once memory had recovered.")).apply()
-                        reopen(context, inDrawer)
-                    }
-                    waited >= GIVE_UP_MS ->
-                        p.edit().putString("note", "Android closed WalkThor $why at $at during a game. Memory stayed low, so it stayed closed to leave the game room. Swipe down to open it.").apply()
-                    else -> handler.postDelayed(this, CHECK_EVERY_MS)
-                }
+                if (crashed || (waited >= MIN_WAIT_MS && memoryCalm(am)) || waited >= MAX_WAIT_MS) {
+                    val secs = (System.currentTimeMillis() - stopped) / 1000
+                    p.edit().putString("note", "$closed; WalkThor was back ${secs}s later.").apply()
+                    reopen(context, drawerWasUp)
+                } else handler.postDelayed(this, CHECK_EVERY_MS)
             }
         }
-        handler.postDelayed(check, if (crashed) CRASH_WAIT_MS else CHECK_EVERY_MS)
+        handler.postDelayed(check, if (crashed) CRASH_WAIT_MS else MIN_WAIT_MS)
     }
 
     /** Opened from the service itself (as a swipe does), which Android allows from the background. */

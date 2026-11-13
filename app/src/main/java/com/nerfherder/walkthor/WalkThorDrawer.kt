@@ -104,7 +104,7 @@ object Drawer {
                 WalkThorDrawer(service, displayId).also { current = it }
             }
             val ok = d.show(opened, onFail)
-            if (ok) problem.value = null
+            if (ok) { problem.value = null; runCatching { Revive.noteDrawer(service, true) } }
             ok
         } catch (e: Throwable) {
             problem.value = "Couldn't open the drawer (${e.javaClass.simpleName}: ${e.message?.take(120)})"
@@ -116,6 +116,7 @@ object Drawer {
     fun hide() { current?.hide() }
 
     fun destroy() {
+        current?.let { d -> runCatching { Revive.noteDrawer(d.host(), false) } }
         current?.destroy()
         current = null
         shown.value = false
@@ -128,6 +129,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     HasDefaultViewModelProviderFactory, OnBackPressedDispatcherOwner, ActivityResultRegistryOwner {
 
     private val app = service.applicationContext as Application
+    internal fun host(): android.content.Context = service
     private val main = Handler(Looper.getMainLooper())
 
     // ---- what an app screen would normally provide ----
@@ -257,7 +259,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         Drawer.shown.value = false
         AppState.drawerDisplayId = null
         // Put away on purpose: if WalkThor closes now, it stays closed.
-        runCatching { Revive.closedOnPurpose(service) }
+        runCatching { Revive.closedOnPurpose(service); Revive.noteDrawer(service, false) }
     }
 
     /** Slid all the way down: put away (the screens stay as they were for next time). */

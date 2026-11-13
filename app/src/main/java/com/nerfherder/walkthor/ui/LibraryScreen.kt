@@ -523,8 +523,8 @@ private fun SettingsScreen(
                     val context = androidx.compose.ui.platform.LocalContext.current
                     var reopen by remember { mutableStateOf(com.nerfherder.walkthor.Revive.enabled(context)) }
                     SettingSwitch(
-                        "Reopen during a game",
-                        "Waits until the game has memory to spare, so the game isn't closed too",
+                        "Bring WalkThor back",
+                        "If it was up when Android closed it, it comes back within a few seconds",
                         checked = reopen,
                         divider = false,
                     ) { reopen = it; com.nerfherder.walkthor.Revive.setEnabled(context, it) }

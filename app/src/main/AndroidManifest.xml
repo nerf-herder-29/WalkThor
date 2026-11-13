@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <!-- Mirror: holding a screen-capture session while the mirror screen is open. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Coming back promptly after Android closes WalkThor: a standing alarm that starts it again. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Captions: Android requires this to capture the game's own sound (playback capture);
          WalkThor never uses the microphone. -->
@@ -98,5 +101,7 @@
         </service>
         <!-- Starts WalkThor again just after a crash (see CrashLog). -->
         <receiver android:name=".ComeBack" android:exported="false" />
+        <!-- Notices WalkThor being closed by Android and starts it again (see CrashLog). -->
+        <service android:name=".Keeper" android:exported="false" android:process=":keeper" />
     </application>
 </manifest>

@@ -90,13 +90,50 @@ class ComeBack : android.content.BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {}
 
     companion object {
-        fun schedule(context: Context) {
+        private fun pending(context: Context, code: Int) = android.app.PendingIntent.getBroadcast(
+            context, code, Intent(context, ComeBack::class.java),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        /** Start WalkThor again in a moment (just before going down in a crash, or from the keeper). */
+        fun schedule(context: Context, afterMs: Long = 700) {
             val am = context.getSystemService(android.app.AlarmManager::class.java) ?: return
-            val pi = android.app.PendingIntent.getBroadcast(
-                context, 0, Intent(context, ComeBack::class.java),
-                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-            am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, android.os.SystemClock.elapsedRealtime() + 700, pi)
+            am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, android.os.SystemClock.elapsedRealtime() + afterMs, pending(context, 0))
         }
+
+        /**
+         * The standing alarm: WalkThor keeps pushing it a little further into the future for as
+         * long as it's running. If Android closes WalkThor, nothing pushes it back, it goes off,
+         * and that starts WalkThor again. It never wakes a sleeping device.
+         */
+        fun arm(context: Context, afterMs: Long) {
+            val am = context.getSystemService(android.app.AlarmManager::class.java) ?: return
+            val at = android.os.SystemClock.elapsedRealtime() + afterMs
+            val exact = android.os.Build.VERSION.SDK_INT < 31 || runCatching { am.canScheduleExactAlarms() }.getOrDefault(false)
+            runCatching {
+                if (exact) am.setExact(android.app.AlarmManager.ELAPSED_REALTIME, at, pending(context, 1))
+                else am.set(android.app.AlarmManager.ELAPSED_REALTIME, at, pending(context, 1))
+            }
+        }
+
+        fun disarm(context: Context) {
+            runCatching { context.getSystemService(android.app.AlarmManager::class.java)?.cancel(pending(context, 1)) }
+        }
+    }
+}
+
+/**
+ * A tiny second process whose only job is to notice WalkThor going. WalkThor's service holds a
+ * connection to it; if Android closes WalkThor, that connection drops, and this starts WalkThor
+ * again straight away (which makes Android restart its service, the drawer and the AYN button,
+ * at once rather than after its own wait). It holds nothing and draws nothing.
+ */
+class Keeper : android.app.Service() {
+    override fun onBind(intent: Intent?): android.os.IBinder = android.os.Binder()
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        runCatching { sendBroadcast(Intent(this, ComeBack::class.java)) }
+        runCatching { ComeBack.schedule(this, 1_000) }
+        return false
     }
 }
