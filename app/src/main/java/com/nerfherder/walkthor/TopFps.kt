@@ -33,6 +33,13 @@ object TopFps {
     private var wm: WindowManager? = null
     private var shownOn: Int? = null
     private var service: AccessibilityService? = null
+    /** The last reading, and how many in a row have failed (a blip shouldn't hide it). */
+    private var last: Int? = null
+    private var misses = 0
+    /** Couldn't put the pill up: wait before trying again, rather than every second. */
+    private var failedAt = 0L
+    /** One window context per screen, kept: making a new one every second leaks them. */
+    private var windowCtx: Pair<Int, Context>? = null
 
     fun enabled(c: Context) = SwipeLauncher.prefs(c).getBoolean(KEY, false)
 
@@ -58,13 +65,21 @@ object TopFps {
         override fun run() {
             val s = service ?: return
             if (!enabled(s)) { hide(); return }
-            val top = topDisplay(s)
-            if (top == null || !EmulatorWatch.gameShowing.value) {
-                hide()
-            } else {
-                worker.execute {
-                    val fps = runCatching { ScreenControls.topFps() }.getOrNull()
-                    main.post { if (fps != null && enabled(s) && EmulatorWatch.gameShowing.value) show(s, top, fps.roundToInt()) else hide() }
+            runCatching {
+                val top = topDisplay(s)
+                if (top == null || !EmulatorWatch.gameShowing.value) {
+                    hide()
+                } else {
+                    worker.execute {
+                        val fps = runCatching { ScreenControls.topFps() }.getOrNull()?.takeIf { it.isFinite() && it >= 0f }
+                        main.post {
+                            runCatching {
+                                if (fps != null) { last = fps.roundToInt(); misses = 0 } else misses++
+                                val show = last
+                                if (show != null && misses < 4 && enabled(s) && EmulatorWatch.gameShowing.value) show(s, top, show) else hide()
+                            }
+                        }
+                    }
                 }
             }
             main.postDelayed(this, 1_000)
@@ -81,19 +96,24 @@ object TopFps {
     private fun show(s: AccessibilityService, display: Display, fps: Int) {
         if (shownOn != display.displayId) hide()
         val v = view ?: run {
-            val ctx = s.createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+            if (android.os.SystemClock.uptimeMillis() - failedAt < 15_000) return
+            val ctx = windowCtx?.takeIf { it.first == display.displayId }?.second
+                ?: s.createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+                    .also { windowCtx = display.displayId to it }
             val w = ctx.getSystemService(WindowManager::class.java) ?: return
             val dp = { x: Float -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, ctx.resources.displayMetrics) }
             val tv = TextView(ctx).apply {
-                // Light glass: a pale, see-through pill with a brighter edge.
+                // Light glass: barely there, with a faint bright edge; white text with a soft
+                // shadow so it reads over dark and light scenes alike.
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.argb(150, 255, 255, 255), Color.argb(110, 236, 238, 242)),
+                    intArrayOf(Color.argb(46, 255, 255, 255), Color.argb(26, 255, 255, 255)),
                 ).apply {
                     cornerRadius = dp(10f)
-                    setStroke(dp(1f).roundToInt().coerceAtLeast(1), Color.argb(170, 255, 255, 255))
+                    setStroke(dp(1f).roundToInt().coerceAtLeast(1), Color.argb(70, 255, 255, 255))
                 }
-                setTextColor(Color.rgb(24, 24, 28))
+                setTextColor(Color.WHITE)
+                setShadowLayer(dp(2f), 0f, dp(0.5f), Color.argb(170, 0, 0, 0))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 includeFontPadding = false
@@ -112,17 +132,18 @@ object TopFps {
                 y = dp(10f).roundToInt()
                 title = "WalkThor FPS"
             }
-            if (runCatching { w.addView(tv, params) }.isFailure) return
+            if (runCatching { w.addView(tv, params) }.isFailure) { failedAt = android.os.SystemClock.uptimeMillis(); return }
             wm = w
             view = tv
             shownOn = display.displayId
             tv
         }
         val text = "$fps FPS"
+        if (v.text?.toString() == text) return
         v.text = SpannableString(text).apply {
             val at = text.indexOf(" FPS")
             setSpan(RelativeSizeSpan(0.8f), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(ForegroundColorSpan(Color.rgb(80, 80, 88)), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(Color.argb(210, 255, 255, 255)), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 

@@ -200,6 +200,9 @@ object EmulatorWatch {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || android.os.Build.VERSION.SDK_INT < 30) return
         val pkg = event.packageName?.toString() ?: return
         if (pkg != context.packageName && !isApp(context, pkg)) return // keyboards, system overlays
+        // WalkThor's own little windows over the game (the FPS pill, the bottom screen's cover)
+        // aren't WalkThor coming to the front.
+        if (pkg == context.packageName && event.className?.toString()?.let { it.startsWith("android.widget.") || it == "android.view.View" } == true) return
         val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
         if (event.displayId != bottom) {
             val wasGame = frontByDisplay[event.displayId]?.let { isGamePkg(context, it) } == true
