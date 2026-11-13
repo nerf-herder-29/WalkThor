@@ -207,6 +207,8 @@ class SwipeGestureService : AccessibilityService() {
         EmulatorWatch.refresh(this)
         // If Android closed WalkThor mid-game to free memory, bring it back (see Revive).
         Revive.onServiceStart(this)
+        // The top screen's FPS in its corner, if that's on.
+        runCatching { TopFps.start(this) }
         handler.removeCallbacks(drawerBeat)
         handler.postDelayed(drawerBeat, 5_000)
     }
@@ -387,6 +389,7 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { contentResolver.unregisterContentObserver(aynLightsObserver) }
         runCatching { unregisterReceiver(screenOn) }
         runCatching { Drawer.destroy() }
+        runCatching { TopFps.stop() }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
         if (instance?.get() === this) instance = null
         SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)

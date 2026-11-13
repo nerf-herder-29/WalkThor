@@ -465,6 +465,13 @@ private fun SettingsScreen(
                 SettingsGroup("Screen") {
                     SettingSwitch("Always open on bottom screen", checked = alwaysBottom, divider = false) { actions.onToggleAlwaysBottom(it) }
                     SettingLink("Auto-dim", value = AutoDim.label(dimDelay)) { pickDim = true }
+                    val fpsContext = androidx.compose.ui.platform.LocalContext.current
+                    var topFps by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.enabled(fpsContext)) }
+                    SettingSwitch(
+                        "FPS on the top screen",
+                        if (swipeToOpen) "Small, in the top right corner, while a game is in front" else "Needs accessibility access switched on",
+                        checked = topFps && swipeToOpen,
+                    ) { if (swipeToOpen) { topFps = it; com.nerfherder.walkthor.TopFps.setEnabled(fpsContext, it) } }
                     actions.onSwapScreen?.let { swap ->
                         SettingLink("Move to the other screen") { onDismiss(); swap() }
                     }
