@@ -472,6 +472,18 @@ private fun SettingsScreen(
                         if (swipeToOpen) "Small, in the top right corner, while a game is in front" else "Needs accessibility access switched on",
                         checked = topFps && swipeToOpen,
                     ) { if (swipeToOpen) { topFps = it; com.nerfherder.walkthor.TopFps.setEnabled(fpsContext, it) } }
+                    if (topFps && swipeToOpen) {
+                        var corner by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.corner(fpsContext)) }
+                        SettingRow(
+                            "FPS corner",
+                            null,
+                            buttons = {
+                                com.nerfherder.walkthor.TopFps.Corner.entries.forEach { c ->
+                                    PillButton(c.label, quiet = c != corner) { corner = c; com.nerfherder.walkthor.TopFps.setCorner(fpsContext, c) }
+                                }
+                            },
+                        )
+                    }
                     actions.onSwapScreen?.let { swap ->
                         SettingLink("Move to the other screen") { onDismiss(); swap() }
                     }

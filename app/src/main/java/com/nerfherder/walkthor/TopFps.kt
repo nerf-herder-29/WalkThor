@@ -43,6 +43,23 @@ object TopFps {
 
     fun enabled(c: Context) = SwipeLauncher.prefs(c).getBoolean(KEY, false)
 
+    /** Which corner of the top screen it sits in. */
+    enum class Corner(val label: String, val gravity: Int) {
+        TOP_RIGHT("Top right", Gravity.TOP or Gravity.END),
+        TOP_LEFT("Top left", Gravity.TOP or Gravity.START),
+        BOTTOM_LEFT("Bottom left", Gravity.BOTTOM or Gravity.START),
+        BOTTOM_RIGHT("Bottom right", Gravity.BOTTOM or Gravity.END),
+    }
+
+    fun corner(c: Context): Corner =
+        SwipeLauncher.prefs(c).getString("topFpsCorner", null)?.let { n -> Corner.entries.firstOrNull { it.name == n } } ?: Corner.TOP_RIGHT
+
+    fun setCorner(c: Context, corner: Corner) {
+        SwipeLauncher.prefs(c).edit().putString("topFpsCorner", corner.name).apply()
+        // Put up again in the new corner on the next reading.
+        main.post { hide() }
+    }
+
     fun setEnabled(c: Context, on: Boolean) {
         SwipeLauncher.prefs(c).edit().putBoolean(KEY, on).apply()
         main.post { if (on) service?.let { start(it) } else hide() }
@@ -103,17 +120,16 @@ object TopFps {
             val w = ctx.getSystemService(WindowManager::class.java) ?: return
             val dp = { x: Float -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, ctx.resources.displayMetrics) }
             val tv = TextView(ctx).apply {
-                // Light glass: barely there, with a faint bright edge; white text with a soft
-                // shadow so it reads over dark and light scenes alike.
+                // Light glass: see-through, but enough of it that the dark number stands out over
+                // a dark scene as well as a bright one; a bright edge.
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.argb(46, 255, 255, 255), Color.argb(26, 255, 255, 255)),
+                    intArrayOf(Color.argb(125, 255, 255, 255), Color.argb(100, 240, 242, 246)),
                 ).apply {
                     cornerRadius = dp(10f)
-                    setStroke(dp(1f).roundToInt().coerceAtLeast(1), Color.argb(70, 255, 255, 255))
+                    setStroke(dp(1f).roundToInt().coerceAtLeast(1), Color.argb(150, 255, 255, 255))
                 }
-                setTextColor(Color.WHITE)
-                setShadowLayer(dp(2f), 0f, dp(0.5f), Color.argb(170, 0, 0, 0))
+                setTextColor(Color.rgb(18, 18, 22))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 includeFontPadding = false
@@ -127,7 +143,7 @@ object TopFps {
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT,
             ).apply {
-                gravity = Gravity.TOP or Gravity.END
+                gravity = corner(s).gravity
                 x = dp(12f).roundToInt()
                 y = dp(10f).roundToInt()
                 title = "WalkThor FPS"
@@ -143,7 +159,7 @@ object TopFps {
         v.text = SpannableString(text).apply {
             val at = text.indexOf(" FPS")
             setSpan(RelativeSizeSpan(0.8f), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(ForegroundColorSpan(Color.argb(210, 255, 255, 255)), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(Color.rgb(60, 60, 68)), at, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 
