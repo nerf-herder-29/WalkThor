@@ -125,6 +125,18 @@ object AynSystem {
     /** "… Task{1a2b3c #123 type=standard A=10161:com.example.app …}" (or I=com.example.app/.Main). */
     private val RECENT = Regex("""#(\d+) type=(\w+) (?:A=\d+:|I=)([A-Za-z0-9_.]+)""")
 
+    /**
+     * Takes every card out of recent apps except those of [keep]. What the tool said ("OK 3 3":
+     * removed, found), or null. Not on the main thread.
+     */
+    fun clearRecents(context: Context, keep: Set<String>): String? {
+        if (!available()) return null
+        val apk = context.applicationInfo.sourceDir
+        if ("'" in apk) return null
+        val names = keep.filter { PACKAGE.matches(it) }.joinToString(" ")
+        return run("CLASSPATH='$apk' app_process /system/bin ${RecentsTool::class.java.name} clear $names 2>&1")?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
+    }
+
     /** Takes card [taskId] out of recent apps. Not on the main thread. */
     fun removeTask(taskId: Int): Boolean {
         if (!available()) return false
@@ -328,6 +340,49 @@ object ScreenBrightnessTool {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Run by AYN's helper as a system program: takes every card out of Android's recent apps except
+ * those of the apps named (only system programs may). Prints "OK <removed> <found>" or "ERR …".
+ */
+object RecentsTool {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        try {
+            val keep = args.drop(1).toSet()
+            val atm = Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
+            val int = Int::class.javaPrimitiveType
+            val found: List<Any?> = try {
+                val slice = atm.javaClass.getMethod("getRecentTasks", int, int, int).invoke(atm, 100, 0, 0)!!
+                @Suppress("UNCHECKED_CAST")
+                slice.javaClass.getMethod("getList").invoke(slice) as List<Any?>
+            } catch (t: Throwable) {
+                // Can't list them one by one here: clear the lot instead.
+                atm.javaClass.getMethod("removeAllVisibleRecentTasks").invoke(atm)
+                println("OK all")
+                return
+            }
+            val remove = atm.javaClass.getMethod("removeTask", int)
+            var removed = 0
+            var cards = 0
+            for (info in found) {
+                info ?: continue
+                val id = info.javaClass.getField("taskId").getInt(info)
+                val intent = info.javaClass.getField("baseIntent").get(info) as? android.content.Intent
+                val pkg = intent?.component?.packageName ?: intent?.`package`
+                if (pkg != null && pkg in keep) continue
+                cards++
+                if (runCatching { remove.invoke(atm, id) }.isSuccess) removed++
+            }
+            println("OK $removed $cards")
+        } catch (t: Throwable) {
+            println("ERR ${(t.cause ?: t).javaClass.simpleName}: ${(t.cause ?: t).message?.take(80)}")
+        } finally {
+            System.out.flush()
+            System.exit(0)
         }
     }
 }

@@ -133,6 +133,7 @@ internal fun AppShelf(
                                 closing = "…"
                                 com.nerfherder.walkthor.CloseApps.closeAll(context) { message, detail ->
                                     closing = if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message
+                                    com.nerfherder.walkthor.ScreenMessage.show(message)
                                 }
                             }.padding(horizontal = 14.dp, vertical = 7.dp),
                     )

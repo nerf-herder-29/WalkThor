@@ -31,7 +31,7 @@ object CloseApps {
         runCatching { Drawer.hide() }
         closeAll(app) { message, detail ->
             val text = if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message
-            runCatching { android.widget.Toast.makeText(app, text, android.widget.Toast.LENGTH_LONG).show() }
+            ScreenMessage.show(text)
         }
     }
 
@@ -69,18 +69,18 @@ object CloseApps {
                 // And whatever is in front on either screen right now (the game), first of all.
                 val front = runCatching { EmulatorWatch.fronts() }.getOrDefault(emptyList())
                 val targets = (front + recent + installed.filter { it in running }).distinct().filter { it !in keep }
+                    // Only real apps (recent apps can name a screen inside one instead).
+                    .filter { p -> runCatching { pm.getApplicationInfo(p, 0) }.isSuccess }
                 // Each is closed, then checked: only ones that really stopped running count.
                 val results = targets.associateWith { runCatching { AynSystem.forceStop(it) }.getOrDefault(false) }
                 // And their cards out of recent apps, so nothing's left there either.
-                val cards = runCatching { AynSystem.recentTasks() }.getOrNull().orEmpty().filter { it.second !in keep }
-                val cleared = cards.count { runCatching { AynSystem.removeTask(it.first) }.getOrDefault(false) }
-                val cardsLeft = runCatching { AynSystem.recentTasks() }.getOrNull().orEmpty().count { it.second !in keep }
+                val cleared = runCatching { AynSystem.clearRecents(app, keep) }.getOrNull() ?: "no answer"
                 val closed = results.filterValues { it }.keys
                 val stuck = results.filterValues { !it }.keys
                 fun name(p: String) = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString() }.getOrDefault(p)
                 lastNote = "helper ok; in front: ${front.joinToString().ifEmpty { "unknown" }}; recent apps ${recent.size}; running installed apps ${installed.count { it in running }}; " +
                     "closed: ${closed.joinToString().ifEmpty { "none" }}; still running: ${stuck.joinToString().ifEmpty { "none" }}; " +
-                    "recent-app cards found ${cards.size}, removal tried on $cleared, left afterwards $cardsLeft" +
+                    "recent apps cleared: $cleared" +
                     (AynSystem.problem?.let { " ($it)" } ?: "")
                 when {
                     closed.isEmpty() && stuck.isEmpty() -> "Closed 0 apps"
