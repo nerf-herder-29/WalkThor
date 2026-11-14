@@ -71,11 +71,16 @@ object CloseApps {
                 val targets = (front + recent + installed.filter { it in running }).distinct().filter { it !in keep }
                 // Each is closed, then checked: only ones that really stopped running count.
                 val results = targets.associateWith { runCatching { AynSystem.forceStop(it) }.getOrDefault(false) }
+                // And their cards out of recent apps, so nothing's left there either.
+                val cards = runCatching { AynSystem.recentTasks() }.getOrNull().orEmpty().filter { it.second !in keep }
+                val cleared = cards.count { runCatching { AynSystem.removeTask(it.first) }.getOrDefault(false) }
+                val cardsLeft = runCatching { AynSystem.recentTasks() }.getOrNull().orEmpty().count { it.second !in keep }
                 val closed = results.filterValues { it }.keys
                 val stuck = results.filterValues { !it }.keys
                 fun name(p: String) = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString() }.getOrDefault(p)
                 lastNote = "helper ok; in front: ${front.joinToString().ifEmpty { "unknown" }}; recent apps ${recent.size}; running installed apps ${installed.count { it in running }}; " +
-                    "closed: ${closed.joinToString().ifEmpty { "none" }}; still running: ${stuck.joinToString().ifEmpty { "none" }}" +
+                    "closed: ${closed.joinToString().ifEmpty { "none" }}; still running: ${stuck.joinToString().ifEmpty { "none" }}; " +
+                    "recent-app cards found ${cards.size}, removal tried on $cleared, left afterwards $cardsLeft" +
                     (AynSystem.problem?.let { " ($it)" } ?: "")
                 when {
                     closed.isEmpty() && stuck.isEmpty() -> "Closed 0 apps"

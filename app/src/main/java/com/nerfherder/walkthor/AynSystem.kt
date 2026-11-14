@@ -107,6 +107,30 @@ object AynSystem {
         return out.lines().mapNotNull { it.substringAfter(':', "").trim().takeIf { p -> PACKAGE.matches(p) } }.distinct()
     }
 
+    /**
+     * The cards in Android's recent apps: each one's task number and app. Home's own card is left
+     * out. Not on the main thread.
+     */
+    fun recentTasks(): List<Pair<Int, String>>? {
+        if (!available()) return null
+        val out = run("dumpsys activity recents | grep 'Recent #'") ?: return null
+        return out.lines().mapNotNull { line ->
+            val m = RECENT.find(line) ?: return@mapNotNull null
+            if (m.groupValues[2] == "home") return@mapNotNull null
+            val pkg = m.groupValues[3].takeIf { PACKAGE.matches(it) } ?: return@mapNotNull null
+            (m.groupValues[1].toIntOrNull() ?: return@mapNotNull null) to pkg
+        }
+    }
+
+    /** "… Task{1a2b3c #123 type=standard A=10161:com.example.app …}" (or I=com.example.app/.Main). */
+    private val RECENT = Regex("""#(\d+) type=(\w+) (?:A=\d+:|I=)([A-Za-z0-9_.]+)""")
+
+    /** Takes card [taskId] out of recent apps. Not on the main thread. */
+    fun removeTask(taskId: Int): Boolean {
+        if (!available()) return false
+        return run("am stack remove $taskId >/dev/null 2>&1 || am task remove $taskId >/dev/null 2>&1; echo done") != null
+    }
+
     /** The names of every running process (an app's main process is named after its package). Not on the main thread. */
     fun runningNames(): Set<String>? {
         if (!available()) return null
