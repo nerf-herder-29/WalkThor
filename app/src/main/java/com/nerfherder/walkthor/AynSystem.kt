@@ -117,7 +117,13 @@ object AynSystem {
     /** Closes [pkg] completely, as "Force stop" in Android's settings does. Not on the main thread. */
     fun forceStop(pkg: String): Boolean {
         if (!PACKAGE.matches(pkg) || !available()) return false
-        return run("am force-stop $pkg") != null
+        // Asks Android to stop it; if any of it is still running a moment later, ends those
+        // processes directly. True only once nothing of it is left running.
+        val left = run(
+            "am force-stop $pkg >/dev/null 2>&1; sleep 0.4; " +
+                "for p in \$(pidof $pkg); do kill -9 \$p; done; sleep 0.2; pidof $pkg; echo done"
+        ) ?: return false
+        return left.trim() == "done"
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")

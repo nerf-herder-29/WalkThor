@@ -66,11 +66,23 @@ object CloseApps {
                 // Everything in recent apps, plus any installed app that's running at all.
                 val recent = runCatching { AynSystem.openApps() }.getOrNull().orEmpty()
                 val running = runCatching { AynSystem.runningNames() }.getOrNull().orEmpty()
-                val targets = (recent + installed.filter { it in running }).distinct().filter { it !in keep }
-                val closed = targets.count { runCatching { AynSystem.forceStop(it) }.getOrDefault(false) }
-                lastNote = "helper ok; recent apps found ${recent.size}, running installed apps ${installed.count { it in running }}, closed $closed" +
+                // And whatever is in front on either screen right now (the game), first of all.
+                val front = runCatching { EmulatorWatch.fronts() }.getOrDefault(emptyList())
+                val targets = (front + recent + installed.filter { it in running }).distinct().filter { it !in keep }
+                // Each is closed, then checked: only ones that really stopped running count.
+                val results = targets.associateWith { runCatching { AynSystem.forceStop(it) }.getOrDefault(false) }
+                val closed = results.filterValues { it }.keys
+                val stuck = results.filterValues { !it }.keys
+                fun name(p: String) = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString() }.getOrDefault(p)
+                lastNote = "helper ok; in front: ${front.joinToString().ifEmpty { "unknown" }}; recent apps ${recent.size}; running installed apps ${installed.count { it in running }}; " +
+                    "closed: ${closed.joinToString().ifEmpty { "none" }}; still running: ${stuck.joinToString().ifEmpty { "none" }}" +
                     (AynSystem.problem?.let { " ($it)" } ?: "")
-                if (closed == 1) "Closed 1 app" else "Closed $closed apps"
+                when {
+                    closed.isEmpty() && stuck.isEmpty() -> "Closed 0 apps"
+                    closed.isEmpty() -> "Couldn't close ${stuck.joinToString { name(it) }}"
+                    else -> "Closed ${closed.take(4).joinToString { name(it) }}" + (if (closed.size > 4) " and ${closed.size - 4} more" else "") +
+                        (if (stuck.isNotEmpty()) "; couldn't close ${stuck.joinToString { name(it) }}" else "")
+                }
             } else {
                 // No helper: Android lets an ordinary app close only what's in the background.
                 val am = app.getSystemService(ActivityManager::class.java)

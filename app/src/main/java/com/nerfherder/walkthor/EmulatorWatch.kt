@@ -269,6 +269,9 @@ object EmulatorWatch {
     /** The app last seen in front on [displayId], for Diagnostics. */
     fun frontOn(displayId: Int): String? = frontByDisplay[displayId]
 
+    /** The apps in front on each screen, as last seen. */
+    fun fronts(): List<String> = frontByDisplay.values.distinct()
+
     /** Whether the accessibility service has seen what's in front on the game screen yet. */
     val frontKnown = MutableStateFlow(false)
     /** One of your emulators (Settings → Emulators) is in front on the game screen. */
