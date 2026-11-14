@@ -1,16 +1,14 @@
 package com.nerfherder.walkthor
 
-import android.accessibilityservice.AccessibilityService
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import android.widget.Toast
 
 /**
- * Pressing Back twice quickly closes every app you have open (Settings → General → Access, off
- * unless you switch it on): the game included, but not WalkThor, your home app or your keyboard.
+ * The dock's "Close all apps" button (it asks first) closes every app you have open: the game
+ * included, but not WalkThor, your home app or your keyboard.
  * Done through AYN's system helper, as only system apps may close others; where that can't be
  * reached, Android only lets WalkThor close apps in the background.
  */
@@ -18,19 +16,12 @@ object CloseApps {
     private val main = Handler(Looper.getMainLooper())
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor close apps").apply { isDaemon = true } }
 
-    fun enabled(c: Context) = SwipeLauncher.prefs(c).getBoolean("tripleClose", false)
-    fun setEnabled(c: Context, on: Boolean) {
-        SwipeLauncher.prefs(c).edit().putBoolean("tripleClose", on).apply()
-        // Start (or stop) hearing button presses for it.
-        SwipeGestureService.instance?.get()?.let { s -> runCatching { s.setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) } }
-    }
-
     /** What happened last time, for Diagnostics. */
     @Volatile var lastNote: String? = null
 
-    fun closeAll(service: AccessibilityService) {
-        val app = service.applicationContext
-        runCatching { Drawer.hide() }
+    /** [onDone] gets what happened in a few words, and the detail behind it. */
+    fun closeAll(context: Context, onDone: (String, String?) -> Unit) {
+        val app = context.applicationContext
         worker.execute {
             val pm = app.packageManager
             val keep = buildSet {
@@ -68,8 +59,8 @@ object CloseApps {
                 lastNote = "AYN's helper couldn't be reached (${AynSystem.problem ?: "no reason given"}); only background apps closed"
                 "Closed background apps only (AYN's helper wasn't reachable)"
             }
-            AynButton.note("back twice → $message")
-            main.post { runCatching { Toast.makeText(app, message, Toast.LENGTH_LONG).show() } }
+            AynButton.note("close all apps → $message")
+            main.post { runCatching { onDone(message, lastNote) } }
         }
     }
 }

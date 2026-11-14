@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +66,13 @@ internal fun AppShelf(
     emptyText: String = "Pin apps from All apps (press and hold one).",
 ) {
     val context = LocalContext.current
+    // "Close all apps", the last button: it asks first, then says what happened, right on the shelf.
+    var closing by remember { androidx.compose.runtime.mutableStateOf<String?>(null) } // null idle, "" asking, "…" working, else the result
+    LaunchedEffect(closing) {
+        val c = closing
+        if (c != null && c != "" && c != "…") { kotlinx.coroutines.delay(6_000); closing = null }
+        else if (c == "") { kotlinx.coroutines.delay(8_000); if (closing == "") closing = null }
+    }
     LaunchedEffect(Unit) {
         if (preview == null) {
             AppCatalog.loadPins(context)
@@ -102,6 +110,35 @@ internal fun AppShelf(
             drawLine(Color.White.copy(alpha = 0.32f), Offset(inset + r, 0.5.dp.toPx()), Offset(w - inset - r, 0.5.dp.toPx()), 1.dp.toPx())
             drawLine(Color.White.copy(alpha = 0.1f), Offset(r, h - 1.dp.toPx()), Offset(w - r, h - 1.dp.toPx()), 1.dp.toPx())
         }
+        val state = closing
+        if (state != null) {
+            Row(
+                Modifier.fillMaxWidth().height(icon).padding(horizontal = 30.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            ) {
+                Text(
+                    when (state) { "" -> "Close every open app, the game included?"; else -> state },
+                    color = BookColors.Text, fontSize = 13.sp, maxLines = 2, modifier = Modifier.weight(1f, fill = false),
+                )
+                if (state == "") {
+                    Text(
+                        "Cancel", color = BookColors.Text, fontSize = 13.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.1f))
+                            .clickable { closing = null }.padding(horizontal = 14.dp, vertical = 7.dp),
+                    )
+                    Text(
+                        "Close all", color = Color.Black, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(BookColors.Text)
+                            .clickable {
+                                closing = "…"
+                                com.nerfherder.walkthor.CloseApps.closeAll(context) { message, detail ->
+                                    closing = if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message
+                                }
+                            }.padding(horizontal = 14.dp, vertical = 7.dp),
+                    )
+                }
+            }
+        } else
         // Your apps scroll; All apps, Edit Home and WalkThor stay put at the end. With only a few
         // apps, the lot sits in the middle of the shelf.
         Row(
@@ -130,6 +167,7 @@ internal fun AppShelf(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 tools.forEach { t -> ShelfItem(icon, t.label, onClick = t.onClick) { DockGlyph(t.glyph) } }
+                ShelfItem(icon, "Close all apps", onClick = { closing = "" }) { DockGlyph(DockGlyphKind.CLOSE) }
             }
         }
     }
@@ -163,7 +201,7 @@ internal fun ShelfItem(size: androidx.compose.ui.unit.Dp, label: String, onClick
     }
 }
 
-internal enum class DockGlyphKind { GRID, EDIT, BOOK }
+internal enum class DockGlyphKind { GRID, EDIT, BOOK, CLOSE }
 
 /** WalkThor's own dock buttons: a soft tile with a simple line drawing. */
 @Composable
@@ -179,6 +217,10 @@ internal fun DockGlyph(kind: DockGlyphKind) {
                 DockGlyphKind.EDIT -> {
                     drawLine(ink, Offset(w * 0.2f, h * 0.8f), Offset(w * 0.8f, h * 0.2f), sw * 2.2f, StrokeCap.Round)
                     drawLine(ink, Offset(w * 0.12f, h * 0.95f), Offset(w * 0.6f, h * 0.95f), sw, StrokeCap.Round)
+                }
+                DockGlyphKind.CLOSE -> {
+                    drawLine(ink, Offset(w * 0.18f, h * 0.18f), Offset(w * 0.82f, h * 0.82f), sw * 1.3f, StrokeCap.Round)
+                    drawLine(ink, Offset(w * 0.82f, h * 0.18f), Offset(w * 0.18f, h * 0.82f), sw * 1.3f, StrokeCap.Round)
                 }
                 DockGlyphKind.BOOK -> {
                     val s = Stroke(sw, cap = StrokeCap.Round)

@@ -312,7 +312,7 @@ class SwipeGestureService : AccessibilityService() {
         if (on && !can) return false
         val flag = android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
         // Also kept on while the AYN button opens WalkThor, or a button test is running.
-        val keep = on || AynButton.on || ButtonTest.active || CloseApps.enabled(this)
+        val keep = on || AynButton.on || ButtonTest.active
         val wanted = if (keep) info.flags or flag else info.flags and flag.inv()
         if (wanted != info.flags) {
             info.flags = wanted
@@ -332,17 +332,6 @@ class SwipeGestureService : AccessibilityService() {
             event.action == android.view.KeyEvent.ACTION_DOWN && Drawer.shown.value
         ) {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
-        }
-        // Back pressed twice quickly: close all open apps, when that's switched on. Both presses
-        // still go on as usual.
-        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_DOWN &&
-            event.repeatCount == 0 && CloseApps.enabled(this)
-        ) {
-            val t = android.os.SystemClock.uptimeMillis()
-            if (t - AynButton.lastBackAt < AynButton.DOUBLE_BACK_MS) {
-                AynButton.lastBackAt = 0L
-                handler.post { runCatching { CloseApps.closeAll(this) } }
-            } else AynButton.lastBackAt = t
         }
         if (AynButton.on && AynButton.isAynButton(event)) {
             // A tap slides WalkThor's drawer up, or away. A double tap is AYN's own drawer: only AYN's
@@ -675,9 +664,6 @@ object AynButton {
     /** The current press is going to AYN (the second of a double tap). */
     @Volatile var passing = false
     const val DOUBLE_TAP_MS = 300L
-    /** When the Back button last went down (two quick presses close all apps, if that's on). */
-    @Volatile var lastBackAt = 0L
-    const val DOUBLE_BACK_MS = 300L
     /** How long a press counts as holding the button. */
     const val HOLD_MS = 600L
     /** The current press was a hold (it's done its job; its release does nothing). */
