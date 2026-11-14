@@ -7,14 +7,33 @@ import android.os.Handler
 import android.os.Looper
 
 /**
- * The dock's "Close all apps" button (it asks first) closes every app you have open: the game
- * included, but not WalkThor, your home app or your keyboard.
+ * The dock's "Close all apps" button (it asks first), or pressing Back twice quickly when that's
+ * switched on, closes every app you have open: the game included, but not WalkThor, your home
+ * app or your keyboard.
  * Done through AYN's system helper, as only system apps may close others; where that can't be
  * reached, Android only lets WalkThor close apps in the background.
  */
 object CloseApps {
     private val main = Handler(Looper.getMainLooper())
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor close apps").apply { isDaemon = true } }
+
+    /** Whether pressing Back twice quickly closes all apps (off unless switched on). */
+    fun backEnabled(c: Context) = SwipeLauncher.prefs(c).getBoolean("tripleClose", false)
+    fun setBackEnabled(c: Context, on: Boolean) {
+        SwipeLauncher.prefs(c).edit().putBoolean("tripleClose", on).apply()
+        // Start (or stop) hearing button presses for it.
+        SwipeGestureService.instance?.get()?.let { s -> runCatching { s.setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) } }
+    }
+
+    /** From the Back button: closes everything and says what happened in a short message on screen. */
+    fun closeAllFromButton(context: Context) {
+        val app = context.applicationContext
+        runCatching { Drawer.hide() }
+        closeAll(app) { message, detail ->
+            val text = if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message
+            runCatching { android.widget.Toast.makeText(app, text, android.widget.Toast.LENGTH_LONG).show() }
+        }
+    }
 
     /** What happened last time, for Diagnostics. */
     @Volatile var lastNote: String? = null
