@@ -351,10 +351,22 @@ class SwipeGestureService : AccessibilityService() {
                 if (event.action == android.view.KeyEvent.ACTION_UP) { AynButton.held = false; AynButton.passing = false }
                 return true
             }
+            // A third press straight after a double tap: close all open apps, when that's switched
+            // on. It goes on to AYN like the second did (which puts AYN's drawer away again).
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+                now - AynButton.secondTapAt < AynButton.TRIPLE_TAP_MS && CloseApps.enabled(this)
+            ) {
+                AynButton.secondTapAt = 0L
+                AynButton.passing = true
+                handler.removeCallbacks(aynHold)
+                handler.post { runCatching { CloseApps.closeAll(this) } }
+                return false
+            }
             when (event.action) {
                 android.view.KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
                     AynButton.passing = now - AynButton.lastTapAt < AynButton.DOUBLE_TAP_MS
                     if (AynButton.passing) {
+                        AynButton.secondTapAt = now
                         handler.removeCallbacks(aynTap)
                         AynButton.lastTapAt = 0L
                         handler.post { runCatching { if (Drawer.shown.value) Drawer.hide(); AynButton.note("double tap → AYN's drawer") } }
@@ -664,6 +676,9 @@ object AynButton {
     /** The current press is going to AYN (the second of a double tap). */
     @Volatile var passing = false
     const val DOUBLE_TAP_MS = 300L
+    /** When the second press of a double tap went down, and how soon after a third counts. */
+    @Volatile var secondTapAt = 0L
+    const val TRIPLE_TAP_MS = 450L
     /** How long a press counts as holding the button. */
     const val HOLD_MS = 600L
     /** The current press was a hold (it's done its job; its release does nothing). */

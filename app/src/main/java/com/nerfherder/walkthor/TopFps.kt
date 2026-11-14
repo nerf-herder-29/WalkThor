@@ -43,7 +43,18 @@ object TopFps {
 
     fun enabled(c: Context) = SwipeLauncher.prefs(c).getBoolean(KEY, false)
 
-    /** Which corner of the top screen it sits in. */
+    /** Which screen it's drawn on (it's always the top screen's frame rate). */
+    enum class Screen(val label: String) { BOTTOM("Bottom screen"), TOP("Top screen") }
+
+    fun screen(c: Context): Screen =
+        SwipeLauncher.prefs(c).getString("topFpsScreen", null)?.let { n -> Screen.entries.firstOrNull { it.name == n } } ?: Screen.BOTTOM
+
+    fun setScreen(c: Context, screen: Screen) {
+        SwipeLauncher.prefs(c).edit().putString("topFpsScreen", screen.name).apply()
+        main.post { hide() }
+    }
+
+    /** Which corner of that screen it sits in. */
     enum class Corner(val label: String, val gravity: Int) {
         TOP_RIGHT("Top right", Gravity.TOP or Gravity.END),
         TOP_LEFT("Top left", Gravity.TOP or Gravity.START),
@@ -83,8 +94,10 @@ object TopFps {
             val s = service ?: return
             if (!enabled(s)) { hide(); return }
             runCatching {
-                val top = topDisplay(s)
-                if (top == null || !EmulatorWatch.gameShowing.value) {
+                // On the bottom screen it stays out of the game's way (and away while that screen's off).
+                val onBottom = screen(s) == Screen.BOTTOM
+                val top = if (onBottom) runCatching { DisplayHelper.bottomDisplay(s) }.getOrNull() else topDisplay(s)
+                if (top == null || !EmulatorWatch.gameShowing.value || (onBottom && BottomOff.off.value)) {
                     hide()
                 } else {
                     worker.execute {

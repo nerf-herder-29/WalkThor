@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- Coming back promptly after Android closes WalkThor: a standing alarm that starts it again. -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- "Triple-press the AYN button: close all apps", where AYN's system helper can't be reached. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Captions: Android requires this to capture the game's own sound (playback capture);

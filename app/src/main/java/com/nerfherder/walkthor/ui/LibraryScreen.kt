@@ -468,11 +468,21 @@ private fun SettingsScreen(
                     val fpsContext = androidx.compose.ui.platform.LocalContext.current
                     var topFps by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.enabled(fpsContext)) }
                     SettingSwitch(
-                        "FPS on the top screen",
-                        if (swipeToOpen) "Small, in the top right corner, while a game is in front" else "Needs accessibility access switched on",
+                        "FPS counter",
+                        if (swipeToOpen) "The top screen's frame rate, small, in a corner, while a game is in front" else "Needs accessibility access switched on",
                         checked = topFps && swipeToOpen,
                     ) { if (swipeToOpen) { topFps = it; com.nerfherder.walkthor.TopFps.setEnabled(fpsContext, it) } }
                     if (topFps && swipeToOpen) {
+                        var fpsScreen by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.screen(fpsContext)) }
+                        SettingRow(
+                            "FPS shows on",
+                            null,
+                            buttons = {
+                                com.nerfherder.walkthor.TopFps.Screen.entries.forEach { sc ->
+                                    PillButton(sc.label, quiet = sc != fpsScreen) { fpsScreen = sc; com.nerfherder.walkthor.TopFps.setScreen(fpsContext, sc) }
+                                }
+                            },
+                        )
                         var corner by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.corner(fpsContext)) }
                         SettingRow(
                             "FPS corner",
@@ -510,6 +520,13 @@ private fun SettingsScreen(
                         else "Needs \"AYN button opens WalkThor\" switched on",
                         checked = holdOff && aynButton && swipeToOpen,
                     ) { if (aynButton && swipeToOpen) { holdOff = it; com.nerfherder.walkthor.BottomOff.setHoldEnabled(context, it) } }
+                    var tripleClose by remember { mutableStateOf(com.nerfherder.walkthor.CloseApps.enabled(context)) }
+                    SettingSwitch(
+                        "Triple-press the AYN button: close all apps",
+                        if (aynButton && swipeToOpen) "Closes every app you have open, the game included (anything unsaved is lost). Your home app and WalkThor stay"
+                        else "Needs \"AYN button opens WalkThor\" switched on",
+                        checked = tripleClose && aynButton && swipeToOpen,
+                    ) { if (aynButton && swipeToOpen) { tripleClose = it; com.nerfherder.walkthor.CloseApps.setEnabled(context, it) } }
                     var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }
                     SettingSwitch(
                         "Bottom screen off during games",

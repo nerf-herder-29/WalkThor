@@ -9,9 +9,9 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * The Thor's own system helper, which its firmware runs from boot to power AYN's "Run Script as
  * Root" feature (and AYN's drawer). WalkThor uses it for one thing only: each screen's
- * brightness, which Android reserves for system apps. Every command WalkThor sends is built here
- * from numbers it worked out itself (a screen number and a level), never from text from
- * anywhere else.
+ * brightness, AYN's own settings, and closing your open apps when you ask, all of which Android
+ * reserves for system apps. Every command WalkThor sends is built here from values it has
+ * checked itself (numbers, AYN's setting names, app package names), never from free text.
  *
  * The helper can only be reached while the Thor's "Force SELinux" setting is off (how it ships);
  * if it can't be reached, WalkThor dims the bottom screen instead.
@@ -97,6 +97,23 @@ object AynSystem {
         if (!available()) return false
         return run("settings put system $name '$value'") != null
     }
+
+    /**
+     * The packages with a task in Android's recent apps (what you have open). Not on the main thread.
+     */
+    fun openApps(): List<String>? {
+        if (!available()) return null
+        val out = run("dumpsys activity recents | grep -oE 'A=[0-9]+:[A-Za-z0-9_.]+' | sort -u") ?: return null
+        return out.lines().mapNotNull { it.substringAfter(':', "").trim().takeIf { p -> PACKAGE.matches(p) } }.distinct()
+    }
+
+    /** Closes [pkg] completely, as "Force stop" in Android's settings does. Not on the main thread. */
+    fun forceStop(pkg: String): Boolean {
+        if (!PACKAGE.matches(pkg) || !available()) return false
+        return run("am force-stop $pkg") != null
+    }
+
+    private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
 
     /** Known without waiting: true if the helper has worked, false if it has failed, null if not tried. */
     fun knownAvailable(): Boolean? = works
