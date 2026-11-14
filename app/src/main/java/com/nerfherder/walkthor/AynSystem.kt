@@ -107,6 +107,13 @@ object AynSystem {
         return out.lines().mapNotNull { it.substringAfter(':', "").trim().takeIf { p -> PACKAGE.matches(p) } }.distinct()
     }
 
+    /** The names of every running process (an app's main process is named after its package). Not on the main thread. */
+    fun runningNames(): Set<String>? {
+        if (!available()) return null
+        val out = run("ps -A -o NAME") ?: return null
+        return out.lines().map { it.trim().substringBefore(':') }.filter { PACKAGE.matches(it) }.toSet()
+    }
+
     /** Closes [pkg] completely, as "Force stop" in Android's settings does. Not on the main thread. */
     fun forceStop(pkg: String): Boolean {
         if (!PACKAGE.matches(pkg) || !available()) return false

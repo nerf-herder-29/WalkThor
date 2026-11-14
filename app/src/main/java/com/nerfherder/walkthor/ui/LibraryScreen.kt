@@ -522,11 +522,11 @@ private fun SettingsScreen(
                     ) { if (aynButton && swipeToOpen) { holdOff = it; com.nerfherder.walkthor.BottomOff.setHoldEnabled(context, it) } }
                     var tripleClose by remember { mutableStateOf(com.nerfherder.walkthor.CloseApps.enabled(context)) }
                     SettingSwitch(
-                        "Triple-press the AYN button: close all apps",
-                        if (aynButton && swipeToOpen) "Closes every app you have open, the game included (anything unsaved is lost). Your home app and WalkThor stay"
-                        else "Needs \"AYN button opens WalkThor\" switched on",
-                        checked = tripleClose && aynButton && swipeToOpen,
-                    ) { if (aynButton && swipeToOpen) { tripleClose = it; com.nerfherder.walkthor.CloseApps.setEnabled(context, it) } }
+                        "Press Back twice: close all apps",
+                        if (swipeToOpen) "Two quick presses close every app you have open, the game included (anything unsaved is lost). Your home app and WalkThor stay"
+                        else "Needs accessibility access switched on",
+                        checked = tripleClose && swipeToOpen,
+                    ) { if (swipeToOpen) { tripleClose = it; com.nerfherder.walkthor.CloseApps.setEnabled(context, it) } }
                     var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }
                     SettingSwitch(
                         "Bottom screen off during games",
