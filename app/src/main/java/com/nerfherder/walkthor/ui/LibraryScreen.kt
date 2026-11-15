@@ -425,6 +425,14 @@ private fun SettingsScreen(
                         "In place of AYN's, everywhere: numbers and letters filling the bottom screen, with the action key in your stick-light colour",
                         checked = ownKeyboard,
                     ) { want -> com.nerfherder.walkthor.keyboard.WalkThorKeyboard.use(context, want) { ownKeyboard = it } }
+                    val hasLights = remember { com.nerfherder.walkthor.StickLights.available() }
+                    var lightsOn by remember { mutableStateOf(com.nerfherder.walkthor.StickLights.isOn(context)) }
+                    SettingSwitch(
+                        "Stick lights",
+                        if (hasLights) "The lights around the sticks. Their colour and brightness are in Light & Sound"
+                        else "This device's stick lights can't be reached",
+                        checked = lightsOn && hasLights,
+                    ) { if (hasLights) { lightsOn = it; com.nerfherder.walkthor.StickLights.setOn(context, it) } }
                 }
                 SettingsGroup("If Android closes WalkThor") {
                     var reopen by remember { mutableStateOf(com.nerfherder.walkthor.Revive.enabled(context)) }

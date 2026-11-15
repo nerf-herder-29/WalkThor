@@ -78,6 +78,20 @@ object StickLights {
     fun followsScreens(c: Context) = prefs(c).getBoolean("follow", false)
     fun setFollowsScreens(c: Context, on: Boolean) = prefs(c).edit().putBoolean("follow", on).apply()
 
+    /** Whether the stick lights are on (any colour but off). */
+    fun isOn(c: Context) = color(c) != 0
+
+    /** Turns the stick lights off, or back on in the colour they had before. */
+    fun setOn(c: Context, on: Boolean) {
+        if (on == isOn(c)) return
+        if (!on) {
+            prefs(c).edit().putInt("lastColor", color(c)).apply()
+            setColor(c, 0)
+        } else {
+            setColor(c, prefs(c).getInt("lastColor", COLORS[0]).takeIf { it != 0 } ?: COLORS[0])
+        }
+    }
+
     fun setColor(c: Context, color: Int) {
         prefs(c).edit().putInt("color", color).apply()
         apply(c, syncAyn = true)

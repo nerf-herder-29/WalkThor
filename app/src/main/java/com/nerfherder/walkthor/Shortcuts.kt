@@ -24,6 +24,7 @@ object Shortcuts {
         SCREENSHOT("Screenshot"),
         CLIP("Save the last seconds"),
         FPS("FPS counter on / off"),
+        STICK_LIGHTS("Stick lights on / off"),
         PERF_MODE("Next performance mode"),
         FAN_MODE("Next fan mode"),
     }
@@ -184,6 +185,11 @@ object Shortcuts {
                 val on = !TopFps.enabled(app)
                 TopFps.setEnabled(app, on)
                 ScreenMessage.show(if (on) "FPS counter on" else "FPS counter off", 2_000)
+            }
+            Action.STICK_LIGHTS -> {
+                val on = !StickLights.isOn(app)
+                StickLights.setOn(app, on)
+                ScreenMessage.show(if (on) "Stick lights on" else "Stick lights off", 2_000)
             }
             Action.PERF_MODE -> worker.execute {
                 if (!DeviceModes.check()) { ScreenMessage.show("Performance modes need Force SELinux switched off"); return@execute }
