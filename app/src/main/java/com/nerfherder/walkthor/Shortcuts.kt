@@ -41,6 +41,7 @@ object Shortcuts {
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor shortcuts").apply { isDaemon = true } }
     private val cache = java.util.concurrent.ConcurrentHashMap<Trigger, Action>()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun prefs(c: Context) = SwipeLauncher.prefs(c)
 
@@ -126,13 +127,26 @@ object Shortcuts {
         val app = service.applicationContext
         when (a) {
             Action.NOTHING, Action.AYN_DRAWER -> Unit
-            Action.DRAWER -> service.toggleDrawer()
-            Action.DIM -> BottomOff.holdToggle(service)
-            Action.BOTTOM_OFF -> if (BottomOff.off.value) BottomOff.turnOn(service) else BottomOff.turnOff(service, game = false)
+            Action.DRAWER -> {
+                val wasUp = Drawer.shown.value || AppState.resumedDisplayId != null
+                service.toggleDrawer()
+                ScreenMessage.show(if (wasUp) "Drawer put away" else "Drawer open", 1_500)
+            }
+            Action.DIM -> {
+                BottomOff.holdToggle(service)
+                ScreenMessage.show(if (BottomOff.dimmed(service)) "Bottom screen dimmed" else "Bottom screen brightness back", 2_000)
+            }
+            Action.BOTTOM_OFF -> {
+                if (BottomOff.off.value) BottomOff.turnOn(service) else BottomOff.turnOff(service, game = false)
+                ScreenMessage.show(if (BottomOff.off.value) "Bottom screen off" else "Bottom screen on", 2_000)
+            }
+            // The ring counts down first, then a message says what was closed.
             Action.CLOSE_ALL -> CloseApps.closeAllFromButton(service)
             Action.SCREENSHOT -> {
                 val ok = Build.VERSION.SDK_INT >= 28 && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
-                if (!ok) ScreenMessage.show("Couldn't take a screenshot")
+                // After the screenshot is taken, so the message isn't in it.
+                if (ok) main.postDelayed({ ScreenMessage.show("Screenshot saved", 2_000) }, 1_200)
+                else ScreenMessage.show("Couldn't take a screenshot")
             }
             Action.CLIP -> {
                 if (!com.nerfherder.walkthor.data.Clips.buffering.value) {
