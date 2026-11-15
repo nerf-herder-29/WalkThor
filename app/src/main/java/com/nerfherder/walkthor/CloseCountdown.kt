@@ -19,7 +19,8 @@ import android.view.WindowManager
 
 /**
  * Before "close all apps": the top screen goes black with a warning that everything closes, the
- * game included, and the bottom screen dims while a ring counts down two seconds. Back, B,
+ * game included, and a line in your stick-light colour fills along its bottom edge, while the
+ * bottom screen dims and a ring in the same colour counts down two seconds. Back, B,
  * Select or a tap on either screen cancels. If it isn't cancelled, both screens stay black while
  * the apps close, then clear.
  */
@@ -149,23 +150,27 @@ object CloseCountdown {
         private fun font(w: Int) = WalkThorFont.get(context, w)
         private val ink = Color.rgb(237, 230, 218)
         private val muted = Color.rgb(163, 154, 142)
-        private val red = Color.rgb(224, 97, 74)
+        /** Your stick lights' colour, as the keyboard's action key uses (the usual light text when they're off). */
+        private val accent = runCatching {
+            StickLights.color(context).let { if (it == 0) ink else StickLights.swatch(it) or 0xFF000000.toInt() }
+        }.getOrDefault(ink)
         private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = dp(7f); color = Color.argb(40, 255, 255, 255) }
-        private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = dp(7f); strokeCap = Paint.Cap.ROUND; color = ink }
+        private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = dp(8f); strokeCap = Paint.Cap.ROUND; color = accent }
         private val number = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textAlign = Paint.Align.CENTER; textSize = dp(34f); typeface = font(700) }
         private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textAlign = Paint.Align.CENTER; typeface = font(700) }
         private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textAlign = Paint.Align.CENTER; textSize = dp(17f); typeface = font(500) }
         private val body = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = muted; textAlign = Paint.Align.CENTER; typeface = font(400) }
         private val small = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = muted; textAlign = Paint.Align.CENTER; textSize = dp(13f); typeface = font(400) }
-        private val warn = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = red; style = Paint.Style.STROKE; strokeWidth = dp(2.6f); strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
-        private val warnFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = red }
+        private val eyebrow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent; textAlign = Paint.Align.CENTER; typeface = font(600) }
+        private val bar = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
+        private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
         private val box = RectF()
 
         // Reported as a plain view, so WalkThor doesn't take its own cover for an app coming to the front.
         override fun getAccessibilityClassName(): CharSequence = "android.view.View"
 
         override fun onDraw(canvas: Canvas) {
-            val shade = if (closing || warning) 1f else 0.85f
+            val shade = if (closing || warning) 1f else 0.88f
             canvas.drawColor(Color.argb((fade.coerceIn(0f, 1f) * shade * 255).toInt(), 0, 0, 0))
             val a = (fade * 255).toInt().coerceIn(0, 255)
             val cx = width / 2f
@@ -173,33 +178,31 @@ object CloseCountdown {
             if (ring) drawRing(canvas, cx, a)
         }
 
-        /** The game's screen: a warning triangle, "Closing all apps" and what that means. */
+        /** The game's screen: what's happening, and a line in your stick-light colour along its bottom edge. */
         private fun drawWarning(canvas: Canvas, cx: Float, a: Int) {
             // Sized to the screen, so it reads the same on any screen.
             val u = minOf(width, height) / 100f
-            title.textSize = u * 6.2f
-            body.textSize = u * 2.9f
-            small.textSize = u * 2.3f
-            var y = height * 0.30f
-            val s = u * 3.2f
-            warn.strokeWidth = u * 0.5f
-            warn.alpha = a; warnFill.alpha = a
-            val tri = android.graphics.Path().apply {
-                moveTo(cx, y - s); lineTo(cx + s * 1.12f, y + s * 0.9f); lineTo(cx - s * 1.12f, y + s * 0.9f); close()
-            }
-            canvas.drawPath(tri, warn)
-            canvas.drawLine(cx, y - s * 0.28f, cx, y + s * 0.3f, warn)
-            canvas.drawCircle(cx, y + s * 0.6f, u * 0.38f, warnFill)
-            y += s + u * 10f
+            eyebrow.textSize = u * 2.4f
+            eyebrow.letterSpacing = 0.25f
+            title.textSize = u * 5.6f
+            body.textSize = u * 2.8f
+            var y = height * 0.40f
+            eyebrow.alpha = a
+            canvas.drawText(if (closing) "CLOSING ALL APPS…" else "CLOSING ALL APPS", cx, y, eyebrow)
+            y += u * 9f
             title.alpha = a
-            canvas.drawText(if (closing) "Closing all apps…" else "Closing all apps", cx, y, title)
-            if (closing) return
-            y += u * 6f
+            canvas.drawText("Your game will close too.", cx, y, title)
+            y += u * 6.5f
             body.alpha = a
-            canvas.drawText("Your game will close too. Anything you haven't saved will be lost.", cx, y, body)
-            y += u * 6f
-            small.alpha = (a * 0.7f).toInt()
-            canvas.drawText("Press Back or tap the bottom screen to cancel", cx, y, small)
+            canvas.drawText("Anything you haven't saved will be lost.", cx, y, body)
+            // The time left, as a line filling along the bottom edge, softly glowing.
+            val f = if (closing) 1f else progress
+            val h = u * 1.1f
+            val right = width * f
+            glow.alpha = (a * 0.22f).toInt()
+            canvas.drawRect(0f, height - h * 3.5f, right, height.toFloat(), glow)
+            bar.alpha = a
+            canvas.drawRect(0f, height - h, right, height.toFloat(), bar)
         }
 
         /** The bottom screen: the ring filling, with the seconds left in it. */
@@ -216,11 +219,11 @@ object CloseCountdown {
                 canvas.drawText("$left", cx, cy + number.textSize * 0.36f, number)
             }
             label.alpha = a
-            canvas.drawText(if (closing) "Closing…" else "Closing all apps", cx, cy + r + dp(38f), label)
+            canvas.drawText(if (closing) "Closing…" else "Tap to cancel", cx, cy + r + dp(38f), label)
             if (!closing) {
                 small.textSize = dp(13f)
                 small.alpha = (a * 0.85f).toInt()
-                canvas.drawText("Press Back or tap to cancel", cx, cy + r + dp(64f), small)
+                canvas.drawText("or press Back", cx, cy + r + dp(62f), small)
             }
         }
     }
