@@ -206,8 +206,19 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
                     drawArc(ring, -90f, 360f * level / 100f, false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$level%", color = BookColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(if (charging) "charging" else "battery", color = BookColors.TextMuted, fontSize = 8.sp)
+                    // Tight lines: the theme's usual line height left a gap between the two.
+                    val tight = androidx.compose.ui.text.TextStyle(
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                        lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                            androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                            androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
+                        ),
+                    )
+                    Text("$level%", color = BookColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 15.sp, style = tight)
+                    Text(
+                        if (charging) "charging" else "battery", color = BookColors.TextMuted, fontSize = 8.sp, lineHeight = 9.sp, style = tight,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
                 }
             }
         }

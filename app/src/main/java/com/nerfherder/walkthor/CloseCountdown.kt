@@ -19,12 +19,12 @@ import android.view.WindowManager
 
 /**
  * Before "close all apps": the top screen goes black with a warning that everything closes, the
- * game included, and the bottom screen dims while a ring counts down three seconds. Back, B,
+ * game included, and the bottom screen dims while a ring counts down two seconds. Back, B,
  * Select or a tap on either screen cancels. If it isn't cancelled, both screens stay black while
  * the apps close, then clear.
  */
 object CloseCountdown {
-    private const val COUNT_MS = 3_000L
+    private const val COUNT_MS = 2_000L
     private val main = Handler(Looper.getMainLooper())
     private val views = mutableListOf<Pair<WindowManager, Face>>()
     private var counting: ValueAnimator? = null
