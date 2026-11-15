@@ -520,6 +520,12 @@ private fun SettingsScreen(
                         else "Needs \"AYN button opens WalkThor\" switched on",
                         checked = holdOff && aynButton && swipeToOpen,
                     ) { if (aynButton && swipeToOpen) { holdOff = it; com.nerfherder.walkthor.BottomOff.setHoldEnabled(context, it) } }
+                    var ownKeyboard by remember { mutableStateOf(com.nerfherder.walkthor.keyboard.WalkThorKeyboard.isDefault(context)) }
+                    SettingSwitch(
+                        "WalkThor keyboard",
+                        "In place of AYN's, everywhere: numbers and letters filling the bottom screen, with the action key in your stick-light colour",
+                        checked = ownKeyboard,
+                    ) { want -> com.nerfherder.walkthor.keyboard.WalkThorKeyboard.use(context, want) { ownKeyboard = it } }
                     var backClose by remember { mutableStateOf(com.nerfherder.walkthor.CloseApps.backEnabled(context)) }
                     SettingSwitch(
                         "Press Back twice: close all apps",

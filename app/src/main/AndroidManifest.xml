@@ -103,6 +103,17 @@
         </service>
         <!-- Starts WalkThor again just after a crash (see CrashLog). -->
         <receiver android:name=".ComeBack" android:exported="false" />
+        <!-- WalkThor's keyboard (numbers and letters filling the bottom screen), to use in place of AYN's. -->
+        <service
+            android:name=".keyboard.WalkThorKeyboard"
+            android:exported="true"
+            android:label="WalkThor keyboard"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/walkthor_keyboard" />
+        </service>
         <!-- Notices WalkThor being closed by Android and starts it again (see CrashLog). -->
         <service android:name=".Keeper" android:exported="false" android:process=":keeper" />
     </application>

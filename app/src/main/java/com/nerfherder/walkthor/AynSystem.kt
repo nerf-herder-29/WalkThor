@@ -143,6 +143,13 @@ object AynSystem {
         return run("am stack remove $taskId >/dev/null 2>&1 || am task remove $taskId >/dev/null 2>&1; echo done") != null
     }
 
+    /** Switches Android to the keyboard [id] ("package/class"), turning it on first. Not on the main thread. */
+    fun setKeyboard(id: String): Boolean {
+        if (!Regex("[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+").matches(id) || !available()) return false
+        val out = run("ime enable '$id' >/dev/null 2>&1; ime set '$id' 2>&1") ?: return false
+        return "selected" in out
+    }
+
     /** The names of every running process (an app's main process is named after its package). Not on the main thread. */
     fun runningNames(): Set<String>? {
         if (!available()) return null

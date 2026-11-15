@@ -106,6 +106,12 @@ scraper account and start a scrape (see below). Everything else stays on your de
   stored or sent, and keyboard text elsewhere is never read. The button layout you pick for each
   emulator is stored on the device.
 
+- **WalkThor keyboard: what you type, only if you choose it.** WalkThor includes its own keyboard,
+  which is used only if you switch it on (Settings → General → Access) or pick it in Android's
+  keyboard settings. Like any keyboard, it passes each key you press to the app you're typing in.
+  WalkThor doesn't record, store or send what you type, and the keyboard has no suggestions,
+  dictionary or learning.
+
 - **Open when an emulator starts, only if you turn it on.** While it's on, WalkThor's
   accessibility service notes which app comes to the front, so it knows when an emulator starts a
   game and can open on the bottom screen. With Cocoon linked, Cocoon's log names the game as usual.
