@@ -791,6 +791,7 @@ class StoreScreenshots {
             listOf(
                 "gc\tLanterns of Emberfall (USA).rvz\tLanterns of Emberfall",
                 "gc\tStarfall Tactics (USA).iso\tStarfall Tactics",
+                "gc\tEcho Valley (USA).iso\tEcho Valley",
                 "wii\tMoss & Marrow (Europe).wbfs\tMoss & Marrow",
                 "wii\tKingdom of Glass (USA).wbfs\tKingdom of Glass",
                 "gba\tPaper Knights (USA).gba\tPaper Knights",
