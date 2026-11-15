@@ -312,7 +312,7 @@ class SwipeGestureService : AccessibilityService() {
         if (on && !can) return false
         val flag = android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
         // Also kept on while the AYN button opens WalkThor, or a button test is running.
-        val keep = on || AynButton.on || ButtonTest.active || CloseApps.backEnabled(this)
+        val keep = on || AynButton.on || ButtonTest.active || CloseApps.backEnabled(this) || CloseCountdown.active
         val wanted = if (keep) info.flags or flag else info.flags and flag.inv()
         if (wanted != info.flags) {
             info.flags = wanted
@@ -332,6 +332,14 @@ class SwipeGestureService : AccessibilityService() {
             event.action == android.view.KeyEvent.ACTION_DOWN && Drawer.shown.value
         ) {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
+        }
+        // The ring before "close all apps" is filling: Back cancels it (and does nothing else).
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && CloseCountdown.active) {
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                AynButton.lastBackAt = 0L
+                CloseCountdown.cancel()
+            }
+            return true
         }
         // Back pressed twice quickly: close all open apps, when that's switched on. Both presses
         // still go on as usual.

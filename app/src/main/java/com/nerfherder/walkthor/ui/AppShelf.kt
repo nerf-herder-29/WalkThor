@@ -130,11 +130,8 @@ internal fun AppShelf(
                         "Close all", color = Color.Black, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(BookColors.Text)
                             .clickable {
-                                closing = "…"
-                                com.nerfherder.walkthor.CloseApps.closeAll(context) { message, detail ->
-                                    closing = if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message
-                                    com.nerfherder.walkthor.ScreenMessage.show(message)
-                                }
+                                closing = null
+                                com.nerfherder.walkthor.CloseApps.closeAllFromButton(context)
                             }.padding(horizontal = 14.dp, vertical = 7.dp),
                     )
                 }

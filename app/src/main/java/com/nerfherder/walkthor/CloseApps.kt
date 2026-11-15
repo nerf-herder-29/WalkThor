@@ -28,11 +28,17 @@ object CloseApps {
     /** From the Back button: closes everything and says what happened in a short message on screen. */
     fun closeAllFromButton(context: Context) {
         val app = context.applicationContext
-        runCatching { Drawer.hide() }
-        closeAll(app) { message, detail ->
-            val text = if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message
-            ScreenMessage.show(text)
+        val go = {
+            closeAll(app) { message, detail ->
+                CloseCountdown.finish()
+                ScreenMessage.show(if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message)
+            }
         }
+        // A ring fills first, so a slip can be taken back (Back, or a tap, cancels).
+        val service = SwipeGestureService.instance?.get()
+        if (service == null) { go(); return }
+        runCatching { Drawer.hide() }
+        CloseCountdown.start(service) { go() }
     }
 
     /** What happened last time, for Diagnostics. */
