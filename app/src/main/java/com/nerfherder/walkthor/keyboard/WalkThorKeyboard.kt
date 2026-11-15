@@ -64,7 +64,8 @@ class WalkThorKeyboard : InputMethodService() {
     }
 
     companion object {
-        private fun id(c: Context) = "${c.packageName}/${WalkThorKeyboard::class.java.name}"
+        // Android names a keyboard by its short form: "com.example/.keyboard.Name".
+        private fun id(c: Context) = android.content.ComponentName(c, WalkThorKeyboard::class.java).flattenToShortString()
         private val ID = Regex("[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+")
 
         /** WalkThor's keyboard is the one Android uses. */
@@ -90,9 +91,17 @@ class WalkThorKeyboard : InputMethodService() {
                     Thread.sleep(300)
                 }
                 main.post {
-                    if (!changed) runCatching {
-                        if (on) app.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        else app.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+                    if (!changed) {
+                        runCatching {
+                            if (on) app.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            else app.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+                        }
+                        // Say so, rather than leave the switch looking as if nothing happened.
+                        com.nerfherder.walkthor.ScreenMessage.show(
+                            if (on) "Couldn't switch keyboards automatically. In Android's keyboard settings, turn on WalkThor keyboard, then choose it."
+                            else "Choose the keyboard you want from the list.",
+                            7_000,
+                        )
                     }
                     done(isDefault(app))
                 }
