@@ -207,13 +207,13 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // Tight lines: the theme's usual line height left a gap between the two.
-                    val tight = androidx.compose.ui.text.TextStyle(
+                    val tight = androidx.compose.material3.LocalTextStyle.current.merge(androidx.compose.ui.text.TextStyle(
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
                         lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
                             androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
                             androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
                         ),
-                    )
+                    ))
                     Text("$level%", color = BookColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 15.sp, style = tight)
                     Text(
                         if (charging) "charging" else "battery", color = BookColors.TextMuted, fontSize = 8.sp, lineHeight = 9.sp, style = tight,
