@@ -192,7 +192,9 @@ private class KeysView(context: Context, private val service: WalkThorKeyboard, 
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = dp(1f); color = Color.argb(34, 255, 255, 255) }
-    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.create("sans-serif", Typeface.NORMAL) }
+    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = com.nerfherder.walkthor.WalkThorFont.get(context, 500) }
+    private val regular = com.nerfherder.walkthor.WalkThorFont.get(context, 500)
+    private val bold = com.nerfherder.walkthor.WalkThorFont.get(context, 700)
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
 
     init { build() }
@@ -297,7 +299,7 @@ private class KeysView(context: Context, private val service: WalkThorKeyboard, 
                     else -> {
                         val quiet = k.kind == Kind.PAGE || k.kind == Kind.SPACE || (k.kind == Kind.CHAR && (k.label == "," || k.label == "."))
                         text.color = if (k.kind == Kind.ACTION) Color.rgb(0, 28, 26) else if (quiet) MUTED else INK
-                        text.isFakeBoldText = k.kind == Kind.ACTION
+                        text.typeface = if (k.kind == Kind.ACTION) bold else regular
                         text.textSize = when (k.kind) {
                             Kind.SPACE -> dp(12f)
                             Kind.PAGE, Kind.ACTION -> dp(15f)

@@ -627,24 +627,33 @@ class StoreScreenshots {
         shot("check-reader-tabs-dense")
     }
 
-    @Test
-    fun closeAllPrompt() {
-        // The question's own drawing, as it shows on the black top screen.
+    /** The close-all countdown's own drawing: [ring] for the bottom screen, else the top screen's warning. */
+    private fun closeAll(name: String, ring: Boolean) {
         content {
             androidx.compose.ui.viewinterop.AndroidView(
                 factory = { ctx ->
                     val cls = Class.forName("com.nerfherder.walkthor.CloseCountdown\$Face")
-                    val c = cls.getDeclaredConstructor(android.content.Context::class.java, Boolean::class.javaPrimitiveType).apply { isAccessible = true }
-                    (c.newInstance(ctx, true) as android.view.View).also { v ->
+                    val c = cls.getDeclaredConstructor(android.content.Context::class.java, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+                        .apply { isAccessible = true }
+                    (c.newInstance(ctx, ring, !ring) as android.view.View).also { v ->
+                        v.setBackgroundColor(if (ring) 0xFF2A3440.toInt() else 0)
                         cls.getDeclaredField("fade").apply { isAccessible = true }.setFloat(v, 1f)
+                        cls.getDeclaredField("progress").apply { isAccessible = true }.setFloat(v, 0.4f)
                     }
                 },
-                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                modifier = if (ring) androidx.compose.ui.Modifier.fillMaxSize()
+                else androidx.compose.ui.Modifier.fillMaxWidth().aspectRatio(16f / 9f),
             )
         }
         settle()
-        shot("check-close-all-prompt")
+        shot(name)
     }
+
+    @Test
+    fun closeAllTop() = closeAll("check-close-all-top", ring = false)
+
+    @Test
+    fun closeAllBottom() = closeAll("check-close-all-bottom", ring = true)
 
     @Test
     fun guideTab() {

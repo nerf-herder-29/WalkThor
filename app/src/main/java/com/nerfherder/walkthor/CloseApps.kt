@@ -26,8 +26,8 @@ object CloseApps {
     }
 
     /**
-     * From a shortcut or the dock: asks first (the top screen goes black with a warning), then
-     * closes everything and says what happened in a short message. [ask] false when you've
+     * From a shortcut or the dock: counts down first (the top screen goes black with a warning,
+     * the bottom one shows a ring; Back or a tap cancels), then closes everything and says what happened in a short message. [ask] false when you've
      * already said yes somewhere else.
      */
     fun closeAllFromButton(context: Context, ask: Boolean = true) {
@@ -38,7 +38,7 @@ object CloseApps {
                 ScreenMessage.show(if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message)
             }
         }
-        // "Close all apps?" first, so a slip can be taken back.
+        // A countdown first, so a slip can be taken back.
         val service = SwipeGestureService.instance?.get()
         if (service == null) { go(); return }
         runCatching { Drawer.hide() }

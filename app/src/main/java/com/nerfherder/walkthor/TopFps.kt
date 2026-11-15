@@ -142,7 +142,7 @@ object TopFps {
                 }
                 setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                typeface = WalkThorFont.get(ctx, 600)
                 includeFontPadding = false
                 setPadding(dp(8f).roundToInt(), dp(4f).roundToInt(), dp(8f).roundToInt(), dp(4f).roundToInt())
             }

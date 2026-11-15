@@ -35,6 +35,7 @@ object ScreenMessage {
                     this.text = text
                     setTextColor(Color.WHITE)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    typeface = WalkThorFont.get(ctx, 500)
                     maxLines = 3
                     gravity = Gravity.CENTER
                     background = GradientDrawable().apply {

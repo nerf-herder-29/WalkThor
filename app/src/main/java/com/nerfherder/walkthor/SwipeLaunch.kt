@@ -314,17 +314,16 @@ class SwipeGestureService : AccessibilityService() {
         ) {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
         }
-        // "Close all apps?" is up: Start goes ahead; Back, B or Select stop. These presses go
+        // "Closing all apps" is counting down: Back, B or Select cancel it. Those presses go
         // nowhere else (the game is hidden under the black anyway).
         if (CloseCountdown.active) {
             val k = event.keyCode
-            val yes = k == android.view.KeyEvent.KEYCODE_BUTTON_START
-            val no = k == android.view.KeyEvent.KEYCODE_BACK || k == android.view.KeyEvent.KEYCODE_BUTTON_B ||
+            if (k == android.view.KeyEvent.KEYCODE_BACK || k == android.view.KeyEvent.KEYCODE_BUTTON_B ||
                 k == android.view.KeyEvent.KEYCODE_BUTTON_SELECT
-            if (yes || no) {
+            ) {
                 if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                     AynButton.lastBackAt = 0L
-                    if (yes) CloseCountdown.confirm() else CloseCountdown.cancel()
+                    CloseCountdown.cancel()
                 }
                 return true
             }
