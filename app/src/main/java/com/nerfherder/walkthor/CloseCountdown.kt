@@ -199,8 +199,14 @@ object CloseCountdown {
             val f = if (closing) 1f else progress
             val h = u * 1.1f
             val right = width * f
-            glow.alpha = (a * 0.22f).toInt()
-            canvas.drawRect(0f, height - h * 3.5f, right, height.toFloat(), glow)
+            val top = height - h * 6f
+            glow.shader = android.graphics.LinearGradient(
+                0f, top, 0f, height.toFloat(),
+                Color.argb(0, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                Color.argb((a * 0.35f).toInt(), Color.red(accent), Color.green(accent), Color.blue(accent)),
+                android.graphics.Shader.TileMode.CLAMP,
+            )
+            canvas.drawRect(0f, top, right, height.toFloat(), glow)
             bar.alpha = a
             canvas.drawRect(0f, height - h, right, height.toFloat(), bar)
         }
