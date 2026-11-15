@@ -39,7 +39,7 @@ class WalkThorKeyboard : InputMethodService() {
     /** The keys drawn over the whole bottom screen by WalkThor's service. */
     private var onBottom: Pair<WindowManager, KeysView>? = null
 
-    override fun onCreateInputView(): View = KeysView(this, this, fill = false).also { keys = it }
+    override fun onCreateInputView(): View = KeysView(this, this, whole = false).also { keys = it }
 
     /**
      * Android puts a keyboard on whichever screen the app being typed in is on, at whatever size
@@ -60,7 +60,7 @@ class WalkThorKeyboard : InputMethodService() {
         val display = DisplayHelper.bottomDisplay(service) ?: return false
         val ctx = service.createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
         val wm = ctx.getSystemService(WindowManager::class.java) ?: return false
-        val view = KeysView(ctx, this, fill = true)
+        val view = KeysView(ctx, this, whole = true)
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
@@ -174,7 +174,7 @@ private class Key(val label: String, val kind: Kind, val weight: Float = 1f) {
 }
 
 /** The keys themselves, drawn and handled by hand: light, and quick to come up. */
-private class KeysView(context: Context, private val service: WalkThorKeyboard, private val fill: Boolean) : View(context) {
+private class KeysView(context: Context, private val service: WalkThorKeyboard, private val whole: Boolean) : View(context) {
     // Reported as a plain view, so WalkThor doesn't take its own keys for an app coming to the front.
     override fun getAccessibilityClassName(): CharSequence = "android.view.View"
 
@@ -242,7 +242,7 @@ private class KeysView(context: Context, private val service: WalkThorKeyboard, 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = MeasureSpec.getSize(widthMeasureSpec)
         // Drawn over the bottom screen by WalkThor's service: all of it.
-        if (fill) { setMeasuredDimension(w, MeasureSpec.getSize(heightMeasureSpec)); return }
+        if (whole) { setMeasuredDimension(w, MeasureSpec.getSize(heightMeasureSpec)); return }
         val screen = resources.displayMetrics.heightPixels
         @Suppress("DEPRECATION")
         val here = display?.displayId ?: runCatching { context.getSystemService(WindowManager::class.java)?.defaultDisplay?.displayId }.getOrNull()
