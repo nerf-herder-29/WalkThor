@@ -217,7 +217,7 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
                     Text("$level%", color = BookColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 15.sp, style = tight)
                     Text(
                         if (charging) "charging" else "battery", color = BookColors.TextMuted, fontSize = 8.sp, lineHeight = 9.sp, style = tight,
-                        modifier = Modifier.padding(top = 2.dp),
+                        letterSpacing = 0.2.sp,
                     )
                 }
             }
