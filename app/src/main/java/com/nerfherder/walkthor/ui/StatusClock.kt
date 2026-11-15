@@ -89,9 +89,6 @@ fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     val low = level in 0..15 && !charging
     val tint = if (low) LowBattery else BookColors.TextMuted
 
-    val game by PlaySession.current.collectAsState()
-    val showTimer by PlaySession.showTimer.collectAsState()
-
     // Report where the readout sits, so auto-dim can keep a full-brightness copy on top of the dimming.
     val token = remember { Any() }
     if (anchor) {
@@ -111,20 +108,6 @@ fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     Row(modifier.then(placed), verticalAlignment = Alignment.CenterVertically) {
         // While clips are kept or recorded, so it's never on without you seeing it.
         if (keeping || recordingClip) ClipsBadge(recordingClip)
-        val g = game
-        if (showTimer && g != null && g.at > 0) {
-            val played = playTime(now.time - g.at)
-            Row(
-                Modifier
-                    .clickable { Toast.makeText(context, "Playing ${g.title}" + (g.player?.let { " · $it" } ?: ""), Toast.LENGTH_SHORT).show() }
-                    .padding(end = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PlayGlyph()
-                Spacer(Modifier.width(4.dp))
-                Text(played, color = BookColors.Brass, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            }
-        }
         Text(time, color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         if (level >= 0) {
             Spacer(Modifier.width(10.dp))

@@ -16,32 +16,24 @@ interface WalkThorHost {
     /** A document handed over to import. */
     val incomingFlow: MutableStateFlow<Uri?>
     val hasOtherScreenFlow: MutableStateFlow<Boolean>
-    val pickedArtFolderFlow: MutableStateFlow<Uri?>
-    val pickedCocoonFolderFlow: MutableStateFlow<Uri?>
-    val pickedEsdeFolderFlow: MutableStateFlow<Uri?>
     /** Bumped each time WalkThor is opened by a swipe or the AYN button. */
     val swipeTickFlow: MutableStateFlow<Long>
     /** Ticks every few seconds while WalkThor is on screen, to notice a game launched meanwhile. */
     val pollTickFlow: MutableSharedFlow<Unit>
-    val pickedCoverFlow: MutableStateFlow<Pair<String, Uri>?>
     /** Lives as long as the host. */
     val hostScope: CoroutineScope
 
     fun requestMirror()
     fun closeApp()
     fun pickGuide()
-    fun pickArtFolder()
-    fun pickCocoonFolder()
-    fun pickEsdeFolder()
     fun pickRomFolder()
-    fun pickCoverImage(bookId: String)
     fun swapScreen(bookId: String?)
 }
 
 /** Picker types shared by both hosts. */
 internal val GUIDE_TYPES = arrayOf("application/pdf", "text/plain", "text/*", "application/octet-stream")
 
-/** Your ROMs folder was picked: read its games, then scrape their artwork if you've added an account. */
+/** Your ROMs folder was picked: read its games. */
 internal fun onRomFolderPicked(context: Context, scope: CoroutineScope, uri: Uri) {
     scope.launch {
         val lib = com.nerfherder.walkthor.data.RomLibrary.get(context)
@@ -49,10 +41,8 @@ internal fun onRomFolderPicked(context: Context, scope: CoroutineScope, uri: Uri
         val n = lib.roms.value.size
         if (n == 0) {
             Toast.makeText(context, "No games found. Pick the folder that holds your system folders (3ds, gba, switch…).", Toast.LENGTH_LONG).show()
-        } else if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) {
-            com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
         } else {
-            Toast.makeText(context, "Found $n games. Add a scraper account (Settings → Artwork) to fetch their artwork.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Found $n games", Toast.LENGTH_SHORT).show()
         }
     }
 }

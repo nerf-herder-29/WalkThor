@@ -37,7 +37,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nerfherder.walkthor.data.LaunchedGame
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -81,24 +80,21 @@ object AutoDim {
      * are let go (nothing can be seen under the dim anyway) and come back when you wake it.
      */
     val resting = MutableStateFlow(false)
-    /** The small link under the Now playing buttons, so the dimmed layout leaves the same space. */
-    val linkLabel = MutableStateFlow<String?>(null)
     const val REST_AFTER_MS = 30_000L
-    /** True while the Now playing screen is under the dim (its name and tabs are already in place). */
+    /** True while Home is up during a game: the one game screen that dims. */
     val nowPlayingShown = MutableStateFlow(false)
     private val nowPlayingHolders = mutableSetOf<Any>()
 
     /**
-     * Now playing is on screen ([on]) for [holder], or not. Counted, so the old copy going away
-     * as a new one comes in (a game changing, or a quick trip to a tab and back) can't leave it
-     * marked as gone.
+     * Home is on screen during a game ([on]) for [holder], or not. Counted, so the old copy going
+     * away as a new one comes in (a quick trip to a tab and back) can't leave it marked as gone.
      */
     fun showingNowPlaying(holder: Any, on: Boolean) = synchronized(nowPlayingHolders) {
         if (on) nowPlayingHolders.add(holder) else nowPlayingHolders.remove(holder)
         nowPlayingShown.value = nowPlayingHolders.isNotEmpty()
     }
 
-    /** A game's screens (Now playing, its tabs, a guide opened for it) are up. */
+    /** The screens for while you play (Home, the tabs, a guide opened from them) are up. */
     val gameScreensShown = MutableStateFlow(false)
     private val gameHolders = mutableSetOf<Any>()
     fun showingGameScreens(holder: Any, on: Boolean) = synchronized(gameHolders) {
@@ -106,8 +102,6 @@ object AutoDim {
         gameScreensShown.value = gameHolders.isNotEmpty()
     }
 
-    /** The game's logo, when Now playing shows it as the title (so the dimmed copy does too). */
-    val logo = MutableStateFlow<String?>(null)
     @Volatile private var lastInteraction = SystemClock.elapsedRealtime()
 
     fun label(ms: Long) = when (ms) {
@@ -162,8 +156,8 @@ object AutoDim {
 fun AutoDimOverlay() {
     val settingDelay by AutoDim.delayMs.collectAsState()
     val screenDelay by AutoDim.screenDelayMs.collectAsState()
-    // During a game, only Now playing dims, after the Auto-dim time; every other screen of the
-    // game (each tab, a guide) stays bright. Outside a game, screens can ask to stay bright.
+    // During a game, only Home dims, after the Auto-dim time; every other screen (each tab, a
+    // guide) stays bright. Outside a game, screens can ask to stay bright.
     val onNowPlaying by AutoDim.nowPlayingShown.collectAsState()
     val onGameScreens by AutoDim.gameScreensShown.collectAsState()
     val delayMs = when {
@@ -232,61 +226,13 @@ fun AutoDimOverlay() {
         status?.let { b ->
             StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
         }
-        // Now playing's heat and frame rate, likewise.
-        val heatAt by GameReadings.heatBounds.collectAsState()
-        val fpsAt by GameReadings.fpsBounds.collectAsState()
-        heatAt?.let { b ->
-            HeatReadout(false, Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }.height(with(androidx.compose.ui.platform.LocalDensity.current) { b.height.toDp() }), anchor = false)
-        }
-        fpsAt?.let { b ->
-            FpsReadout(false, Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }.height(with(androidx.compose.ui.platform.LocalDensity.current) { b.height.toDp() }), anchor = false)
-        }
-        // While dimmed during a game: what's playing, centred on the black screen, in full.
-        val game by PlaySession.current.collectAsState()
-        val g = game
-        if (g != null && !previewing) {
-            // Exactly the Now playing screen's layout (same name, emulator and tabs in the same
-            // places), so nothing moves when the screen dims or wakes. Tabs act on touch down,
-            // since that same touch also wakes the screen.
-            val linkLabel by AutoDim.linkLabel.collectAsState()
+        // During a game: the tabs stay, exactly where the tab bar has them (a tab opens on touch
+        // down, since that same touch also wakes the screen), and the time in the middle.
+        if (onGameScreens && !previewing) {
             val tabs by GameTabs.state.collectAsState()
-            val nowPlayingUnder by AutoDim.nowPlayingShown.collectAsState()
-            val logoNow by AutoDim.logo.collectAsState()
-            // Over a guide page, the game's name would sit on top of the page's text, so darken
-            // the whole screen evenly a little more (to at least READABLE_DIM). Over Now playing
-            // the name is already in the same place underneath, so the dim stays as you set it.
-            if (!nowPlayingUnder && level < READABLE_DIM) {
-                val extra = 1f - (1f - READABLE_DIM) / (1f - level)
-                Box(
-                    Modifier.fillMaxSize().graphicsLayer {
-                        this.alpha = extra * (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f)
-                    }.background(Color.Black)
-                )
-            }
-            // The game's tabs, exactly where the tab bar has them; a tab opens on touch down.
-            tabs?.let { t ->
-                GameTabPillInBarPosition(
-                    t.selected, t.onSelect,
-                    Modifier.align(Alignment.TopStart)
-                        .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
-                )
-            }
-            Box(
-                Modifier
-                    .align(Alignment.Center)
-                    .graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) },
-            ) {
-                NowPlayingStack(
-                    title = if (g.unknown && linkLabel != null) "What are you playing?" else g.title,
-                    player = g.player,
-                    buttons = emptyList(),
-                    link = linkLabel?.let { it to {} },
-                    linkVisible = false,
-                    actOnDown = true,
-                    logo = logoNow,
-                    grayscale = true,
-                )
-            }
+            val shade = Modifier.graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) }
+            tabs?.let { t -> GameTabPillInBarPosition(t.selected, t.onSelect, Modifier.align(Alignment.TopStart).then(shade)) }
+            if (status == null) StatusClock(Modifier.align(Alignment.Center).then(shade), anchor = false)
         }
         // Performance check readout (⋮ → Performance check).
         val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
@@ -326,51 +272,3 @@ fun AutoDimOverlay() {
         )
     }
 }
-
-/** The game Cocoon is playing now (from its launch log), for the play-time readout. */
-object PlaySession {
-    val current = MutableStateFlow<LaunchedGame?>(null)
-    val showTimer = MutableStateFlow(true)
-
-    /** "Off", "30 sec", "1 min" — for the compact chips in settings. */
-    fun shortLabel(ms: Long) = when {
-        ms == 0L -> "Off"
-        ms < 60_000L -> "${ms / 1000} sec"
-        else -> "${ms / 60_000L} min"
-    }
-
-    fun init(context: Context) {
-        showTimer.value = context.getSharedPreferences("session", Context.MODE_PRIVATE).getBoolean("show", true)
-    }
-
-    fun setShowTimer(context: Context, on: Boolean) {
-        showTimer.value = on
-        context.getSharedPreferences("session", Context.MODE_PRIVATE).edit().putBoolean("show", on).apply()
-    }
-}
-
-/** A button on the dimmed screen; acts on touch down (the same touch wakes the screen). */
-@Composable
-private fun DimButton(label: String, filled: Boolean, action: () -> Unit) {
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(22.dp))
-            .then(
-                if (filled) Modifier.background(BookColors.ButtonFill).border(1.dp, BookColors.ButtonEdge, RoundedCornerShape(22.dp))
-                else Modifier.border(1.dp, BookColors.ButtonEdge, RoundedCornerShape(22.dp))
-            )
-            .pointerInput(action) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                    action()
-                }
-            }
-            .padding(horizontal = 22.dp, vertical = 10.dp),
-    ) {
-        Text(label, color = BookColors.Text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-    }
-}
-
-/** How dark the screen gets, at least, when the game's name is drawn over a guide page. */
-private const val READABLE_DIM = 0.85f
-

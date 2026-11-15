@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -26,14 +28,11 @@ import com.nerfherder.walkthor.data.BookType
 import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.ui.AutoDim
 import com.nerfherder.walkthor.ui.BootScreen
-import com.nerfherder.walkthor.ui.NowPlayingScreen
-import com.nerfherder.walkthor.data.GameArt
 import com.nerfherder.walkthor.ui.BootStatus
 import com.nerfherder.walkthor.ui.DarkPages
 import com.nerfherder.walkthor.ui.LibraryActions
 import com.nerfherder.walkthor.ui.LibraryScreen
 import com.nerfherder.walkthor.ui.LocalPageColors
-import com.nerfherder.walkthor.ui.PlaySession
 import com.nerfherder.walkthor.ui.ReaderScreen
 import com.nerfherder.walkthor.ui.WalkThorTheme
 import kotlinx.coroutines.runBlocking
@@ -87,16 +86,9 @@ class StoreScreenshots {
                 .putExtra(BatteryManager.EXTRA_SCALE, 100)
                 .putExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_DISCHARGING)
         )
-        PlaySession.current.value = LaunchedGame(
-            title = "Lanterns of Emberfall",
-            file = null,
-            player = "Dolphin Emulator",
-            at = System.currentTimeMillis() - 47 * 60_000L,
-        )
-        PlaySession.showTimer.value = true
     }
 
-    /** With [hero], the screen sits over the game's art strip, as the game's tabs do in the app. */
+    /** [hero] is left from when the game's tabs sat over its art; it no longer changes anything. */
     private fun content(
         hero: String? = null,
         body: @Composable () -> Unit,
@@ -104,11 +96,7 @@ class StoreScreenshots {
         com.nerfherder.walkthor.ui.GameTabs.indicatorX = Float.NaN
         WalkThorTheme {
             CompositionLocalProvider(LocalPageColors provides DarkPages) {
-                if (hero == null) body()
-                else androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                    com.nerfherder.walkthor.ui.GameBackdrop(hero)
-                    CompositionLocalProvider(com.nerfherder.walkthor.ui.LocalBackdrop provides true) { body() }
-                }
+                body()
             }
         }
     }
@@ -126,9 +114,7 @@ class StoreScreenshots {
 
     private fun actions() = LibraryActions(
         onOpen = {}, onImport = {}, onDelete = {}, onRename = { _, _ -> }, coverFile = { null },
-        onPickCoverFile = {}, onSetCover = { _, _ -> }, onClearCover = {}, suggestions = { emptyList() },
-        onLinkArtFolder = {}, onLinkCocoon = {}, onToggleGameGuide = {}, onUnlinkCocoon = {},
-        onRescanArt = {}, onUnlinkArt = {}, onToggleAlwaysBottom = {}, onToggleSwipeToOpen = {},
+        onToggleAlwaysBottom = {}, onToggleSwipeToOpen = {},
         onClose = {}, onGrantSwipePermission = {}, hasSwipeConsent = { true }, onSwipeConsent = {},
         isSwipeServiceOn = { true }, onOpenAppInfo = {}, onSwapScreen = {},
     )
@@ -136,13 +122,8 @@ class StoreScreenshots {
     @Composable
     private fun Library() = LibraryScreen(
         books = shelf,
-        artLinked = true,
-        artCount = 412,
-        artScanning = null,
         alwaysBottom = true,
         swipeToOpen = true,
-        gameGuide = true,
-        cocoonLinked = true,
         swipeNeedsPermission = false,
         actions = actions(),
     )
@@ -163,9 +144,9 @@ class StoreScreenshots {
         compose.onNodeWithText("GameCube").performClick()
         settle()
         shot("02c-library-system")
-        compose.onNodeWithText("Starfall Tactics").performClick()
+        compose.onAllNodesWithText("+ Add a guide").onFirst().performClick()
         settle()
-        shot("02d-library-game-sheet")
+        shot("02d-library-add-guide")
     }
 
     @Test
@@ -176,36 +157,6 @@ class StoreScreenshots {
         content { Library() }
         settle()
         shot("check-library-games-dense")
-    }
-
-    /** Made-up box art for a made-up game: a colour, a simple emblem and the title. */
-    private fun promoCover(title: String, top: Int, bottom: Int, glow: Int, shape: Int): File {
-        val w = 480; val h = 640
-        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(bmp)
-        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), top, bottom, android.graphics.Shader.TileMode.CLAMP)
-        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
-        p.shader = android.graphics.RadialGradient(w / 2f, h * 0.58f, 210f, glow, glow and 0x00FFFFFF, android.graphics.Shader.TileMode.CLAMP)
-        c.drawCircle(w / 2f, h * 0.58f, 210f, p)
-        p.shader = null
-        p.color = 0xEE101014.toInt()
-        when (shape % 4) {
-            0 -> c.drawCircle(w / 2f, h * 0.58f, 70f, p)
-            1 -> { val path = android.graphics.Path(); path.moveTo(w / 2f, h * 0.44f); path.lineTo(w / 2f + 85f, h * 0.70f); path.lineTo(w / 2f - 85f, h * 0.70f); path.close(); c.drawPath(path, p) }
-            2 -> c.drawRect(w / 2f - 60f, h * 0.48f, w / 2f + 60f, h * 0.68f, p)
-            else -> { c.drawCircle(w / 2f - 40f, h * 0.6f, 45f, p); c.drawCircle(w / 2f + 40f, h * 0.56f, 55f, p) }
-        }
-        p.color = 0xFFF6EEDD.toInt()
-        p.textAlign = android.graphics.Paint.Align.CENTER
-        p.typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
-        val words = title.uppercase().split(" ")
-        val lines = if (words.size > 2) listOf(words.take(words.size / 2).joinToString(" "), words.drop(words.size / 2).joinToString(" ")) else listOf(words.joinToString(" "))
-        p.textSize = if (lines.maxOf { it.length } > 11) 44f else 56f
-        lines.forEachIndexed { i, l -> c.drawText(l, w / 2f, h - 60f - (lines.size - 1 - i) * 58f, p) }
-        val f = File(app.cacheDir, "promo-${title.hashCode()}.png")
-        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-        return f
     }
 
     @Test
@@ -235,33 +186,11 @@ class StoreScreenshots {
             as kotlinx.coroutines.flow.MutableStateFlow<List<com.nerfherder.walkthor.data.Rom>>).value =
             games.map { (sys, t, _) -> com.nerfherder.walkthor.data.Rom(sys, "$t (USA).bin", t) }
         lib.javaClass.getDeclaredField("loaded").apply { isAccessible = true }.setBoolean(lib, true)
-        games.forEachIndexed { i, (sys, t, cols) ->
-            val rom = com.nerfherder.walkthor.data.Rom(sys, "$t (USA).bin", t)
-            val dir = com.nerfherder.walkthor.data.ScrapedArt.dirFor(app, rom).apply { mkdirs() }
-            promoCover(t, cols[0].toInt(), cols[1].toInt(), cols[2].toInt(), i).copyTo(File(dir, "cover.png"), overwrite = true)
-            com.nerfherder.walkthor.data.ScrapedArt.record(app, rom, dir)
-        }
-        com.nerfherder.walkthor.data.GameCovers.invalidate()
         com.nerfherder.walkthor.ui.LibrarySection.save(app, com.nerfherder.walkthor.ui.LibrarySection.ALL)
         content { Library() }
         settle()
         settle()
         shot("20-promo-library")
-    }
-
-    @Test
-    fun gameArtwork() {
-        content {
-            com.nerfherder.walkthor.ui.GameArtworkDialog(
-                title = "Lanterns of Emberfall", subtitle = "Nintendo GameCube", gameTitle = "Lanterns of Emberfall",
-                file = "Lanterns of Emberfall (USA).rvz", onPickFile = { _ -> }, onDismiss = {},
-            )
-        }
-        settle()
-        shot("02e-game-artwork")
-        compose.onNodeWithText("Background").performClick()
-        settle()
-        shot("02f-game-artwork-background")
     }
 
     @Test
@@ -618,6 +547,8 @@ class StoreScreenshots {
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
+        compose.onNodeWithText("Screen").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("Auto-dim").performClick()
         shot("05-auto-dim")
         AutoDim.delayMs.value = 0L
@@ -626,23 +557,9 @@ class StoreScreenshots {
     @Test
     fun bootScreen() {
         compose.mainClock.autoAdvance = false
-        content { BootScreen(BootStatus.Checking, finished = false, onSkip = {}, onGone = {}) }
+        content { BootScreen(BootStatus.Idle, finished = false, onSkip = {}, onGone = {}) }
         compose.mainClock.advanceTimeBy(1_300)
-        shot("01a-boot-checking")
-    }
-
-    @Test
-    fun bootIntoGuide() {
-        val hero = fakeHero()
-        compose.mainClock.autoAdvance = false
-        content {
-            BootScreen(
-                BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator", hero = hero),
-                finished = false, onSkip = {}, onGone = {},
-            )
-        }
-        compose.mainClock.advanceTimeBy(2_000)
-        shot("01b-boot-now-playing")
+        shot("01a-boot")
     }
 
     @Test
@@ -708,18 +625,69 @@ class StoreScreenshots {
     }
 
     @Test
-    fun guideTabEmpty() {
+    fun guideTab() {
         content {
             androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize()) {
                 tabBar(com.nerfherder.walkthor.ui.GameTab.GUIDE)
-                com.nerfherder.walkthor.ui.NoGuidePanel(
-                    game = noGuideGame, books = shelf, coverFile = { null }, onAddGuide = {}, onPickGuide = {},
+                com.nerfherder.walkthor.ui.GuidePickPanel(
+                    books = shelf, coverFile = { null }, onAddGuide = {}, onPick = {},
                     modifier = androidx.compose.ui.Modifier.weight(1f),
                 )
             }
         }
         settle()
-        shot("06c-guide-tab-empty")
+        shot("06c-guide-tab")
+    }
+
+    /** In a game, the drawer: the same Home as without one, under the tabs. */
+    @Composable
+    private fun GameHome() {
+        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize()) {
+            tabBar(com.nerfherder.walkthor.ui.GameTab.HOME)
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {
+                com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = fakeApps().take(6), previewTime = "7:42" to "Tuesday, Nov 3")
+            }
+        }
+    }
+
+    @Test
+    fun gameHome() {
+        com.nerfherder.walkthor.DeviceModes.demo = true
+        content { GameHome() }
+        settle()
+        shot("06-game-home")
+    }
+
+    @Test
+    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
+    fun gameHomeDense() {
+        com.nerfherder.walkthor.DeviceModes.demo = true
+        content { GameHome() }
+        settle()
+        shot("check-game-home-dense")
+    }
+
+    /** Dimmed during a game: the tabs stay lit, and the time. */
+    @Test
+    fun dimmedGameHome() {
+        AutoDim.delayMs.value = 60_000L
+        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(com.nerfherder.walkthor.ui.GameTab.HOME) {}
+        val holder = Any()
+        AutoDim.showingGameScreens(holder, true)
+        content {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                GameHome()
+                com.nerfherder.walkthor.ui.AutoDimOverlay()
+            }
+        }
+        settle()
+        AutoDim.dimmed.value = true
+        settle()
+        shot("07b-dimmed-game-home")
+        AutoDim.showingGameScreens(holder, false)
+        com.nerfherder.walkthor.ui.GameTabs.state.value = null
+        AutoDim.dimmed.value = false
+        AutoDim.delayMs.value = 0L
     }
 
     @Test
@@ -731,53 +699,6 @@ class StoreScreenshots {
         content { com.nerfherder.walkthor.ui.MirrorScreen(game, onBack = {}, onStartCapture = {}, frame = frame, topBar = { tabBar(com.nerfherder.walkthor.ui.GameTab.MIRROR) }) }
         settle()
         shot("check-mirror-tabs-dense")
-    }
-
-    /** A made-up box-art image for the fictional game, drawn on the fly. */
-    private fun fakeBoxArt(): String {
-        val w = 600; val h = 840
-        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(bmp)
-        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0xFF1B2A4A.toInt(), 0xFF6B2E1F.toInt(), android.graphics.Shader.TileMode.CLAMP)
-        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
-        p.shader = android.graphics.RadialGradient(w / 2f, h * 0.62f, 220f, 0xFFFFC56B.toInt(), 0x00FFC56B, android.graphics.Shader.TileMode.CLAMP)
-        c.drawCircle(w / 2f, h * 0.62f, 220f, p)
-        p.shader = null
-        p.color = 0xFF2B1A12.toInt()
-        c.drawRect(w / 2f - 50f, h * 0.55f, w / 2f + 50f, h * 0.72f, p) // a lantern
-        p.color = 0xFFFFE2A8.toInt()
-        c.drawRect(w / 2f - 36f, h * 0.57f, w / 2f + 36f, h * 0.70f, p)
-        p.color = 0xFFF3E6C8.toInt()
-        p.textAlign = android.graphics.Paint.Align.CENTER
-        p.typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
-        p.textSize = 64f
-        c.drawText("LANTERNS", w / 2f, 150f, p)
-        p.textSize = 40f
-        c.drawText("of EMBERFALL", w / 2f, 205f, p)
-        val f = File(app.cacheDir, "Lanterns of Emberfall (USA).png")
-        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-        return Uri.fromFile(f).toString()
-    }
-
-    /** A made-up transparent logo for the fictional game. */
-    private fun fakeLogo(): String {
-        val w = 900; val h = 260
-        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(bmp)
-        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        p.typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
-        p.textAlign = android.graphics.Paint.Align.LEFT
-        p.shader = android.graphics.LinearGradient(0f, 40f, 0f, 200f, 0xFFFFE2A8.toInt(), 0xFFE07A3A.toInt(), android.graphics.Shader.TileMode.CLAMP)
-        p.textSize = 120f
-        c.drawText("LANTERNS", 10f, 130f, p)
-        p.shader = null
-        p.color = 0xFFF3E6C8.toInt()
-        p.textSize = 58f
-        c.drawText("of  EMBERFALL", 16f, 215f, p)
-        val f = File(app.cacheDir, "Lanterns of Emberfall (USA)-marquee.png")
-        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-        return Uri.fromFile(f).toString()
     }
 
     /** A made-up wide "fan art" scene for the fictional game. */
@@ -810,58 +731,6 @@ class StoreScreenshots {
         return Uri.fromFile(f).toString()
     }
 
-    private val noGuideGame get() = LaunchedGame("Lanterns of Emberfall", "Lanterns of Emberfall (USA).rvz", "Dolphin Emulator", System.currentTimeMillis())
-
-    @Test
-    fun noGuide() {
-        val art = fakeBoxArt()
-        val logo = fakeLogo()
-        content {
-            NowPlayingScreen(
-                game = noGuideGame,
-                art = GameArt(cover = art, logo = logo, hero = fakeHero()),
-                books = shelf.drop(1),
-                coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-            )
-        }
-        settle()
-        shot("06-no-guide")
-    }
-
-    /** The same screen at a denser setting (fewer dp), to check nothing gets cut off. */
-    @Test
-    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
-    fun noGuideDense() {
-        val art = fakeBoxArt()
-        content {
-            NowPlayingScreen(
-                game = noGuideGame,
-                art = GameArt(cover = art),
-                books = shelf.drop(1),
-                coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-            )
-        }
-        settle()
-        shot("check-no-guide-dense")
-    }
-
-    @Test
-    fun bootIntoArt() {
-        val art = fakeBoxArt()
-        compose.mainClock.autoAdvance = false
-        content {
-            BootScreen(BootStatus.Playing("Lanterns of Emberfall", art = art, player = "Dolphin Emulator"), finished = false, onSkip = {}, onGone = {})
-        }
-        repeat(20) {
-            compose.mainClock.advanceTimeBy(100)
-            Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
-            Thread.sleep(50)
-        }
-        shot("06a-boot-no-guide")
-    }
-
     // ---- the same screens at a denser display setting, to catch anything cut off ----
 
     @Test
@@ -878,21 +747,11 @@ class StoreScreenshots {
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
+        compose.onNodeWithText("Screen").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("Auto-dim").performClick()
         shot("check-auto-dim-dense")
         AutoDim.delayMs.value = 0L
-    }
-
-    @Test
-    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
-    fun bootDense() {
-        val hero = fakeHero()
-        compose.mainClock.autoAdvance = false
-        content {
-            BootScreen(BootStatus.Playing("Lanterns of Emberfall", shelf[0], null, player = "Dolphin Emulator", hero = hero), finished = false, onSkip = {}, onGone = {})
-        }
-        compose.mainClock.advanceTimeBy(2_000)
-        shot("check-boot-dense")
     }
 
     @Test
@@ -909,12 +768,9 @@ class StoreScreenshots {
         shot("check-reader-dense")
     }
 
-    /** Dimmed during a game: the bright status corner plus what's playing, centred. */
+    /** Dimmed outside a game: the bright status corner. */
     @Test
     fun dimmed() {
-        PlaySession.current.value = LaunchedGame(
-            "Legend of Zelda, The - The Wind Waker", null, "Dolphin Emulator", System.currentTimeMillis() - 47 * 60_000L,
-        )
         AutoDim.delayMs.value = 60_000L
         content {
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
@@ -927,28 +783,6 @@ class StoreScreenshots {
         shot("07-dimmed")
         AutoDim.dimmed.value = false
         AutoDim.delayMs.value = 0L
-    }
-
-    // ---- without Cocoon: a game noticed from its emulator ----
-    private val emuGame = LaunchedGame(
-        "Dolphin", null, "Dolphin", System.currentTimeMillis() - 2 * 60_000L,
-        emulatorPkg = "org.dolphinemu.dolphinemu", unknown = true,
-    )
-
-    @Composable
-    private fun EmulatorNowPlaying() = NowPlayingScreen(
-        game = emuGame,
-        art = GameArt(null),
-        books = shelf,
-        coverFile = { null },
-        onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-    )
-
-    @Test
-    fun emulatorUnknownGame() {
-        content { EmulatorNowPlaying() }
-        settle()
-        shot("16-emulator-what-playing")
     }
 
     /** A made-up ROMs folder's games, as if it had been read. */
@@ -966,33 +800,27 @@ class StoreScreenshots {
     }
 
     @Test
-    fun emulatorPickGuide() {
-        sampleRoms()
-        // What you picked before in this emulator comes first.
-        com.nerfherder.walkthor.EmulatorWatch.noteGuide(app, "org.dolphinemu.dolphinemu", shelf[3].id)
-        com.nerfherder.walkthor.EmulatorWatch.noteRom(app, "org.dolphinemu.dolphinemu", "gc/Lanterns of Emberfall (USA).rvz")
-        content { EmulatorNowPlaying() }
-        settle()
-        compose.onNodeWithText("Choose game").performClick()
-        compose.waitForIdle()
-        shot("16b-emulator-pick")
-    }
-
-    @Test
     fun settingsScreen() {
+        // As if the AYN button's press opens the drawer, so its double press and hold can be set too.
+        com.nerfherder.walkthor.SwipeLauncher.prefs(app).edit().putBoolean("aynButton", true).putBoolean("bottomOffHold", true).apply()
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
         shot("19a-settings-general")
-        compose.onNodeWithText("Artwork").performClick()
+        compose.onNodeWithText("Shortcuts").performClick()
         compose.waitForIdle()
-        shot("19b-settings-artwork")
-        compose.onNodeWithText("Cocoon").performClick()
+        shot("19b-settings-shortcuts")
+        compose.onNodeWithText("Back button: double press").performClick()
         compose.waitForIdle()
-        shot("19c-settings-cocoon")
-        compose.onNodeWithText("ES-DE").performClick()
+        shot("19c-settings-shortcut-pick")
+        compose.onNodeWithText("Cancel").performClick()
         compose.waitForIdle()
-        shot("19e-settings-esde")
+        compose.onNodeWithText("Screen").performClick()
+        compose.waitForIdle()
+        shot("19e-settings-screen")
+        compose.onAllNodesWithText("Guides").onLast().performClick()
+        compose.waitForIdle()
+        shot("19f-settings-guides")
     }
 
     @Test
@@ -1001,17 +829,16 @@ class StoreScreenshots {
         content { Library() }
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Artwork").performClick()
+        compose.onNodeWithText("Shortcuts").performClick()
         compose.waitForIdle()
-        shot("19d-settings-artwork-dense")
+        shot("19d-settings-shortcuts-dense")
     }
 
     @Test
     fun emulatorSetting() {
         content {
             LibraryScreen(
-                books = shelf, artLinked = true, artCount = 412, artScanning = null, alwaysBottom = true,
-                swipeToOpen = true, gameGuide = true, cocoonLinked = false, swipeNeedsPermission = false, actions = actions(),
+                books = shelf, alwaysBottom = true, swipeToOpen = true, swipeNeedsPermission = false, actions = actions(),
             )
         }
         compose.onNodeWithContentDescription("Settings").performClick()
@@ -1024,102 +851,6 @@ class StoreScreenshots {
         shot("16d-emulator-disclosure")
     }
 
-
-    @Test
-    fun nowPlayingWithGuide() {
-        com.nerfherder.walkthor.DeviceModes.demo = true
-        com.nerfherder.walkthor.ScreenControls.demoFps = 60f
-        content {
-            NowPlayingScreen(
-                game = noGuideGame,
-                art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
-                books = shelf,
-                coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-                guide = shelf[0],
-                previewApps = fakeApps().take(6),
-            )
-        }
-        settle()
-        shot("06b-now-playing-guide")
-        com.nerfherder.walkthor.ScreenControls.demoFps = null
-    }
-
-    @Test
-    @Config(qualifiers = "w413dp-h360dp-land-xxhdpi")
-    fun nowPlayingDense() {
-        com.nerfherder.walkthor.DeviceModes.demo = true
-        com.nerfherder.walkthor.ScreenControls.demoFps = 58f
-        content {
-            NowPlayingScreen(
-                game = noGuideGame,
-                art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
-                books = shelf,
-                coverFile = { null },
-                onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-                guide = shelf[0],
-                previewApps = fakeApps().take(6),
-            )
-        }
-        settle()
-        shot("check-now-playing-dense")
-        com.nerfherder.walkthor.ScreenControls.demoFps = null
-    }
-
-    @Test
-    fun dimmedWithGuide() {
-        AutoDim.delayMs.value = 60_000L
-        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(null) {}
-        content {
-            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                NowPlayingScreen(
-                    game = noGuideGame,
-                    art = GameArt(null),
-                    books = shelf,
-                    coverFile = { null },
-                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-                    guide = shelf[0],
-                )
-                com.nerfherder.walkthor.ui.AutoDimOverlay()
-            }
-        }
-        settle()
-        AutoDim.dimmed.value = true
-        settle()
-        shot("07b-dimmed-open-guide")
-        com.nerfherder.walkthor.ui.GameTabs.state.value = null
-        AutoDim.dimmed.value = false
-        AutoDim.delayMs.value = 0L
-    }
-
-    /** Half-strength dim over Now playing: the whole screen evenly darker, nothing patchy. */
-    @Test
-    fun dimmedHalf() {
-        AutoDim.delayMs.value = 60_000L
-        AutoDim.level.value = 0.5f
-        com.nerfherder.walkthor.ui.GameTabs.state.value = com.nerfherder.walkthor.ui.TabsState(null) {}
-        content {
-            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                NowPlayingScreen(
-                    game = noGuideGame,
-                    art = GameArt(cover = fakeBoxArt(), logo = fakeLogo(), hero = fakeHero()),
-                    books = shelf,
-                    coverFile = { null },
-                    onAddGuide = {}, onPickGuide = {}, onLibrary = {}, onClose = {},
-                    guide = shelf[0],
-                )
-                com.nerfherder.walkthor.ui.AutoDimOverlay()
-            }
-        }
-        settle()
-        AutoDim.dimmed.value = true
-        settle()
-        shot("check-dimmed-half")
-        com.nerfherder.walkthor.ui.GameTabs.state.value = null
-        AutoDim.dimmed.value = false
-        AutoDim.level.value = AutoDim.DEFAULT_LEVEL
-        AutoDim.delayMs.value = 0L
-    }
 
     private fun statsPreview(): com.nerfherder.walkthor.ui.StatsPreview {
         val rnd = java.util.Random(4)

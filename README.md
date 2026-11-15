@@ -1,13 +1,13 @@
 # WalkThor
 
-A companion app for the **AYN Thor**'s bottom screen. Start a game in Cocoon and the bottom
-screen becomes that game's companion: its guide, a live mirror of part of the top screen (like a
-minimap), its face buttons the way the game labels them, and a live FPS and battery monitor, all
-one tab away, while the game keeps full speed on the top screen.
+A companion app for the **AYN Thor**'s bottom screen. Press the AYN button and WalkThor slides up
+over the bottom screen like a drawer: a clock, your play time and battery, brightness, volume and
+your apps, and, while a game is running, tabs for your guides, a live mirror of part of the top
+screen (like a minimap), the face buttons, and a live FPS and battery monitor, while the game keeps
+full speed on the top screen. It works with any frontend: it only looks at which app is in front.
 
 > **WalkThor is an independent, unofficial project.** It is not affiliated with, endorsed by or
-> supported by Cocoon or its developer, AYN, or any game publisher. It works alongside Cocoon by
-> reading a log file Cocoon writes, nothing more.
+> supported by AYN or any game publisher.
 
 ## Screenshots
 
@@ -15,51 +15,47 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 
 | | |
 |---|---|
-| ![Now playing: the game's art and logo, with its tabs across the top](docs/screenshots/06b-now-playing-guide.png) | ![Dimmed after the Auto-dim time, with the tabs still there](docs/screenshots/07b-dimmed-open-guide.png) |
+| ![During a game: Home, with the tabs across the top](docs/screenshots/06-game-home.png) | ![Dimmed after the Auto-dim time, with the tabs still there](docs/screenshots/07b-dimmed-game-home.png) |
 | ![Guide tab: a GameFAQs-style text guide during a game](docs/screenshots/03b-reader-tabs.png) | ![Mirror tab: the game's minimap on the bottom screen](docs/screenshots/11-mirror.png) |
 | ![Controls tab: performance, fan and button layout, and shape-style face buttons on the Thor's positions](docs/screenshots/12-face-buttons-shapes.png) | ![Picking the part of the top screen to mirror](docs/screenshots/11c-mirror-pick.png) |
 | ![Stats tab: the top screen's FPS, battery, heat, memory and CPU](docs/screenshots/13-stats.png) | ![Multi tab: Mirror, the guide, Controls and Stats at a glance](docs/screenshots/14-all.png) |
-| ![Your library](docs/screenshots/02-library.png) | ![Search highlights on a page](docs/screenshots/04b-search-highlights.png) |
+| ![Your games by system, each with its guide](docs/screenshots/02b-library-games.png) | ![Settings: button shortcuts](docs/screenshots/19b-settings-shortcuts.png) |
 
 ## Quick start
 
 1. **Install** the APK from the [latest release](https://github.com/nerf-herder-29/WalkThor/releases/latest)
    (allow "Install unknown apps" for your browser or file manager).
-2. **Add a guide:** *Add guide* in your library, or *Open with* / *Share* a PDF or TXT from a file manager.
-3. **Link Cocoon's folder** (the one with `launch_debug.log`) so WalkThor knows which game you started.
-4. **In Cocoon, choose WalkThor as the companion app** for the bottom screen.
-5. **Allow accessibility access** when WalkThor asks. It's what keeps the game at full priority
-   (and lets you swipe WalkThor up and down).
+2. **Allow accessibility access** when WalkThor asks. The drawer, the button shortcuts, the FPS
+   counter and the keyboard all run through it, and it keeps the game at full priority.
+3. **Set your shortcuts** in Settings (⋮) → Shortcuts: set *AYN button: press* to *Open the drawer*.
+4. **Link your ROMs folder** (Settings → Guides), the one with a folder per system, to list your games.
+5. **Add guides:** *Add a guide* beside a game, *Add guide* at the top, or *Open with* / *Share* a PDF or TXT.
 
-Optional: link your artwork folder (Cocoon's media folder, or ES-DE's `downloaded_media`) for game art, logos and guide
-covers. Every step is also in the app under Settings (⋮) → About → *How to set up WalkThor*, with a tick for each
+Every step is also in the app under Settings (⋮) → About → *How to set up WalkThor*, with a tick for each
 step that's done.
 
 ## Features
 
-- **Now playing** — start a game in Cocoon and the bottom screen shows the game's hero art and
-  logo, the emulator, and tabs across the top: **Multi** (several at a glance), **Guide**,
-  **Mirror**, **Controls**, **Stats** and **Apps** (swipe the tabs sideways to see them all). Switching tabs keeps your place in each, and Back takes you to Now playing.
-  Press and hold a tab to have that game open straight on it next time.
-- **Knows your game** — WalkThor reads Cocoon's `launch_debug.log`, or ES-DE's `logs/es_log.txt`
-  (with ES-DE's *Custom Event Scripts* and *Debug Mode* on), to see what you launched and
-  picks the guide whose title matches. Pick a different one once and it's remembered for that game.
+- **The drawer** — the AYN button (or whichever button you choose) slides WalkThor up over the bottom
+  screen and away again; whatever is underneath stays put. It opens on **Home**: a big clock, device
+  stats, your play time this week, battery time left and power draw, brightness, volume and the stick
+  lights, and your pinned apps on a shelf dock.
+- **Tabs while you play** — while one of your emulators is in front (Settings → Emulators sets which
+  apps count), the same Home has a row of tabs above it: **Multi** (several at a glance), **Guide**,
+  **Mirror**, **Controls**, **Stats**, **Shots**, **Captions**, **Light & Sound** and **Apps** (swipe
+  them sideways to see them all). Press and hold a tab to have the drawer open straight on it.
+  It works the same whichever frontend started the game, shortcuts included.
+- **Guide asks which guide** — the Guide tab lists your guides each time, newest first; WalkThor
+  remembers your place in each.
+- **Button shortcuts** — Settings → Shortcuts maps the AYN button's press, double press and hold, Back
+  pressed twice, and Start + Select held, to things WalkThor can do: open the drawer, AYN's own drawer,
+  dim the bottom screen, turn it off, close all apps, take a screenshot, save the last seconds of play,
+  the FPS counter, or step through performance and fan modes. A short rumble confirms each one.
+- **Your games, by system** — link your ROMs folder and WalkThor lists your games under each system,
+  each with its guide beside it (tap to open), or *Add a guide* to pick one of yours or add a file.
+  Guides are matched to games by title, and any you pick are remembered.
 - **Opens when an emulator starts** — turn on *Open when an emulator starts* (Settings → Emulators) and
-  WalkThor opens on the bottom screen whenever an emulator comes to the front, from any frontend.
-  With Cocoon linked it knows the game and its art from Cocoon as usual. Without Cocoon it asks
-  *What are you playing?*, offering the games in your ROMs folder for that emulator's systems and
-  your guides (your last picks first), or picks by itself when the emulator shows a matching name.
-- **Your library** — with a ROMs folder linked, the library shows your games as covers, by
-  system folder down the left (with All games and your Guides). Games with a guide are tagged;
-  tap one to open its guide, or add or pick one. Long-press a game to choose its cover, its
-  background on Now playing and its marquee: yours first, then Cocoon's artwork, then scraped art.
-- **Artwork scraping** — add a ScreenScraper account and/or a SteamGridDB API key (Settings →
-  Artwork → *Scraper accounts*) and WalkThor scrapes box art for your guides' covers, and a
-  screenshot and marquee for each game, shown on Now playing, the splash and behind the tabs. A
-  game Cocoon starts that has no art yet is looked up once on its own. Optionally link your ROMs
-  folder (one folder per system: `3ds`, `nds`, `gba`, `switch`…) for exact matches. Release builds can carry
-  ScreenScraper developer credentials from the `SCREENSCRAPER_DEV_ID` / `SCREENSCRAPER_DEV_PASSWORD`
-  repository secrets; otherwise users enter their own.
+  the drawer comes up by itself when an emulator comes to the front.
 - **Keeps your game at full speed** — while a game runs, WalkThor never takes Android's top-app
   priority from it. Tapping and reading on the bottom screen leave the game in charge, and after
   WalkThor opens (or you finish a search) it hands priority back with one tap on the top edge of
@@ -110,16 +106,8 @@ step that's done.
 - **Search** — results as you type, a list of every matching page with snippets, ▲/▼ to step
   through matches, and highlights on the page (PDFs included). During a game, search and the lens
   sit at the bottom left, so the tab bar stays centred.
-- **Artwork from your folders** — link your artwork folder for guide covers, Now playing
-  backgrounds (hero, fan art or screenshots) and game logos.
-- **The AYN button opens WalkThor** — switch it on in Settings → General and the AYN button slides
-  WalkThor up over the bottom screen like a drawer, in place of AYN's (whatever is underneath stays
-  put), and slides it away again. With no emulator open, the drawer shows Home: a big clock, device stats,
-  your play time this week, battery time left and power draw, brightness, volume and the stick lights,
-  and your pinned apps on a shelf dock (Settings → Emulators sets which apps count as
-  emulators).
-- **OLED-friendly** — true black, auto-dim after the time you choose to the darkness you choose,
-  and a status bar with the time, battery and how long you've been playing.
+- **OLED-friendly** — true black, and Home dims during a game after the time you choose, to the
+  darkness you choose, with the tabs and the time still lit.
 - **Controller support** — L1/R1 (or D-pad left/right) turn pages, in the book and in the lens.
 - **Remembers your place** in every guide, with a page scrubber for big jumps.
 
@@ -159,22 +147,22 @@ Requires JDK 17 and the Android SDK (API 35).
 | Bottom screen | The smaller of the device's displays; the activity relaunches there with `ActivityOptions.setLaunchDisplayId` |
 | Game priority | The window is non-focusable while a game runs; after WalkThor opens, the accessibility service taps the game's screen once (`dispatchGesture` on that display) so Android gives the game top priority back |
 | Mirror | `MediaProjection` into a half-size `VirtualDisplay` + `ImageReader`, frames drawn straight from their `HardwareBuffer`; the virtual display is paused while another tab is open |
-| Cover art | Images under the linked folder are indexed (no assumed layout) and matched to guide titles by normalized word overlap; covers are copied into the app, loaded with Coil |
 
 Source layout:
 
 ```
 app/src/main/java/com/nerfherder/walkthor/
   MainActivity.kt        intents, app navigation, the game's tabs, keeping the game's priority
-  SwipeLaunch.kt         accessibility service: swipe to open, the hand-back tap, button presses
+  SwipeLaunch.kt         accessibility service: the drawer, the hand-back tap, button presses
+  Shortcuts.kt           button shortcuts and what they do
   Revive.kt              reopening WalkThor if Android closes it mid-game
   Mirror.kt              screen-capture session for Mirror
   DisplayHelper.kt       moving between the Thor's screens
   LibraryViewModel.kt    import + shelf
   ReaderViewModel.kt     pagination, search, reading position
   controls/              Face Buttons: layouts per system, button presses
-  data/                  Book, BookRepository, TxtPaginator, PdfSource, Search, artwork, Cocoon's log
-  ui/                    GameTabs, NowPlayingScreen, ReaderScreen, MirrorScreen, ControlsScreen,
+  data/                  Book, BookRepository, TxtPaginator, PdfSource, Search, your ROMs folder
+  ui/                    GameTabs, HomeScreen, ReaderScreen, MirrorScreen, ControlsScreen,
                          BookView (flip animation), LibraryScreen, AutoDim, Theme
 ```
 
@@ -186,23 +174,17 @@ app/src/main/java/com/nerfherder/walkthor/
 
 ## Privacy
 
-WalkThor doesn't collect or share any data. It only goes online to fetch artwork for your ROMs,
-and only if you add a ScreenScraper or SteamGridDB account and start a scrape; it sends nothing but
-game file names, systems and your account details to those services. See [PRIVACY.md](PRIVACY.md);
+WalkThor doesn't collect or share any data. It only goes online once, to download the speech model
+for Captions if you ask it to. See [PRIVACY.md](PRIVACY.md);
 it doubles as the privacy-policy link for a store listing.
 
 ## Publishing notes
 
 - **License:** MIT — see [LICENSE](LICENSE). Open-source components and their licenses are listed in
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in the app under Settings → About → *About & licences*.
-- **No content is bundled.** Users import their own guides; covers come from their own folders.
-  Keep it that way — guides and box art belong to their authors and publishers.
-- **Cocoon:** WalkThor is not affiliated with Cocoon. It reads Cocoon's `launch_debug.log` from a folder the user links. It's not an
-  official API, so a Cocoon update could change it. Describe this as "works with Cocoon" without
-  using Cocoon's logo or implying endorsement.
-- **ES-DE:** likewise not affiliated. WalkThor reads ES-DE's own `es_log.txt`, which logs each
-  game launch when ES-DE's Custom Event Scripts and Debug Mode settings are on.
-- **Google Play:** Accessibility access (swipe to open, the hand-back tap, and button presses for Face Buttons) uses an accessibility service without being an accessibility tool.
+- **No content is bundled.** Users import their own guides. Keep it that way — guides belong to
+  their authors and publishers.
+- **Google Play:** Accessibility access (the drawer, the hand-back tap, and button presses for shortcuts and Face Buttons) uses an accessibility service without being an accessibility tool.
   The app shows the required in-app disclosure with Agree / No thanks before the service can run.
   You'd also need to fill in Play Console's accessibility declaration (including a short screen
   recording of that disclosure and the swipe feature) and link PRIVACY.md as the privacy policy.

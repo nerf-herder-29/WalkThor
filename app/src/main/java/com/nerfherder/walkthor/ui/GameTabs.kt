@@ -56,6 +56,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /** The tabs across the top of the bottom screen while a game is playing. */
 enum class GameTab(val label: String, val shortLabel: String = label) {
+    /** The same Home as when no game is running: clock, levels, your apps. */
+    HOME("Home"),
     /** Several tabs at a glance, in panels you choose (named Multi; ALL is kept so saved choices still match). */
     ALL("Multi"),
     GUIDE("Guide"),
@@ -100,7 +102,7 @@ object GameTabs {
         context.getSharedPreferences("tabs", android.content.Context.MODE_PRIVATE)
     private fun key(title: String) = "open/" + title.trim().lowercase()
 
-    /** The tab a game opens on (after the launch animation), or null for Now playing. */
+    /** The tab the drawer opens on during a game, or null for Home. ([title] is one fixed key now: it's the same for every game.) */
     fun openOn(context: android.content.Context, title: String): GameTab? =
         GameTab.entries.firstOrNull { it.name == prefs(context).getString(key(title), null) }
 
@@ -224,8 +226,8 @@ fun GameTabsRow(
         GameTab.entries.forEach { tab ->
             val on = tab == selected
             val interaction = remember { MutableInteractionSource() }
-            val hub = tab == GameTab.ALL
-            // All is the game's home, set apart from the others by a thin line.
+            val hub = tab == GameTab.HOME
+            // Home is set apart from the others by a thin line.
             Column(
                 Modifier
                     .width(if (hub) unit * 0.65f else unit)
@@ -290,6 +292,23 @@ fun GameTabsRow(
 @Composable
 private fun TabIcon(tab: GameTab, tint: Color) {
     when (tab) {
+        GameTab.HOME -> Canvas(Modifier.size(20.dp)) {
+            // A small house: a roof over a box.
+            val w = 1.6.dp.toPx()
+            val roof = androidx.compose.ui.graphics.Path().apply {
+                moveTo(size.width * 0.08f, size.height * 0.5f)
+                lineTo(size.width * 0.5f, size.height * 0.12f)
+                lineTo(size.width * 0.92f, size.height * 0.5f)
+            }
+            drawPath(roof, tint, style = Stroke(w, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+            drawRoundRect(
+                tint,
+                topLeft = Offset(size.width * 0.22f, size.height * 0.46f),
+                size = androidx.compose.ui.geometry.Size(size.width * 0.56f, size.height * 0.44f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension * 0.08f),
+                style = Stroke(w),
+            )
+        }
         GameTab.GUIDE -> Icon(AppIcons.Spread, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
         GameTab.MIRROR -> Icon(PictureInPicture, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
         GameTab.ALL -> Canvas(Modifier.size(20.dp)) {
@@ -396,7 +415,7 @@ private val PictureInPicture: ImageVector by lazy {
 /**
  * The bar across the top during a game: back, the tabs across the full width, then the right-hand
  * icon slots ([trailing], ending at the right edge; close by default). With [overlay] it fades
- * over the Now playing art instead of having a solid background.
+ * over what's behind it instead of having a solid background.
  */
 @Composable
 fun GameTabBar(

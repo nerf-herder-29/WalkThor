@@ -42,22 +42,9 @@ object SwipeLauncher {
      * hand it back priority, so everyone is asked again.)
      */
     const val KEY_CONSENT = "consent3"
-    const val KEY_GAME_GUIDE = "gameGuide"
 
     /** The user's choice (the toggle). */
     val enabled = MutableStateFlow(false)
-    /** Open the guide for the game Cocoon launched (from its launch log) when swiping in. */
-    val gameGuide = MutableStateFlow(true)
-    /** Whether Cocoon's data folder (with its launch log) is linked. */
-    val cocoonLinked = MutableStateFlow(false)
-    /** ES-DE's folder is linked (its log names the game, like Cocoon's). */
-    val esdeLinked = MutableStateFlow(false)
-
-    fun setGameGuide(context: Context, on: Boolean) {
-        prefs(context).edit().putBoolean(KEY_GAME_GUIDE, on).apply()
-        refresh(context)
-    }
-
     /** True when the toggle is on but WalkThor's accessibility service hasn't been switched on. */
     val needsPermission = MutableStateFlow(false)
 
@@ -78,11 +65,7 @@ object SwipeLauncher {
     /** Re-reads the settings and whether the service is on (e.g. after a trip to Settings). */
     fun refresh(context: Context) {
         enabled.value = prefs(context).getBoolean(KEY_ENABLED, false)
-        gameGuide.value = true // always on (it used to be a setting)
-        cocoonLinked.value = com.nerfherder.walkthor.data.CocoonLaunchLog.linkedFolder(context) != null
-        esdeLinked.value = com.nerfherder.walkthor.data.EsdeLog.linkedFolder(context) != null
         needsPermission.value = enabled.value && (!hasConsent(context) || !isServiceOn(context))
-        // Detecting games from emulators only runs without Cocoon.
         EmulatorWatch.refresh(context)
     }
 
@@ -262,10 +245,8 @@ class SwipeGestureService : AccessibilityService() {
      */
     fun applyEventTypes() {
         val info = serviceInfo ?: return
-        // Which app is in front (always: the hand-back tap only goes to a game, never Cocoon), plus
-        // the running emulator's notifications while "Open when an emulator starts" is on.
-        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-            (if (EmulatorWatch.active.value) AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED else 0)
+        // Which app is in front, and nothing more: never notifications.
+        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         // Never other apps' screen contents (an older version read your frontend's screen).
         val flags = info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS.inv()
         // While detecting, every app switch counts: don't let Android merge quick ones together
@@ -312,7 +293,7 @@ class SwipeGestureService : AccessibilityService() {
         if (on && !can) return false
         val flag = android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
         // Also kept on while the AYN button opens WalkThor, or a button test is running.
-        val keep = on || AynButton.on || ButtonTest.active || CloseApps.backEnabled(this) || CloseCountdown.active
+        val keep = on || AynButton.on || ButtonTest.active || Shortcuts.wantsKeys(this) || CloseCountdown.active
         val wanted = if (keep) info.flags or flag else info.flags and flag.inv()
         if (wanted != info.flags) {
             info.flags = wanted
@@ -341,49 +322,62 @@ class SwipeGestureService : AccessibilityService() {
             }
             return true
         }
-        // Back pressed twice quickly: close all open apps, when that's switched on. Both presses
-        // still go on as usual.
+        // Back pressed twice quickly: its shortcut, if it has one. Both presses still go on as usual.
         if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_DOWN &&
-            event.repeatCount == 0 && CloseApps.backEnabled(this)
+            event.repeatCount == 0 && Shortcuts.get(this, Shortcuts.Trigger.BACK_DOUBLE) != Shortcuts.Action.NOTHING
         ) {
             val t = android.os.SystemClock.uptimeMillis()
             if (t - AynButton.lastBackAt < AynButton.DOUBLE_BACK_MS) {
                 AynButton.lastBackAt = 0L
-                AynButton.note("Back twice → closing all apps")
-                handler.post { runCatching { CloseApps.closeAllFromButton(this) } }
+                handler.post { runCatching { Shortcuts.fire(this, Shortcuts.Trigger.BACK_DOUBLE) } }
             } else {
                 AynButton.lastBackAt = t
-                AynButton.note("Back pressed (once)")
+            }
+        }
+        // Start and Select held together: their shortcut, if they have one. The game still gets both.
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_START || event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_SELECT) {
+            val down = event.action == android.view.KeyEvent.ACTION_DOWN
+            if (event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_START) startDown = down else selectDown = down
+            handler.removeCallbacks(comboHold)
+            if (down && startDown && selectDown && Shortcuts.get(this, Shortcuts.Trigger.START_SELECT) != Shortcuts.Action.NOTHING) {
+                handler.postDelayed(comboHold, Shortcuts.COMBO_HOLD_MS)
             }
         }
         if (AynButton.on && AynButton.isAynButton(event)) {
-            // A tap slides WalkThor's drawer up, or away. A double tap is AYN's own drawer: only AYN's
-            // software can open that, so the second press goes straight on to AYN, untouched. A tap
-            // waits a moment for a possible second one before acting. Never lets a problem here take
-            // the service (and with it the button) down.
+            // A tap, a double tap and a hold each do what Settings → Shortcuts says. A tap waits a
+            // moment for a possible second one before acting. Only AYN's software can open AYN's
+            // own drawer, so when the double tap is left to AYN, its second press goes straight on,
+            // untouched. Never lets a problem here take the service (and with it the button) down.
             val now = android.os.SystemClock.uptimeMillis()
-            // Held: the bottom screen off (or on again), when that's switched on. The press then
-            // does nothing else.
-            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 && BottomOff.holdEnabled(this)) {
+            // Held: its shortcut. The press then does nothing else.
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+                Shortcuts.get(this, Shortcuts.Trigger.AYN_HOLD) != Shortcuts.Action.NOTHING
+            ) {
                 AynButton.held = false
                 handler.removeCallbacks(aynHold)
                 handler.postDelayed(aynHold, AynButton.HOLD_MS)
             }
             if (event.action == android.view.KeyEvent.ACTION_UP) handler.removeCallbacks(aynHold)
             if (AynButton.held) {
-                if (event.action == android.view.KeyEvent.ACTION_UP) { AynButton.held = false; AynButton.passing = false }
+                if (event.action == android.view.KeyEvent.ACTION_UP) { AynButton.held = false; AynButton.passing = false; AynButton.doubled = false }
                 return true
             }
             when (event.action) {
                 android.view.KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
-                    AynButton.passing = now - AynButton.lastTapAt < AynButton.DOUBLE_TAP_MS
-                    if (AynButton.passing) {
+                    val second = now - AynButton.lastTapAt < AynButton.DOUBLE_TAP_MS
+                    val toAyn = Shortcuts.get(this, Shortcuts.Trigger.AYN_DOUBLE) == Shortcuts.Action.AYN_DRAWER
+                    AynButton.passing = second && toAyn
+                    AynButton.doubled = second && !toAyn
+                    if (second) {
                         handler.removeCallbacks(aynTap)
                         AynButton.lastTapAt = 0L
-                        handler.post { runCatching { if (Drawer.shown.value) Drawer.hide(); AynButton.note("double tap → AYN's drawer") } }
+                        if (toAyn) handler.post { runCatching { if (Drawer.shown.value) Drawer.hide(); AynButton.note("double tap → AYN's drawer") } }
+                        else handler.post { runCatching { Shortcuts.fire(this, Shortcuts.Trigger.AYN_DOUBLE) } }
                     }
                 }
-                android.view.KeyEvent.ACTION_UP -> if (!AynButton.passing) {
+                android.view.KeyEvent.ACTION_UP -> if (AynButton.doubled) {
+                    AynButton.doubled = false
+                } else if (!AynButton.passing) {
                     AynButton.lastTapAt = now
                     handler.removeCallbacks(aynTap)
                     handler.postDelayed(aynTap, AynButton.DOUBLE_TAP_MS)
@@ -519,64 +513,33 @@ class SwipeGestureService : AccessibilityService() {
 
     private fun isWalkThorUpOnBottom() = DisplayHelper.bottomDisplay(this)?.displayId.let { it != null && AppState.resumedDisplayId == it }
 
-    /** Why [gameRunningOnTop] answered as it did, for Diagnostics. */
-    private var gameWhy = ""
+    private var startDown = false
+    private var selectDown = false
 
-    /**
-     * A game is running on the top screen, as far as WalkThor can tell: one is in front there, or
-     * one was until opening WalkThor made your frontend come forward over it (Cocoon does), or,
-     * when the screen hasn't been seen yet, the launch log or a running emulator says so.
-     */
-    private fun gameRunningOnTop(): Boolean {
-        val r = gameRunningOnTopInner()
-        return r
+    /** Start and Select have been held together long enough. */
+    private val comboHold = Runnable {
+        if (startDown && selectDown) runCatching { Shortcuts.fire(this, Shortcuts.Trigger.START_SELECT) }
     }
 
-    private fun gameRunningOnTopInner(): Boolean {
-        if (EmulatorWatch.gameCovered) { gameWhy = "covered by the frontend after WalkThor opened"; return true }
-        val bottom = DisplayHelper.bottomDisplay(this)?.displayId
-        // The other (bigger) screen.
-        val top = getSystemService(DisplayManager::class.java)?.displays
-            ?.filter { it.displayId != bottom && it.state != android.view.Display.STATE_OFF }
-            ?.maxByOrNull { it.mode.physicalWidth.toLong() * it.mode.physicalHeight }?.displayId
-        val front = top?.let { EmulatorWatch.gameInFront(this, it) }
-        gameWhy = when (front) {
-            true -> "a game is in front on the top screen"
-            false -> "no game in front on the top screen (${top?.let { EmulatorWatch.frontOn(it) }})"
-            null -> "top screen not seen yet; launch log ${if (AynButton.logSaysGame) "says a game" else "says none"}"
-        }
-        return front ?: (AynButton.logSaysGame || EmulatorWatch.session.value != null)
-    }
-
-    /** Reads the launch log in the background, so the AYN button can know about a game straight away. */
-    private fun refreshGameFromLog() {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - AynButton.logCheckedAt < 3_000) return
-        AynButton.logCheckedAt = now
-        val app = applicationContext
-        Thread({
-            runCatching {
-                val game = kotlinx.coroutines.runBlocking { com.nerfherder.walkthor.data.LaunchLogs.lastLaunch(app) }
-                AynButton.logSaysGame = game != null && !game.ended &&
-                    (game.at <= 0 || System.currentTimeMillis() - game.at <= 6 * 60 * 60 * 1000L)
-            }
-        }, "WalkThor launch log").start()
-    }
-
-    /** The AYN button held down: the bottom screen off, or back on. */
+    /** The AYN button held down. */
     private val aynHold = Runnable {
-        // The second press of a double tap belongs to AYN's drawer, held or not.
-        if (AynButton.passing) return@Runnable
+        // The second press of a double tap has its own job, held or not.
+        if (AynButton.passing || AynButton.doubled) return@Runnable
         AynButton.held = true
         handler.removeCallbacks(aynTap)
         AynButton.lastTapAt = 0L
-        runCatching { BottomOff.holdToggle(this) }
+        runCatching { Shortcuts.fire(this, Shortcuts.Trigger.AYN_HOLD) }
     }
 
-    /** A single tap (no second one came): WalkThor's drawer. */
+    /** A single tap (no second one came). */
     private val aynTap = Runnable {
         AynButton.lastTapAt = 0L
-        // With the bottom screen off, a tap turns it back on, and the drawer comes up on it.
+        runCatching { Shortcuts.fire(this, Shortcuts.Trigger.AYN_PRESS) }
+    }
+
+    /** WalkThor's drawer slides up over the bottom screen, or away (the "Open the drawer" shortcut). */
+    internal fun toggleDrawer() {
+        // With the bottom screen off or dimmed right down, it comes back, and the drawer comes up on it.
         if (BottomOff.off.value) runCatching { BottomOff.turnOn(this) }
         runCatching { BottomOff.undim(this) }
         try { onAynButton() } catch (e: Throwable) { AynButton.note("couldn't open (${e.javaClass.simpleName}: ${e.message?.take(100)})") }
@@ -692,11 +655,10 @@ object AynButton {
     const val DOUBLE_BACK_MS = 400L
     /** How long a press counts as holding the button. */
     const val HOLD_MS = 600L
+    /** The current press is the second of a double tap that WalkThor acts on (it isn't passed to AYN). */
+    @Volatile var doubled = false
     /** The current press was a hold (it's done its job; its release does nothing). */
     @Volatile var held = false
-    /** The launch log says a game is running (read in the background). */
-    @Volatile var logSaysGame = false
-    @Volatile var logCheckedAt = 0L
     /** The last few presses and what WalkThor made of them, for Diagnostics. */
     val log = kotlinx.coroutines.flow.MutableStateFlow<List<String>>(emptyList())
 

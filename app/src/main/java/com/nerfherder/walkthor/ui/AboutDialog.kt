@@ -40,7 +40,7 @@ private data class Component(val name: String, val use: String, val license: Str
 
 private val COMPONENTS = listOf(
     Component("PdfBox-Android (port of Apache PDFBox)", "Reading PDF text for search", "Apache License 2.0"),
-    Component("Coil", "Showing cover artwork", "Apache License 2.0"),
+    Component("Coil", "Showing images", "Apache License 2.0"),
     Component("Vosk & JNA", "Captions: offline speech recognition", "Apache License 2.0"),
     Component("HiddenApiBypass (LSPosed)", "Reaching the Thor's system helper for brightness", "Apache License 2.0"),
     Component("Jetpack Compose & AndroidX", "Interface and app framework", "Apache License 2.0"),
@@ -81,12 +81,11 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 Spacer(Modifier.height(12.dp))
                 Text("What it accesses", style = EyebrowStyle)
                 Text(
-                    "Touches that begin in a thin strip along the top edge of the bottom screen. And, only if you " +
-                        "agree on the Face Buttons screen, and only while that screen is open, your " +
-                        "controller button presses, to light up the matching buttons. Every press is passed straight " +
-                        "on to your game; none is recorded or stored. And, only if you turn on Open when an " +
-                        "emulator starts, which app is in front, plus the running emulator's " +
-                        "own window title and notifications, to tell which game you're playing (in memory only).",
+                    "Your button presses, for two things only: the shortcuts you set in Settings → Shortcuts (the AYN " +
+                        "button, Back pressed twice, Start and Select held together), and, only if you agree on the " +
+                        "Controls screen and only while that screen is open, lighting up the matching buttons. Every " +
+                        "press but the AYN button's is passed straight on to your game; none is recorded or stored. " +
+                        "And which app is in front on each screen, to tell when a game is running.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -127,26 +126,21 @@ fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Whenever an emulator comes to the front, from any frontend, WalkThor opens on the bottom screen " +
-                        "with the game's tabs. With Cocoon linked, Cocoon tells it which game. Without Cocoon, it " +
-                        "works it out (or asks, with your picks for that emulator first) and remembers your pick.",
+                    "Whenever one of your emulators comes to the front, from any frontend, WalkThor's drawer opens on the " +
+                        "bottom screen, with its tabs along the top.",
                     color = BookColors.Text,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text("What it accesses", style = EyebrowStyle)
                 Text(
-                    "Through WalkThor's accessibility service: which app comes to the front. For the emulator that's " +
-                        "running, and only that one, also its window title and its own notifications, to spot a game " +
-                        "name that matches one of your games or guides.",
+                    "Through WalkThor's accessibility service: which app comes to the front, and nothing else.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 Spacer(Modifier.height(12.dp))
                 Text("What it doesn't do", style = EyebrowStyle)
                 Text(
-                    "It never reads other apps' notifications or anything on the game's screen. What it sees is kept " +
-                        "in memory only until the game ends and is never stored or sent. Only the games and guides you " +
-                        "pick for each emulator are remembered, on this device.",
+                    "It never reads notifications or anything on the game's screen. Nothing is sent anywhere.",
                     color = BookColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -196,24 +190,21 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
                 Section("Privacy")
                 Body(
-                    "WalkThor doesn't collect or share any data. It only goes online to fetch artwork for your ROMs, " +
-                        "and only if you add a ScreenScraper or SteamGridDB account and start a scrape; it then sends just " +
-                        "each game's file name and system (and your account details) to that service. Guides, covers, " +
-                        "reading positions and game links stay on this device and are removed if you uninstall. " +
-                        "It reads only what you point it at: guides you import, an artwork folder you link, the file names " +
-                        "in a ROMs folder you link, and Cocoon's launch_debug.log or ES-DE's es_log.txt (to see which game you launched). The " +
+                    "WalkThor doesn't collect or share any data. It only goes online for one thing: downloading the " +
+                        "speech model the first time you turn on Captions. Guides, reading positions and game links " +
+                        "stay on this device and are removed if you uninstall. " +
+                        "It reads only what you point it at: guides you import, and the file names in a ROMs folder you link. The " +
                         "accessibility service responds " +
-                        "to the AYN button during games (if you switch that on), and, during a game, taps the top edge " +
+                        "to the button shortcuts you set (Settings → Shortcuts), and, during a game, taps the top edge " +
                         "of the game's screen once to hand it back top performance priority, only when a game is in front there " +
                         "(so it notes which app is in front on each screen); with Open when an emulator starts " +
-                        "on, it uses that to see an emulator start (and, without Cocoon, the running emulator's window " +
-                        "title and notifications, kept in memory only). It never reads other apps' screens. " +
+                        "on, it uses that to see an emulator start. It never reads other apps' screens or notifications. " +
                         "Mirror and the Stats tab's FPS meter use the top screen's picture only while you use them (Android " +
                         "asks first); the picture is never sent, and saved only as a screenshot when you press the Shots tab's button, or as a clip " +
                         "when you switch clips on (the last seconds are kept in memory only until you press Save). The Stats tab reads the battery, heat, memory " +
                         "and CPU speed from Android, on the device only. Face Buttons can light up the buttons you press, only " +
-                        "while that screen is open; presses go straight on to the game and aren't kept. With AYN button opens WalkThor " +
-                        "on, it watches presses for the AYN button only; every other press goes straight on, and none are kept."
+                        "while that screen is open; presses go straight on to the game and aren't kept. With a shortcut " +
+                        "set, it watches presses for that shortcut's buttons only; every other press goes straight on, and none are kept."
                 )
 
                 // A saved crash report, if WalkThor has crashed, for sharing in a bug report.
@@ -325,9 +316,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
                 Section("Trademarks")
                 Body(
-                    "AYN and Thor are trademarks of their respective owners; Cocoon is the work of its developer. " +
-                        "WalkThor is an independent project, not affiliated with or endorsed by AYN, Cocoon or any " +
-                        "game publisher. Guides and artwork shown come from your own files and belong to their creators."
+                    "AYN and Thor are trademarks of their respective owners. " +
+                        "WalkThor is an independent project, not affiliated with or endorsed by AYN or any " +
+                        "game publisher. Guides shown come from your own files and belong to their creators."
                 )
             }
             HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(vertical = 8.dp))

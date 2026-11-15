@@ -1,30 +1,22 @@
 # WalkThor privacy policy
 
-_Last updated: October 25, 2026_
+_Last updated: November 15, 2026_
 
 **WalkThor does not collect or share any data.** It has no analytics and no ads. It goes online
-for one thing only: fetching artwork for the games in your ROMs folder, and only if you add a
-scraper account and start a scrape (see below). Everything else stays on your device.
+for one thing only: downloading a speech model for Captions, once, if you ask it to (see below).
+Everything else stays on your device.
 
 ## What WalkThor reads, and why
 
 - **Guides you import** (PDF/TXT) are copied into WalkThor's private storage so you can read and
   search them. The original file is left untouched.
-- **An artwork folder you link** (for example Cocoon's `downloaded_media`) is read to find cover
-  images for your guides. Chosen covers are copied into WalkThor's private storage.
-- **The Cocoon folder you link** is read only for Cocoon's `launch_debug.log`, to learn which game
-  you launched most recently (its name, file name and emulator) so WalkThor can open that game's
-  guide. Nothing in the folder is changed.
-- **The ES-DE folder you link** is read only for ES-DE's `logs/es_log.txt`, for the same purpose:
-  the game ES-DE started most recently (its name, ROM file and system) and when it ended. Nothing in
-  the folder is changed.
-- **Accessibility access ("WalkThor", an Android accessibility service), if you turn it on,** opens WalkThor
-  from the AYN button during games (if you switch that on; see below) and draws WalkThor's drawer.
+- **Accessibility access ("WalkThor", an Android accessibility service), if you turn it on,** draws WalkThor's
+  drawer and responds to the button shortcuts you set (see below).
   While a game is running, it also taps the very top edge of
   the game's screen once, a couple of seconds after WalkThor opens or after you finish typing a
   search, because Android gives top
   performance priority to the screen last touched (turning off accessibility access stops it too).
-  To make sure that tap only ever lands on a game, never on Cocoon or another app, it notes which
+  To make sure that tap only ever lands on a game, never on your frontend or another app, it notes which
   app is in front on each screen (the app's name only, in memory). It does **not** read the content
   of your screen or of other apps, and does not record what you type.
 
@@ -71,7 +63,7 @@ scraper account and start a scrape (see below). Everything else stays on your de
   how long one of your emulators has been in front each day ("Played today"); only that day's
   total is kept, on the device.
 
-- **Brightness and volume, only when you move the sliders.** Now playing's quick controls change
+- **Brightness and volume, only when you move the sliders.** Home's and Light & Sound's controls change
   Android's brightness setting (with the *Modify system settings* access you grant), the media
   volume, and, where WalkThor can't change the bottom screen's brightness, dim it with a dark layer
   drawn by the accessibility service. On the Thor, the bottom screen's real brightness is changed
@@ -89,15 +81,13 @@ scraper account and start a scrape (see below). Everything else stays on your de
   The Controls tab (and Home, if you add it) sets the performance mode, fan mode and
   controller layout through the same system helper, only when you pick one.
 
-- **The drawer, only if you switch it on.** With *Open as a drawer* on (Settings → General), the
-  accessibility service draws WalkThor's own screens over the bottom screen instead of WalkThor
-  opening as an app. It shows only WalkThor's screens and doesn't read anything on the screen.
-
-- **The AYN button, only if you switch it on.** With *AYN button opens WalkThor* on (Settings →
-  General), the accessibility service is handed each hardware button press just before your game
-  gets it, so it can spot the AYN button (Home from "gpio-keys", scan code 194). That one button
-  opens or puts away WalkThor instead of AYN's drawer; every other press, including the controller's
-  Home button, passes straight on. Nothing is recorded, stored or sent.
+- **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
+  accessibility service is handed each hardware button press just before your game gets it, so it
+  can spot the presses you chose (the AYN button, which is Home from "gpio-keys" with scan code 194;
+  Back pressed twice; Start and Select held together). The AYN button's presses go to WalkThor
+  (or on to AYN's own drawer, if you leave them to it); every other press, including the
+  controller's Home button, passes straight on to your game. Nothing is recorded, stored or sent.
+  A shortcut makes the device or controller rumble briefly, if that's on.
 
 - **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
   buttons you press. After you agree to the explanation shown the first time you open it,
@@ -107,32 +97,19 @@ scraper account and start a scrape (see below). Everything else stays on your de
   emulator is stored on the device.
 
 - **WalkThor keyboard: what you type, only if you choose it.** WalkThor includes its own keyboard,
-  which is used only if you switch it on (Settings → General → Access) or pick it in Android's
+  which is used only if you switch it on (Settings → General) or pick it in Android's
   keyboard settings. Like any keyboard, it passes each key you press to the app you're typing in.
   WalkThor doesn't record, store or send what you type, and the keyboard has no suggestions,
   dictionary or learning.
 
-- **Open when an emulator starts, only if you turn it on.** While it's on, WalkThor's
-  accessibility service notes which app comes to the front, so it knows when an emulator starts a
-  game and can open on the bottom screen. With Cocoon linked, Cocoon's log names the game as usual.
-  Without Cocoon, for the emulator that's running, and only that one, it also looks at its window
-  title and its own notifications, to spot a game name that matches one of your games or guides.
-  Other apps' notifications are ignored and nothing on the game's screen is read. What it sees is
-  kept in memory only until the game ends; only the games and guides you pick for each emulator
-  are remembered, on the device.
+- **Which app is in front.** WalkThor's accessibility service notes which app is in front on each
+  screen (its package name only, in memory), so the drawer knows when one of your emulators is
+  running and shows its tabs, and, with *Open when an emulator starts* on, comes up by itself. It
+  never reads notifications, window titles or anything on the game's screen.
 
 - **A ROMs folder you link.** WalkThor reads the names of the folders and files in it (one folder
-  per system, like `gba` or `switch`), never the games themselves, so you can pick which game
-  you're playing and scrape its artwork. The list of names is kept on the device.
-
-- **Scraping artwork (the only time WalkThor goes online), only if you add an account.** When you
-  start a scrape (or start a game that has no artwork yet, once), WalkThor sends each game's ROM
-  file name and system, or the game's name (from a guide's title or Cocoon's log), to
-  [ScreenScraper](https://www.screenscraper.fr) with your ScreenScraper login and developer
-  credentials, and/or its tidied-up title to [SteamGridDB](https://www.steamgriddb.com) with your
-  API key, and downloads the box art, screenshot, wide art and marquee (logo) they return. Nothing else is
-  sent. Those services' own privacy policies apply to what you send them. Your account details
-  and the downloaded artwork are stored only on the device.
+  per system, like `gba` or `switch`), never the games themselves, to list your games by system.
+  The list of names is kept on the device.
 
 - **Apps tab: your installed apps.** The Apps tab lists the apps that have a home-screen icon
   (their names and icons), read from Android when you open the tab, so you can open them on
@@ -147,9 +124,8 @@ scraper account and start a scrape (see below). Everything else stays on your de
 
 ## What WalkThor stores (on your device only)
 
-Your library of guides, cover images, reading positions, settings, which guide you linked to
-which game, the apps you pinned, the games and guides you picked for each emulator, your ROMs
-folder's list of game names, artwork you scraped and your scraper account details, a list of the recent times WalkThor's app closed and why (with how much memory it was using and what it was doing, such as a game running or clips on), and — only if WalkThor crashes — a crash report (the error and device model) that you
+Your library of guides, reading positions, settings, which guide goes with which game, the apps
+you pinned, your ROMs folder's list of game names, a list of the recent times WalkThor's app closed and why (with how much memory it was using and what it was doing, such as a game running or clips on), and — only if WalkThor crashes — a crash report (the error and device model) that you
 can choose to share from About & licences. Uninstalling WalkThor deletes all of it. You can unlink folders and turn off
 accessibility access at any time from the library's Settings (⋮) or Android's Accessibility settings.
 

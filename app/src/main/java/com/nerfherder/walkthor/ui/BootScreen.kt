@@ -54,7 +54,7 @@ import java.io.File
 sealed interface BootStatus {
     /** Nothing to check; just the wordmark. */
     data object Idle : BootStatus
-    /** Reading Cocoon's launch log. */
+    /** Checking what's playing. */
     data object Checking : BootStatus
     /** Found the game being played, and its guide if WalkThor has one. */
     data class Playing(
@@ -67,14 +67,12 @@ sealed interface BootStatus {
         val player: String? = null,
         /** The game's wide art (content URI), shown across the top; box art stands in without it. */
         val hero: String? = null,
-        /** Noticed from its emulator without knowing the game ([title] is the emulator's name). */
-        val unknown: Boolean = false,
     ) : BootStatus
 }
 
 /**
  * WalkThor's boot screen, like a title card: a large wordmark in the lower left with a softly
- * pulsing dot while WalkThor reads Cocoon's launch log. When the game is found, its wide art
+ * pulsing dot while it checks what's playing. When a game is given, its wide art
  * fades in across the top, settling as it fades into black, and the game's title takes the
  * wordmark's place. Fades out once [finished]; then [onGone]. Tap to skip.
  */
@@ -194,7 +192,7 @@ fun BootScreen(
                         }
                     }
                 } else Column {
-                    val sub = listOfNotNull("Now playing", p.player?.let(::emulatorName), if (p.guide == null && !p.unknown) "No guide yet" else null)
+                    val sub = listOfNotNull("Now playing", p.player?.let(::emulatorName), if (p.guide == null) "No guide yet" else null)
                     Text(sub.joinToString("  ·  "), color = BookColors.TextMuted, fontSize = 15.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(

@@ -81,9 +81,7 @@ object Drawer {
      * None of your emulators is in front on the game screen (or, before anything's been seen there,
      * no game is known to be running).
      */
-    fun noGame(): Boolean =
-        if (EmulatorWatch.frontKnown.value) !EmulatorWatch.emulatorShowing.value
-        else EmulatorWatch.session.value == null && !GameFocus.gameRunning.value
+    fun noGame(): Boolean = !gameInFront()
 
     /** Why the drawer last couldn't open, for Diagnostics; null if it's been fine. */
     val problem = MutableStateFlow<String?>(null)
@@ -96,7 +94,6 @@ object Drawer {
         runCatching {
             com.nerfherder.walkthor.ui.PageStyle.init(service)
             com.nerfherder.walkthor.ui.AutoDim.init(service)
-            com.nerfherder.walkthor.ui.PlaySession.init(service)
         }
         return try {
             val d = current?.takeIf { it.displayId == displayId } ?: run {
@@ -155,12 +152,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     // ---- WalkThorHost ----
     override val incomingFlow = MutableStateFlow<Uri?>(null)
     override val hasOtherScreenFlow = MutableStateFlow(false)
-    override val pickedArtFolderFlow = MutableStateFlow<Uri?>(null)
-    override val pickedCocoonFolderFlow = MutableStateFlow<Uri?>(null)
-    override val pickedEsdeFolderFlow = MutableStateFlow<Uri?>(null)
     override val swipeTickFlow = MutableStateFlow(0L)
     override val pollTickFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    override val pickedCoverFlow = MutableStateFlow<Pair<String, Uri>?>(null)
     override val hostScope get() = lifecycleScope
 
     // ---- the window ----
@@ -185,18 +178,9 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     private val recomposer = androidx.compose.runtime.Recomposer(uiContext).also { r ->
         kotlinx.coroutines.CoroutineScope(uiContext).launch { r.runRecomposeAndApplyChanges() }
     }
-    private var coverFor: String? = null
 
     private val guidePicker = activityResultRegistry.register("guide", ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) incomingFlow.value = uri }
-    private val artPicker = activityResultRegistry.register("art", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) pickedArtFolderFlow.value = uri }
-    private val cocoonPicker = activityResultRegistry.register("cocoon", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) pickedCocoonFolderFlow.value = uri }
-    private val esdePicker = activityResultRegistry.register("esde", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) pickedEsdeFolderFlow.value = uri }
     private val romPicker = activityResultRegistry.register("roms", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) onRomFolderPicked(app, lifecycleScope, uri) }
-    private val imagePicker = activityResultRegistry.register("image", ActivityResultContracts.OpenDocument()) { uri ->
-        val id = coverFor
-        if (uri != null && id != null) pickedCoverFlow.value = id to uri
-    }
-
     init {
         savedState.performAttach()
         savedState.performRestore(null)
@@ -211,8 +195,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                         ExitHistory.snapshot(app)
                         if (GameFocus.gameRunning.value) {
                             if (beats % 12 == 0) {
-                                com.nerfherder.walkthor.ui.PlaySession.current.value?.takeIf { !it.unknown }?.title
-                                    ?.let { com.nerfherder.walkthor.ui.PlayStats.record(app, it) }
+                                EmulatorWatch.topGame(app)?.name?.let { com.nerfherder.walkthor.ui.PlayStats.record(app, it) }
                             }
                         }
                     }
@@ -243,7 +226,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             }
         }, 2_000)
         if (opened) swipeTickFlow.value = System.currentTimeMillis()
-        // Opened with no game running: Home. (Opened for a game: the game's screens.)
+        // Opened with no game running: Home on its own. (During a game: Home under the tabs.)
         Drawer.home.value = Drawer.noGame()
         com.nerfherder.walkthor.ui.AutoDim.wake()
         reveal()
@@ -376,9 +359,10 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                     .background(androidx.compose.ui.graphics.Color.Black),
             ) {
                 WalkThorRoot(initialBookId = null, boot = boot, host = this@WalkThorDrawer)
-                // A game came to the front while Home was up: over to the game's screens.
+                // A game came to the front while Home was up: over to Home under the tabs.
                 val emulatorShowing by EmulatorWatch.emulatorShowing.collectAsState()
-                LaunchedEffect(emulatorShowing) { if (emulatorShowing) Drawer.home.value = false }
+                // And when the game's gone, back to Home on its own.
+                LaunchedEffect(emulatorShowing) { Drawer.home.value = Drawer.noGame() }
                 val home by Drawer.home.collectAsState()
                 if (home) {
                     com.nerfherder.walkthor.ui.HomeScreen(
@@ -436,13 +420,6 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
 
     override fun closeApp() = hide()
     override fun pickGuide() = guidePicker.launch(GUIDE_TYPES)
-    override fun pickArtFolder() = artPicker.launch(null)
-    override fun pickCocoonFolder() = cocoonPicker.launch(null)
-    override fun pickEsdeFolder() = esdePicker.launch(null)
     override fun pickRomFolder() = romPicker.launch(null)
-    override fun pickCoverImage(bookId: String) {
-        coverFor = bookId
-        imagePicker.launch(arrayOf("image/*"))
-    }
     override fun swapScreen(bookId: String?) = Unit
 }

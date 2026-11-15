@@ -37,25 +37,23 @@ import androidx.compose.ui.window.DialogProperties
 /** Where each setup step stands, for the tick or the button beside it. */
 class SetupState(
     val hasGuides: Boolean,
-    val cocoonLinked: Boolean,
-    val artLinked: Boolean,
+    val romsLinked: Boolean,
     val swipeReady: Boolean,
 )
 
 /**
- * Settings → About → How to set up: every step to get WalkThor working with Cocoon, in order, with a tick for
+ * Settings → About → How to set up: every step to get WalkThor working, in order, with a tick for
  * what's already done and a button for what isn't. Then how playing and reading work.
  */
 @Composable
 fun SetupGuideDialog(
     state: SetupState,
     onAddGuide: () -> Unit,
-    onLinkCocoon: () -> Unit,
-    onLinkArt: () -> Unit,
+    onLinkRoms: () -> Unit,
     onSetUpSwipe: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // The Thor's bottom screen is short; at denser display settings use the space more tightly.
+    // The bottom screen is short; at denser display settings use the space more tightly.
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
@@ -76,8 +74,8 @@ fun SetupGuideDialog(
                     color = BookColors.Text,
                 )
                 Text(
-                    "Do these once, in order. Then, whenever you start a game from Cocoon, WalkThor opens on " +
-                        "the bottom screen with that game's guide ready.",
+                    "Do these once. Then WalkThor's drawer is a button press away on the bottom screen, whatever " +
+                        "you're playing and whichever frontend you start it from.",
                     color = BookColors.TextMuted,
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
@@ -85,94 +83,58 @@ fun SetupGuideDialog(
                 )
 
                 Step(
-                    1, "Add your guides", state.hasGuides, "Add guide", onAddGuide,
-                    "Import PDF or TXT walkthroughs (GameFAQs-style text guides work well). Tap Add guide, or " +
-                        "open a guide from a file manager with Open with or Share → WalkThor. WalkThor keeps its own " +
-                        "copy, so you can move or delete the original.",
+                    1, "Allow accessibility access", state.swipeReady, "Set up", onSetUpSwipe,
+                    "The drawer, the button shortcuts, the FPS counter and the keyboard all run through it. WalkThor " +
+                        "explains exactly what it does, then Android asks you to switch on “WalkThor” in Accessibility settings.",
                 )
                 Step(
-                    2, "Link Cocoon's folder", state.cocoonLinked, "Link folder", onLinkCocoon,
-                    "Pick Cocoon's data folder, the one with launch_debug.log in it. WalkThor only reads that log, " +
-                        "to see which game you started, so it can open the right guide and show play time. " +
-                        "It never changes anything there.",
+                    2, "Choose your shortcuts", null, null, null,
+                    "Settings → Shortcuts: what a tap, a double press and a hold of the AYN button do, and Back pressed " +
+                        "twice, and Start and Select held together. Set the AYN button's tap to Open the drawer.",
                 )
                 Step(
-                    3, "Link your artwork", state.artLinked, "Link folder", onLinkArt,
-                    "Pick the folder with your game artwork (Cocoon's media folder, or ES-DE's downloaded_media). WalkThor uses it for " +
-                        "guide covers and for the Now playing screen: hero or fan art as the background and the " +
-                        "logo on top. Optional, but it makes everything look much better. After adding new art, " +
-                        "use Settings → Artwork → Rescan.",
+                    3, "Link your ROMs folder", state.romsLinked, "Link folder", onLinkRoms,
+                    "The folder that holds one folder per system (3ds, gba, switch…). WalkThor only reads the names, " +
+                        "to list your games by system. Optional: without it, your library is just your guides.",
                 )
                 Step(
-                    4, "Make WalkThor Cocoon's companion app", null, null, null,
-                    "In Cocoon, choose WalkThor as the companion app for the bottom screen (for every game, or " +
-                        "just the ones you want). Cocoon then opens WalkThor whenever it starts a game.",
-                )
-                Step(
-                    5, "Allow accessibility access", state.swipeReady, "Set up", onSetUpSwipe,
-                    "Lets you swipe down from the top edge of the bottom screen to open or put away WalkThor. " +
-                        "It also hands your game its full speed back after WalkThor opens or you search, with one tap on the " +
-                        "top screen. WalkThor explains exactly what it does, then Android asks you to switch on " +
-                        "“WalkThor” in Accessibility settings. Strongly recommended.",
+                    4, "Add your guides", state.hasGuides, "Add guide", onAddGuide,
+                    "Import PDF or TXT walkthroughs (GameFAQs-style text guides work well): tap Add a guide beside a " +
+                        "game, or Add guide at the top. WalkThor keeps its own copy, so you can move or delete the original.",
                 )
 
-                Heading("When you play")
+                Heading("The drawer")
                 Para(
-                    "Start a game in Cocoon. The bottom screen shows Now playing with the game's art, then dims " +
-                        "to save power after the time set in Settings → General → Auto-dim. Tap anywhere to wake it. The tabs at the top (Guide, Mirror, " +
-                        "Face Buttons, Stats and Apps, plus Multi) switch between the game's screens, even while it's dimmed."
+                    "The drawer slides up over the bottom screen and away again; the game on the top screen keeps running " +
+                        "at full speed. It opens on Home: the time, battery, play time, brightness, volume and stick " +
+                        "lights, and your pinned apps along the bottom."
                 )
                 Para(
-                    "Turn on Settings → Emulators → Open when an emulator starts (it needs accessibility access, step 5) and WalkThor opens " +
-                        "on the bottom screen whenever an emulator comes to the front, from any frontend. With Cocoon linked, " +
-                        "Cocoon names the game. Using ES-DE? Link its folder in Settings → ES-DE and turn on Custom Event Scripts " +
-                        "and Debug Mode in ES-DE's Other settings: ES-DE then names the game too. Without either, if WalkThor can't tell which game it is, Now playing asks What " +
-                        "are you playing?, offering your games (from a ROMs folder you link) and guides, your last picks first."
+                    "While a game is in front, a row of tabs sits above Home: Multi, Guide, Mirror, Controls, Stats, Shots, " +
+                        "Captions, Light & Sound and Apps. If there are more than fit, swipe them sideways. Home dims after the " +
+                        "time set in Settings → Screen → Auto-dim (tap anywhere to wake it); the other tabs stay bright."
                 )
                 Para(
-                    "Add a ScreenScraper account or a SteamGridDB API key in Settings → Artwork → Scraper accounts, then Scrape artwork: " +
-                        "WalkThor fetches box art for your guides' covers, and a screenshot and marquee for each game, shown on Now playing " +
-                        "while you play. A game you start that has none yet is looked up once on its own. Linking your ROMs folder " +
-                        "(Settings → Artwork → ROMs folder, the folder that holds one folder per system: 3ds, nds, gba, switch…) makes the " +
-                        "matches exact. This is the only time WalkThor goes online."
+                    "Guide lists your guides each time, for you to pick the one you want. WalkThor remembers your place in each."
                 )
                 Para(
-                    "The first time you play a game, WalkThor looks for a guide whose title matches it. If it " +
-                        "doesn't find one, the Guide tab offers Add guide or From my guides, and WalkThor remembers " +
-                        "that guide for the game next time. Other guide (on Now playing) switches to a different one."
-                )
-                Para("Back from any tab takes you to Now playing, and back again to your library. Switching tabs keeps your place.")
-                Para(
-                    "Mirror shows part of the top screen here, like a " +
-                        "minimap or a HUD. The first time for a game, drag a box over the part you want; it keeps this " +
-                        "screen's shape so the mirror fills it (tap Don't keep aspect ratio to resize freely). WalkThor remembers it. Add up to four areas with +, switch between them with the numbers at the top, or " +
-                        "tap All to see them side by side. Android asks for permission the first time you open it for a " +
-                        "game; the mirror pauses while you're on another tab."
+                    "To have the drawer open straight on one tab (say, Mirror), press and hold that tab. A small dot marks " +
+                        "it. Press and hold it again, or Home, to go back to opening on Home."
                 )
                 Para(
-                    "Face Buttons shows the four face buttons the way " +
-                        "the game's system labels them (△ ○ × □, or letters), each where its Thor button is, and " +
-                        "lights up the one you press.")
-
-                Para(
-                    "Multi shows up to four tabs at once: choose from Mirror, your guide where you left off, Face Buttons, " +
-                        "Stats and your pinned apps with ⋮ → Choose panels. Tap any of them to open that tab; Back (or the Multi " +
-                        "button) brings you back. To rearrange them, press and hold a panel and drag it onto another."
+                    "Which apps count as games is in Settings → Emulators → Choose emulators. Tick any WalkThor doesn't " +
+                        "know, such as an app that runs games from shortcuts."
                 )
                 Para(
-                    "Apps opens any of your apps on the bottom screen while the game keeps running. Pin the ones you use " +
-                        "most; press and hold an app to open it on the top screen instead. If there are more tabs than fit, " +
-                        "swipe the tabs sideways."
+                    "Mirror shows part of the top screen here, like a minimap or a HUD: drag a box over the part you want. " +
+                        "Add up to four areas with +. Android asks for permission to capture the screen the first time."
                 )
                 Para(
-                    "To have a game open straight on one tab (say, Mirror or the guide), press and hold that tab. A small " +
-                        "dot marks it, and next time you start the game WalkThor opens on it after the launch animation. " +
-                        "Press and hold it again to go back to opening on Now playing."
+                    "Multi shows up to four tabs at once; choose them with ⋮ → Choose panels. Tap any of them to open that tab."
                 )
                 Para(
-                    "Stats shows the top screen's frame rate (FPS) with a graph of the last minute, using the same screen " +
-                        "capture as Mirror, plus the battery's power draw and time left, heat, free memory and CPU speed. " +
-                        "After you've played a game for a while, it also says how long that game usually lasts on a charge."
+                    "Stats shows the top screen's frame rate with a graph of the last minute, plus the battery's power draw " +
+                        "and time left, heat, free memory and CPU speed."
                 )
 
                 Heading("Reading a guide")
@@ -181,12 +143,11 @@ fun SetupGuideDialog(
                 Bullet("Tap the middle of a page (or the magnifying glass) for a zoomable, full-width view.")
                 Bullet("Press and hold on a page for a magnifier you can slide around.")
                 Bullet("WalkThor remembers your place in every guide.")
-                Bullet("The screen dims on its own after the time set in Settings → General → Auto-dim, to the strength you choose there.")
 
                 Heading("Good to know")
                 Bullet("Tapping WalkThor never slows your game: the game keeps top priority while you read.")
                 Bullet("Typing in search briefly gives WalkThor focus for the keyboard. When you're done, WalkThor hands it back to the game on its own.")
-                Bullet("If WalkThor ever opens on the wrong screen, use Settings → General → Move to the other screen.")
+                Bullet("WalkThor only goes online for one thing: downloading the speech model the first time you turn on Captions.")
             }
             Row(Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss, modifier = if (compact) Modifier.height(36.dp) else Modifier) { Text("Close") }

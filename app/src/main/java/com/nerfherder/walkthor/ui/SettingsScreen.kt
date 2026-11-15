@@ -47,10 +47,10 @@ import androidx.compose.ui.unit.sp
 /** The sections of the settings screen, in the order of the list on its left. */
 enum class SettingsSection(val label: String) {
     GENERAL("General"),
-    ARTWORK("Artwork"),
+    SHORTCUTS("Shortcuts"),
+    SCREEN("Screen"),
     EMULATORS("Emulators"),
-    COCOON("Cocoon"),
-    ESDE("ES-DE"),
+    GUIDES("Guides"),
     ABOUT("About"),
 }
 

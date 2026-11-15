@@ -10,12 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  *
  * While it's switched on, WalkThor's accessibility service tells this which app comes to the
  * front. Each time an emulator does (after any other app was in front), a game session starts
- * and WalkThor opens on the bottom screen with the game's tabs. With Cocoon linked, Cocoon's
- * launch log names the game as usual. Without it, WalkThor works out which game it is from
- *  1. any text the emulator shows that matches one of your games or guides (its window title or
- *     its own notifications; only the running emulator's, kept in memory for this session only),
- *  2. else the game or guide you picked last time in this emulator,
- *  3. else it asks, with your picks for this emulator first.
+ * and WalkThor's drawer opens on the bottom screen with its tabs along the top.
  * The session ends when another app (your frontend, the home screen) comes to the front; apps
  * you open from WalkThor's Apps tab don't count.
  */
@@ -105,7 +100,6 @@ object EmulatorWatch {
                         end()
                         Session(pkg, label(context, pkg), System.currentTimeMillis()).also { session.value = it }
                     } else null
-                    remember(event.text.map { it.toString() } + listOfNotNull(event.contentDescription?.toString()), pkg, context)
                     return started
                 }
                 // Another app came to the front (your frontend, the home screen): the game is over.
@@ -229,6 +223,7 @@ object EmulatorWatch {
             frontKnown.value = true
             gameShowing.value = others.any { isGamePkg(context, it) }
             emulatorShowing.value = others.any { isEmulator(context, it) }
+            GameFocus.gameRunning.value = emulatorShowing.value
         }
     }
 

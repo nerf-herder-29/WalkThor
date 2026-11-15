@@ -44,6 +44,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Close
@@ -89,7 +90,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.nerfherder.walkthor.ImportState
-import com.nerfherder.walkthor.data.ArtMatch
 import com.nerfherder.walkthor.data.Book
 import com.nerfherder.walkthor.data.BookType
 import kotlinx.coroutines.delay
@@ -107,16 +107,6 @@ class LibraryActions(
     val onDelete: (Book) -> Unit,
     val onRename: (Book, String) -> Unit,
     val coverFile: (Book) -> File?,
-    val onPickCoverFile: (Book) -> Unit,
-    val onSetCover: (Book, Uri) -> Unit,
-    val onClearCover: (Book) -> Unit,
-    val suggestions: suspend (String) -> List<ArtMatch>,
-    val onLinkArtFolder: () -> Unit,
-    val onLinkCocoon: () -> Unit,
-    val onToggleGameGuide: (Boolean) -> Unit,
-    val onUnlinkCocoon: () -> Unit,
-    val onRescanArt: () -> Unit,
-    val onUnlinkArt: () -> Unit,
     val onToggleAlwaysBottom: (Boolean) -> Unit,
     val onToggleSwipeToOpen: (Boolean) -> Unit,
     val onClose: () -> Unit,
@@ -128,53 +118,45 @@ class LibraryActions(
     val onSwapScreen: (() -> Unit)?,
     /** Pick your ROMs folder (one folder per system). */
     val onLinkRoms: () -> Unit = {},
-    /** Pick ES-DE's folder (the one with logs/es_log.txt). */
-    val onLinkEsde: () -> Unit = {},
-    val onUnlinkEsde: () -> Unit = {},
-    /** Pick an image file as a game's cover, background or marquee. */
-    val onPickGameCover: (String, com.nerfherder.walkthor.data.GameCovers.Kind) -> Unit = { _, _ -> },
     /** Add a guide (file picker) and link it to a game. */
     val onAddGuideFor: (com.nerfherder.walkthor.data.LaunchedGame) -> Unit = {},
-    /** Link one of your guides to a game, and open it. */
-    val onLinkGuide: (com.nerfherder.walkthor.data.LaunchedGame, String) -> Unit = { _, _ -> },
+    /** Reached from the drawer during a game: back to its tabs. */
+    val onBackToGame: (() -> Unit)? = null,
 )
 
+/**
+ * WalkThor's own screen: your games by system (from your ROMs folder), each with its guide beside
+ * it, and your guides as their own section. [previewRoms] and [previewSection] are for screenshots.
+ */
 @Composable
 fun LibraryScreen(
     books: List<Book>,
-    artLinked: Boolean,
-    artCount: Int,
-    artScanning: String?,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
-    gameGuide: Boolean,
-    cocoonLinked: Boolean,
     swipeNeedsPermission: Boolean,
     actions: LibraryActions,
-    esdeLinked: Boolean = false,
+    previewRoms: List<com.nerfherder.walkthor.data.Rom>? = null,
+    previewSection: String? = null,
+    startInSettings: SettingsSection? = null,
 ) {
-    var coverFor by remember { mutableStateOf<Book?>(null) }
     var explainSwipe by remember { mutableStateOf(false) }
     var showDisclosure by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     var showSetup by remember { mutableStateOf(false) }
-    var settingsOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(startInSettings != null) }
     // Your ROMs folder's games, by system, with your guides as their own section.
     val libContext = LocalContext.current
     val romLibrary = remember { com.nerfherder.walkthor.data.RomLibrary.get(libContext) }
-    val allRoms by romLibrary.roms.collectAsState()
-    LaunchedEffect(Unit) { romLibrary.load() }
-    val hiddenIds = HiddenGames.ids.collectAsState().value ?: remember { HiddenGames.load(libContext) }
-    val roms = remember(allRoms, hiddenIds) { allRoms.filter { it.id !in hiddenIds } }
-    val hiddenRoms = remember(allRoms, hiddenIds) { allRoms.filter { it.id in hiddenIds } }
-    var chosenSection by remember { mutableStateOf(LibrarySection.load(libContext)) }
+    val loadedRoms by romLibrary.roms.collectAsState()
+    val roms = previewRoms ?: loadedRoms
+    LaunchedEffect(Unit) { if (previewRoms == null) romLibrary.load() }
+    var chosenSection by remember { mutableStateOf(previewSection ?: LibrarySection.load(libContext)) }
     // A system folder that's gone (relinked, rescanned): back to all games.
     val section = chosenSection.takeIf { s ->
-        s == LibrarySection.ALL || s == LibrarySection.GUIDES || roms.any { it.system == s } ||
-            (s == LibrarySection.HIDDEN && hiddenRoms.isNotEmpty())
+        s == LibrarySection.ALL || s == LibrarySection.GUIDES || roms.any { it.system == s }
     } ?: LibrarySection.ALL
-    val showGames = allRoms.isNotEmpty() && section != LibrarySection.GUIDES
-    // Turning swipe-to-open on always goes through the disclosure first.
+    val showGames = roms.isNotEmpty() && section != LibrarySection.GUIDES
+    // Turning accessibility access on always goes through the disclosure first.
     fun startSwipeSetup() {
         if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
         actions.onToggleSwipeToOpen(true)
@@ -195,22 +177,27 @@ fun LibraryScreen(
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().padding(start = if (actions.onBackToGame != null) 6.dp else 20.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            actions.onBackToGame?.let { back ->
+                IconButton(onClick = back) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to the drawer", tint = BookColors.TextMuted)
+                }
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
-                        showGames -> if (narrowHeader) "Your library" else "Your library · ${roms.size} game${if (roms.size == 1) "" else "s"}"
-                        books.isEmpty() || narrowHeader -> "Your guides"
-                        else -> "Your guides · ${books.size} guide${if (books.size == 1) "" else "s"}"
+                        narrowHeader -> "WalkThor"
+                        showGames -> "${roms.size} game${if (roms.size == 1) "" else "s"} · ${books.size} guide${if (books.size == 1) "" else "s"}"
+                        else -> "${books.size} guide${if (books.size == 1) "" else "s"}"
                     },
                     style = EyebrowStyle,
                     maxLines = 1,
                     softWrap = false,
                 )
                 Text(
-                    "WalkThor",
+                    if (showGames) "Games" else "Guides",
                     fontFamily = DisplayFont,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 26.sp,
@@ -227,7 +214,7 @@ fun LibraryScreen(
                 contentPadding = if (narrowHeader) PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                 else PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                // On narrow screens the button is just "+", so the header never crowds out the shelf.
+                // On narrow screens the button is just "+", so the header never crowds out the list.
                 Icon(Icons.Filled.Add, contentDescription = if (narrowHeader) "Add guide" else null, modifier = Modifier.size(18.dp))
                 if (!narrowHeader) {
                     Spacer(Modifier.width(6.dp))
@@ -261,35 +248,23 @@ fun LibraryScreen(
                 TextButton(onClick = { startSwipeSetup() }) { Text("Set up") }
             }
         }
-        if (artScanning != null) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = BookColors.Brass, trackColor = BookColors.Hairline)
-                Text(artScanning, fontSize = 11.sp, color = BookColors.TextMuted, modifier = Modifier.padding(top = 4.dp))
-            }
-        }
-        ScrapeProgress()
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
         Row(Modifier.weight(1f)) {
-          if (allRoms.isNotEmpty()) {
-            LibraryRail(roms, books.size, hiddenRoms.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
+          if (roms.isNotEmpty()) {
+            LibraryRail(roms, books.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
             Box(Modifier.width(1.dp).fillMaxHeight().background(BookColors.Hairline))
           }
           Box(Modifier.weight(1f)) {
             if (showGames) {
-                GamesGrid(
-                    roms = when (section) {
-                        LibrarySection.ALL -> roms
-                        LibrarySection.HIDDEN -> hiddenRoms
-                        else -> roms.filter { it.system == section }
-                    },
+                GamesList(
+                    roms = if (section == LibrarySection.ALL) roms else roms.filter { it.system == section },
                     books = books,
-                    coverFile = actions.coverFile,
+                    showSystem = section == LibrarySection.ALL,
                     actions = actions,
-                    hiddenView = section == LibrarySection.HIDDEN,
                 )
             } else if (books.isEmpty()) {
-                EmptyShelf(actions.onImport, artLinked, actions.onLinkArtFolder, onSetupGuide = { showSetup = true })
+                EmptyShelf(actions.onImport, roms.isNotEmpty(), actions.onLinkRoms, onSetupGuide = { showSetup = true })
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 118.dp),
@@ -299,7 +274,7 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(books, key = { it.id }) { book ->
-                        ShelfItem(book, actions, onChooseCover = { coverFor = book })
+                        ShelfItem(book, actions)
                     }
                 }
             }
@@ -314,7 +289,8 @@ fun LibraryScreen(
     }
     if (settingsOpen) {
         SettingsScreen(
-            artLinked, artCount, alwaysBottom, swipeToOpen, cocoonLinked, esdeLinked, actions,
+            alwaysBottom, swipeToOpen, actions,
+            startSection = startInSettings ?: SettingsSection.GENERAL,
             onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
             onAbout = { showAbout = true },
             onSetupGuide = { showSetup = true },
@@ -351,13 +327,11 @@ fun LibraryScreen(
         SetupGuideDialog(
             state = SetupState(
                 hasGuides = books.isNotEmpty(),
-                cocoonLinked = cocoonLinked,
-                artLinked = artLinked,
+                romsLinked = roms.isNotEmpty(),
                 swipeReady = swipeToOpen && !swipeNeedsPermission,
             ),
             onAddGuide = actions.onImport,
-            onLinkCocoon = actions.onLinkCocoon,
-            onLinkArt = actions.onLinkArtFolder,
+            onLinkRoms = { showSetup = false; actions.onLinkRoms() },
             onSetUpSwipe = { showSetup = false; startSwipeSetup() },
             onDismiss = { showSetup = false },
         )
@@ -371,9 +345,9 @@ fun LibraryScreen(
             text = {
                 Column {
                     Text(
-                        "Android only lets an app open over other apps, or hand a game back its speed, through " +
-                            "an accessibility service, so WalkThor has a tiny one. It only watches a thin strip at " +
-                            "the top of the bottom screen and doesn't read anything on your screen.",
+                        "Android only lets an app open over other apps, respond to buttons while a game is in front, or hand " +
+                            "a game back its speed, through an accessibility service, so WalkThor has a small one. It " +
+                            "doesn't read anything on your screen.",
                         color = BookColors.TextMuted,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -400,29 +374,14 @@ fun LibraryScreen(
             },
         )
     }
-
-    coverFor?.let { book ->
-        // Show the live copy so the picker reflects a cover that was just set.
-        val live = books.firstOrNull { it.id == book.id } ?: book
-        CoverPicker(
-            book = live,
-            artLinked = artLinked,
-            artCount = artCount,
-            actions = actions,
-            onDismiss = { coverFor = null },
-        )
-    }
 }
 
 @Composable
 private fun SettingsScreen(
-    artLinked: Boolean,
-    artCount: Int,
     alwaysBottom: Boolean,
     swipeToOpen: Boolean,
-    cocoonLinked: Boolean,
-    esdeLinked: Boolean,
     actions: LibraryActions,
+    startSection: SettingsSection,
     onToggleSwipe: (Boolean) -> Unit,
     onAbout: () -> Unit,
     onSetupGuide: () -> Unit,
@@ -430,27 +389,18 @@ private fun SettingsScreen(
     onDismiss: () -> Unit,
 ) {
     var pickDim by remember { mutableStateOf(false) }
-    var showAccounts by remember { mutableStateOf(false) }
     var showEmulators by remember { mutableStateOf(false) }
-    var section by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(SettingsSection.GENERAL) }
+    var section by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(startSection) }
     val menuScope = androidx.compose.runtime.rememberCoroutineScope()
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
     val dimLevel by AutoDim.level.collectAsState()
-    val showTimer by PlaySession.showTimer.collectAsState()
     val detecting by com.nerfherder.walkthor.EmulatorWatch.on.collectAsState()
-    // Your ROMs folder: for picking which game you're playing, and for scraping artwork.
+    // Your ROMs folder: the games in your library.
     val romLib = remember { com.nerfherder.walkthor.data.RomLibrary.get(context) }
     val romFolder by romLib.folder.collectAsState()
     val roms by romLib.roms.collectAsState()
     LaunchedEffect(Unit) { romLib.load() }
-    // Re-read the scraper accounts each time the accounts dialog closes.
-    val scraperCount = remember(showAccounts) {
-        listOf(
-            com.nerfherder.walkthor.data.ScraperPrefs.hasSteamGridDb(context),
-            com.nerfherder.walkthor.data.ScraperPrefs.hasScreenScraper(context),
-        ).count { it }
-    }
     androidx.activity.compose.BackHandler(onBack = onDismiss)
 
     SettingsFrame(
@@ -462,88 +412,21 @@ private fun SettingsScreen(
     ) {
         when (section) {
             SettingsSection.GENERAL -> {
-                SettingsGroup("Screen") {
-                    SettingSwitch("Always open on bottom screen", checked = alwaysBottom, divider = false) { actions.onToggleAlwaysBottom(it) }
-                    SettingLink("Auto-dim", value = AutoDim.label(dimDelay)) { pickDim = true }
-                    val fpsContext = androidx.compose.ui.platform.LocalContext.current
-                    var topFps by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.enabled(fpsContext)) }
-                    SettingSwitch(
-                        "FPS counter",
-                        if (swipeToOpen) "The top screen's frame rate, small, in a corner, while a game is in front" else "Needs accessibility access switched on",
-                        checked = topFps && swipeToOpen,
-                    ) { if (swipeToOpen) { topFps = it; com.nerfherder.walkthor.TopFps.setEnabled(fpsContext, it) } }
-                    if (topFps && swipeToOpen) {
-                        var fpsScreen by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.screen(fpsContext)) }
-                        SettingRow(
-                            "FPS shows on",
-                            null,
-                            buttons = {
-                                com.nerfherder.walkthor.TopFps.Screen.entries.forEach { sc ->
-                                    PillButton(sc.label, quiet = sc != fpsScreen) { fpsScreen = sc; com.nerfherder.walkthor.TopFps.setScreen(fpsContext, sc) }
-                                }
-                            },
-                        )
-                        var corner by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.corner(fpsContext)) }
-                        SettingRow(
-                            "FPS corner",
-                            null,
-                            buttons = {
-                                com.nerfherder.walkthor.TopFps.Corner.entries.forEach { c ->
-                                    PillButton(c.label, quiet = c != corner) { corner = c; com.nerfherder.walkthor.TopFps.setCorner(fpsContext, c) }
-                                }
-                            },
-                        )
-                    }
-                    actions.onSwapScreen?.let { swap ->
-                        SettingLink("Move to the other screen") { onDismiss(); swap() }
-                    }
-                }
                 SettingsGroup("Access") {
                     SettingSwitch(
                         "Accessibility access",
-                        "Opens WalkThor from the AYN button, and keeps games at full speed",
+                        "For the drawer, the button shortcuts, the FPS counter and the keyboard, and it keeps games at full speed",
                         checked = swipeToOpen,
                         divider = false,
                     ) { onToggleSwipe(it) }
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    var aynButton by remember { mutableStateOf(com.nerfherder.walkthor.AynButton.on || com.nerfherder.walkthor.SwipeLauncher.prefs(context).getBoolean("aynButton", false)) }
-                    SettingSwitch(
-                        "AYN button opens WalkThor",
-                        if (swipeToOpen) "Tap: WalkThor slides up over the bottom screen, and away again. Double tap: AYN's own drawer"
-                        else "Needs accessibility access switched on",
-                        checked = aynButton && swipeToOpen,
-                    ) { if (swipeToOpen) { aynButton = it; com.nerfherder.walkthor.AynButton.set(context, it) } }
-                    var holdOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.holdEnabled(context)) }
-                    SettingSwitch(
-                        "Hold the AYN button: dim the bottom screen",
-                        if (aynButton && swipeToOpen) "Dims it all the way down. Hold again, or tap, to bring it back to the top screen's brightness"
-                        else "Needs \"AYN button opens WalkThor\" switched on",
-                        checked = holdOff && aynButton && swipeToOpen,
-                    ) { if (aynButton && swipeToOpen) { holdOff = it; com.nerfherder.walkthor.BottomOff.setHoldEnabled(context, it) } }
                     var ownKeyboard by remember { mutableStateOf(com.nerfherder.walkthor.keyboard.WalkThorKeyboard.isDefault(context)) }
                     SettingSwitch(
                         "WalkThor keyboard",
                         "In place of AYN's, everywhere: numbers and letters filling the bottom screen, with the action key in your stick-light colour",
                         checked = ownKeyboard,
                     ) { want -> com.nerfherder.walkthor.keyboard.WalkThorKeyboard.use(context, want) { ownKeyboard = it } }
-                    var backClose by remember { mutableStateOf(com.nerfherder.walkthor.CloseApps.backEnabled(context)) }
-                    SettingSwitch(
-                        "Press Back twice: close all apps",
-                        if (swipeToOpen) "Two quick presses close every app you have open, the game included (anything unsaved is lost). Your home app and WalkThor stay"
-                        else "Needs accessibility access switched on",
-                        checked = backClose && swipeToOpen,
-                    ) { if (swipeToOpen) { backClose = it; com.nerfherder.walkthor.CloseApps.setBackEnabled(context, it) } }
-                    var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }
-                    SettingSwitch(
-                        "Bottom screen off during games",
-                        if (swipeToOpen) "Turns off when a game or shortcut starts, and back on when it closes. Tap the AYN button to use WalkThor meanwhile"
-                        else "Needs accessibility access switched on",
-                        checked = gameOff && swipeToOpen,
-                    ) { if (swipeToOpen) { gameOff = it; com.nerfherder.walkthor.BottomOff.setGameEnabled(context, it) } }
-
                 }
                 SettingsGroup("If Android closes WalkThor") {
-                    val context = androidx.compose.ui.platform.LocalContext.current
                     var reopen by remember { mutableStateOf(com.nerfherder.walkthor.Revive.enabled(context)) }
                     SettingSwitch(
                         "Bring WalkThor back",
@@ -553,48 +436,134 @@ private fun SettingsScreen(
                     ) { reopen = it; com.nerfherder.walkthor.Revive.setEnabled(context, it) }
                 }
             }
-            SettingsSection.ARTWORK -> {
-                SettingsGroup("Cocoon / ES-DE artwork") {
-                    if (artLinked) {
+            SettingsSection.SHORTCUTS -> {
+                var pickFor by remember { mutableStateOf<com.nerfherder.walkthor.Shortcuts.Trigger?>(null) }
+                // Bumped on each change so the rows re-read what's set.
+                var version by remember { mutableStateOf(0) }
+                if (!swipeToOpen) SettingsNote("Shortcuts need accessibility access switched on (Settings → General).")
+                SettingsGroup("Buttons") {
+                    com.nerfherder.walkthor.Shortcuts.Trigger.entries.forEachIndexed { i, t ->
+                        val action = remember(version, t) { com.nerfherder.walkthor.Shortcuts.get(context, t) }
+                        val usable = remember(version, t) { com.nerfherder.walkthor.Shortcuts.usable(context, t) }
+                        SettingLink(
+                            t.label,
+                            if (usable) t.detail else "Goes to AYN while the AYN button's press is left to AYN's own drawer",
+                            value = if (usable) action.label else "AYN's",
+                            divider = i > 0,
+                        ) { if (swipeToOpen && usable) pickFor = t }
+                    }
+                }
+                SettingsGroup("Feedback") {
+                    var rumble by remember { mutableStateOf(com.nerfherder.walkthor.Shortcuts.rumbleOn(context)) }
+                    SettingSwitch(
+                        "Rumble when a shortcut is used",
+                        "A short buzz, so you know the press was taken",
+                        checked = rumble,
+                        divider = false,
+                    ) { rumble = it; com.nerfherder.walkthor.Shortcuts.setRumble(context, it); if (it) com.nerfherder.walkthor.Shortcuts.rumble(context) }
+                }
+                SettingsNote(
+                    "Close all apps closes every app you have open, the game included (anything unsaved is lost). " +
+                        "Next performance mode and Next fan mode need Force SELinux switched off in AYN's settings. " +
+                        "Save the last seconds needs Keep the last switched on in Shots."
+                )
+                pickFor?.let { t ->
+                    val current = com.nerfherder.walkthor.Shortcuts.get(context, t)
+                    AlertDialog(
+                        onDismissRequest = { pickFor = null },
+                        containerColor = BookColors.Surface,
+                        title = { Text(t.label, fontFamily = DisplayFont) },
+                        text = {
+                            Column(Modifier.verticalScroll(rememberScrollState())) {
+                                com.nerfherder.walkthor.Shortcuts.actionsFor(t).forEach { a ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                com.nerfherder.walkthor.Shortcuts.set(context, t, a)
+                                                version++
+                                                pickFor = null
+                                            }
+                                            .padding(vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        RadioButton(
+                                            selected = a == current,
+                                            onClick = null,
+                                            colors = RadioButtonDefaults.colors(selectedColor = BookColors.Text, unselectedColor = BookColors.TextMuted),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        )
+                                        Text(a.label, color = BookColors.Text, fontSize = 15.sp)
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { pickFor = null }) { Text("Cancel") } },
+                    )
+                }
+            }
+            SettingsSection.SCREEN -> {
+                SettingsGroup("Bottom screen") {
+                    SettingSwitch("Always open on bottom screen", checked = alwaysBottom, divider = false) { actions.onToggleAlwaysBottom(it) }
+                    SettingLink("Auto-dim", "Home dims after this long while you play", value = AutoDim.label(dimDelay)) { pickDim = true }
+                    var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }
+                    SettingSwitch(
+                        "Bottom screen off during games",
+                        if (swipeToOpen) "Turns off when a game starts, and back on when it closes. Open the drawer to use WalkThor meanwhile"
+                        else "Needs accessibility access switched on",
+                        checked = gameOff && swipeToOpen,
+                    ) { if (swipeToOpen) { gameOff = it; com.nerfherder.walkthor.BottomOff.setGameEnabled(context, it) } }
+                    actions.onSwapScreen?.let { swap ->
+                        SettingLink("Move to the other screen") { onDismiss(); swap() }
+                    }
+                }
+                SettingsGroup("FPS counter") {
+                    var topFps by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.enabled(context)) }
+                    SettingSwitch(
+                        "FPS counter",
+                        if (swipeToOpen) "The top screen's frame rate, small, in a corner, while a game is in front" else "Needs accessibility access switched on",
+                        checked = topFps && swipeToOpen,
+                        divider = false,
+                    ) { if (swipeToOpen) { topFps = it; com.nerfherder.walkthor.TopFps.setEnabled(context, it) } }
+                    if (topFps && swipeToOpen) {
+                        var fpsScreen by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.screen(context)) }
                         SettingRow(
-                            "Artwork folder",
-                            "$artCount images",
-                            divider = false,
+                            "Shows on",
+                            null,
                             buttons = {
-                                PillButton("Rescan") { actions.onRescanArt() }
-                                PillButton("Change") { actions.onLinkArtFolder() }
-                                PillButton("Unlink", quiet = true) { actions.onUnlinkArt() }
+                                com.nerfherder.walkthor.TopFps.Screen.entries.forEach { sc ->
+                                    PillButton(sc.label, quiet = sc != fpsScreen) { fpsScreen = sc; com.nerfherder.walkthor.TopFps.setScreen(context, sc) }
+                                }
                             },
                         )
-                    } else {
+                        var corner by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.corner(context)) }
                         SettingRow(
-                            "Artwork folder",
-                            "Cocoon's media folder, or ES-DE's downloaded_media: box art, backgrounds and marquees",
-                            divider = false,
-                            buttons = { PillButton("Link…") { actions.onLinkArtFolder() } },
+                            "Corner",
+                            null,
+                            buttons = {
+                                com.nerfherder.walkthor.TopFps.Corner.entries.forEach { c ->
+                                    PillButton(c.label, quiet = c != corner) { corner = c; com.nerfherder.walkthor.TopFps.setCorner(context, c) }
+                                }
+                            },
                         )
                     }
                 }
-                SettingsGroup("Scraping") {
-                    SettingLink(
-                        "Scraper accounts",
-                        "SteamGridDB · ScreenScraper",
-                        value = if (scraperCount == 0) "None" else "$scraperCount linked",
+            }
+            SettingsSection.EMULATORS -> {
+                SettingsGroup("Emulators") {
+                    SettingSwitch(
+                        "Open when an emulator starts",
+                        "The drawer comes up by itself when a game starts, from any frontend",
+                        checked = detecting,
                         divider = false,
-                    ) { showAccounts = true }
-                    SettingLink("Scrape artwork", "Covers for your guides; screenshots and marquees for your games") {
-                        if (com.nerfherder.walkthor.data.ScraperPrefs.hasAny(context)) {
-                            com.nerfherder.walkthor.data.Scraper.scrapeAll(context)
-                            onDismiss()
-                        } else showAccounts = true
-                    }
-                    if (scraperCount > 0) {
-                        SettingLink("Scrape everything again", "Replaces art WalkThor found before (never a cover you chose)") {
-                            com.nerfherder.walkthor.data.Scraper.scrapeAll(context, refresh = true)
-                            onDismiss()
-                        }
-                    }
+                    ) { onToggleEmulators(it) }
+                    // Always here: which apps are emulators also decides when the drawer has its tabs.
+                    SettingLink("Choose emulators", "The apps that count as games. Tick any WalkThor doesn't know") { showEmulators = true }
                 }
+                SettingsNote("While one of these is in front, the drawer has its tabs along the top and play time counts.")
+            }
+            SettingsSection.GUIDES -> {
                 SettingsGroup("ROMs folder") {
                     if (romFolder != null) {
                         val systems = roms.map { it.system }.distinct().size
@@ -611,85 +580,13 @@ private fun SettingsScreen(
                     } else {
                         SettingRow(
                             "ROMs folder",
-                            "Optional: one folder per system (3ds, gba, switch…), for exact matches",
+                            "The folder with one folder per system (3ds, gba, switch…): your games, listed by system",
                             divider = false,
                             buttons = { PillButton("Link…") { actions.onLinkRoms() } },
                         )
                     }
                 }
-            }
-            SettingsSection.EMULATORS -> {
-                SettingsGroup("Emulators") {
-                    SettingSwitch(
-                        "Open when an emulator starts",
-                        when {
-                            cocoonLinked -> "Even when Cocoon doesn't open WalkThor"
-                            esdeLinked -> "Opens WalkThor when you start a game in ES-DE"
-                            else -> "Works without Cocoon"
-                        },
-                        checked = detecting,
-                        divider = false,
-                    ) { onToggleEmulators(it) }
-                    // Always here: which apps are emulators also decides when the drawer shows Home.
-                    SettingLink("Choose emulators", "Tick any WalkThor doesn't know (the drawer shows Home when none is open)") { showEmulators = true }
-                }
-                if (detecting && (cocoonLinked || esdeLinked)) {
-                    SettingsNote("With " + (if (cocoonLinked) "Cocoon" else "ES-DE") + " linked, WalkThor knows the game from its launch log.")
-                }
-            }
-            SettingsSection.COCOON -> {
-                SettingsGroup("Cocoon") {
-                    if (cocoonLinked) {
-                        SettingRow(
-                            "Cocoon folder",
-                            "WalkThor knows each game Cocoon launches",
-                            divider = false,
-                            buttons = {
-                                PillButton("Change") { actions.onLinkCocoon() }
-                                PillButton("Unlink", quiet = true) { actions.onUnlinkCocoon() }
-                            },
-                        )
-                        SettingSwitch("Show play time", "Next to the clock, from Cocoon's launch log", checked = showTimer) {
-                            PlaySession.setShowTimer(context, it)
-                        }
-                    } else {
-                        SettingRow(
-                            "Cocoon folder",
-                            "Link it so WalkThor knows each game Cocoon launches",
-                            divider = false,
-                            buttons = { PillButton("Link…") { actions.onLinkCocoon() } },
-                        )
-                    }
-                }
-            }
-            SettingsSection.ESDE -> {
-                SettingsGroup("ES-DE") {
-                    if (esdeLinked) {
-                        SettingRow(
-                            "ES-DE folder",
-                            "WalkThor knows each game ES-DE launches, and when you're back",
-                            divider = false,
-                            buttons = {
-                                PillButton("Change") { actions.onLinkEsde() }
-                                PillButton("Unlink", quiet = true) { actions.onUnlinkEsde() }
-                            },
-                        )
-                        SettingSwitch("Show play time", "Next to the clock, from ES-DE's log", checked = showTimer) {
-                            PlaySession.setShowTimer(context, it)
-                        }
-                    } else {
-                        SettingRow(
-                            "ES-DE folder",
-                            "Link the ES-DE folder (the one with logs inside) so WalkThor knows each game you start",
-                            divider = false,
-                            buttons = { PillButton("Link…") { actions.onLinkEsde() } },
-                        )
-                    }
-                }
-                SettingsNote(
-                    "In ES-DE: Main menu → Other settings → turn on Custom Event Scripts and Debug Mode, so it logs " +
-                        "each game. To have WalkThor open when a game starts, turn on Emulators → Open when an emulator starts.",
-                )
+                SettingsNote("WalkThor only reads the names in that folder, never the games themselves. Add a guide to a game from your library.")
             }
             SettingsSection.ABOUT -> {
                 SettingsGroup(null) {
@@ -699,7 +596,6 @@ private fun SettingsScreen(
             }
         }
     }
-    if (showAccounts) ScraperAccountsDialog(onDismiss = { showAccounts = false })
     if (showEmulators) EmulatorsDialog(onDismiss = { showEmulators = false })
     if (pickDim) {
         AlertDialog(
@@ -761,8 +657,8 @@ private fun SettingsScreen(
                         )
                     }
                     Text(
-                        if (dimLevel >= 0.995f) "Fully black — only the time, play time and battery stay lit."
-                        else "The time, play time and battery always stay at full brightness.",
+                        if (dimLevel >= 0.995f) "Fully black: only the tabs and the time stay lit."
+                        else "The tabs and the time always stay at full brightness.",
                         color = BookColors.TextMuted,
                         fontSize = 12.sp,
                     )
@@ -774,31 +670,36 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -> Unit, onSetupGuide: () -> Unit) {
+private fun EmptyShelf(onImport: () -> Unit, romsLinked: Boolean, onLinkRoms: () -> Unit, onSetupGuide: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("❦", fontSize = 28.sp, color = BookColors.Brass)
-        Spacer(Modifier.height(6.dp))
-        Text("No guides yet", fontFamily = DisplayFont, fontSize = 22.sp, color = BookColors.Text)
+        Text(if (romsLinked) "No guides yet" else "Nothing here yet", fontFamily = DisplayFont, fontSize = 22.sp, color = BookColors.Text)
         Spacer(Modifier.height(6.dp))
         Text(
-            "Add a PDF or TXT walkthrough and it becomes a book you can flip through and search.",
+            if (romsLinked) "Add a PDF or TXT walkthrough and it becomes a book you can flip through and search."
+            else "Link your ROMs folder to list your games by system, and add a PDF or TXT walkthrough for any of them.",
             textAlign = TextAlign.Center,
             color = BookColors.TextMuted,
             modifier = Modifier.width(360.dp),
         )
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(
-                onClick = onImport,
-                colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
-            ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
-            if (!artLinked) {
-                OutlinedButton(onClick = onLinkArt) { Text("Link artwork folder", color = BookColors.Text) }
+            if (!romsLinked) {
+                Button(
+                    onClick = onLinkRoms,
+                    colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
+                ) { Text("Link ROMs folder", fontWeight = FontWeight.SemiBold) }
+                OutlinedButton(onClick = onImport) { Text("Add guide", color = BookColors.Text) }
+            } else {
+                Button(
+                    onClick = onImport,
+                    colors = ButtonDefaults.buttonColors(containerColor = BookColors.ButtonFill, contentColor = BookColors.Text),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
+                ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
             }
         }
         TextButton(onClick = onSetupGuide, modifier = Modifier.padding(top = 6.dp)) { Text("How to set up WalkThor") }
@@ -807,7 +708,7 @@ private fun EmptyShelf(onImport: () -> Unit, artLinked: Boolean, onLinkArt: () -
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> Unit) {
+private fun ShelfItem(book: Book, actions: LibraryActions) {
     var menu by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -848,7 +749,6 @@ private fun ShelfItem(book: Book, actions: LibraryActions, onChooseCover: () -> 
                     Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = BookColors.TextMuted, modifier = Modifier.size(18.dp))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text("Choose cover…") }, onClick = { menu = false; onChooseCover() })
                     DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
                     DropdownMenuItem(text = { Text("Remove guide") }, onClick = { menu = false; confirmDelete = true })
                 }
@@ -958,149 +858,6 @@ private fun GeneratedCover(book: Book, k: Float, showTitle: Boolean) {
     }
 }
 
-
-@Composable
-private fun CoverPicker(book: Book, artLinked: Boolean, artCount: Int, actions: LibraryActions, onDismiss: () -> Unit) {
-    var query by remember(book.id) { mutableStateOf(book.title) }
-    val matches by produceState<List<ArtMatch>?>(null, query, artLinked) {
-        value = null
-        delay(200) // let typing settle
-        value = if (artLinked) actions.suggestions(query) else emptyList()
-    }
-
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(
-            Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.92f)
-                .background(BookColors.Surface, RoundedCornerShape(16.dp))
-                .border(1.dp, BookColors.Hairline, RoundedCornerShape(16.dp))
-                .padding(16.dp)
-        ) {
-            Text("Cover", style = EyebrowStyle)
-            Text(
-                book.title,
-                fontFamily = DisplayFont,
-                fontSize = 18.sp,
-                color = BookColors.Text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(10.dp))
-            if (artLinked) {
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    textStyle = TextStyle(fontFamily = AppFont.family, color = BookColors.Text, fontSize = 14.sp),
-                    cursorBrush = SolidColor(BookColors.Brass),
-                    decorationBox = { inner ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(36.dp)
-                                .background(BookColors.Ink, RoundedCornerShape(18.dp))
-                                .border(1.dp, BookColors.Hairline, RoundedCornerShape(18.dp))
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Filled.Search, contentDescription = null, tint = BookColors.TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Box(Modifier.weight(1f)) { inner() }
-                        }
-                    },
-                )
-                Text(
-                    when {
-                        artCount == 0 -> "No images indexed yet — try Settings → Artwork → Rescan, or link a different folder."
-                        matches.isNullOrEmpty() -> "Searched $artCount images"
-                        else -> "Closest matches from $artCount images · tap one to use it"
-                    },
-                    fontSize = 11.sp,
-                    color = BookColors.TextMuted,
-                    modifier = Modifier.padding(top = 6.dp, start = 4.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    val list = matches
-                    when {
-                        list == null -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = BookColors.Brass, strokeWidth = 2.dp)
-                        list.isEmpty() -> Text(
-                            "No artwork matches “$query”. Try the game's name, or pick an image file.",
-                            color = BookColors.TextMuted,
-                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                            textAlign = TextAlign.Center,
-                        )
-                        else -> LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 96.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            items(list, key = { it.image.uri }) { m ->
-                                Column(
-                                    Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .clickable { actions.onSetCover(book, Uri.parse(m.image.uri)); onDismiss() }
-                                ) {
-                                    AsyncImage(
-                                        model = Uri.parse(m.image.uri),
-                                        contentDescription = m.image.name,
-                                        contentScale = ContentScale.Fit,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f)
-                                            .background(BookColors.Ink, RoundedCornerShape(6.dp)),
-                                    )
-                                    Text(
-                                        m.image.name,
-                                        fontSize = 10.sp,
-                                        color = BookColors.Text,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(top = 3.dp),
-                                    )
-                                    Text(
-                                        m.image.folder.substringAfterLast('/').ifEmpty { "—" },
-                                        fontSize = 10.sp,
-                                        color = BookColors.TextMuted,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                Column(
-                    Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        "Link your Cocoon or ES-DE artwork folder to pick from the box art you've already scraped.",
-                        color = BookColors.TextMuted,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(360.dp),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedButton(onClick = { onDismiss(); actions.onLinkArtFolder() }) {
-                        Text("Link artwork folder", color = BookColors.Text)
-                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { onDismiss(); actions.onPickCoverFile(book) }) { Text("Pick image file…") }
-                if (book.cover != null) {
-                    TextButton(onClick = { actions.onClearCover(book); onDismiss() }) { Text("Remove cover") }
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
-            }
-        }
-    }
-}
 
 @Composable
 fun ImportDialogs(
