@@ -4,6 +4,8 @@
 
     <!-- Only for scraping artwork, and only when you've added a scraper account and start a scrape. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- A short buzz when a button shortcut is used. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <!-- Bring WalkThor forward when you tap its search field while a game has focus. -->

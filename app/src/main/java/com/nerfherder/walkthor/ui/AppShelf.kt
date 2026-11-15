@@ -131,7 +131,7 @@ internal fun AppShelf(
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(BookColors.Text)
                             .clickable {
                                 closing = null
-                                com.nerfherder.walkthor.CloseApps.closeAllFromButton(context)
+                                com.nerfherder.walkthor.CloseApps.closeAllFromButton(context, ask = false)
                             }.padding(horizontal = 14.dp, vertical = 7.dp),
                     )
                 }

@@ -314,13 +314,20 @@ class SwipeGestureService : AccessibilityService() {
         ) {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
         }
-        // The ring before "close all apps" is filling: Back cancels it (and does nothing else).
-        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && CloseCountdown.active) {
-            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                AynButton.lastBackAt = 0L
-                CloseCountdown.cancel()
+        // "Close all apps?" is up: Start goes ahead; Back, B or Select stop. These presses go
+        // nowhere else (the game is hidden under the black anyway).
+        if (CloseCountdown.active) {
+            val k = event.keyCode
+            val yes = k == android.view.KeyEvent.KEYCODE_BUTTON_START
+            val no = k == android.view.KeyEvent.KEYCODE_BACK || k == android.view.KeyEvent.KEYCODE_BUTTON_B ||
+                k == android.view.KeyEvent.KEYCODE_BUTTON_SELECT
+            if (yes || no) {
+                if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    AynButton.lastBackAt = 0L
+                    if (yes) CloseCountdown.confirm() else CloseCountdown.cancel()
+                }
+                return true
             }
-            return true
         }
         // Back pressed twice quickly: its shortcut, if it has one. Both presses still go on as usual.
         if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_DOWN &&

@@ -7,6 +7,9 @@ import android.net.Uri
 import android.os.BatteryManager
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.hasSetTextAction
@@ -625,6 +628,25 @@ class StoreScreenshots {
     }
 
     @Test
+    fun closeAllPrompt() {
+        // The question's own drawing, as it shows on the black top screen.
+        content {
+            androidx.compose.ui.viewinterop.AndroidView(
+                factory = { ctx ->
+                    val cls = Class.forName("com.nerfherder.walkthor.CloseCountdown\$Face")
+                    val c = cls.getDeclaredConstructor(android.content.Context::class.java, Boolean::class.javaPrimitiveType).apply { isAccessible = true }
+                    (c.newInstance(ctx, true) as android.view.View).also { v ->
+                        cls.getDeclaredField("fade").apply { isAccessible = true }.setFloat(v, 1f)
+                    }
+                },
+                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+            )
+        }
+        settle()
+        shot("check-close-all-prompt")
+    }
+
+    @Test
     fun guideTab() {
         content {
             androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize()) {
@@ -644,8 +666,10 @@ class StoreScreenshots {
     private fun GameHome() {
         androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize()) {
             tabBar(com.nerfherder.walkthor.ui.GameTab.HOME)
-            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {
-                com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = fakeApps().take(6), previewTime = "7:42" to "Tuesday, Nov 3")
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxHeight().aspectRatio(620f / 540f, matchHeightConstraintsFirst = true)) {
+                    com.nerfherder.walkthor.ui.HomeScreen(onOpenWalkThor = {}, onOpenApp = {}, previewApps = fakeApps().take(6), previewTime = "7:42" to "Tuesday, Nov 3")
+                }
             }
         }
     }

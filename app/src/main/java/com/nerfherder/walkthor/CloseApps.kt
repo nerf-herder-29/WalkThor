@@ -25,8 +25,12 @@ object CloseApps {
         SwipeGestureService.instance?.get()?.let { s -> runCatching { s.setKeyWatch(com.nerfherder.walkthor.controls.ControllerInput.watching.value) } }
     }
 
-    /** From the Back button: closes everything and says what happened in a short message on screen. */
-    fun closeAllFromButton(context: Context) {
+    /**
+     * From a shortcut or the dock: asks first (the top screen goes black with a warning), then
+     * closes everything and says what happened in a short message. [ask] false when you've
+     * already said yes somewhere else.
+     */
+    fun closeAllFromButton(context: Context, ask: Boolean = true) {
         val app = context.applicationContext
         val go = {
             closeAll(app) { message, detail ->
@@ -34,11 +38,11 @@ object CloseApps {
                 ScreenMessage.show(if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message)
             }
         }
-        // A ring fills first, so a slip can be taken back (Back, or a tap, cancels).
+        // "Close all apps?" first, so a slip can be taken back.
         val service = SwipeGestureService.instance?.get()
         if (service == null) { go(); return }
         runCatching { Drawer.hide() }
-        CloseCountdown.start(service) { go() }
+        CloseCountdown.start(service, ask) { go() }
     }
 
     /** What happened last time, for Diagnostics. */

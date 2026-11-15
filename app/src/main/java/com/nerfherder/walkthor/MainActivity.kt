@@ -20,6 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -700,13 +703,17 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                     }
                     Column(Modifier.fillMaxSize()) {
                         bar()
-                        Box(Modifier.weight(1f)) {
+                        // Kept at Home's own shape (the tab bar takes some height), so it looks
+                        // exactly as it does without a game, just a little smaller.
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                          Box(Modifier.fillMaxHeight().aspectRatio(620f / 540f, matchHeightConstraintsFirst = true)) {
                             com.nerfherder.walkthor.ui.HomeScreen(
                                 onOpenWalkThor = { libraryOpen = true },
                                 onOpenApp = { pkg ->
                                     com.nerfherder.walkthor.ui.openFromHome(context, pkg, AppState.drawerDisplayId ?: AppState.activityDisplayId)
                                 },
                             )
+                          }
                         }
                     }
                 }

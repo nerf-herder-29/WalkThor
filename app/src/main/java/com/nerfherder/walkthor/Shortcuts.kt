@@ -91,24 +91,42 @@ object Shortcuts {
     fun rumbleOn(c: Context) = prefs(c).getBoolean("shortcutRumble", true)
     fun setRumble(c: Context, on: Boolean) = prefs(c).edit().putBoolean("shortcutRumble", on).apply()
 
-    /** A short buzz: the device's own motor, or else the built-in controller's. */
+    /** Why the last rumble didn't happen, for Diagnostics; null when it did. */
+    @Volatile var rumbleProblem: String? = null
+
+    /** A short buzz on every motor there is: the device's own, and the built-in controller's. */
     fun rumble(c: Context) {
         if (!rumbleOn(c)) return
-        runCatching {
-            val effect = VibrationEffect.createOneShot(45, VibrationEffect.DEFAULT_AMPLITUDE)
-            @Suppress("DEPRECATION")
-            val own = c.getSystemService(Vibrator::class.java)?.takeIf { it.hasVibrator() }
-            val motor = own ?: InputDevice.getDeviceIds().asSequence()
-                .mapNotNull { InputDevice.getDevice(it) }
-                .filter { (it.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD }
-                .map { @Suppress("DEPRECATION") it.vibrator }
-                .firstOrNull { it.hasVibrator() }
-                ?: return
-            if (Build.VERSION.SDK_INT >= 33) {
-                // Marked as accessibility feedback, which Android lets a service give while another app is in front.
-                motor.vibrate(effect, android.os.VibrationAttributes.Builder().setUsage(android.os.VibrationAttributes.USAGE_ACCESSIBILITY).build())
-            } else motor.vibrate(effect)
+        val effect = VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE)
+        val motors = buildList {
+            runCatching {
+                if (Build.VERSION.SDK_INT >= 31) c.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator?.let(::add)
+                else @Suppress("DEPRECATION") c.getSystemService(Vibrator::class.java)?.let(::add)
+            }
+            runCatching {
+                InputDevice.getDeviceIds().forEach { id ->
+                    val d = InputDevice.getDevice(id) ?: return@forEach
+                    if ((d.sources and InputDevice.SOURCE_GAMEPAD) != InputDevice.SOURCE_GAMEPAD) return@forEach
+                    if (Build.VERSION.SDK_INT >= 31) d.vibratorManager.vibratorIds.forEach { v -> add(d.vibratorManager.getVibrator(v)) }
+                    else @Suppress("DEPRECATION") add(d.vibrator)
+                }
+            }
+        }.filter { runCatching { it.hasVibrator() }.getOrDefault(false) }
+        if (motors.isEmpty()) { rumbleProblem = "no vibration motor found"; return }
+        val problems = mutableListOf<String>()
+        motors.forEach { motor ->
+            runCatching {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    // Marked as accessibility feedback, which Android lets a service give while another app is in front.
+                    motor.vibrate(effect, android.os.VibrationAttributes.Builder().setUsage(android.os.VibrationAttributes.USAGE_ACCESSIBILITY).build())
+                } else {
+                    @Suppress("DEPRECATION")
+                    motor.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY).build())
+                }
+            }.onFailure { problems += "${it.javaClass.simpleName}: ${it.message?.take(80)}" }
         }
+        rumbleProblem = if (problems.size == motors.size) problems.joinToString("; ") else null
+        rumbleProblem?.let { AynButton.note("rumble: $it") }
     }
 
     // ---- doing it ----

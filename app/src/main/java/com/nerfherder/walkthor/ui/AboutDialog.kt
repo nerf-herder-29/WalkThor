@@ -229,6 +229,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 // If Android has closed WalkThor to free memory (heavy games), what happened.
                 remember { com.nerfherder.walkthor.Revive.lastNote(context) }?.let { Body(it) }
                 com.nerfherder.walkthor.CloseApps.lastNote?.let { Body("Close all apps: $it") }
+                com.nerfherder.walkthor.Shortcuts.rumbleProblem?.let { Body("Shortcut rumble: $it") }
                 // What the quick controls on Now playing can do on this device.
                 val controls by androidx.compose.runtime.produceState(emptyList<String>()) {
                     value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.nerfherder.walkthor.ScreenControls.report(context) }
