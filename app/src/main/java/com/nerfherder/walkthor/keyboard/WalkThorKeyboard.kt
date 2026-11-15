@@ -34,14 +34,71 @@ import com.nerfherder.walkthor.SwipeLauncher
  * What you type goes only to the app you're typing in; nothing is kept or sent anywhere.
  */
 class WalkThorKeyboard : InputMethodService() {
+    /** The keys in Android's own keyboard window: only used when they can't go on the bottom screen. */
     private var keys: KeysView? = null
+    /** The keys drawn over the whole bottom screen by WalkThor's service. */
+    private var onBottom: Pair<WindowManager, KeysView>? = null
 
-    override fun onCreateInputView(): View = KeysView(this).also { keys = it }
+    override fun onCreateInputView(): View = KeysView(this, this, fill = false).also { keys = it }
 
+    /**
+     * Android puts a keyboard on whichever screen the app being typed in is on, at whatever size
+     * it likes. So that it's always the whole bottom screen, WalkThor's service draws the keys
+     * there itself, and the keyboard's own window is left empty (no height). Without the service
+     * (accessibility access off) or a second screen, the keys go in the usual window.
+     */
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        keys?.start(info)
+        val shown = runCatching { showOnBottom() }.getOrDefault(false)
+        keys?.visibility = if (shown) View.GONE else View.VISIBLE
+        (onBottom?.second ?: keys)?.start(info)
     }
+
+    private fun showOnBottom(): Boolean {
+        onBottom?.let { return true }
+        val service = com.nerfherder.walkthor.SwipeGestureService.instance?.get() ?: return false
+        val display = DisplayHelper.bottomDisplay(service) ?: return false
+        val ctx = service.createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+        val wm = ctx.getSystemService(WindowManager::class.java) ?: return false
+        val view = KeysView(ctx, this, fill = true)
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            // Never takes the focus: that stays with the text box being typed in.
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            android.graphics.PixelFormat.OPAQUE,
+        ).apply {
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            title = "WalkThor keyboard"
+        }
+        wm.addView(view, params)
+        onBottom = wm to view
+        return true
+    }
+
+    private fun hideOnBottom() {
+        onBottom?.let { (wm, v) -> runCatching { wm.removeViewImmediate(v) } }
+        onBottom = null
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        hideOnBottom()
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        hideOnBottom()
+    }
+
+    override fun onDestroy() {
+        hideOnBottom()
+        super.onDestroy()
+    }
+
+    /** Puts the keyboard away (the Back button does too). */
+    internal fun putAway() = requestHideSelf(0)
 
     /** Never Android's "extract" mode (a text box of its own above the keys). */
     override fun onEvaluateFullscreenMode() = false
@@ -117,7 +174,10 @@ private class Key(val label: String, val kind: Kind, val weight: Float = 1f) {
 }
 
 /** The keys themselves, drawn and handled by hand: light, and quick to come up. */
-private class KeysView(private val service: WalkThorKeyboard) : View(service) {
+private class KeysView(context: Context, private val service: WalkThorKeyboard, private val fill: Boolean) : View(context) {
+    // Reported as a plain view, so WalkThor doesn't take its own keys for an app coming to the front.
+    override fun getAccessibilityClassName(): CharSequence = "android.view.View"
+
     private val main = Handler(Looper.getMainLooper())
     private fun dp(x: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, resources.displayMetrics)
 
@@ -181,9 +241,11 @@ private class KeysView(private val service: WalkThorKeyboard) : View(service) {
     /** Fills the bottom screen; on any other screen, a little under half of it. */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = MeasureSpec.getSize(widthMeasureSpec)
+        // Drawn over the bottom screen by WalkThor's service: all of it.
+        if (fill) { setMeasuredDimension(w, MeasureSpec.getSize(heightMeasureSpec)); return }
         val screen = resources.displayMetrics.heightPixels
         @Suppress("DEPRECATION")
-        val here = runCatching { context.getSystemService(WindowManager::class.java)?.defaultDisplay?.displayId }.getOrNull()
+        val here = display?.displayId ?: runCatching { context.getSystemService(WindowManager::class.java)?.defaultDisplay?.displayId }.getOrNull()
         val bottom = runCatching { DisplayHelper.bottomDisplay(context)?.displayId }.getOrNull()
         val h = if (here != null && here == bottom) screen else (screen * 0.46f).toInt()
         setMeasuredDimension(w, h)
@@ -304,6 +366,7 @@ private class KeysView(private val service: WalkThorKeyboard) : View(service) {
                 when (pressed.remove(e.getPointerId(e.actionIndex))?.kind) {
                     Kind.BACK -> main.removeCallbacks(repeat)
                     Kind.SPACE -> main.removeCallbacks(spaceHeld)
+                    Kind.PAGE -> main.removeCallbacks(pageHeld)
                     else -> Unit
                 }
             }
@@ -311,6 +374,7 @@ private class KeysView(private val service: WalkThorKeyboard) : View(service) {
                 pressed.clear()
                 main.removeCallbacks(repeat)
                 main.removeCallbacks(spaceHeld)
+                main.removeCallbacks(pageHeld)
             }
         }
         invalidate()
@@ -323,6 +387,9 @@ private class KeysView(private val service: WalkThorKeyboard) : View(service) {
             main.postDelayed(this, 45)
         }
     }
+
+    /** "#+=" held: the keyboard goes away (as the Back button does). */
+    private val pageHeld = Runnable { service.putAway() }
 
     /** Space held: Android's keyboard picker, to switch to another keyboard. */
     private val spaceHeld = Runnable {
@@ -349,6 +416,8 @@ private class KeysView(private val service: WalkThorKeyboard) : View(service) {
                 main.postDelayed(repeat, 400)
             }
             Kind.PAGE -> {
+                main.removeCallbacks(pageHeld)
+                main.postDelayed(pageHeld, 650)
                 symbols = !symbols
                 val held = HashMap(pressed)
                 build()
