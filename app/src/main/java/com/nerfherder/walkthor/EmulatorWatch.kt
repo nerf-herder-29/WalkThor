@@ -189,9 +189,6 @@ object EmulatorWatch {
     /** The app last seen coming to the front on each screen (whatever the settings). */
     private val frontByDisplay = java.util.concurrent.ConcurrentHashMap<Int, String>()
 
-    /** The app in front on [displayId], as last seen; null if unknown. */
-    fun frontOn(displayId: Int): String? = frontByDisplay[displayId]
-
     /** From the accessibility service: notes which app came to the front on which screen. */
     fun noteFront(context: Context, event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || android.os.Build.VERSION.SDK_INT < 30) return
