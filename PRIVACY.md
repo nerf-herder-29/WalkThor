@@ -84,7 +84,7 @@ Everything else stays on your device.
 - **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
   accessibility service is handed each hardware button press just before your game gets it, so it
   can spot the presses you chose (the AYN button, which is Home from "gpio-keys" with scan code 194;
-  Back pressed twice; Start and Select held together). The AYN button's presses go to WalkThor
+  Back pressed twice or held). The AYN button's presses go to WalkThor
   (or on to AYN's own drawer, if you leave them to it); every other press, including the
   controller's Home button, passes straight on to your game. Nothing is recorded, stored or sent.
   A shortcut makes the device or controller rumble briefly, if that's on.

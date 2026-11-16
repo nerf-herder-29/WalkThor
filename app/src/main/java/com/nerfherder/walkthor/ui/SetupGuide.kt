@@ -90,7 +90,7 @@ fun SetupGuideDialog(
                 Step(
                     2, "Choose your shortcuts", null, null, null,
                     "Settings → Shortcuts: what a tap, a double press and a hold of the AYN button do, and Back pressed " +
-                        "twice, and Start and Select held together. Set the AYN button's tap to Open the drawer.",
+                        "twice or held. Set the AYN button's tap to Open the drawer.",
                 )
                 Step(
                     3, "Link your ROMs folder", state.romsLinked, "Link folder", onLinkRoms,

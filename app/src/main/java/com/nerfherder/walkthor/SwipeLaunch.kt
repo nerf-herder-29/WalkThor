@@ -340,14 +340,15 @@ class SwipeGestureService : AccessibilityService() {
                 AynButton.lastBackAt = t
             }
         }
-        // Start and Select held together: their shortcut, if they have one. The game still gets both.
-        if (event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_START || event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_SELECT) {
-            val down = event.action == android.view.KeyEvent.ACTION_DOWN
-            if (event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_START) startDown = down else selectDown = down
-            handler.removeCallbacks(comboHold)
-            if (down && startDown && selectDown && Shortcuts.get(this, Shortcuts.Trigger.START_SELECT) != Shortcuts.Action.NOTHING) {
-                handler.postDelayed(comboHold, Shortcuts.COMBO_HOLD_MS)
+        // Back held: its shortcut, if it has one. The press still goes on as usual.
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+                Shortcuts.get(this, Shortcuts.Trigger.BACK_HOLD) != Shortcuts.Action.NOTHING
+            ) {
+                handler.removeCallbacks(backHold)
+                handler.postDelayed(backHold, AynButton.HOLD_MS)
             }
+            if (event.action == android.view.KeyEvent.ACTION_UP) handler.removeCallbacks(backHold)
         }
         if (AynButton.on && AynButton.isAynButton(event)) {
             // A tap, a double tap and a hold each do what Settings → Shortcuts says. A tap waits a
@@ -519,12 +520,10 @@ class SwipeGestureService : AccessibilityService() {
 
     private fun isWalkThorUpOnBottom() = DisplayHelper.bottomDisplay(this)?.displayId.let { it != null && AppState.resumedDisplayId == it }
 
-    private var startDown = false
-    private var selectDown = false
-
-    /** Start and Select have been held together long enough. */
-    private val comboHold = Runnable {
-        if (startDown && selectDown) runCatching { Shortcuts.fire(this, Shortcuts.Trigger.START_SELECT) }
+    /** Back has been held long enough (a press that follows doesn't count as a double press). */
+    private val backHold = Runnable {
+        AynButton.lastBackAt = 0L
+        runCatching { Shortcuts.fire(this, Shortcuts.Trigger.BACK_HOLD) }
     }
 
     /** The AYN button held down. */

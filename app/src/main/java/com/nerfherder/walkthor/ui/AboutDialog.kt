@@ -82,7 +82,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 Text("What it accesses", style = EyebrowStyle)
                 Text(
                     "Your button presses, for two things only: the shortcuts you set in Settings → Shortcuts (the AYN " +
-                        "button, Back pressed twice, Start and Select held together), and, only if you agree on the " +
+                        "button, Back pressed twice or held), and, only if you agree on the " +
                         "Controls screen and only while that screen is open, lighting up the matching buttons. Every " +
                         "press but the AYN button's is passed straight on to your game; none is recorded or stored. " +
                         "And which app is in front on each screen, to tell when a game is running.",

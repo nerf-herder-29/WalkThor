@@ -9,7 +9,7 @@ import android.view.InputDevice
 
 /**
  * Button shortcuts: each press WalkThor's accessibility service can tell apart (a tap, double
- * press or hold of the AYN button, Back pressed twice, Start and Select held together) does the
+ * press or hold of the AYN button, Back pressed twice, Back held) does the
  * thing you chose for it in Settings → Shortcuts, with a short rumble as it does.
  */
 object Shortcuts {
@@ -34,11 +34,9 @@ object Shortcuts {
         AYN_DOUBLE("aynDouble", "AYN button: double press", "Two quick taps"),
         AYN_HOLD("aynHold", "AYN button: hold", "Held for over half a second"),
         BACK_DOUBLE("backDouble", "Back button: double press", "Two presses within 0.4 s. Both still go to the app in front"),
-        START_SELECT("startSelect", "Start + Select: hold", "Both held for a second. The game still gets them"),
+        BACK_HOLD("backHold", "Back button: hold", "Held for over half a second. The app in front still gets the press"),
     }
 
-    /** How long Start and Select are held together. */
-    const val COMBO_HOLD_MS = 1_000L
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor shortcuts").apply { isDaemon = true } }
     private val cache = java.util.concurrent.ConcurrentHashMap<Trigger, Action>()
@@ -62,7 +60,9 @@ object Shortcuts {
             Trigger.AYN_DOUBLE -> Action.AYN_DRAWER
             Trigger.AYN_HOLD -> if (prefs(c).getBoolean("bottomOffHold", false)) Action.DIM else Action.NOTHING
             Trigger.BACK_DOUBLE -> if (prefs(c).getBoolean("tripleClose", false)) Action.CLOSE_ALL else Action.NOTHING
-            Trigger.START_SELECT -> Action.NOTHING
+            // What Start + Select held together did before, if you'd set it.
+            Trigger.BACK_HOLD -> prefs(c).getString("shortcut.startSelect", null)
+                ?.let { n -> Action.entries.firstOrNull { it.name == n } }?.takeIf { it in actionsFor(t) } ?: Action.NOTHING
         }
         cache[t] = action
         return action
@@ -85,7 +85,7 @@ object Shortcuts {
 
     /** A shortcut other than the AYN button's needs WalkThor to hear button presses. */
     fun wantsKeys(c: Context): Boolean =
-        get(c, Trigger.BACK_DOUBLE) != Action.NOTHING || get(c, Trigger.START_SELECT) != Action.NOTHING
+        get(c, Trigger.BACK_DOUBLE) != Action.NOTHING || get(c, Trigger.BACK_HOLD) != Action.NOTHING
 
     // ---- rumble ----
 
