@@ -314,6 +314,11 @@ class SwipeGestureService : AccessibilityService() {
         ) {
             handler.post { runCatching { Drawer.hide(); AynButton.note("Home button → drawer put away") } }
         }
+        // Back let go: it wasn't a hold. Checked first, since the countdown below keeps the release
+        // to itself (a double press that starts closing all apps would otherwise count as a hold).
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_UP) {
+            handler.removeCallbacks(backHold)
+        }
         // "Closing all apps" is counting down: Back, B or Select cancel it. Those presses go
         // nowhere else (the game is hidden under the black anyway).
         if (CloseCountdown.active) {
@@ -329,26 +334,27 @@ class SwipeGestureService : AccessibilityService() {
             }
         }
         // Back pressed twice quickly: its shortcut, if it has one. Both presses still go on as usual.
+        var backDoubled = false
         if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_DOWN &&
             event.repeatCount == 0 && Shortcuts.get(this, Shortcuts.Trigger.BACK_DOUBLE) != Shortcuts.Action.NOTHING
         ) {
             val t = android.os.SystemClock.uptimeMillis()
             if (t - AynButton.lastBackAt < AynButton.DOUBLE_BACK_MS) {
                 AynButton.lastBackAt = 0L
+                backDoubled = true
+                handler.removeCallbacks(backHold)
                 handler.post { runCatching { Shortcuts.fire(this, Shortcuts.Trigger.BACK_DOUBLE) } }
             } else {
                 AynButton.lastBackAt = t
             }
         }
-        // Back held: its shortcut, if it has one. The press still goes on as usual.
-        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
-            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
-                Shortcuts.get(this, Shortcuts.Trigger.BACK_HOLD) != Shortcuts.Action.NOTHING
-            ) {
-                handler.removeCallbacks(backHold)
-                handler.postDelayed(backHold, AynButton.HOLD_MS)
-            }
-            if (event.action == android.view.KeyEvent.ACTION_UP) handler.removeCallbacks(backHold)
+        // Back held: its shortcut, if it has one. The press still goes on as usual. The second
+        // press of a double press is never a hold, however long it's held.
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_DOWN &&
+            event.repeatCount == 0 && !backDoubled && Shortcuts.get(this, Shortcuts.Trigger.BACK_HOLD) != Shortcuts.Action.NOTHING
+        ) {
+            handler.removeCallbacks(backHold)
+            handler.postDelayed(backHold, AynButton.HOLD_MS)
         }
         if (AynButton.on && AynButton.isAynButton(event)) {
             // A tap, a double tap and a hold each do what Settings → Shortcuts says. A tap waits a
