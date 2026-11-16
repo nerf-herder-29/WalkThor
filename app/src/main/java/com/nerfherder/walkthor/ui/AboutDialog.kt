@@ -255,6 +255,21 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         }) { Text("Share log") }
                     }
                 }
+                // Memory during games: free memory and the bottom screen's apps being closed and restarted.
+                var memLog by remember { mutableStateOf(com.nerfherder.walkthor.MemoryWatch.logged()) }
+                Text("Memory during games", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+                Body(
+                    "While a game is in front, WalkThor notes the free memory every few seconds and, with Force SELinux off, " +
+                        "when the bottom screen's apps are closed by Android and start again. Play until the bottom screen " +
+                        "flashes, then share this."
+                )
+                com.nerfherder.walkthor.MemoryWatch.summary()?.let { Body(it) }
+                memLog.takeLast(14).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
+                Row {
+                    TextButton(onClick = { memLog = com.nerfherder.walkthor.MemoryWatch.logged() }) { Text("Refresh") }
+                    TextButton(onClick = { Thread({ com.nerfherder.walkthor.MemoryWatch.share(context) }, "WalkThor memory share").start() }) { Text("Share log") }
+                    TextButton(onClick = { com.nerfherder.walkthor.MemoryWatch.clear(context); memLog = emptyList() }) { Text("Clear", color = BookColors.TextMuted) }
+                }
                 // If the drawer couldn't open, why (WalkThor opened as an app instead).
                 com.nerfherder.walkthor.Drawer.problem.collectAsState().value?.let { Body(it) }
                 // Every recent time WalkThor closed, and why (for finding a pattern).

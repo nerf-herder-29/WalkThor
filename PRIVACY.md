@@ -1,6 +1,6 @@
 # WalkThor privacy policy
 
-_Last updated: November 15, 2026_
+_Last updated: November 16, 2026_
 
 **WalkThor does not collect or share any data.** It has no analytics and no ads. It goes online
 for one thing only: downloading a speech model for Captions, once, if you ask it to (see below).
@@ -80,6 +80,12 @@ Everything else stays on your device.
   stored except the levels you chose, and nothing is sent.
   The Controls tab (and Home, if you add it) sets the performance mode, fan mode and
   controller layout through the same system helper, only when you pick one.
+
+- **A memory log during games, kept on the device.** While one of your emulators is in front,
+  WalkThor notes the free memory every few seconds and, through the same system helper, when the
+  bottom screen's apps (your home app, the app in front there, and WalkThor) are closed by Android
+  and start again, with Android's reason. It's kept in a small file in WalkThor's own storage
+  (the last few hundred lines), shown in About, Diagnostics, and shared only if you press Share log.
 
 - **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
   accessibility service is handed each hardware button press just before your game gets it, so it

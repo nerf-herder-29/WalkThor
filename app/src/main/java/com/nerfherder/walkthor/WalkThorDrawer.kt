@@ -95,6 +95,7 @@ object Drawer {
             com.nerfherder.walkthor.ui.PageStyle.init(service)
             com.nerfherder.walkthor.ui.AutoDim.init(service)
         }
+        main.removeCallbacks(takeDown)
         return try {
             val d = current?.takeIf { it.displayId == displayId } ?: run {
                 current?.destroy()
@@ -111,6 +112,26 @@ object Drawer {
     }
 
     fun hide() { current?.hide() }
+
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Put away for a while during a game: taken down to give the game its memory (built again on the next open). */
+    private val takeDown = Runnable {
+        if (!shown.value && current != null && gameInFront()) {
+            runCatching { destroy() }
+            MemoryWatch.noteDrawerTakenDown()
+        }
+    }
+
+    /** The drawer was put away: during a game, it's taken down after a while. */
+    internal fun afterHide() {
+        main.removeCallbacks(takeDown)
+        main.postDelayed(takeDown, MemoryWatch.DRAWER_KEEP_MS)
+    }
+
+    /** Android is short of memory: if the drawer's away, take it down now. */
+    fun trimIfHidden() {
+        if (!shown.value && current != null) { main.removeCallbacks(takeDown); runCatching { destroy() } }
+    }
 
     fun destroy() {
         current?.let { d -> runCatching { Revive.noteDrawer(d.host(), false) } }
@@ -243,6 +264,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         AppState.drawerDisplayId = null
         // Put away on purpose: if WalkThor closes now, it stays closed.
         runCatching { Revive.closedOnPurpose(service); Revive.noteDrawer(service, false) }
+        Drawer.afterHide()
     }
 
     /** Slid all the way down: put away (the screens stay as they were for next time). */

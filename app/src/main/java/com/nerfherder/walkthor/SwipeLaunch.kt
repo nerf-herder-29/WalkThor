@@ -160,6 +160,7 @@ class SwipeGestureService : AccessibilityService() {
         instance = java.lang.ref.WeakReference(this)
         CrashLog.install(this)
         runCatching { ExitHistory.collect(this) }
+        runCatching { MemoryWatch.start(this) }
         AynButton.load(this)
         applyEventTypes()
         // AYN puts its own stick lights back when the screen wakes: put yours back after it.
@@ -433,6 +434,14 @@ class SwipeGestureService : AccessibilityService() {
     private val lightsWatch = Runnable {
         runCatching { StickLights.touchUp(this@SwipeGestureService, "after wake") }
             .onFailure { StickLights.log("after wake: ${it.javaClass.simpleName} ${it.message}") }
+    }
+
+    /** Android is short of memory: let go of what WalkThor can rebuild, and note it. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        runCatching { MemoryWatch.trimRequested(this, level) }
+        @Suppress("DEPRECATION")
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && gameInFront()) runCatching { Drawer.trimIfHidden() }
     }
 
     override fun onDestroy() {

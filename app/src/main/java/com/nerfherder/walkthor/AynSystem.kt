@@ -56,6 +56,9 @@ object AynSystem {
         }
     }
 
+    /** Runs [command] as the system and gives back what it printed; null if the helper isn't usable. Not on the main thread. */
+    fun shell(command: String): String? = if (works == false) null else run(command)
+
     /** Whether the helper works here (checked once it succeeds; retried now and then if not). Not on the main thread. */
     fun available(): Boolean {
         works?.let { if (it) return true }
