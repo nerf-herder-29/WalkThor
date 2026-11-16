@@ -86,6 +86,10 @@ Everything else stays on your device.
   bottom screen's apps (your home app, the app in front there, and WalkThor) are closed by Android
   and start again, with Android's reason. It's kept in a small file in WalkThor's own storage
   (the last few hundred lines), shown in About, Diagnostics, and shared only if you press Share log.
+  While a game is in front, WalkThor also ranks your home app and itself just below the game for
+  Android's memory killer, through the system helper, so they're closed only after everything
+  else. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
+  were last closed (and the memory killer's own log lines about them) into that same log.
 
 - **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
   accessibility service is handed each hardware button press just before your game gets it, so it

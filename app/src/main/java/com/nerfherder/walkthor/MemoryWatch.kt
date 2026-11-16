@@ -18,6 +18,12 @@ import java.util.Locale
  * again, with Android's reason. Kept in a small file, so it survives WalkThor itself being
  * closed. About & licences → Diagnostics shows it and can share it.
  *
+ * While you play, it also keeps the bottom screen's apps (your home app and WalkThor) next in line
+ * after the game, rather than level with anything else that's visible, so Android's memory killer
+ * takes them only after everything else (through the system helper; the game always stays safest).
+ * And each time WalkThor starts, and as games end, it writes in why Android last closed the home
+ * app and WalkThor, and the memory killer's own records of closing them.
+ *
  * It also makes WalkThor leaner while you play: when a game comes up it lets go of cached pages
  * and images, and the drawer is fully taken down when it's been put away for a while (it's
  * built again the next time you open it).
@@ -37,6 +43,10 @@ object MemoryWatch {
     private var lastFreeMb = -1L
     private var lastWrite = 0L
     private var beats = 0
+
+    /** How high the bottom screen's apps may rank for the memory killer during a game (visible apps are 100; the game 0). */
+    private const val PROTECT_ADJ = 50
+    @Volatile private var protectedNoted = false
 
     // What the last game looked like, for the summary.
     @Volatile private var gameSince = 0L
@@ -67,11 +77,13 @@ object MemoryWatch {
             gameSince = System.currentTimeMillis()
             lowestMb = -1L; lowCount = 0; restarts = 0
             pids.clear()
+            protectedNoted = false
             val mi = memInfo(app)
             note(app, "Game started · free ${mb(mi.availMem)} of ${gb(mi.totalMem)}")
             trim(app, "game started")
         } else if (gameSince > 0) {
             note(app, "Game closed · ${summaryOfGame()}")
+            Thread({ runCatching { closeRecords(app) } }, "WalkThor close records").start()
         }
     }
 
@@ -119,17 +131,87 @@ object MemoryWatch {
             lastFreeMb = free
         }
         watchApps(c)
+        protect(c)
+        if (beats % 10 == 0) closeRecords(c)
+    }
+
+    /** The default home app's package (whatever you use: Cocoon, ES-DE, a launcher…); null if there's none. */
+    private fun homePackage(c: Context): String? = runCatching {
+        c.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            ?.activityInfo?.packageName?.takeIf { it != "android" }
+    }.getOrNull()
+
+    private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
+
+    /**
+     * Keeps the home app and WalkThor ranked just below the game for Android's memory killer
+     * (Android re-ranks apps now and then, so it's put back every few seconds while you play).
+     * Only ever lowers a rank, never raises one.
+     */
+    private fun protect(c: Context) {
+        if (AynSystem.knownAvailable() != true) return
+        val pkgs = listOfNotNull(homePackage(c), c.packageName).filter { PACKAGE.matches(it) }.distinct()
+        val script = pkgs.joinToString(" ") { pkg ->
+            "for p in \$(pidof $pkg); do a=\$(cat /proc/\$p/oom_score_adj); " +
+                "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj && echo $pkg:\$a; fi; done;"
+        }
+        val out = AynSystem.shell(script) ?: return
+        if (!protectedNoted && out.isNotBlank()) {
+            protectedNoted = true
+            val what = out.lines().mapNotNull { l -> l.substringBefore(':').takeIf { it.isNotBlank() }?.let { label(c, it) } }.distinct()
+            note(c, "Kept ${what.joinToString(" and ")} next in line after the game (ranked $PROTECT_ADJ instead of ${out.lines().first().substringAfter(':')})")
+        }
+    }
+
+    /** Where we've got to in Android's records, so each is written in once. */
+    private fun seen(c: Context) = c.getSharedPreferences("memory_watch", Context.MODE_PRIVATE)
+
+    /**
+     * Writes in why Android last closed the home app and WalkThor (from Android's own records), and
+     * the memory killer's records of closing them, if they're newer than what's already written.
+     */
+    private fun closeRecords(c: Context) {
+        if (AynSystem.knownAvailable() != true) return
+        val prefs = seen(c)
+        val pkgs = listOfNotNull(homePackage(c), c.packageName).distinct()
+        // Android's reason, per app.
+        for (pkg in pkgs) runCatching {
+            val out = AynSystem.shell("dumpsys activity exit-info $pkg") ?: return@runCatching
+            val stamp = Regex("timestamp=(\\S+ \\S+)").find(out)?.groupValues?.get(1) ?: return@runCatching
+            if (stamp <= (prefs.getString("exit.$pkg", "") ?: "")) return@runCatching
+            prefs.edit().putString("exit.$pkg", stamp).apply()
+            val first = out.substring(out.indexOf("timestamp=$stamp")).lineSequence().take(4).joinToString(" ")
+            val why = Regex("reason=\\d+ \\(([A-Z_]+)\\)").find(first)?.groupValues?.get(1)?.lowercase()?.replace('_', ' ') ?: "unknown"
+            val desc = Regex("description=([^\\n]*?)(?: state=| trace=|$)").find(first)?.groupValues?.get(1)?.trim()
+                ?.takeIf { it.isNotEmpty() && it != "null" }
+            note(c, "Android's record: ${label(c, pkg)} closed at ${stamp.substringAfter(' ').substringBefore('.')} (${why}${desc?.let { ", $it" } ?: ""})")
+        }
+        // The memory killer's own record of each close (it says which rule it acted on).
+        runCatching {
+            val out = AynSystem.shell("logcat -d -b main -s lowmemorykiller:I -t 400") ?: return@runCatching
+            val last = prefs.getString("lmk", "") ?: ""
+            var newest = last
+            out.lines().filter { l -> l.contains("Kill '") && pkgs.any { l.contains("'$it'") || l.contains("'$it:") } }.forEach { l ->
+                val stamp = l.take(18)
+                if (stamp <= last) return@forEach
+                if (stamp > newest) newest = stamp
+                val name = pkgs.firstOrNull { l.contains("'$it") }?.let { label(c, it) } ?: "?"
+                val adj = Regex("oom_score_adj (-?\\d+)").find(l)?.groupValues?.get(1)
+                val reason = l.substringAfter("reason: ", "").trim().takeIf { it.isNotEmpty() }
+                note(c, "Memory killer closed $name at ${stamp.substringAfter(' ').substringBefore('.')}" +
+                    (adj?.let { " (ranked $it)" } ?: "") + (reason?.let { ": $it" } ?: ""))
+            }
+            if (newest != last) prefs.edit().putString("lmk", newest).apply()
+        }
     }
 
     /** The bottom screen's apps: notes when one is closed and starts again, and Android's reason. */
     private fun watchApps(c: Context) {
         if (AynSystem.knownAvailable() != true) return
         val bottom = runCatching { DisplayHelper.bottomDisplay(c)?.displayId }.getOrNull()
-        val home = runCatching {
-            c.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo?.packageName
-        }.getOrNull()
+        val home = homePackage(c)
         val watched = linkedSetOf<String>().apply {
-            home?.takeIf { it != "android" }?.let(::add)
+            home?.let(::add)
             bottom?.let { EmulatorWatch.frontOn(it) }?.takeIf { it != c.packageName && it != "com.android.systemui" }?.let(::add)
             add(c.packageName)
         }
@@ -196,6 +278,11 @@ object MemoryWatch {
         if (lines.isNotEmpty()) return
         runCatching { file(c).takeIf { it.exists() }?.readLines()?.takeLast(MAX_LINES)?.forEach { lines.addLast(it) } }
         note(c, "WalkThor started")
+        // Why it (and the home app) was last closed, once the system helper has been checked.
+        Thread({
+            runCatching { AynSystem.available() }
+            runCatching { closeRecords(c) }
+        }, "WalkThor close records").apply { isDaemon = true }.start()
     }
 
     @Synchronized fun logged(): List<String> = lines.toList()

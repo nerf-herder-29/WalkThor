@@ -20,12 +20,12 @@ import android.view.WindowManager
 /**
  * Before "close all apps": the top screen goes black with a warning that everything closes, the
  * game included, and a line in your stick-light colour fills along its bottom edge, while the
- * bottom screen dims and a ring in the same colour counts down two seconds. Back, B,
+ * bottom screen dims and a ring in the same colour fills over one second. Back, B,
  * Select or a tap on either screen cancels. If it isn't cancelled, both screens stay black while
  * the apps close, then clear.
  */
 object CloseCountdown {
-    private const val COUNT_MS = 2_000L
+    private const val COUNT_MS = 1_000L
     private val main = Handler(Looper.getMainLooper())
     private val views = mutableListOf<Pair<WindowManager, Face>>()
     private var counting: ValueAnimator? = null
@@ -211,7 +211,7 @@ object CloseCountdown {
             canvas.drawRect(0f, height - h, right, height.toFloat(), bar)
         }
 
-        /** The bottom screen: the ring filling, with the seconds left in it. */
+        /** The bottom screen: the ring filling. */
         private fun drawRing(canvas: Canvas, cx: Float, a: Int) {
             val cy = height * 0.45f
             val r = dp(54f)
@@ -220,10 +220,6 @@ object CloseCountdown {
             canvas.drawArc(box, 0f, 360f, false, track)
             canvas.drawArc(box, -90f, 360f * (if (closing) 1f else progress), false, arc)
             number.alpha = a
-            if (!closing) {
-                val left = kotlin.math.ceil((1f - progress) * COUNT_MS / 1000f).toInt().coerceAtLeast(1)
-                canvas.drawText("$left", cx, cy + number.textSize * 0.36f, number)
-            }
             label.alpha = a
             canvas.drawText(if (closing) "Closing…" else "Tap to cancel", cx, cy + r + dp(38f), label)
             if (!closing) {
