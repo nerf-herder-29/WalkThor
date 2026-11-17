@@ -79,7 +79,7 @@ object MemoryWatch {
             pids.clear()
             protectedNoted = false
             val mi = memInfo(app)
-            note(app, "Game started · free ${mb(mi.availMem)} of ${gb(mi.totalMem)}")
+            note(app, "Game started · free ${mb(mi.availMem)} of ${gb(mi.totalMem)}" + swap())
             trim(app, "game started")
         } else if (gameSince > 0) {
             note(app, "Game closed · ${summaryOfGame()}")
@@ -101,6 +101,13 @@ object MemoryWatch {
         runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
         if (why != null) Runtime.getRuntime().gc()
     }
+
+    /** " · swap used X of Y MB" when there's swap; "" without. */
+    private fun swap(): String = runCatching {
+        val m = File("/proc/meminfo").readLines().associate { l -> l.substringBefore(':') to (l.substringAfter(':').trim().substringBefore(' ').toLongOrNull() ?: 0L) }
+        val total = (m["SwapTotal"] ?: 0L) / 1024; val free = (m["SwapFree"] ?: 0L) / 1024
+        if (total <= 0) "" else " · swap used ${total - free} of $total MB"
+    }.getOrDefault("")
 
     private fun memInfo(c: Context) = ActivityManager.MemoryInfo().also {
         c.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it)
@@ -127,7 +134,7 @@ object MemoryWatch {
                     ?.getProcessMemoryInfo(intArrayOf(android.os.Process.myPid()))?.firstOrNull()
                     ?.totalPss?.let { " · WalkThor ${it / 1024} MB" }
             }.getOrNull() ?: "" else ""
-            note(c, "Free ${free} MB" + (if (mi.lowMemory) " (LOW: Android is closing apps)" else "") + pressure + own)
+            note(c, "Free ${free} MB" + (if (mi.lowMemory) " (LOW: Android is closing apps)" else "") + swap() + pressure + own)
             lastFreeMb = free
         }
         watchApps(c)
@@ -148,19 +155,42 @@ object MemoryWatch {
      * (Android re-ranks apps now and then, so it's put back every few seconds while you play).
      * Only ever lowers a rank, never raises one.
      */
-    private fun protect(c: Context) {
+    private fun protect(c: Context, always: Boolean = false) {
         if (AynSystem.knownAvailable() != true) return
-        val pkgs = listOfNotNull(homePackage(c), c.packageName).filter { PACKAGE.matches(it) }.distinct()
+        val pkgs = listOfNotNull(if (always && !gameInFront()) null else homePackage(c), c.packageName)
+            .filter { PACKAGE.matches(it) }.distinct()
+        // Each line: package, process, rank before, rank after.
         val script = pkgs.joinToString(" ") { pkg ->
             "for p in \$(pidof $pkg); do a=\$(cat /proc/\$p/oom_score_adj); " +
-                "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj && echo $pkg:\$a; fi; done;"
+                "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj; fi; " +
+                "echo \"R $pkg \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
         }
-        val out = AynSystem.shell(script) ?: return
-        if (!protectedNoted && out.isNotBlank()) {
+        val out = AynSystem.shellLines(script) ?: return
+        val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
+        val changed = ranks.filter { it[3] != it[4] }
+        val failed = ranks.filter { (it[4].toIntOrNull() ?: 0) > PROTECT_ADJ }
+        if (failed.isNotEmpty() && !protectedNoted) {
             protectedNoted = true
-            val what = out.lines().mapNotNull { l -> l.substringBefore(':').takeIf { it.isNotBlank() }?.let { label(c, it) } }.distinct()
-            note(c, "Kept ${what.joinToString(" and ")} next in line after the game (ranked $PROTECT_ADJ instead of ${out.lines().first().substringAfter(':')})")
+            val errors = out.filterNot { it.startsWith("R ") }.take(2).joinToString("; ")
+            note(c, "Couldn't keep " + failed.joinToString(" and ") { "${label(c, it[1])} (ranked ${it[4]})" } +
+                " next in line" + (if (errors.isNotEmpty()) ": $errors" else ""))
+        } else if (changed.isNotEmpty() && (!protectedNoted || always)) {
+            protectedNoted = true
+            note(c, "Kept " + changed.joinToString(" and ") { "${label(c, it[1])} (${it[3]} → ${it[4]})" } +
+                " next in line after the game")
         }
+    }
+
+    /** How the bottom screen's apps rank now, and how the memory killer is set up, for the log. */
+    private fun report(c: Context) {
+        if (AynSystem.knownAvailable() != true) { note(c, "System helper not usable: no ranks or records"); return }
+        val pkgs = listOfNotNull(homePackage(c), c.packageName).filter { PACKAGE.matches(it) }.distinct()
+        val ranks = AynSystem.shellLines(pkgs.joinToString(" ") { "for p in \$(pidof $it); do echo \"$it \$(cat /proc/\$p/oom_score_adj)\"; done;" })
+            .orEmpty().mapNotNull { l -> l.split(' ').takeIf { it.size == 2 }?.let { "${label(c, it[0])} ${it[1]}" } }
+        if (ranks.isNotEmpty()) note(c, "Ranks for the memory killer (lower is safer; the game is 0): " + ranks.joinToString(", "))
+        val props = AynSystem.shellLines("getprop | grep -E 'lmk|lowmem' | head -20").orEmpty()
+            .map { it.replace("[", "").replace("]", "") }.filter { ':' in it }
+        if (props.isNotEmpty()) note(c, "Memory killer settings: " + props.joinToString("; "))
     }
 
     /** Where we've got to in Android's records, so each is written in once. */
@@ -176,7 +206,7 @@ object MemoryWatch {
         val pkgs = listOfNotNull(homePackage(c), c.packageName).distinct()
         // Android's reason, per app.
         for (pkg in pkgs) runCatching {
-            val out = AynSystem.shell("dumpsys activity exit-info $pkg") ?: return@runCatching
+            val out = AynSystem.shellLines("dumpsys activity exit-info $pkg | head -30")?.joinToString("\n") ?: return@runCatching
             val stamp = Regex("timestamp=(\\S+ \\S+)").find(out)?.groupValues?.get(1) ?: return@runCatching
             if (stamp <= (prefs.getString("exit.$pkg", "") ?: "")) return@runCatching
             prefs.edit().putString("exit.$pkg", stamp).apply()
@@ -188,7 +218,7 @@ object MemoryWatch {
         }
         // The memory killer's own record of each close (it says which rule it acted on).
         runCatching {
-            val out = AynSystem.shell("logcat -d -b main -s lowmemorykiller:I -t 400") ?: return@runCatching
+            val out = AynSystem.shellLines("logcat -d -b all -t 3000 | grep -E \"Kill '|killinfo\" | tail -40")?.joinToString("\n") ?: return@runCatching
             val last = prefs.getString("lmk", "") ?: ""
             var newest = last
             out.lines().filter { l -> l.contains("Kill '") && pkgs.any { l.contains("'$it'") || l.contains("'$it:") } }.forEach { l ->
@@ -233,7 +263,7 @@ object MemoryWatch {
 
     /** Why Android last closed [pkg], from its own records. */
     private fun reason(pkg: String): String = runCatching {
-        val out = AynSystem.shell("dumpsys activity exit-info $pkg") ?: return ""
+        val out = AynSystem.shellLines("dumpsys activity exit-info $pkg | head -30")?.joinToString("\n") ?: return ""
         val r = Regex("reason=(\\d+)\\s*\\(([^)]*)\\)").find(out)?.groupValues?.get(2)
             ?: Regex("reason=([A-Z_]+)").find(out)?.groupValues?.get(1)
         val d = Regex("description=([^\\n]*)").find(out)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
@@ -252,6 +282,22 @@ object MemoryWatch {
         if (lowCount > 0) add("low on memory $lowCount×")
         add(if (restarts == 0) "no app restarts" else "$restarts app restart${if (restarts == 1) "" else "s"}")
     }.joinToString(", ")
+
+    /** How long WalkThor waits to put things back on the screen after Android closed it for memory. */
+    const val SETTLE_AFTER_KILL_MS = 10_000L
+
+    /** Android closed WalkThor for memory within the last minute (it's in a squeeze, maybe a loop). */
+    fun closedForMemoryJustNow(c: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 30) return false
+        val now = System.currentTimeMillis()
+        val recent = runCatching {
+            c.getSystemService(ActivityManager::class.java)?.getHistoricalProcessExitReasons(c.packageName, 0, 5)
+                ?.filter { it.processName == c.packageName && now - it.timestamp < 60_000 &&
+                    it.reason == android.app.ApplicationExitInfo.REASON_LOW_MEMORY }
+        }.getOrNull().orEmpty()
+        if (recent.isNotEmpty()) note(c, "Closed for memory ${recent.size}× in the last minute: the FPS counter waits ${SETTLE_AFTER_KILL_MS / 1000} s before coming back")
+        return recent.isNotEmpty()
+    }
 
     /** The drawer was taken down while put away during a game. */
     fun noteDrawerTakenDown() {
@@ -281,7 +327,10 @@ object MemoryWatch {
         // Why it (and the home app) was last closed, once the system helper has been checked.
         Thread({
             runCatching { AynSystem.available() }
+            // Straight away: a fresh WalkThor is the easiest thing for the killer to take again.
+            runCatching { protectedNoted = false; protect(c, always = true) }
             runCatching { closeRecords(c) }
+            runCatching { report(c) }
         }, "WalkThor close records").apply { isDaemon = true }.start()
     }
 

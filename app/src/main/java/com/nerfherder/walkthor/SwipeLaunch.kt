@@ -201,8 +201,12 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { BottomOff.afterRestart(this) }
         // If Android closed WalkThor while it was up, bring it back (see Revive).
         runCatching { Revive.onServiceStart(this) }
-        // The top screen's FPS in its corner, if that's on.
-        runCatching { TopFps.start(this) }
+        // The top screen's FPS in its corner, if that's on. Closed for memory a moment ago, it
+        // waits: the game is still squeezed, and putting it straight back just to have it taken
+        // again is part of what makes the bottom screen flicker.
+        if (MemoryWatch.closedForMemoryJustNow(this)) {
+            handler.postDelayed({ runCatching { TopFps.start(this) } }, MemoryWatch.SETTLE_AFTER_KILL_MS)
+        } else runCatching { TopFps.start(this) }
         handler.removeCallbacks(drawerBeat)
         handler.postDelayed(drawerBeat, 5_000)
     }

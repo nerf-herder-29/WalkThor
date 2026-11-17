@@ -56,8 +56,19 @@ object AynSystem {
         }
     }
 
-    /** Runs [command] as the system and gives back what it printed; null if the helper isn't usable. Not on the main thread. */
+    /** Runs [command] as the system and gives back the first line it printed; null if the helper isn't usable. Not on the main thread. */
     fun shell(command: String): String? = if (works == false) null else run(command)
+
+    /**
+     * Runs [command] as the system and gives back every line it printed (errors included). The
+     * helper only ever passes back one line, so the lines are joined into one on the way and split
+     * again here. Null if the helper isn't usable. Not on the main thread.
+     */
+    fun shellLines(command: String): List<String>? {
+        if (works == false) return null
+        val out = run("( $command ) 2>&1 | tr '\\n' '\\001'") ?: return null
+        return out.split('\u0001').map { it.trimEnd() }.filter { it.isNotEmpty() }
+    }
 
     /** Whether the helper works here (checked once it succeeds; retried now and then if not). Not on the main thread. */
     fun available(): Boolean {
