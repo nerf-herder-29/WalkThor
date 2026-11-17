@@ -140,6 +140,19 @@ object AynSystem {
         return run("CLASSPATH='$apk' app_process /system/bin ${RecentsTool::class.java.name} clear $names 2>&1")?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
     }
 
+    /**
+     * Gives the controller to display [displayId]: makes the app on top there the one Android
+     * sends button presses to, without touching anything. "OK …" or "ERR …"; null if the helper
+     * isn't usable. Not on the main thread.
+     */
+    fun focusDisplay(context: Context, displayId: Int): String? {
+        if (!available()) return null
+        val apk = context.applicationInfo.sourceDir
+        if ("'" in apk) return null
+        return run("CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} $displayId 2>&1")
+            ?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
+    }
+
     /** Takes card [taskId] out of recent apps. Not on the main thread. */
     fun removeTask(taskId: Int): Boolean {
         if (!available()) return false
@@ -358,6 +371,40 @@ object ScreenBrightnessTool {
  * Run by AYN's helper as a system program: takes every card out of Android's recent apps except
  * those of the apps named (only system programs may). Prints "OK <removed> <found>" or "ERR …".
  */
+/**
+ * Run as the system by [AynSystem.focusDisplay]: moves Android's focus (where button presses go)
+ * to the top app on one display. Prints "OK <task>" or "ERR <why>".
+ */
+object FocusTool {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        try {
+            val displayId = args[0].toInt()
+            val atm = Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
+            val int = Int::class.javaPrimitiveType
+            // The app on top on that display (Android 12+ calls them root tasks, before that stacks).
+            @Suppress("UNCHECKED_CAST")
+            val infos = (runCatching { atm.javaClass.getMethod("getAllRootTaskInfosOnDisplay", int).invoke(atm, displayId) }
+                .recoverCatching { atm.javaClass.getMethod("getAllStackInfosOnDisplay", int).invoke(atm, displayId) }
+                .getOrThrow() as? List<Any?>).orEmpty().filterNotNull()
+            fun bool(o: Any, vararg names: String) = names.firstNotNullOfOrNull { n -> runCatching { o.javaClass.getField(n).getBoolean(o) }.getOrNull() }
+            fun id(o: Any) = runCatching { o.javaClass.getField("taskId").getInt(o) }.getOrNull()
+                ?: runCatching { o.javaClass.getField("stackId").getInt(o) }.getOrNull()
+            val top = infos.firstOrNull { bool(it, "visible", "isVisible") == true } ?: infos.firstOrNull()
+            val task = top?.let(::id) ?: run { println("ERR nothing on display $displayId"); return }
+            val done = listOf("setFocusedRootTask", "setFocusedStack", "setFocusedTask").any { m ->
+                runCatching { atm.javaClass.getMethod(m, int).invoke(atm, task) }.isSuccess
+            }
+            println(if (done) "OK $task" else "ERR couldn't focus $task")
+        } catch (t: Throwable) {
+            println("ERR ${(t.cause ?: t).javaClass.simpleName}: ${(t.cause ?: t).message?.take(80)}")
+        } finally {
+            System.out.flush()
+            System.exit(0)
+        }
+    }
+}
+
 object RecentsTool {
     @JvmStatic
     fun main(args: Array<String>) {

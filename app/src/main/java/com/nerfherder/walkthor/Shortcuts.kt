@@ -25,6 +25,8 @@ object Shortcuts {
         CLIP("Save the last seconds"),
         FPS("FPS counter on / off"),
         STICK_LIGHTS("Stick lights on / off"),
+        LOCK_TOP("Lock controller to top screen"),
+        LOCK_BOTTOM("Lock controller to bottom screen"),
         PERF_MODE("Next performance mode"),
         FAN_MODE("Next fan mode"),
     }
@@ -186,6 +188,8 @@ object Shortcuts {
                 TopFps.setEnabled(app, on)
                 ScreenMessage.show(if (on) "FPS counter on" else "FPS counter off", 2_000)
             }
+            Action.LOCK_TOP -> ControllerLock.toggle(service, ControllerLock.Screen.TOP)
+            Action.LOCK_BOTTOM -> ControllerLock.toggle(service, ControllerLock.Screen.BOTTOM)
             Action.STICK_LIGHTS -> {
                 val on = !StickLights.isOn(app)
                 StickLights.setOn(app, on)

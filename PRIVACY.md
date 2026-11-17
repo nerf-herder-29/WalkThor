@@ -91,6 +91,13 @@ Everything else stays on your device.
   else. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
 
+- **Which screen has focus, only while the controller is locked to a screen.** With *Lock
+  controller to top/bottom screen* on (a shortcut), the accessibility service watches which
+  screen holds Android's focus, the screen your button presses go to, and only that: nothing in
+  any window is read. When focus moves to the other screen, WalkThor moves it back through the
+  system helper, or with one short tap on the very top edge of the locked screen. Unlocking
+  stops the watching.
+
 - **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
   accessibility service is handed each hardware button press just before your game gets it, so it
   can spot the presses you chose (the AYN button, which is Home from "gpio-keys" with scan code 194;

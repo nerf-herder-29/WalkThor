@@ -161,6 +161,7 @@ class SwipeGestureService : AccessibilityService() {
         CrashLog.install(this)
         runCatching { ExitHistory.collect(this) }
         runCatching { MemoryWatch.start(this) }
+        runCatching { ControllerLock.restore(this) }
         AynButton.load(this)
         applyEventTypes()
         // AYN puts its own stick lights back when the screen wakes: put yours back after it.
@@ -229,6 +230,8 @@ class SwipeGestureService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        // Only heard while the controller's locked to a screen: which window has focus changed.
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) { runCatching { ControllerLock.onWindowsChanged(this) }; return }
         runCatching { ButtonTest.onWindow(event) }
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         // Never let a bad event take the service down: Android turns off an accessibility
@@ -247,14 +250,19 @@ class SwipeGestureService : AccessibilityService() {
     fun applyEventTypes() {
         val info = serviceInfo ?: return
         // Which app is in front, and nothing more: never notifications.
-        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        // With the controller locked to a screen: also which window has focus (never what's in it).
+        val lock = ControllerLock.locked.value != null
+        val want = AccessibilityEvent.TYPE_ANNOUNCEMENT or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+            (if (lock) AccessibilityEvent.TYPE_WINDOWS_CHANGED else 0)
         // Never other apps' screen contents (an older version read your frontend's screen).
-        val flags = info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS.inv()
+        val windowsFlag = android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        val flags = (info.flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS.inv())
+            .let { if (lock) it or windowsFlag else it and windowsFlag.inv() }
         // While detecting, every app switch counts: don't let Android merge quick ones together
         // (a fast emulator launch could otherwise be missed).
         // The AYN button needs every switch too: Cocoon updates its own screen within a second of a
         // game starting, and with merging only that update arrived, so the game was never seen.
-        val timeout = if (EmulatorWatch.active.value || AynButton.on) 0L else 1000L
+        val timeout = if (EmulatorWatch.active.value || AynButton.on || lock) 0L else 1000L
         if (info.eventTypes != want || info.notificationTimeout != timeout || info.flags != flags) {
             info.eventTypes = want
             info.notificationTimeout = timeout
@@ -637,6 +645,26 @@ class SwipeGestureService : AccessibilityService() {
                 .setDisplayId(gameDisplayId)
                 .build()
             if (dispatchGesture(gesture, null, null)) "tapped the game screen" else "Android refused the tap"
+        }.getOrElse { "error: ${it.javaClass.simpleName}" }
+    }
+
+    /**
+     * Moves Android's focus (and with it the controller) to display [displayId] with one short
+     * tap on its very top edge, in the middle. For [ControllerLock] when the system helper isn't
+     * usable. Returns a short outcome.
+     */
+    fun tapToFocus(displayId: Int): String {
+        if (Build.VERSION.SDK_INT < 30) return "needs Android 11+"
+        return runCatching {
+            val display = getSystemService(DisplayManager::class.java)?.getDisplay(displayId) ?: return "screen not found"
+            val size = android.graphics.Point()
+            @Suppress("DEPRECATION") display.getRealSize(size)
+            val path = android.graphics.Path().apply { moveTo(size.x / 2f, 2f) }
+            val gesture = android.accessibilityservice.GestureDescription.Builder()
+                .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 40))
+                .setDisplayId(displayId)
+                .build()
+            if (dispatchGesture(gesture, null, null)) "tap" else "Android refused the tap"
         }.getOrElse { "error: ${it.javaClass.simpleName}" }
     }
 
