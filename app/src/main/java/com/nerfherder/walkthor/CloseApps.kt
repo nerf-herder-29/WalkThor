@@ -27,15 +27,15 @@ object CloseApps {
 
     /**
      * From a shortcut or the dock: counts down first (the top screen goes black with a warning,
-     * the bottom one shows a ring; Back or a tap cancels), then closes everything and says what happened in a short message. [ask] false when you've
+     * the bottom one shows a ring; Back or a tap cancels), then closes everything and says "Closed all apps". [ask] false when you've
      * already said yes somewhere else.
      */
     fun closeAllFromButton(context: Context, ask: Boolean = true) {
         val app = context.applicationContext
         val go = {
-            closeAll(app) { message, detail ->
+            closeAll(app) { message, _ ->
                 CloseCountdown.finish()
-                ScreenMessage.show(if (message.startsWith("Closed 0")) "$message. ${detail ?: ""}" else message)
+                ScreenMessage.show(message)
             }
         }
         // A countdown first, so a slip can be taken back.
@@ -87,16 +87,15 @@ object CloseApps {
                 val cleared = runCatching { AynSystem.clearRecents(app, keep) }.getOrNull() ?: "no answer"
                 val closed = results.filterValues { it }.keys
                 val stuck = results.filterValues { !it }.keys
-                fun name(p: String) = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString() }.getOrDefault(p)
                 lastNote = "helper ok; in front: ${front.joinToString().ifEmpty { "unknown" }}; recent apps ${recent.size}; running installed apps ${installed.count { it in running }}; " +
                     "closed: ${closed.joinToString().ifEmpty { "none" }}; still running: ${stuck.joinToString().ifEmpty { "none" }}; " +
                     "recent apps cleared: $cleared" +
                     (AynSystem.problem?.let { " ($it)" } ?: "")
+                // Just the outcome; which apps closed (or didn't) is in Diagnostics.
                 when {
-                    closed.isEmpty() && stuck.isEmpty() -> "Closed 0 apps"
-                    closed.isEmpty() -> "Couldn't close ${stuck.joinToString { name(it) }}"
-                    else -> "Closed ${closed.take(4).joinToString { name(it) }}" + (if (closed.size > 4) " and ${closed.size - 4} more" else "") +
-                        (if (stuck.isNotEmpty()) "; couldn't close ${stuck.joinToString { name(it) }}" else "")
+                    closed.isEmpty() && stuck.isEmpty() -> "No apps to close"
+                    closed.isEmpty() -> "Couldn't close your apps"
+                    else -> "Closed all apps"
                 }
             } else {
                 // No helper: Android lets an ordinary app close only what's in the background.

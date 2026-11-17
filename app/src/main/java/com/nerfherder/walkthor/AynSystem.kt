@@ -117,8 +117,8 @@ object AynSystem {
      */
     fun openApps(): List<String>? {
         if (!available()) return null
-        val out = run("dumpsys activity recents | grep -oE 'A=[0-9]+:[A-Za-z0-9_.]+' | sort -u") ?: return null
-        return out.lines().mapNotNull { it.substringAfter(':', "").trim().takeIf { p -> PACKAGE.matches(p) } }.distinct()
+        val out = shellLines("dumpsys activity recents | grep -oE 'A=[0-9]+:[A-Za-z0-9_.]+' | sort -u") ?: return null
+        return out.mapNotNull { it.substringAfter(':', "").trim().takeIf { p -> PACKAGE.matches(p) } }.distinct()
     }
 
     /**
@@ -127,8 +127,8 @@ object AynSystem {
      */
     fun recentTasks(): List<Pair<Int, String>>? {
         if (!available()) return null
-        val out = run("dumpsys activity recents | grep 'Recent #'") ?: return null
-        return out.lines().mapNotNull { line ->
+        val out = shellLines("dumpsys activity recents | grep 'Recent #'") ?: return null
+        return out.mapNotNull { line ->
             val m = RECENT.find(line) ?: return@mapNotNull null
             if (m.groupValues[2] == "home") return@mapNotNull null
             val pkg = m.groupValues[3].takeIf { PACKAGE.matches(it) } ?: return@mapNotNull null
@@ -148,7 +148,7 @@ object AynSystem {
         val apk = context.applicationInfo.sourceDir
         if ("'" in apk) return null
         val names = keep.filter { PACKAGE.matches(it) }.joinToString(" ")
-        return run("CLASSPATH='$apk' app_process /system/bin ${RecentsTool::class.java.name} clear $names 2>&1")?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
+        return shellLines("CLASSPATH='$apk' app_process /system/bin ${RecentsTool::class.java.name} clear $names")?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
     }
 
     /**
@@ -160,8 +160,8 @@ object AynSystem {
         if (!available()) return null
         val apk = context.applicationInfo.sourceDir
         if ("'" in apk) return null
-        return run("CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} $displayId 2>&1")
-            ?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
+        return shellLines("CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} $displayId")
+            ?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
     }
 
     /** Takes card [taskId] out of recent apps. Not on the main thread. */
@@ -180,8 +180,8 @@ object AynSystem {
     /** The names of every running process (an app's main process is named after its package). Not on the main thread. */
     fun runningNames(): Set<String>? {
         if (!available()) return null
-        val out = run("ps -A -o NAME") ?: return null
-        return out.lines().map { it.trim().substringBefore(':') }.filter { PACKAGE.matches(it) }.toSet()
+        val out = shellLines("ps -A -o NAME") ?: return null
+        return out.map { it.trim().substringBefore(':') }.filter { PACKAGE.matches(it) }.toSet()
     }
 
     /** Closes [pkg] completely, as "Force stop" in Android's settings does. Not on the main thread. */
@@ -189,11 +189,14 @@ object AynSystem {
         if (!PACKAGE.matches(pkg) || !available()) return false
         // Asks Android to stop it; if any of it is still running a moment later, ends those
         // processes directly. True only once nothing of it is left running.
-        val left = run(
+        // Only the last line counts, so a note from kill (the process already gone) can't be taken
+        // for something still running.
+        val out = shellLines(
             "am force-stop $pkg >/dev/null 2>&1; sleep 0.4; " +
-                "for p in \$(pidof $pkg); do kill -9 \$p; done; sleep 0.2; pidof $pkg; echo done"
+                "for p in \$(pidof $pkg); do kill -9 \$p 2>/dev/null; done; sleep 0.3; echo \"LEFT \$(pidof $pkg)\""
         ) ?: return false
-        return left.trim() == "done"
+        val left = out.lastOrNull { it.startsWith("LEFT") } ?: return false
+        return left.removePrefix("LEFT").isBlank()
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
