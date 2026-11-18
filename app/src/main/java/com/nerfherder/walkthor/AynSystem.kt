@@ -61,14 +61,18 @@ object AynSystem {
 
     /**
      * Runs [command] as the system and gives back every line it printed (errors included). The
-     * helper only ever passes back one line, so the lines are joined into one on the way and split
-     * again here. Null if the helper isn't usable. Not on the main thread.
+     * helper only ever passes back one line, so the lines are joined into one on the way (with a
+     * plain-text marker, by the shell itself: no tool or control character it might not handle)
+     * and split again here. Null if the helper isn't usable. Not on the main thread.
      */
     fun shellLines(command: String): List<String>? {
         if (works == false) return null
-        val out = run("( $command ) 2>&1 | tr '\\n' '\\001'") ?: return null
-        return out.split('\u0001').map { it.trimEnd() }.filter { it.isNotEmpty() }
+        val out = run("( $command ) 2>&1 | while IFS= read -r l || [ -n \"\$l\" ]; do printf '%s$LINE' \"\$l\"; done; echo") ?: return null
+        return out.split(LINE).map { it.trimEnd() }.filter { it.isNotEmpty() }
     }
+
+    /** Where one line ends and the next begins in [shellLines]'s answer. */
+    private const val LINE = "<~WT~>"
 
     /** Whether the helper works here (checked once it succeeds; retried now and then if not). Not on the main thread. */
     fun available(): Boolean {
@@ -189,14 +193,14 @@ object AynSystem {
         if (!PACKAGE.matches(pkg) || !available()) return false
         // Asks Android to stop it; if any of it is still running a moment later, ends those
         // processes directly. True only once nothing of it is left running.
-        // Only the last line counts, so a note from kill (the process already gone) can't be taken
-        // for something still running.
-        val out = shellLines(
+        // Everything else goes nowhere, so the one line that comes back is the answer: GONE once
+        // nothing of it is left running, LEFT if something is.
+        val out = run(
             "am force-stop $pkg >/dev/null 2>&1; sleep 0.4; " +
-                "for p in \$(pidof $pkg); do kill -9 \$p 2>/dev/null; done; sleep 0.3; echo \"LEFT \$(pidof $pkg)\""
+                "for p in \$(pidof $pkg); do kill -9 \$p >/dev/null 2>&1; done; sleep 0.3; " +
+                "if pidof $pkg >/dev/null 2>&1; then echo LEFT; else echo GONE; fi"
         ) ?: return false
-        val left = out.lastOrNull { it.startsWith("LEFT") } ?: return false
-        return left.removePrefix("LEFT").isBlank()
+        return out.trim() == "GONE"
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
