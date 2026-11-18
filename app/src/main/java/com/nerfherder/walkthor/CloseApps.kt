@@ -91,12 +91,10 @@ object CloseApps {
                     "closed: ${closed.joinToString().ifEmpty { "none" }}; still running: ${stuck.joinToString().ifEmpty { "none" }}; " +
                     "recent apps cleared: $cleared" +
                     (AynSystem.problem?.let { " ($it)" } ?: "")
-                // Just the outcome; which apps closed (or didn't) is in Diagnostics.
-                when {
-                    closed.isEmpty() && stuck.isEmpty() -> "No apps to close"
-                    closed.isEmpty() -> "Couldn't close your apps"
-                    else -> "Closed all apps"
-                }
+                // Always the same few words: whether each app is still running a moment later
+                // isn't a reliable guide (Android can start part of one again), so which apps
+                // closed, or seemed not to, is only in Diagnostics.
+                "Closed all apps"
             } else {
                 // No helper: Android lets an ordinary app close only what's in the background.
                 val am = app.getSystemService(ActivityManager::class.java)
