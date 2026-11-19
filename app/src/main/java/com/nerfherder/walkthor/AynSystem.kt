@@ -430,11 +430,14 @@ object FocusTool {
         fun id(o: Any) = runCatching { o.javaClass.getField("taskId").getInt(o) }.getOrNull()
             ?: runCatching { o.javaClass.getField("stackId").getInt(o) }.getOrNull()
         val top = infos.firstOrNull { bool(it, "visible", "isVisible") == true } ?: infos.firstOrNull()
+        // Android 12+ can give a display's top app the focus in one go (and bring that display to
+        // the front for input); older ones, or if that's missing, focus the app itself.
+        if (runCatching { atm.javaClass.getMethod("focusTopTask", int).invoke(atm, displayId) }.isSuccess) return "OK top task on $displayId"
         val task = top?.let(::id) ?: return "ERR nothing on display $displayId"
-        val done = listOf("setFocusedRootTask", "setFocusedStack", "setFocusedTask").any { m ->
+        val done = listOf("setFocusedRootTask", "setFocusedStack", "setFocusedTask").firstOrNull { m ->
             runCatching { atm.javaClass.getMethod(m, int).invoke(atm, task) }.isSuccess
         }
-        return if (done) "OK $task" else "ERR couldn't focus $task"
+        return if (done != null) "OK $task ($done)" else "ERR couldn't focus $task"
     }
 
     /** The display that has the focus now, or null. */
@@ -454,18 +457,34 @@ object FocusTool {
         val owner = java.io.File(path + ".owner")
         val me = android.os.Process.myPid().toString()
         runCatching { owner.writeText(me) }
+        // What it saw and did, for WalkThor's Diagnostics (the last few lines).
+        val log = java.io.File(path + ".log")
+        val lines = ArrayDeque<String>()
+        val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+        fun note(s: String) {
+            lines.addLast("${clock.format(java.util.Date())} $s")
+            while (lines.size > 25) lines.removeFirst()
+            runCatching { log.writeText(lines.joinToString("\n")); log.setReadable(true, false) }
+        }
         var misses = 0
+        var lastSeen: Int? = -1
+        var moved = 0
+        note("started: focus on display ${focusedDisplay(atm)}")
         while (true) {
-            if (!file.exists()) return
+            if (!file.exists()) { note("stopped (unlocked)"); return }
             if (runCatching { owner.readText().trim() }.getOrNull() != me) return
             val want = runCatching { file.readText().trim() }.getOrNull()?.toIntOrNull()
             var wait = 150L
             if (want != null) {
                 val now = focusedDisplay(atm)
+                if (now != lastSeen) { note("focus now on display $now (keeping it on $want)"); lastSeen = now }
+                if (now == null && moved == 0) note("can't tell which display has the focus")
                 if (now != null && now != want) {
-                    val ok = runCatching { focus(atm, want).startsWith("OK") }.getOrDefault(false)
+                    val result = runCatching { focus(atm, want) }.getOrElse { "ERR ${it.javaClass.simpleName}" }
+                    moved++
+                    if (moved <= 40) note("moved it to $want: $result")
                     // If moving it keeps failing, try less often.
-                    misses = if (ok) 0 else misses + 1
+                    misses = if (result.startsWith("OK")) 0 else misses + 1
                     if (misses > 5) wait = 1_000L
                 }
             }

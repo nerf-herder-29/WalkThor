@@ -100,6 +100,10 @@ object ControllerLock {
         }
     }
 
+    /** The helper's watcher's last few lines, for Diagnostics. */
+    fun watcherLog(c: Context): List<String> =
+        runCatching { java.io.File(c.filesDir, "controller-lock.log").readLines() }.getOrDefault(emptyList())
+
     private fun wantedDisplay(c: Context, screen: Screen): Int? {
         val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return null
         if (screen == Screen.BOTTOM) return bottom

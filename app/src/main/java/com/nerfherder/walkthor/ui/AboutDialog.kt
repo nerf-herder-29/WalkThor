@@ -232,6 +232,9 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 com.nerfherder.walkthor.Shortcuts.rumbleProblem?.let { Body("Shortcut rumble: $it") }
                 com.nerfherder.walkthor.ControllerLock.locked.value?.let { Body("Controller locked to the ${it.label}") }
                 com.nerfherder.walkthor.ControllerLock.lastNote?.let { Body("Controller lock: $it") }
+                com.nerfherder.walkthor.ControllerLock.watcherLog(context).takeIf { it.isNotEmpty() }?.let { lines ->
+                    Body("Controller lock, what the helper saw:\n" + lines.takeLast(12).joinToString("\n"))
+                }
                 Body("Notifications on the bottom screen: ${com.nerfherder.walkthor.BottomNotifications.lastNote}")
                 run {
                     var testNote by remember { mutableStateOf<String?>(null) }
