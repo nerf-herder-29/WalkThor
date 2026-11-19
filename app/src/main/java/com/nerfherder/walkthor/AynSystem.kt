@@ -196,7 +196,10 @@ object AynSystem {
             }
             tried += focusWatchLog().lastOrNull() ?: "nothing logged"
         }
-        focusWatchNote = "didn't stay running (${tried.joinToString("; ")})"
+        // Run it in the foreground for a moment instead, to see what it says (an error, say).
+        val trial = shellLines("id -u; CLASSPATH='$apk' timeout 2 app_process /system/bin ${FocusTool::class.java.name} watch $displayId '$apk' 2>&1 | head -8")
+            .orEmpty().joinToString(" / ").take(400)
+        focusWatchNote = "didn't stay running (${tried.joinToString("; ")}). Run directly: ${trial.ifBlank { "printed nothing" }}"
         return false
     }
 
@@ -495,7 +498,7 @@ object FocusTool {
      * Uses no files: AYN's helper may not be allowed into WalkThor's storage.
      */
     private fun watch(atm: Any, want: Int, apk: String) {
-        fun note(s: String) { runCatching { android.util.Log.i(TAG, s) } }
+        fun note(s: String) { runCatching { android.util.Log.i(TAG, s) }; runCatching { println(s); System.out.flush() } }
         var misses = 0
         var lastSeen: Int? = -1
         var moved = 0
