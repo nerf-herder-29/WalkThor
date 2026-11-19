@@ -83,8 +83,8 @@ object ControllerLock {
         }
         val want = wantedDisplay(service, screen)
         if (want == null) {
-            lastNote = "couldn't find the ${screen.label}"
-            if (announce) ScreenMessage.show("Couldn't find the ${screen.label}")
+            // (lastNote says what Android reported.)
+            if (announce) ScreenMessage.show("Couldn't find the ${screen.label} (see Diagnostics)")
             return
         }
         val dm = service.getSystemService(DisplayManager::class.java)
@@ -152,12 +152,32 @@ object ControllerLock {
         watchers.clear()
     }
 
+    /** The two screens as last found (top, bottom), so a screen briefly reported as off doesn't lose them. */
+    private var known: Pair<Int, Int>? = null
+
+    /**
+     * The display for [screen]: of the public displays, the bottom one is the smaller and the top
+     * one the bigger. Android's on/off state isn't relied on here: it can briefly report a screen
+     * as off while it's on.
+     */
     private fun wantedDisplay(c: Context, screen: Screen): Int? {
-        val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return null
-        if (screen == Screen.BOTTOM) return bottom
-        val dm = c.getSystemService(DisplayManager::class.java) ?: return null
-        return dm.displays.firstOrNull {
-            it.displayId != bottom && it.state != Display.STATE_OFF && (it.flags and Display.FLAG_PRIVATE) == 0
-        }?.displayId
+        val all = c.getSystemService(DisplayManager::class.java)?.displays.orEmpty()
+            .filter { (it.flags and Display.FLAG_PRIVATE) == 0 && (it.flags and Display.FLAG_PRESENTATION) == 0 }
+        fun size(d: Display) = d.mode.physicalWidth.toLong() * d.mode.physicalHeight
+        // (A recording's screen, like the clip buffer's, is private, so it's left out above.)
+        val builtIn = all
+        if (builtIn.size >= 2) {
+            val bottom = builtIn.minByOrNull(::size)!!
+            val top = builtIn.filter { it.displayId != bottom.displayId }.maxByOrNull(::size)!!
+            known = top.displayId to bottom.displayId
+        }
+        val (top, bottom) = known ?: run {
+            lastNote = "couldn't tell the screens apart; Android reported: " + all.joinToString { d ->
+                "display ${d.displayId} ${d.mode.physicalWidth}x${d.mode.physicalHeight} " +
+                    (if (d.state == Display.STATE_OFF) "off" else "on")
+            }.ifEmpty { "no displays" }
+            return null
+        }
+        return if (screen == Screen.TOP) top else bottom
     }
 }
