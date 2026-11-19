@@ -92,21 +92,20 @@ Everything else stays on your device.
   were last closed (and the memory killer's own log lines about them) into that same log.
 
 - **Which screen has focus, only while the controller is locked to a screen.** With *Lock
-  controller to top/bottom screen* on (a shortcut), the accessibility service watches which
-  screen holds Android's focus, the screen your button presses go to, and only that: nothing in
-  any window is read. When focus moves to the other screen, WalkThor moves it back through the
-  system helper, or with one short tap on the very top edge of the locked screen. Unlocking
-  stops the watching.
+  controller to top/bottom screen* on (a shortcut), a small program run by AYN's system helper
+  checks several times a second which screen holds Android's focus (the screen your button
+  presses go to), and only that: nothing in any window is read. When focus moves to the other
+  screen, it moves it back. Unlocking stops it.
 
 - **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
   accessibility service is handed each hardware button press just before your game gets it, so it
   can spot the presses you chose (the AYN button, which is Home from "gpio-keys" with scan code 194;
   Back pressed twice, or Back with a D-pad direction). The AYN button's presses go to WalkThor
   (or on to AYN's own drawer, if you leave them to it); every other press, including the
-  controller's Home button, passes straight on to your game. With a Back + D-pad shortcut set,
+  controller's Home button, passes straight on to your game. With a shortcut set on Back and another button,
   Back is passed on when you let go of it, and while it's held a tiny invisible WalkThor window
   takes the controller, so the game gets nothing until you let go; WalkThor only looks at which
-  D-pad direction is pressed in that time. Nothing is recorded, stored or sent.
+  D-pad direction, shoulder button or trigger is pressed in that time. Nothing is recorded, stored or sent.
   A shortcut makes the device or controller rumble briefly, if that's on.
 
 - **Notifications on the bottom screen, only if you switch it on.** With Settings → General →

@@ -28,6 +28,8 @@ object Shortcuts {
         KEYBOARD("Show / hide the keyboard"),
         BRIGHTER("Brightness up"),
         DIMMER("Brightness down"),
+        LOUDER("Volume up"),
+        QUIETER("Volume down"),
         LOCK_TOP("Lock controller to top screen"),
         LOCK_BOTTOM("Lock controller to bottom screen"),
         PERF_MODE("Next performance mode"),
@@ -43,10 +45,14 @@ object Shortcuts {
         BACK_DOWN("backDown", "Back + D-pad down", "Hold Back and press down"),
         BACK_LEFT("backLeft", "Back + D-pad left", "Hold Back and press left"),
         BACK_RIGHT("backRight", "Back + D-pad right", "Hold Back and press right"),
+        BACK_L1("backL1", "Back + L1", "Hold Back and press L1"),
+        BACK_R1("backR1", "Back + R1", "Hold Back and press R1"),
+        BACK_L2("backL2", "Back + L2", "Hold Back and press L2"),
+        BACK_R2("backR2", "Back + R2", "Hold Back and press R2"),
         ;
 
-        /** One of the Back + D-pad combinations. */
-        val combo get() = this == BACK_UP || this == BACK_DOWN || this == BACK_LEFT || this == BACK_RIGHT
+        /** One of the combinations with Back held. */
+        val combo get() = this != AYN_PRESS && this != AYN_DOUBLE && this != AYN_HOLD && this != BACK_DOUBLE
     }
 
 
@@ -72,7 +78,7 @@ object Shortcuts {
             Trigger.AYN_DOUBLE -> Action.AYN_DRAWER
             Trigger.AYN_HOLD -> if (prefs(c).getBoolean("bottomOffHold", false)) Action.DIM else Action.NOTHING
             Trigger.BACK_DOUBLE -> if (prefs(c).getBoolean("tripleClose", false)) Action.CLOSE_ALL else Action.NOTHING
-            Trigger.BACK_UP, Trigger.BACK_DOWN, Trigger.BACK_LEFT, Trigger.BACK_RIGHT -> Action.NOTHING
+            else -> Action.NOTHING
         }
         cache[t] = action
         return action
@@ -105,6 +111,10 @@ object Shortcuts {
         android.view.KeyEvent.KEYCODE_DPAD_DOWN -> Trigger.BACK_DOWN
         android.view.KeyEvent.KEYCODE_DPAD_LEFT -> Trigger.BACK_LEFT
         android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> Trigger.BACK_RIGHT
+        android.view.KeyEvent.KEYCODE_BUTTON_L1 -> Trigger.BACK_L1
+        android.view.KeyEvent.KEYCODE_BUTTON_R1 -> Trigger.BACK_R1
+        android.view.KeyEvent.KEYCODE_BUTTON_L2 -> Trigger.BACK_L2
+        android.view.KeyEvent.KEYCODE_BUTTON_R2 -> Trigger.BACK_R2
         else -> null
     }
 
@@ -270,6 +280,16 @@ object Shortcuts {
                 },
                 2_000,
             )
+            Action.LOUDER, Action.QUIETER -> {
+                val am = app.getSystemService(android.media.AudioManager::class.java)
+                if (am == null) { ScreenMessage.show("Couldn't change the volume"); return }
+                val stream = android.media.AudioManager.STREAM_MUSIC
+                // No flags: Android's own volume slider stays off the game.
+                am.adjustStreamVolume(stream, if (a == Action.LOUDER) android.media.AudioManager.ADJUST_RAISE else android.media.AudioManager.ADJUST_LOWER, 0)
+                val max = am.getStreamMaxVolume(stream).coerceAtLeast(1)
+                val now = am.getStreamVolume(stream)
+                ScreenMessage.show(if (now == 0) "Volume off" else "Volume ${Math.round(now * 100f / max)}%", 1_500)
+            }
             Action.BRIGHTER -> worker.execute { stepBrightness(app, +STEP) }
             Action.DIMMER -> worker.execute { stepBrightness(app, -STEP) }
             Action.STICK_LIGHTS -> {

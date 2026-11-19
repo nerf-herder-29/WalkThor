@@ -71,6 +71,8 @@ object ComboGrab {
     private class Catcher(context: Context) : View(context) {
         private var hatX = 0
         private var hatY = 0
+        private var l2 = false
+        private var r2 = false
 
         init {
             isFocusable = true
@@ -93,6 +95,13 @@ object ComboGrab {
                 if (y != hatY && y != 0) onDirection?.invoke(if (y < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN)
                 hatX = x
                 hatY = y
+                // L2 and R2, where they're sent as movement (how far they're pulled) rather than presses.
+                val left = maxOf(event.getAxisValue(MotionEvent.AXIS_LTRIGGER), event.getAxisValue(MotionEvent.AXIS_BRAKE)) > 0.6f
+                val right = maxOf(event.getAxisValue(MotionEvent.AXIS_RTRIGGER), event.getAxisValue(MotionEvent.AXIS_GAS)) > 0.6f
+                if (left && !l2) onDirection?.invoke(KeyEvent.KEYCODE_BUTTON_L2)
+                if (right && !r2) onDirection?.invoke(KeyEvent.KEYCODE_BUTTON_R2)
+                l2 = left
+                r2 = right
             }
             return true
         }

@@ -574,6 +574,9 @@ class SwipeGestureService : AccessibilityService() {
 
     private fun isWalkThorUpOnBottom() = DisplayHelper.bottomDisplay(this)?.displayId.let { it != null && AppState.resumedDisplayId == it }
 
+    private var lastComboKey = 0
+    private var lastComboAt = 0L
+
     /** Back is down and being kept until it's let go, for the Back + D-pad combinations. */
     private var backHeldBack = false
     /** A direction was pressed while Back was down. */
@@ -587,6 +590,11 @@ class SwipeGestureService : AccessibilityService() {
     /** A D-pad direction ([keyCode]) pressed while Back is held: its shortcut. */
     private fun combo(keyCode: Int) {
         val t = Shortcuts.comboFor(keyCode) ?: return
+        // A trigger can arrive both as a press and as movement: once per hold, per button, within a moment.
+        val at = android.os.SystemClock.uptimeMillis()
+        if (lastComboKey == keyCode && at - lastComboAt < 250) return
+        lastComboKey = keyCode
+        lastComboAt = at
         comboUsed = true
         if (Shortcuts.get(this, t) != Shortcuts.Action.NOTHING) handler.post { runCatching { Shortcuts.fire(this, t) } }
     }

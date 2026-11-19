@@ -48,9 +48,9 @@ step that's done.
 - **Guide asks which guide** — the Guide tab lists your guides each time, newest first; WalkThor
   remembers your place in each.
 - **Button shortcuts** — Settings → Shortcuts maps the AYN button's press, double press and hold, Back
-  pressed twice, and Back held with a D-pad direction, to things WalkThor can do: open the drawer, AYN's own drawer,
+  pressed twice, and Back held with a D-pad direction, L1, R1, L2 or R2, to things WalkThor can do: open the drawer, AYN's own drawer,
   dim the bottom screen, turn it off, close all apps, take a screenshot, save the last seconds of play,
-  the FPS counter, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, brightness up and down,
+  the FPS counter, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, brightness and volume up and down,
   or step through performance and fan modes. A short rumble confirms each one.
 - **Notifications on the bottom screen** — switch it on in Settings → General, and Android's pop-up
   banners stop covering your game: each notification drops down on the bottom screen instead (on the

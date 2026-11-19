@@ -163,6 +163,21 @@ object AynSystem {
             ?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
     }
 
+    /**
+     * Starts the controller lock's watcher (in [FocusTool]), which keeps the focus on the display
+     * named in [file] until that file goes. Starting it again replaces the one running. Not on the
+     * main thread.
+     */
+    fun focusWatch(context: Context, file: java.io.File): Boolean {
+        if (!available()) return false
+        val apk = context.applicationInfo.sourceDir
+        val path = file.absolutePath
+        if ("'" in apk || "'" in path) return false
+        // Fully detached, so it keeps running after the helper's command finishes.
+        run("(CLASSPATH='$apk' setsid app_process /system/bin ${FocusTool::class.java.name} watch '$path' </dev/null >/dev/null 2>&1 &)")
+        return true
+    }
+
     /** Takes card [taskId] out of recent apps. Not on the main thread. */
     fun removeTask(taskId: Int): Boolean {
         if (!available()) return false
@@ -391,28 +406,70 @@ object FocusTool {
     @JvmStatic
     fun main(args: Array<String>) {
         try {
-            val displayId = args[0].toInt()
             val atm = Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
-            val int = Int::class.javaPrimitiveType
-            // The app on top on that display (Android 12+ calls them root tasks, before that stacks).
-            @Suppress("UNCHECKED_CAST")
-            val infos = (runCatching { atm.javaClass.getMethod("getAllRootTaskInfosOnDisplay", int).invoke(atm, displayId) }
-                .recoverCatching { atm.javaClass.getMethod("getAllStackInfosOnDisplay", int).invoke(atm, displayId) }
-                .getOrThrow() as? List<Any?>).orEmpty().filterNotNull()
-            fun bool(o: Any, vararg names: String) = names.firstNotNullOfOrNull { n -> runCatching { o.javaClass.getField(n).getBoolean(o) }.getOrNull() }
-            fun id(o: Any) = runCatching { o.javaClass.getField("taskId").getInt(o) }.getOrNull()
-                ?: runCatching { o.javaClass.getField("stackId").getInt(o) }.getOrNull()
-            val top = infos.firstOrNull { bool(it, "visible", "isVisible") == true } ?: infos.firstOrNull()
-            val task = top?.let(::id) ?: run { println("ERR nothing on display $displayId"); return }
-            val done = listOf("setFocusedRootTask", "setFocusedStack", "setFocusedTask").any { m ->
-                runCatching { atm.javaClass.getMethod(m, int).invoke(atm, task) }.isSuccess
-            }
-            println(if (done) "OK $task" else "ERR couldn't focus $task")
+            if (args.getOrNull(0) == "watch") { watch(atm, args.getOrNull(1) ?: return); return }
+            println(focus(atm, args[0].toInt()))
         } catch (t: Throwable) {
             println("ERR ${(t.cause ?: t).javaClass.simpleName}: ${(t.cause ?: t).message?.take(80)}")
         } finally {
             System.out.flush()
             System.exit(0)
+        }
+    }
+
+    private val int = Int::class.javaPrimitiveType
+
+    /** Gives [displayId]'s top app the focus (and with it the controller). "OK <task>" or "ERR …". */
+    private fun focus(atm: Any, displayId: Int): String {
+        // The app on top on that display (Android 12+ calls them root tasks, before that stacks).
+        @Suppress("UNCHECKED_CAST")
+        val infos = (runCatching { atm.javaClass.getMethod("getAllRootTaskInfosOnDisplay", int).invoke(atm, displayId) }
+            .recoverCatching { atm.javaClass.getMethod("getAllStackInfosOnDisplay", int).invoke(atm, displayId) }
+            .getOrThrow() as? List<Any?>).orEmpty().filterNotNull()
+        fun bool(o: Any, vararg names: String) = names.firstNotNullOfOrNull { n -> runCatching { o.javaClass.getField(n).getBoolean(o) }.getOrNull() }
+        fun id(o: Any) = runCatching { o.javaClass.getField("taskId").getInt(o) }.getOrNull()
+            ?: runCatching { o.javaClass.getField("stackId").getInt(o) }.getOrNull()
+        val top = infos.firstOrNull { bool(it, "visible", "isVisible") == true } ?: infos.firstOrNull()
+        val task = top?.let(::id) ?: return "ERR nothing on display $displayId"
+        val done = listOf("setFocusedRootTask", "setFocusedStack", "setFocusedTask").any { m ->
+            runCatching { atm.javaClass.getMethod(m, int).invoke(atm, task) }.isSuccess
+        }
+        return if (done) "OK $task" else "ERR couldn't focus $task"
+    }
+
+    /** The display that has the focus now, or null. */
+    private fun focusedDisplay(atm: Any): Int? {
+        val info = runCatching { atm.javaClass.getMethod("getFocusedRootTaskInfo").invoke(atm) }
+            .recoverCatching { atm.javaClass.getMethod("getFocusedStackInfo").invoke(atm) }.getOrNull() ?: return null
+        return runCatching { info.javaClass.getField("displayId").getInt(info) }.getOrNull()
+    }
+
+    /**
+     * The controller lock: while [path] (in WalkThor's own storage) holds a display's number, the
+     * focus is kept on that display, checked several times a second. "pause" holds off; the file
+     * gone, or another watcher started after this one, ends it.
+     */
+    private fun watch(atm: Any, path: String) {
+        val file = java.io.File(path)
+        val owner = java.io.File(path + ".owner")
+        val me = android.os.Process.myPid().toString()
+        runCatching { owner.writeText(me) }
+        var misses = 0
+        while (true) {
+            if (!file.exists()) return
+            if (runCatching { owner.readText().trim() }.getOrNull() != me) return
+            val want = runCatching { file.readText().trim() }.getOrNull()?.toIntOrNull()
+            var wait = 150L
+            if (want != null) {
+                val now = focusedDisplay(atm)
+                if (now != null && now != want) {
+                    val ok = runCatching { focus(atm, want).startsWith("OK") }.getOrDefault(false)
+                    // If moving it keeps failing, try less often.
+                    misses = if (ok) 0 else misses + 1
+                    if (misses > 5) wait = 1_000L
+                }
+            }
+            Thread.sleep(wait)
         }
     }
 }
