@@ -232,6 +232,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 com.nerfherder.walkthor.Shortcuts.rumbleProblem?.let { Body("Shortcut rumble: $it") }
                 com.nerfherder.walkthor.ControllerLock.locked.value?.let { Body("Controller locked to the ${it.label}") }
                 com.nerfherder.walkthor.ControllerLock.lastNote?.let { Body("Controller lock: $it") }
+                Body("Notifications on the bottom screen: ${com.nerfherder.walkthor.BottomNotifications.lastNote}")
                 // What the quick controls on Now playing can do on this device.
                 val controls by androidx.compose.runtime.produceState(emptyList<String>()) {
                     value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.nerfherder.walkthor.ScreenControls.report(context) }

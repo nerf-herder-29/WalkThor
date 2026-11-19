@@ -118,5 +118,15 @@
         </service>
         <!-- Notices WalkThor being closed by Android and starts it again (see CrashLog). -->
         <service android:name=".Keeper" android:exported="false" android:process=":keeper" />
+        <!-- Notifications on the bottom screen (off unless switched on and given notification access). -->
+        <service
+            android:name=".NotifyListener"
+            android:exported="true"
+            android:label="WalkThor notifications"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

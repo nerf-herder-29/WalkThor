@@ -434,6 +434,35 @@ private fun SettingsScreen(
                         checked = lightsOn && hasLights,
                     ) { if (hasLights) { lightsOn = it; com.nerfherder.walkthor.StickLights.setOn(context, it) } }
                 }
+                SettingsGroup("Notifications") {
+                    var bottomNotes by remember { mutableStateOf(com.nerfherder.walkthor.BottomNotifications.enabled(context)) }
+                    // Notification access is given in Android's settings: checked again on coming back.
+                    var noteAccess by remember { mutableStateOf(com.nerfherder.walkthor.BottomNotifications.hasAccess(context)) }
+                    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current
+                    androidx.compose.runtime.DisposableEffect(lifecycle) {
+                        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+                            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                                noteAccess = com.nerfherder.walkthor.BottomNotifications.hasAccess(context)
+                                com.nerfherder.walkthor.BottomNotifications.apply(context)
+                            }
+                        }
+                        lifecycle.lifecycle.addObserver(obs)
+                        onDispose { lifecycle.lifecycle.removeObserver(obs) }
+                    }
+                    SettingSwitch(
+                        "Notifications on the bottom screen",
+                        when {
+                            bottomNotes && !noteAccess -> "Needs notification access for WalkThor: tap to allow it"
+                            else -> "Android's pop-ups drop down on the bottom screen instead of over your game. Needs Force SELinux off. Switch it off before uninstalling WalkThor"
+                        },
+                        checked = bottomNotes,
+                        divider = false,
+                    ) { on ->
+                        if (on && bottomNotes && !noteAccess) com.nerfherder.walkthor.BottomNotifications.openAccess(context)
+                        bottomNotes = on
+                        com.nerfherder.walkthor.BottomNotifications.setEnabled(context, on)
+                    }
+                }
                 SettingsGroup("If Android closes WalkThor") {
                     var reopen by remember { mutableStateOf(com.nerfherder.walkthor.Revive.enabled(context)) }
                     SettingSwitch(

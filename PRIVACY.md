@@ -109,6 +109,15 @@ Everything else stays on your device.
   D-pad direction is pressed in that time. Nothing is recorded, stored or sent.
   A shortcut makes the device or controller rumble briefly, if that's on.
 
+- **Notifications on the bottom screen, only if you switch it on.** With Settings → General →
+  Notifications on the bottom screen on, and notification access given to WalkThor in Android's
+  settings, Android hands WalkThor each notification as it arrives. WalkThor shows the ones that
+  would have popped up (app name, title and text) as a card on the bottom screen for a few
+  seconds, then forgets them: nothing is recorded, stored or sent. While it's on, WalkThor
+  switches Android's own pop-up banners off through AYN's system helper, and switches them back on
+  when you turn the setting off, or when WalkThor loses accessibility or notification access.
+  Android doesn't let an app do anything as it's uninstalled, so switch the setting off first.
+
 - **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
   buttons you press. After you agree to the explanation shown the first time you open it,
   the accessibility service sees each controller button press just before your game does, and

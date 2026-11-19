@@ -162,6 +162,8 @@ class SwipeGestureService : AccessibilityService() {
         runCatching { ExitHistory.collect(this) }
         runCatching { MemoryWatch.start(this) }
         runCatching { ControllerLock.restore(this) }
+        // Notifications on the bottom screen: Android's banners off again, if that's switched on.
+        runCatching { BottomNotifications.apply(this) }
         AynButton.load(this)
         applyEventTypes()
         // AYN puts its own stick lights back when the screen wakes: put yours back after it.
@@ -490,6 +492,8 @@ class SwipeGestureService : AccessibilityService() {
         ComeBack.disarm(this)
         runCatching { unbindService(keeperLink) }
         runCatching { BottomOff.turnOn(this) }
+        // Without the service, WalkThor can't show notifications: Android's own banners back on.
+        runCatching { BottomNotifications.restore(this) }
         com.nerfherder.walkthor.controls.ControllerInput.clear()
         if (instance?.get() === this) instance = null
         SwipeLauncher.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
