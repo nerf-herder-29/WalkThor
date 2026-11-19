@@ -26,6 +26,8 @@ object Shortcuts {
         FPS("FPS counter on / off"),
         STICK_LIGHTS("Stick lights on / off"),
         KEYBOARD("Show / hide the keyboard"),
+        BRIGHTER("Brightness up"),
+        DIMMER("Brightness down"),
         LOCK_TOP("Lock controller to top screen"),
         LOCK_BOTTOM("Lock controller to bottom screen"),
         PERF_MODE("Next performance mode"),
@@ -149,6 +151,41 @@ object Shortcuts {
         rumbleProblem?.let { AynButton.note("rumble: $it") }
     }
 
+    // ---- brightness ----
+
+    private const val STEP = 0.1f
+
+    /**
+     * Brightness up or down a tenth, on the screen Home's brightness control is set to (top,
+     * bottom or both). Worker thread: reading the bottom screen's level can take a moment.
+     */
+    private fun stepBrightness(app: Context, delta: Float) {
+        val target = ScreenControls.target(app)
+        fun next(now: Float) = (Math.round((now + delta) * 10f) / 10f).coerceIn(0.05f, 1f)
+        val doTop = target != ScreenControls.Target.BOTTOM && ScreenControls.canSetTop(app)
+        val doBottom = target != ScreenControls.Target.TOP
+        if (!doTop && !doBottom) {
+            ScreenMessage.show("Top screen brightness needs Modify system settings for WalkThor (Home → brightness)")
+            return
+        }
+        val top = if (doTop) next(ScreenControls.top(app)) else null
+        val bottom = if (doBottom) next(runCatching { ScreenControls.bottom(app) }.getOrDefault(0.5f)) else null
+        fun pct(l: Float) = "${Math.round(l * 100)}%"
+        main.post {
+            top?.let { ScreenControls.setTop(app, it) }
+            bottom?.let { ScreenControls.setBottom(app, it) }
+            ScreenMessage.show(
+                when {
+                    top != null && bottom != null && top == bottom -> "Brightness ${pct(top)}"
+                    top != null && bottom != null -> "Top ${pct(top)} · bottom ${pct(bottom)}"
+                    top != null -> "Top screen ${pct(top)}"
+                    else -> "Bottom screen ${pct(bottom!!)}" + if (target == ScreenControls.Target.BOTH) " (top: allow Modify system settings)" else ""
+                },
+                1_500,
+            )
+        }
+    }
+
     // ---- doing it ----
 
     /** [t] was pressed: does what it's set to, with a rumble. Call on the main thread. */
@@ -216,6 +253,8 @@ object Shortcuts {
                 },
                 2_000,
             )
+            Action.BRIGHTER -> worker.execute { stepBrightness(app, +STEP) }
+            Action.DIMMER -> worker.execute { stepBrightness(app, -STEP) }
             Action.STICK_LIGHTS -> {
                 val on = !StickLights.isOn(app)
                 StickLights.setOn(app, on)

@@ -50,7 +50,7 @@ step that's done.
 - **Button shortcuts** — Settings → Shortcuts maps the AYN button's press, double press and hold, Back
   pressed twice, and Back held with a D-pad direction, to things WalkThor can do: open the drawer, AYN's own drawer,
   dim the bottom screen, turn it off, close all apps, take a screenshot, save the last seconds of play,
-  the FPS counter, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard,
+  the FPS counter, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, brightness up and down,
   or step through performance and fan modes. A short rumble confirms each one.
 - **Your games, by system** — link your ROMs folder and WalkThor lists your games under each system,
   each with its guide beside it (tap to open), or *Add a guide* to pick one of yours or add a file.
