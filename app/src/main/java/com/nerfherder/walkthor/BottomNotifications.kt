@@ -199,7 +199,7 @@ object BottomNotifications {
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                 y = (u * 2.6f).toInt()
-                title = "WalkThor notification"
+                setTitle("WalkThor notification")
             }
             wm.addView(card, params)
             shown = wm to card
