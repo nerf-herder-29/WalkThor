@@ -164,40 +164,55 @@ object AynSystem {
     }
 
     /**
-     * Starts the controller lock's watcher (in [FocusTool]), which keeps the focus on the display
-     * named in [file] until that file goes. Starting it again replaces the one running. Not on the
-     * main thread.
+     * Matches the running watcher's command line for `pkill -f` and `pgrep -f`. The first letter is
+     * in brackets, so the pattern doesn't match the shell running pkill or pgrep (whose own command
+     * line holds the brackets).
      */
-    fun focusWatch(context: Context, file: java.io.File): Boolean {
+    private fun watchPattern(): String = FocusTool::class.java.name.let { "[${it[0]}]${it.substring(1)} watch " }
+
+    /**
+     * Starts the controller lock's watcher (in [FocusTool]), keeping the focus on [displayId], in
+     * place of any already running. True once it's seen running. Not on the main thread.
+     */
+    fun focusWatch(context: Context, displayId: Int): Boolean {
         if (!available()) return false
         val apk = context.applicationInfo.sourceDir
-        val path = file.absolutePath
-        if ("'" in apk || "'" in path) return false
-        val log = java.io.File("$path.log")
-        val err = "$path.err"
-        val tool = "CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} watch '$path'"
-        // Fully detached, so it keeps running after the helper's command finishes; anything it
-        // prints (an error, say) goes to a file Diagnostics shows. Two ways, in case the first
-        // doesn't survive the helper's command ending on this device.
+        if ("'" in apk || "\"" in apk) return false
+        focusUnwatch()
+        val tool = "CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} watch $displayId '$apk'"
+        // Fully detached, so it keeps running after the helper's command finishes. Two ways, in
+        // case the first doesn't survive that on this device.
         val ways = listOf(
-            "(setsid sh -c \"$tool\" </dev/null >'$err' 2>&1 &); chmod 644 '$err' 2>/dev/null",
-            "nohup sh -c \"$tool\" </dev/null >'$err' 2>&1 & chmod 644 '$err' 2>/dev/null",
+            "(setsid sh -c \"$tool\" </dev/null >/dev/null 2>&1 &)",
+            "nohup sh -c \"$tool\" </dev/null >/dev/null 2>&1 &",
         )
+        val tried = mutableListOf<String>()
         for (way in ways) {
-            log.delete()
-            focusWatchNote = "starting"
             run(way)
-            // Started once its log appears.
             val until = android.os.SystemClock.uptimeMillis() + 3_000
             while (android.os.SystemClock.uptimeMillis() < until) {
-                if (log.exists()) { focusWatchNote = "running"; return true }
-                Thread.sleep(100)
+                Thread.sleep(250)
+                if (focusWatching()) { focusWatchNote = "running"; return true }
             }
+            tried += focusWatchLog().lastOrNull() ?: "nothing logged"
         }
-        val why = runCatching { java.io.File(err).readText().trim().lines().takeLast(4).joinToString(" / ") }.getOrNull()
-        focusWatchNote = "didn't start" + (if (!why.isNullOrBlank()) ": $why" else " (and printed nothing)")
+        focusWatchNote = "didn't stay running (${tried.joinToString("; ")})"
         return false
     }
+
+    /** Stops the controller lock's watcher. Not on the main thread. */
+    fun focusUnwatch() {
+        if (works == false) return
+        run("pkill -f '${watchPattern()}' >/dev/null 2>&1; echo done")
+    }
+
+    /** The watcher is running. Not on the main thread. */
+    fun focusWatching(): Boolean =
+        run("pgrep -f '${watchPattern()}' | head -1")?.trim()?.toIntOrNull() != null
+
+    /** The watcher's latest notes (from Android's log). Not on the main thread. */
+    fun focusWatchLog(): List<String> =
+        shellLines("logcat -d -v time -s ${FocusTool.TAG}:I | grep -v '^-' | tail -12").orEmpty()
 
     /** How the controller lock's watcher started, for Diagnostics. */
     @Volatile var focusWatchNote: String = "not started"
@@ -431,7 +446,7 @@ object FocusTool {
     fun main(args: Array<String>) {
         try {
             val atm = Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
-            if (args.getOrNull(0) == "watch") { watch(atm, args.getOrNull(1) ?: return); return }
+            if (args.getOrNull(0) == "watch") { watch(atm, args.getOrNull(1)?.toIntOrNull() ?: return, args.getOrNull(2) ?: return); return }
             println(focus(atm, args[0].toInt()))
         } catch (t: Throwable) {
             println("ERR ${(t.cause ?: t).javaClass.simpleName}: ${(t.cause ?: t).message?.take(80)}")
@@ -471,46 +486,32 @@ object FocusTool {
         return runCatching { info.javaClass.getField("displayId").getInt(info) }.getOrNull()
     }
 
+    /** Its notes go to Android's log under this tag (WalkThor reads them back for Diagnostics). */
+    const val TAG = "WalkThorLock"
+
     /**
-     * The controller lock: while [path] (in WalkThor's own storage) holds a display's number, the
-     * focus is kept on that display, checked several times a second. "pause" holds off; the file
-     * gone, or another watcher started after this one, ends it.
+     * The controller lock: keeps the focus on display [want], checked several times a second,
+     * until it's stopped (WalkThor ends it when you unlock) or WalkThor ([apk]) is uninstalled.
+     * Uses no files: AYN's helper may not be allowed into WalkThor's storage.
      */
-    private fun watch(atm: Any, path: String) {
-        val file = java.io.File(path)
-        val owner = java.io.File(path + ".owner")
-        val me = android.os.Process.myPid().toString()
-        runCatching { owner.writeText(me) }
-        // What it saw and did, for WalkThor's Diagnostics (the last few lines).
-        val log = java.io.File(path + ".log")
-        val lines = ArrayDeque<String>()
-        val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-        fun note(s: String) {
-            lines.addLast("${clock.format(java.util.Date())} $s")
-            while (lines.size > 25) lines.removeFirst()
-            runCatching { log.writeText(lines.joinToString("\n")); log.setReadable(true, false) }
-        }
+    private fun watch(atm: Any, want: Int, apk: String) {
+        fun note(s: String) { runCatching { android.util.Log.i(TAG, s) } }
         var misses = 0
         var lastSeen: Int? = -1
         var moved = 0
-        note("started: focus on display ${focusedDisplay(atm)}")
+        note("started: keeping the controller on display $want; focus is on display ${focusedDisplay(atm)}")
         while (true) {
-            if (!file.exists()) { note("stopped (unlocked)"); return }
-            if (runCatching { owner.readText().trim() }.getOrNull() != me) return
-            val want = runCatching { file.readText().trim() }.getOrNull()?.toIntOrNull()
+            if (!java.io.File(apk).exists()) { note("stopped (WalkThor was removed)"); return }
             var wait = 150L
-            if (want != null) {
-                val now = focusedDisplay(atm)
-                if (now != lastSeen) { note("focus now on display $now (keeping it on $want)"); lastSeen = now }
-                if (now == null && moved == 0) note("can't tell which display has the focus")
-                if (now != null && now != want) {
-                    val result = runCatching { focus(atm, want) }.getOrElse { "ERR ${it.javaClass.simpleName}" }
-                    moved++
-                    if (moved <= 40) note("moved it to $want: $result")
-                    // If moving it keeps failing, try less often.
-                    misses = if (result.startsWith("OK")) 0 else misses + 1
-                    if (misses > 5) wait = 1_000L
-                }
+            val now = focusedDisplay(atm)
+            if (now != lastSeen) { note(if (now == null) "can't tell which display has the focus" else "focus now on display $now"); lastSeen = now }
+            if (now != null && now != want) {
+                val result = runCatching { focus(atm, want) }.getOrElse { "ERR ${it.javaClass.simpleName}" }
+                moved++
+                if (moved <= 40) note("moved it to $want: $result")
+                // If moving it keeps failing, try less often.
+                misses = if (result.startsWith("OK")) 0 else misses + 1
+                if (misses > 5) wait = 1_000L
             }
             Thread.sleep(wait)
         }

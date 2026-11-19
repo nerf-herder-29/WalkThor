@@ -29,9 +29,6 @@ object ControllerLock {
 
     private fun prefs(c: Context) = SwipeLauncher.prefs(c)
 
-    /** Read by the helper's watcher: the display to keep the controller on, or "pause". */
-    private fun file(c: Context) = java.io.File(c.filesDir, "controller-lock")
-
     /** After WalkThor restarts: the lock you had. */
     fun restore(service: SwipeGestureService) {
         val saved = prefs(service).getString("controllerLock", null)?.let { n -> Screen.entries.firstOrNull { it.name == n } }
@@ -54,12 +51,12 @@ object ControllerLock {
     /** Kept for the service's window events; the helper's watcher does the work now. */
     fun onWindowsChanged(service: SwipeGestureService) = Unit
 
-    /** Starts or stops the helper's watcher to match [locked]. */
+    /** Starts or stops the helper's watcher to match [locked] (and typing in WalkThor's search). */
     private fun apply(app: Context, announce: Boolean) {
         val screen = locked.value
         worker.execute {
             if (screen == null) {
-                file(app).delete()
+                AynSystem.focusUnwatch()
                 lastNote = "unlocked"
                 if (announce) ScreenMessage.show("Controller unlocked", 2_000)
                 return@execute
@@ -75,18 +72,17 @@ object ControllerLock {
                 if (announce) ScreenMessage.show("Controller lock needs Force SELinux off", 3_000)
                 return@execute
             }
-            writeTarget(app, screen, want)
-            val started = AynSystem.focusWatch(app, file(app))
+            // Typing in WalkThor's search needs the keyboard on the bottom screen for a moment.
+            if (screen == Screen.TOP && GameFocus.wantFocus.value) {
+                AynSystem.focusUnwatch()
+                lastNote = "paused while you type"
+                return@execute
+            }
+            val started = AynSystem.focusWatch(app, want)
             lastNote = if (started) "keeping the controller on the ${screen.label} (display $want)"
-            else "couldn't start the helper's watcher (${AynSystem.focusWatchNote})"
-            if (announce) ScreenMessage.show(if (started) "Controller locked to the ${screen.label}" else "Couldn't lock the controller", 2_000)
+            else "couldn't start the helper's watcher: ${AynSystem.focusWatchNote}"
+            if (announce) ScreenMessage.show(if (started) "Controller locked to the ${screen.label}" else "Couldn't lock the controller (see Diagnostics)", 2_500)
         }
-    }
-
-    private fun writeTarget(app: Context, screen: Screen, want: Int) {
-        // Typing in WalkThor's search needs the keyboard on the bottom screen for a moment.
-        val text = if (screen == Screen.TOP && GameFocus.wantFocus.value) "pause" else want.toString()
-        runCatching { file(app).writeText(text) }
     }
 
     /** Pauses a top-screen lock while you type in WalkThor's search, and resumes it after. */
@@ -94,16 +90,16 @@ object ControllerLock {
         if (watchingTyping) return
         watchingTyping = true
         MainScope().launch {
-            GameFocus.wantFocus.collect {
-                val screen = locked.value ?: return@collect
-                worker.execute { wantedDisplay(app, screen)?.let { want -> if (file(app).exists()) writeTarget(app, screen, want) } }
+            var was = GameFocus.wantFocus.value
+            GameFocus.wantFocus.collect { typing ->
+                if (typing != was && locked.value == Screen.TOP) apply(app, announce = false)
+                was = typing
             }
         }
     }
 
-    /** The helper's watcher's last few lines, for Diagnostics. */
-    fun watcherLog(c: Context): List<String> =
-        runCatching { java.io.File(c.filesDir, "controller-lock.log").readLines() }.getOrDefault(emptyList())
+    /** The helper's watcher's latest notes, for Diagnostics. Not on the main thread. */
+    fun watcherLog(): List<String> = runCatching { AynSystem.focusWatchLog() }.getOrDefault(emptyList())
 
     private fun wantedDisplay(c: Context, screen: Screen): Int? {
         val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return null
