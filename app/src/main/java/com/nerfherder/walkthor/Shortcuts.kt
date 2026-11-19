@@ -168,8 +168,14 @@ object Shortcuts {
             ScreenMessage.show("Top screen brightness needs Modify system settings for WalkThor (Home → brightness)")
             return
         }
-        val top = if (doTop) next(ScreenControls.top(app)) else null
-        val bottom = if (doBottom) next(runCatching { ScreenControls.bottom(app) }.getOrDefault(0.5f)) else null
+        val topNow = if (doTop) ScreenControls.top(app) else null
+        val bottomNow = if (doBottom) runCatching { ScreenControls.bottom(app) }.getOrDefault(0.5f) else null
+        // Both screens: one level for the two, as Home's slider sets them, stepped from the top
+        // screen's (each screen keeps its level a little differently, so stepping each on its own
+        // lets them drift apart).
+        val shared = if (topNow != null && bottomNow != null) next(topNow) else null
+        val top = shared ?: topNow?.let(::next)
+        val bottom = shared ?: bottomNow?.let(::next)
         fun pct(l: Float) = "${Math.round(l * 100)}%"
         main.post {
             top?.let { ScreenControls.setTop(app, it) }
