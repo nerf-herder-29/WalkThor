@@ -9,7 +9,7 @@ import android.view.InputDevice
 
 /**
  * Button shortcuts: each press WalkThor's accessibility service can tell apart (a tap, double
- * press or hold of the AYN button, Back pressed twice, Back held) does the
+ * press or hold of the AYN button, Back pressed twice, Back with a D-pad direction) does the
  * thing you chose for it in Settings → Shortcuts, with a short rumble as it does.
  */
 object Shortcuts {
@@ -25,6 +25,7 @@ object Shortcuts {
         CLIP("Save the last seconds"),
         FPS("FPS counter on / off"),
         STICK_LIGHTS("Stick lights on / off"),
+        KEYBOARD("Show / hide the keyboard"),
         LOCK_TOP("Lock controller to top screen"),
         LOCK_BOTTOM("Lock controller to bottom screen"),
         PERF_MODE("Next performance mode"),
@@ -36,7 +37,14 @@ object Shortcuts {
         AYN_DOUBLE("aynDouble", "AYN button: double press", "Two quick taps"),
         AYN_HOLD("aynHold", "AYN button: hold", "Held for over half a second"),
         BACK_DOUBLE("backDouble", "Back button: double press", "Two presses within 0.4 s. Both still go to the app in front"),
-        BACK_HOLD("backHold", "Back button: hold", "Held for over half a second. The app in front still gets the press"),
+        BACK_UP("backUp", "Back + D-pad up", "Hold Back and press up"),
+        BACK_DOWN("backDown", "Back + D-pad down", "Hold Back and press down"),
+        BACK_LEFT("backLeft", "Back + D-pad left", "Hold Back and press left"),
+        BACK_RIGHT("backRight", "Back + D-pad right", "Hold Back and press right"),
+        ;
+
+        /** One of the Back + D-pad combinations. */
+        val combo get() = this == BACK_UP || this == BACK_DOWN || this == BACK_LEFT || this == BACK_RIGHT
     }
 
 
@@ -62,9 +70,7 @@ object Shortcuts {
             Trigger.AYN_DOUBLE -> Action.AYN_DRAWER
             Trigger.AYN_HOLD -> if (prefs(c).getBoolean("bottomOffHold", false)) Action.DIM else Action.NOTHING
             Trigger.BACK_DOUBLE -> if (prefs(c).getBoolean("tripleClose", false)) Action.CLOSE_ALL else Action.NOTHING
-            // What Start + Select held together did before, if you'd set it.
-            Trigger.BACK_HOLD -> prefs(c).getString("shortcut.startSelect", null)
-                ?.let { n -> Action.entries.firstOrNull { it.name == n } }?.takeIf { it in actionsFor(t) } ?: Action.NOTHING
+            Trigger.BACK_UP, Trigger.BACK_DOWN, Trigger.BACK_LEFT, Trigger.BACK_RIGHT -> Action.NOTHING
         }
         cache[t] = action
         return action
@@ -86,8 +92,19 @@ object Shortcuts {
         (t != Trigger.AYN_DOUBLE && t != Trigger.AYN_HOLD) || get(c, Trigger.AYN_PRESS) != Action.AYN_DRAWER
 
     /** A shortcut other than the AYN button's needs WalkThor to hear button presses. */
-    fun wantsKeys(c: Context): Boolean =
-        get(c, Trigger.BACK_DOUBLE) != Action.NOTHING || get(c, Trigger.BACK_HOLD) != Action.NOTHING
+    fun wantsKeys(c: Context): Boolean = get(c, Trigger.BACK_DOUBLE) != Action.NOTHING || anyCombo(c)
+
+    /** Any Back + D-pad combination is set (then Back is held back until it's let go). */
+    fun anyCombo(c: Context): Boolean = Trigger.entries.any { it.combo && get(c, it) != Action.NOTHING }
+
+    /** The combination for a D-pad key, or null. */
+    fun comboFor(keyCode: Int): Trigger? = when (keyCode) {
+        android.view.KeyEvent.KEYCODE_DPAD_UP -> Trigger.BACK_UP
+        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> Trigger.BACK_DOWN
+        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> Trigger.BACK_LEFT
+        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> Trigger.BACK_RIGHT
+        else -> null
+    }
 
     // ---- rumble ----
 
@@ -190,6 +207,15 @@ object Shortcuts {
             }
             Action.LOCK_TOP -> ControllerLock.toggle(service, ControllerLock.Screen.TOP)
             Action.LOCK_BOTTOM -> ControllerLock.toggle(service, ControllerLock.Screen.BOTTOM)
+            Action.KEYBOARD -> ScreenMessage.show(
+                when (com.nerfherder.walkthor.keyboard.WalkThorKeyboard.toggle(app)) {
+                    com.nerfherder.walkthor.keyboard.WalkThorKeyboard.Companion.Toggle.SHOWN -> "Keyboard up"
+                    com.nerfherder.walkthor.keyboard.WalkThorKeyboard.Companion.Toggle.HIDDEN -> "Keyboard put away"
+                    com.nerfherder.walkthor.keyboard.WalkThorKeyboard.Companion.Toggle.NO_TEXT_BOX -> "Pick a text box first, then press it again"
+                    com.nerfherder.walkthor.keyboard.WalkThorKeyboard.Companion.Toggle.NOT_IN_USE -> "Choose the WalkThor keyboard first (Settings → General)"
+                },
+                2_000,
+            )
             Action.STICK_LIGHTS -> {
                 val on = !StickLights.isOn(app)
                 StickLights.setOn(app, on)

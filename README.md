@@ -48,9 +48,10 @@ step that's done.
 - **Guide asks which guide** — the Guide tab lists your guides each time, newest first; WalkThor
   remembers your place in each.
 - **Button shortcuts** — Settings → Shortcuts maps the AYN button's press, double press and hold, Back
-  pressed twice or held, to things WalkThor can do: open the drawer, AYN's own drawer,
+  pressed twice, and Back held with a D-pad direction, to things WalkThor can do: open the drawer, AYN's own drawer,
   dim the bottom screen, turn it off, close all apps, take a screenshot, save the last seconds of play,
-  the FPS counter, or step through performance and fan modes. A short rumble confirms each one.
+  the FPS counter, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard,
+  or step through performance and fan modes. A short rumble confirms each one.
 - **Your games, by system** — link your ROMs folder and WalkThor lists your games under each system,
   each with its guide beside it (tap to open), or *Add a guide* to pick one of yours or add a file.
   Guides are matched to games by title, and any you pick are remembered.

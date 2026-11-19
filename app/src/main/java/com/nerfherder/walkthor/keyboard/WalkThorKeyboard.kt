@@ -92,9 +92,25 @@ class WalkThorKeyboard : InputMethodService() {
         hideOnBottom()
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        current = java.lang.ref.WeakReference(this)
+    }
+
     override fun onDestroy() {
         hideOnBottom()
+        if (current?.get() === this) current = null
         super.onDestroy()
+    }
+
+    /** Asked for by the shortcut: shown even where Android would leave it hidden (a controller counts as a keyboard). */
+    private var forced = false
+
+    override fun onEvaluateInputViewShown(): Boolean = forced || super.onEvaluateInputViewShown()
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        forced = false
     }
 
     /** Puts the keyboard away (the Back button does too). */
@@ -121,6 +137,28 @@ class WalkThorKeyboard : InputMethodService() {
     }
 
     companion object {
+        @Volatile private var current: java.lang.ref.WeakReference<WalkThorKeyboard>? = null
+
+        enum class Toggle { SHOWN, HIDDEN, NO_TEXT_BOX, NOT_IN_USE }
+
+        /**
+         * The shortcut: brings the keyboard up for the text box you're in, or puts it away if it's
+         * up. Only WalkThor's own keyboard can be brought up this way (Android lets only the
+         * keyboard itself do it), and only when a text box has been picked. Main thread.
+         */
+        fun toggle(c: Context): Toggle {
+            if (!isDefault(c)) return Toggle.NOT_IN_USE
+            val k = current?.get() ?: return Toggle.NO_TEXT_BOX
+            if (k.isInputViewShown || k.onBottom != null) { k.putAway(); return Toggle.HIDDEN }
+            val info = k.currentInputEditorInfo
+            if (!k.currentInputStarted || k.currentInputConnection == null || info == null ||
+                info.inputType == android.text.InputType.TYPE_NULL
+            ) return Toggle.NO_TEXT_BOX
+            k.forced = true
+            if (android.os.Build.VERSION.SDK_INT >= 30) k.requestShowSelf(0) else @Suppress("DEPRECATION") k.showWindow(true)
+            return Toggle.SHOWN
+        }
+
         // Android names a keyboard by its short form: "com.example/.keyboard.Name".
         private fun id(c: Context) = android.content.ComponentName(c, WalkThorKeyboard::class.java).flattenToShortString()
         private val ID = Regex("[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+")
