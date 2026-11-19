@@ -131,8 +131,9 @@ object BottomNotifications {
 
     /** A notification arrived (from [NotifyListener]): shown if it would have popped up. */
     fun posted(c: Context, sbn: StatusBarNotification, ranking: NotificationListenerService.Ranking?) {
-        if (!enabled(c) || sbn.packageName == c.packageName) return
         val n = sbn.notification ?: return
+        // WalkThor's own only for the test (Diagnostics → Send a test notification).
+        if (!enabled(c) || (sbn.packageName == c.packageName && n.channelId != TEST_CHANNEL)) return
         if (n.flags and (Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_ONGOING_EVENT) != 0) return
         // Calls and alarms open their own screen anyway.
         if (n.fullScreenIntent != null) return
@@ -153,6 +154,48 @@ object BottomNotifications {
         val icon = runCatching { pm.getApplicationIcon(sbn.packageName) }.getOrNull()
         val open = n.contentIntent
         main.post { runCatching { Card.show(label, title, text, icon) { runCatching { open?.send() } } } }
+    }
+
+    // ---- the test (Diagnostics) ----
+
+    const val TEST_CHANNEL = "walkthor_test"
+    private const val TEST_ID = 4242
+
+    enum class Test { SENT, SHOWN_DIRECTLY_OFF, SHOWN_DIRECTLY_NO_ACCESS, NEEDS_PERMISSION }
+
+    /**
+     * Sends a real notification through Android (so it takes the same path as any app's), or, if
+     * that path isn't set up yet, shows the card straight away. Main thread.
+     */
+    fun sendTest(c: Context): Test {
+        val app = c.applicationContext
+        fun direct() = Card.show("WalkThor", "Test notification", "This is how notifications look on the bottom screen.",
+            runCatching { app.packageManager.getApplicationIcon(app.packageName) }.getOrNull()) {}
+        if (!enabled(app)) { direct(); return Test.SHOWN_DIRECTLY_OFF }
+        if (!hasAccess(app)) { direct(); return Test.SHOWN_DIRECTLY_NO_ACCESS }
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            app.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return Test.NEEDS_PERMISSION
+        val nm = app.getSystemService(NotificationManager::class.java) ?: run { direct(); return Test.SHOWN_DIRECTLY_NO_ACCESS }
+        nm.createNotificationChannel(
+            android.app.NotificationChannel(TEST_CHANNEL, "Test notification", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Sent from Diagnostics, to try notifications on the bottom screen"
+            }
+        )
+        val open = android.app.PendingIntent.getActivity(
+            app, TEST_ID, Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val n = Notification.Builder(app, TEST_CHANNEL)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Test notification")
+            .setContentText("If this dropped down on the bottom screen, it works. Tap it to open WalkThor.")
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .setTimeoutAfter(15_000)
+            .build()
+        nm.notify(TEST_ID, n)
+        return Test.SENT
     }
 
     /** The card that drops down from the top of the bottom screen. */

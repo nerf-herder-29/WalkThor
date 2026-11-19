@@ -233,6 +233,28 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 com.nerfherder.walkthor.ControllerLock.locked.value?.let { Body("Controller locked to the ${it.label}") }
                 com.nerfherder.walkthor.ControllerLock.lastNote?.let { Body("Controller lock: $it") }
                 Body("Notifications on the bottom screen: ${com.nerfherder.walkthor.BottomNotifications.lastNote}")
+                run {
+                    var testNote by remember { mutableStateOf<String?>(null) }
+                    fun describe(t: com.nerfherder.walkthor.BottomNotifications.Test) = when (t) {
+                        com.nerfherder.walkthor.BottomNotifications.Test.SENT -> "Sent. It should drop down on the bottom screen in a moment, and not pop up on the top one"
+                        com.nerfherder.walkthor.BottomNotifications.Test.SHOWN_DIRECTLY_OFF -> "Shown straight away: the switch in Settings → General is off, so nothing went through Android"
+                        com.nerfherder.walkthor.BottomNotifications.Test.SHOWN_DIRECTLY_NO_ACCESS -> "Shown straight away: WalkThor doesn't have notification access yet, so nothing went through Android"
+                        com.nerfherder.walkthor.BottomNotifications.Test.NEEDS_PERMISSION -> "WalkThor needs permission to send notifications for the test"
+                    }
+                    val askPost = androidx.activity.compose.rememberLauncherForActivityResult(
+                        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+                    ) { ok ->
+                        testNote = if (ok) describe(com.nerfherder.walkthor.BottomNotifications.sendTest(context))
+                        else "Not allowed, so the test can't go through Android"
+                    }
+                    TextButton(onClick = {
+                        val t = com.nerfherder.walkthor.BottomNotifications.sendTest(context)
+                        if (t == com.nerfherder.walkthor.BottomNotifications.Test.NEEDS_PERMISSION && android.os.Build.VERSION.SDK_INT >= 33)
+                            askPost.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        else testNote = describe(t)
+                    }) { Text("Send a test notification") }
+                    testNote?.let { Body(it) }
+                }
                 // What the quick controls on Now playing can do on this device.
                 val controls by androidx.compose.runtime.produceState(emptyList<String>()) {
                     value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.nerfherder.walkthor.ScreenControls.report(context) }

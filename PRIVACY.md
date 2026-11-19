@@ -117,6 +117,7 @@ Everything else stays on your device.
   switches Android's own pop-up banners off through AYN's system helper, and switches them back on
   when you turn the setting off, or when WalkThor loses accessibility or notification access.
   Android doesn't let an app do anything as it's uninstalled, so switch the setting off first.
+  WalkThor only sends a notification of its own when you tap Send a test notification in Diagnostics.
 
 - **Face Buttons: button presses, only after you agree.** The Face Buttons screen lights up the
   buttons you press. After you agree to the explanation shown the first time you open it,
