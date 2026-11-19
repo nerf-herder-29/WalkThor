@@ -154,6 +154,10 @@ object Shortcuts {
     // ---- brightness ----
 
     private const val STEP = 0.1f
+    /** The levels the last press set, and when (only touched on the shortcuts' worker thread). */
+    private var lastTop: Float? = null
+    private var lastBottom: Float? = null
+    private var lastStepAt = 0L
 
     /**
      * Brightness up or down a tenth, on the screen Home's brightness control is set to (top,
@@ -168,14 +172,21 @@ object Shortcuts {
             ScreenMessage.show("Top screen brightness needs Modify system settings for WalkThor (Home → brightness)")
             return
         }
-        val topNow = if (doTop) ScreenControls.top(app) else null
-        val bottomNow = if (doBottom) runCatching { ScreenControls.bottom(app) }.getOrDefault(0.5f) else null
+        // Pressed again within a few seconds: steps from the level it just set, since the screens
+        // (the bottom one especially) may not have taken the last change yet.
+        val t = android.os.SystemClock.uptimeMillis()
+        val recent = t - lastStepAt < 4_000
+        val topNow = if (doTop) (lastTop.takeIf { recent } ?: ScreenControls.top(app)) else null
+        val bottomNow = if (doBottom) (lastBottom.takeIf { recent } ?: runCatching { ScreenControls.bottom(app) }.getOrDefault(0.5f)) else null
         // Both screens: one level for the two, as Home's slider sets them, stepped from the top
         // screen's (each screen keeps its level a little differently, so stepping each on its own
         // lets them drift apart).
         val shared = if (topNow != null && bottomNow != null) next(topNow) else null
         val top = shared ?: topNow?.let(::next)
         val bottom = shared ?: bottomNow?.let(::next)
+        lastTop = top
+        lastBottom = bottom
+        lastStepAt = t
         fun pct(l: Float) = "${Math.round(l * 100)}%"
         main.post {
             top?.let { ScreenControls.setTop(app, it) }
