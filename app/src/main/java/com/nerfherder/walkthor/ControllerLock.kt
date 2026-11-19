@@ -77,7 +77,8 @@ object ControllerLock {
             }
             writeTarget(app, screen, want)
             val started = AynSystem.focusWatch(app, file(app))
-            lastNote = if (started) "keeping the controller on the ${screen.label} (display $want)" else "couldn't start the helper's watcher"
+            lastNote = if (started) "keeping the controller on the ${screen.label} (display $want)"
+            else "couldn't start the helper's watcher (${AynSystem.focusWatchNote})"
             if (announce) ScreenMessage.show(if (started) "Controller locked to the ${screen.label}" else "Couldn't lock the controller", 2_000)
         }
     }

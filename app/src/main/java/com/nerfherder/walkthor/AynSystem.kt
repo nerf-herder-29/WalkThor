@@ -173,10 +173,34 @@ object AynSystem {
         val apk = context.applicationInfo.sourceDir
         val path = file.absolutePath
         if ("'" in apk || "'" in path) return false
-        // Fully detached, so it keeps running after the helper's command finishes.
-        run("(CLASSPATH='$apk' setsid app_process /system/bin ${FocusTool::class.java.name} watch '$path' </dev/null >/dev/null 2>&1 &)")
-        return true
+        val log = java.io.File("$path.log")
+        val err = "$path.err"
+        val tool = "CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} watch '$path'"
+        // Fully detached, so it keeps running after the helper's command finishes; anything it
+        // prints (an error, say) goes to a file Diagnostics shows. Two ways, in case the first
+        // doesn't survive the helper's command ending on this device.
+        val ways = listOf(
+            "(setsid sh -c \"$tool\" </dev/null >'$err' 2>&1 &); chmod 644 '$err' 2>/dev/null",
+            "nohup sh -c \"$tool\" </dev/null >'$err' 2>&1 & chmod 644 '$err' 2>/dev/null",
+        )
+        for (way in ways) {
+            log.delete()
+            focusWatchNote = "starting"
+            run(way)
+            // Started once its log appears.
+            val until = android.os.SystemClock.uptimeMillis() + 3_000
+            while (android.os.SystemClock.uptimeMillis() < until) {
+                if (log.exists()) { focusWatchNote = "running"; return true }
+                Thread.sleep(100)
+            }
+        }
+        val why = runCatching { java.io.File(err).readText().trim().lines().takeLast(4).joinToString(" / ") }.getOrNull()
+        focusWatchNote = "didn't start" + (if (!why.isNullOrBlank()) ": $why" else " (and printed nothing)")
+        return false
     }
+
+    /** How the controller lock's watcher started, for Diagnostics. */
+    @Volatile var focusWatchNote: String = "not started"
 
     /** Takes card [taskId] out of recent apps. Not on the main thread. */
     fun removeTask(taskId: Int): Boolean {
