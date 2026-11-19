@@ -474,7 +474,7 @@ private fun SettingsScreen(
                     "Close all apps closes every app you have open, the game included (anything unsaved is lost). " +
                         "Next performance mode and Next fan mode need Force SELinux switched off in AYN's settings. " +
                         "Save the last seconds needs Keep the last switched on in Shots. " +
-                        "While a Back + D-pad combination is set, Back is sent to the app when you let go of it, so a combination doesn't also do Back. " +
+                        "While a Back + D-pad combination is set, Back is sent to the app when you let go of it, and while Back is held the game gets no controls at all, so a combination only does its shortcut. " +
                         "Show / hide the keyboard works with the WalkThor keyboard, once a text box is picked."
                 )
                 pickFor?.let { t ->

@@ -341,6 +341,7 @@ class SwipeGestureService : AccessibilityService() {
         // below, which keeps releases to itself. No direction pressed: Back goes on as usual now.
         if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_UP && backHeldBack) {
             backHeldBack = false
+            runCatching { ComboGrab.release() }
             if (!comboUsed && !CloseCountdown.active) sendBack()
             return true
         }
@@ -377,16 +378,17 @@ class SwipeGestureService : AccessibilityService() {
             if (event.repeatCount == 0 && !backHeldBack && Shortcuts.anyCombo(this)) {
                 backHeldBack = true
                 comboUsed = false
+                // The controller is kept from the game until Back is let go; the D-pad's
+                // directions (sent as movement, not presses) are read there.
+                runCatching { ComboGrab.grab(this) { code -> combo(code) } }
+                    .onFailure { AynButton.note("couldn't take the controller for Back + D-pad (${it.javaClass.simpleName})") }
             }
             if (backHeldBack) return true
         }
         if (backHeldBack && event.action == android.view.KeyEvent.ACTION_DOWN) {
-            Shortcuts.comboFor(event.keyCode)?.let { t ->
+            Shortcuts.comboFor(event.keyCode)?.let {
                 comboKeys += event.keyCode
-                if (event.repeatCount == 0) {
-                    comboUsed = true
-                    if (Shortcuts.get(this, t) != Shortcuts.Action.NOTHING) handler.post { runCatching { Shortcuts.fire(this, t) } }
-                }
+                if (event.repeatCount == 0) combo(event.keyCode)
                 return true
             }
         }
@@ -577,6 +579,13 @@ class SwipeGestureService : AccessibilityService() {
     /** Back presses WalkThor has sent on itself, to let through untouched. */
     private var passBack = 0
     private var passBackUntil = 0L
+
+    /** A D-pad direction ([keyCode]) pressed while Back is held: its shortcut. */
+    private fun combo(keyCode: Int) {
+        val t = Shortcuts.comboFor(keyCode) ?: return
+        comboUsed = true
+        if (Shortcuts.get(this, t) != Shortcuts.Action.NOTHING) handler.post { runCatching { Shortcuts.fire(this, t) } }
+    }
 
     /** Sends on a Back press that was held back for the combinations. */
     private fun sendBack() {
