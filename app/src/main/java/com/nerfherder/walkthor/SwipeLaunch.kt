@@ -152,6 +152,7 @@ class SwipeGestureService : AccessibilityService() {
         handler.removeCallbacksAndMessages(null)
         handler.postDelayed({
             if (bottomSignature() != attachedSignature || strip == null) { detach(); attach() }
+            runCatching { ControllerLock.displaysChanged(this) }
         }, 600)
     }
 

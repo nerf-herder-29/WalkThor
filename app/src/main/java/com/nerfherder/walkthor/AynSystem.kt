@@ -163,63 +163,6 @@ object AynSystem {
             ?.lines()?.lastOrNull { it.startsWith("OK") || it.startsWith("ERR") }
     }
 
-    /**
-     * Matches the running watcher's command line for `pkill -f` and `pgrep -f`. The first letter is
-     * in brackets, so the pattern doesn't match the shell running pkill or pgrep (whose own command
-     * line holds the brackets).
-     */
-    private fun watchPattern(): String = FocusTool::class.java.name.let { "[${it[0]}]${it.substring(1)} watch " }
-
-    /**
-     * Starts the controller lock's watcher (in [FocusTool]), keeping the focus on [displayId], in
-     * place of any already running. True once it's seen running. Not on the main thread.
-     */
-    fun focusWatch(context: Context, displayId: Int): Boolean {
-        if (!available()) return false
-        val apk = context.applicationInfo.sourceDir
-        if ("'" in apk || "\"" in apk) return false
-        focusUnwatch()
-        val tool = "CLASSPATH='$apk' app_process /system/bin ${FocusTool::class.java.name} watch $displayId '$apk'"
-        // Fully detached, so it keeps running after the helper's command finishes. Two ways, in
-        // case the first doesn't survive that on this device.
-        val ways = listOf(
-            "(setsid sh -c \"$tool\" </dev/null >/dev/null 2>&1 &)",
-            "nohup sh -c \"$tool\" </dev/null >/dev/null 2>&1 &",
-        )
-        val tried = mutableListOf<String>()
-        for (way in ways) {
-            run(way)
-            val until = android.os.SystemClock.uptimeMillis() + 3_000
-            while (android.os.SystemClock.uptimeMillis() < until) {
-                Thread.sleep(250)
-                if (focusWatching()) { focusWatchNote = "running"; return true }
-            }
-            tried += focusWatchLog().lastOrNull() ?: "nothing logged"
-        }
-        // Run it in the foreground for a moment instead, to see what it says (an error, say).
-        val trial = shellLines("id -u; CLASSPATH='$apk' timeout 2 app_process /system/bin ${FocusTool::class.java.name} watch $displayId '$apk' 2>&1 | head -8")
-            .orEmpty().joinToString(" / ").take(400)
-        focusWatchNote = "didn't stay running (${tried.joinToString("; ")}). Run directly: ${trial.ifBlank { "printed nothing" }}"
-        return false
-    }
-
-    /** Stops the controller lock's watcher. Not on the main thread. */
-    fun focusUnwatch() {
-        if (works == false) return
-        run("pkill -f '${watchPattern()}' >/dev/null 2>&1; echo done")
-    }
-
-    /** The watcher is running. Not on the main thread. */
-    fun focusWatching(): Boolean =
-        run("pgrep -f '${watchPattern()}' | head -1")?.trim()?.toIntOrNull() != null
-
-    /** The watcher's latest notes (from Android's log). Not on the main thread. */
-    fun focusWatchLog(): List<String> =
-        shellLines("logcat -d -v time -s ${FocusTool.TAG}:I | grep -v '^-' | tail -12").orEmpty()
-
-    /** How the controller lock's watcher started, for Diagnostics. */
-    @Volatile var focusWatchNote: String = "not started"
-
     /** Takes card [taskId] out of recent apps. Not on the main thread. */
     fun removeTask(taskId: Int): Boolean {
         if (!available()) return false
@@ -449,7 +392,6 @@ object FocusTool {
     fun main(args: Array<String>) {
         try {
             val atm = Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
-            if (args.getOrNull(0) == "watch") { watch(atm, args.getOrNull(1)?.toIntOrNull() ?: return, args.getOrNull(2) ?: return); return }
             println(focus(atm, args[0].toInt()))
         } catch (t: Throwable) {
             println("ERR ${(t.cause ?: t).javaClass.simpleName}: ${(t.cause ?: t).message?.take(80)}")
@@ -480,44 +422,6 @@ object FocusTool {
             runCatching { atm.javaClass.getMethod(m, int).invoke(atm, task) }.isSuccess
         }
         return if (done != null) "OK $task ($done)" else "ERR couldn't focus $task"
-    }
-
-    /** The display that has the focus now, or null. */
-    private fun focusedDisplay(atm: Any): Int? {
-        val info = runCatching { atm.javaClass.getMethod("getFocusedRootTaskInfo").invoke(atm) }
-            .recoverCatching { atm.javaClass.getMethod("getFocusedStackInfo").invoke(atm) }.getOrNull() ?: return null
-        return runCatching { info.javaClass.getField("displayId").getInt(info) }.getOrNull()
-    }
-
-    /** Its notes go to Android's log under this tag (WalkThor reads them back for Diagnostics). */
-    const val TAG = "WalkThorLock"
-
-    /**
-     * The controller lock: keeps the focus on display [want], checked several times a second,
-     * until it's stopped (WalkThor ends it when you unlock) or WalkThor ([apk]) is uninstalled.
-     * Uses no files: AYN's helper may not be allowed into WalkThor's storage.
-     */
-    private fun watch(atm: Any, want: Int, apk: String) {
-        fun note(s: String) { runCatching { android.util.Log.i(TAG, s) }; runCatching { println(s); System.out.flush() } }
-        var misses = 0
-        var lastSeen: Int? = -1
-        var moved = 0
-        note("started: keeping the controller on display $want; focus is on display ${focusedDisplay(atm)}")
-        while (true) {
-            if (!java.io.File(apk).exists()) { note("stopped (WalkThor was removed)"); return }
-            var wait = 150L
-            val now = focusedDisplay(atm)
-            if (now != lastSeen) { note(if (now == null) "can't tell which display has the focus" else "focus now on display $now"); lastSeen = now }
-            if (now != null && now != want) {
-                val result = runCatching { focus(atm, want) }.getOrElse { "ERR ${it.javaClass.simpleName}" }
-                moved++
-                if (moved <= 40) note("moved it to $want: $result")
-                // If moving it keeps failing, try less often.
-                misses = if (result.startsWith("OK")) 0 else misses + 1
-                if (misses > 5) wait = 1_000L
-            }
-            Thread.sleep(wait)
-        }
     }
 }
 

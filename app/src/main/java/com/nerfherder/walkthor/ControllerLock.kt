@@ -1,18 +1,27 @@
 package com.nerfherder.walkthor
 
 import android.content.Context
-import kotlinx.coroutines.MainScope
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.os.Handler
+import android.os.Looper
+import android.view.Display
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 /**
- * Keeps the controller on one screen. Android sends button presses to whichever screen was
- * touched last, so tapping the bottom screen mid-game takes the controller away from the game
- * (and tapping the top one takes it from the bottom app). Locked to a screen, WalkThor keeps the
- * controller there: a small program run by AYN's system helper (Force SELinux off) checks several
- * times a second which screen has it and moves it straight back. Touches still work on both.
+ * Keeps the controller on one screen. Android gives the controller to whichever screen was touched
+ * last, so tapping the bottom screen mid-game takes it away from the game (and tapping the top one
+ * takes it from the bottom app). Locked to a screen, WalkThor puts a one-pixel invisible window on
+ * the other screen, which Android tells whenever that screen is touched (not where, and the touch
+ * still goes where it was meant to). Each time, a moment later, WalkThor taps the very top edge of
+ * the locked screen, as the game hand-back does, and the controller is back there.
  *
- * Typing in WalkThor's own search pauses a lock on the top screen until you're done.
+ * Needs nothing beyond accessibility access. Typing in WalkThor's own search pauses a lock on the
+ * top screen until you're done.
  */
 object ControllerLock {
     enum class Screen(val label: String) { TOP("top screen"), BOTTOM("bottom screen") }
@@ -24,8 +33,12 @@ object ControllerLock {
     @Volatile var lastNote: String? = null
         private set
 
-    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor controller lock").apply { isDaemon = true } }
-    private var watchingTyping = false
+    private val main = Handler(Looper.getMainLooper())
+    private val watchers = mutableListOf<Pair<WindowManager, View>>()
+    private var movedBack = 0
+
+    /** How long after a touch on the other screen the controller's taken back (the touch has landed by then). */
+    private const val BACK_AFTER_MS = 250L
 
     private fun prefs(c: Context) = SwipeLauncher.prefs(c)
 
@@ -33,9 +46,7 @@ object ControllerLock {
     fun restore(service: SwipeGestureService) {
         val saved = prefs(service).getString("controllerLock", null)?.let { n -> Screen.entries.firstOrNull { it.name == n } }
         locked.value = saved
-        service.applyEventTypes()
-        watchTyping(service.applicationContext)
-        apply(service.applicationContext, announce = false)
+        main.post { apply(service, announce = false) }
     }
 
     /** The shortcut: lock to [screen], or unlock if it's already locked there. Says which in a message. */
@@ -43,70 +54,110 @@ object ControllerLock {
         val next = if (locked.value == screen) null else screen
         locked.value = next
         prefs(service).edit().putString("controllerLock", next?.name).apply()
-        service.applyEventTypes()
-        watchTyping(service.applicationContext)
-        apply(service.applicationContext, announce = true)
+        main.post { apply(service, announce = true) }
     }
 
-    /** Kept for the service's window events; the helper's watcher does the work now. */
+    /** Kept for the service's window events (no longer needed). */
     fun onWindowsChanged(service: SwipeGestureService) = Unit
 
-    /** Starts or stops the helper's watcher to match [locked] (and typing in WalkThor's search). */
-    private fun apply(app: Context, announce: Boolean) {
+    /** The screens changed (one turned on or off): watch the right ones. */
+    fun displaysChanged(service: SwipeGestureService) {
+        if (locked.value == null) return
+        main.post { if (screensOn(service) != watchedScreens) apply(service, announce = false) }
+    }
+
+    /** The screens that were on when the watchers went up. */
+    private var watchedScreens: Set<Int> = emptySet()
+
+    private fun screensOn(c: Context): Set<Int> = c.getSystemService(DisplayManager::class.java)?.displays.orEmpty()
+        .filter { it.state != Display.STATE_OFF }.map { it.displayId }.toSet()
+
+    /** Puts the watchers up (or takes them down) to match [locked]. Main thread. */
+    private fun apply(service: SwipeGestureService, announce: Boolean) {
+        clear()
         val screen = locked.value
-        worker.execute {
-            if (screen == null) {
-                AynSystem.focusUnwatch()
-                lastNote = "unlocked"
-                if (announce) ScreenMessage.show("Controller unlocked", 2_000)
-                return@execute
-            }
-            val want = wantedDisplay(app, screen)
-            if (want == null) {
-                lastNote = "couldn't find the ${screen.label}"
-                if (announce) ScreenMessage.show("Couldn't find the ${screen.label}")
-                return@execute
-            }
-            if (!AynSystem.available()) {
-                lastNote = "needs Force SELinux off (AYN's system helper)"
-                if (announce) ScreenMessage.show("Controller lock needs Force SELinux off", 3_000)
-                return@execute
-            }
-            // Typing in WalkThor's search needs the keyboard on the bottom screen for a moment.
-            if (screen == Screen.TOP && GameFocus.wantFocus.value) {
-                AynSystem.focusUnwatch()
-                lastNote = "paused while you type"
-                return@execute
-            }
-            val started = AynSystem.focusWatch(app, want)
-            lastNote = if (started) "keeping the controller on the ${screen.label} (display $want)"
-            else "couldn't start the helper's watcher: ${AynSystem.focusWatchNote}"
-            if (announce) ScreenMessage.show(if (started) "Controller locked to the ${screen.label}" else "Couldn't lock the controller (see Diagnostics)", 2_500)
+        if (screen == null) {
+            lastNote = "unlocked"
+            if (announce) ScreenMessage.show("Controller unlocked", 2_000)
+            return
         }
+        val want = wantedDisplay(service, screen)
+        if (want == null) {
+            lastNote = "couldn't find the ${screen.label}"
+            if (announce) ScreenMessage.show("Couldn't find the ${screen.label}")
+            return
+        }
+        val dm = service.getSystemService(DisplayManager::class.java)
+        for (display in dm?.displays.orEmpty()) {
+            if (display.displayId == want || display.state == Display.STATE_OFF) continue
+            runCatching { watch(service, display, want) }
+                .onFailure { lastNote = "couldn't watch display ${display.displayId} (${it.javaClass.simpleName})" }
+        }
+        watchedScreens = screensOn(service)
+        movedBack = 0
+        // The controller to the locked screen now.
+        val how = service.tapToFocus(want)
+        lastNote = "keeping the controller on the ${screen.label} (display $want); watching ${watchers.size} other screen(s); first move: $how"
+        if (announce) ScreenMessage.show("Controller locked to the ${screen.label}", 2_000)
     }
 
-    /** Pauses a top-screen lock while you type in WalkThor's search, and resumes it after. */
-    private fun watchTyping(app: Context) {
-        if (watchingTyping) return
-        watchingTyping = true
-        MainScope().launch {
-            var was = GameFocus.wantFocus.value
-            GameFocus.wantFocus.collect { typing ->
-                if (typing != was && locked.value == Screen.TOP) apply(app, announce = false)
-                was = typing
+    /** A one-pixel window on [display] that hears about every touch there. */
+    private fun watch(service: SwipeGestureService, display: Display, want: Int) {
+        val ctx = service.createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+        val wm = ctx.getSystemService(WindowManager::class.java) ?: return
+        val v = object : View(ctx) {
+            // Reported as a plain view, so WalkThor doesn't take it for an app coming to the front.
+            override fun getAccessibilityClassName(): CharSequence = "android.view.View"
+
+            override fun onTouchEvent(event: MotionEvent): Boolean {
+                // A touch anywhere else on this screen: the controller has just moved here.
+                if (event.actionMasked == MotionEvent.ACTION_OUTSIDE || event.actionMasked == MotionEvent.ACTION_DOWN) takeBack(service, want)
+                return false
             }
         }
+        val params = WindowManager.LayoutParams(
+            1, 1,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+            setTitle("WalkThor controller lock")
+        }
+        wm.addView(v, params)
+        watchers += wm to v
     }
 
-    /** The helper's watcher's latest notes, for Diagnostics. Not on the main thread. */
-    fun watcherLog(): List<String> = runCatching { AynSystem.focusWatchLog() }.getOrDefault(emptyList())
+    private fun takeBack(service: SwipeGestureService, want: Int) {
+        main.removeCallbacks(back)
+        backTo = service to want
+        main.postDelayed(back, BACK_AFTER_MS)
+    }
+
+    private var backTo: Pair<SwipeGestureService, Int>? = null
+    private val back = Runnable {
+        val (service, want) = backTo ?: return@Runnable
+        val screen = locked.value ?: return@Runnable
+        // Typing in WalkThor's search needs the keyboard on the bottom screen for a moment.
+        if (screen == Screen.TOP && GameFocus.wantFocus.value) return@Runnable
+        val how = service.tapToFocus(want)
+        movedBack++
+        lastNote = "keeping the controller on the ${screen.label} (display $want); moved it back $movedBack time(s), last: $how"
+    }
+
+    private fun clear() {
+        main.removeCallbacks(back)
+        watchers.forEach { (wm, v) -> runCatching { wm.removeViewImmediate(v) } }
+        watchers.clear()
+    }
 
     private fun wantedDisplay(c: Context, screen: Screen): Int? {
         val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return null
         if (screen == Screen.BOTTOM) return bottom
-        val dm = c.getSystemService(android.hardware.display.DisplayManager::class.java) ?: return null
+        val dm = c.getSystemService(DisplayManager::class.java) ?: return null
         return dm.displays.firstOrNull {
-            it.displayId != bottom && it.state != android.view.Display.STATE_OFF && (it.flags and android.view.Display.FLAG_PRIVATE) == 0
+            it.displayId != bottom && it.state != Display.STATE_OFF && (it.flags and Display.FLAG_PRIVATE) == 0
         }?.displayId
     }
 }

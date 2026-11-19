@@ -91,11 +91,12 @@ Everything else stays on your device.
   else. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
 
-- **Which screen has focus, only while the controller is locked to a screen.** With *Lock
-  controller to top/bottom screen* on (a shortcut), a small program run by AYN's system helper
-  checks several times a second which screen holds Android's focus (the screen your button
-  presses go to), and only that: nothing in any window is read. When focus moves to the other
-  screen, it moves it back. Unlocking stops it.
+- **That a screen was touched, only while the controller is locked to a screen.** With *Lock
+  controller to top/bottom screen* on (a shortcut), a one-pixel invisible WalkThor window on the
+  other screen is told by Android each time that screen is touched (not where, and the touch still
+  goes where it was meant to). WalkThor then taps the very top edge of the locked screen, which
+  gives it the controller back. Nothing is recorded, stored or sent. Unlocking takes the window
+  away.
 
 - **Button shortcuts, only the ones you set.** With a shortcut set in Settings → Shortcuts, the
   accessibility service is handed each hardware button press just before your game gets it, so it
