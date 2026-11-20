@@ -129,11 +129,65 @@ class ComeBack : android.content.BroadcastReceiver() {
  * at once rather than after its own wait). It holds nothing and draws nothing.
  */
 class Keeper : android.app.Service() {
+    override fun onCreate() {
+        super.onCreate()
+        Guard.start(applicationContext)
+    }
+
     override fun onBind(intent: Intent?): android.os.IBinder = android.os.Binder()
 
     override fun onUnbind(intent: Intent?): Boolean {
         runCatching { sendBroadcast(Intent(this, ComeBack::class.java)) }
         runCatching { ComeBack.schedule(this, 1_000) }
         return false
+    }
+}
+
+/**
+ * Keeper's second job: while a game is in front, once a second, keeps the home app, WalkThor and
+ * Keeper itself ranked just below the game for Android's memory killer (through AYN's system
+ * helper, Force SELinux off). WalkThor does this too, but in a burst of memory kills WalkThor is
+ * often closed as well; this carries on meanwhile, so the home app isn't closed again each time
+ * it starts. Only ever lowers a rank. What it changes is noted for WalkThor's memory log.
+ */
+private object Guard {
+    @Volatile private var thread: Thread? = null
+    private val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+
+    fun start(c: Context) {
+        if (thread?.isAlive == true) return
+        thread = Thread({
+            var helperChecked = 0L
+            var helper = false
+            while (true) {
+                try { Thread.sleep(1_000) } catch (_: InterruptedException) { return@Thread }
+                runCatching {
+                    val flag = MemoryWatch.guardFile(c)
+                    if (!flag.exists()) return@runCatching
+                    // Whether the helper's usable: checked now and then, not every second.
+                    val now = android.os.SystemClock.uptimeMillis()
+                    if (now - helperChecked > 30_000) { helper = AynSystem.available(); helperChecked = now }
+                    if (!helper) return@runCatching
+                    val home = flag.readText().trim()
+                    val out = AynSystem.shellLines(
+                        MemoryWatch.protectScript(listOfNotNull(home.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()))
+                    ) ?: return@runCatching
+                    val changed = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 && it[3] != it[4] }
+                    if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it[1])} (${it[3]} → ${it[4]})" })
+                }
+            }
+        }, "WalkThor keeper guard").apply { isDaemon = true; start() }
+    }
+
+    private fun name(c: Context, pkg: String) = when (pkg) {
+        c.packageName -> "WalkThor"
+        "keeper" -> "Keeper"
+        else -> runCatching { c.packageManager.getApplicationLabel(c.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+    }
+
+    private fun note(c: Context, text: String) = runCatching {
+        val f = MemoryWatch.guardLog(c)
+        val lines = (runCatching { f.readLines() }.getOrDefault(emptyList()) + "${clock.format(java.util.Date())} $text").takeLast(40)
+        f.writeText(lines.joinToString("\n") + "\n")
     }
 }

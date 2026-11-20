@@ -88,7 +88,8 @@ Everything else stays on your device.
   (the last few hundred lines), shown in About, Diagnostics, and shared only if you press Share log.
   While a game is in front, WalkThor also ranks your home app and itself just below the game for
   Android's memory killer, through the system helper, so they're closed only after everything
-  else. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
+  else. WalkThor's small second process (Keeper) keeps doing this once a second while a game is in
+  front, even while WalkThor itself has been closed, and notes what it changed in that same log. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
 
 - **That a screen was touched, only while the controller is locked to a screen.** With *Lock

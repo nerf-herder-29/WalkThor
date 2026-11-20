@@ -78,10 +78,12 @@ object MemoryWatch {
             lowestMb = -1L; lowCount = 0; restarts = 0
             pids.clear()
             protectedNoted = false
+            Thread({ setGuarding(app, true) }, "WalkThor guard").start()
             val mi = memInfo(app)
             note(app, "Game started · free ${mb(mi.availMem)} of ${gb(mi.totalMem)}" + swap())
             trim(app, "game started")
         } else if (gameSince > 0) {
+            Thread({ setGuarding(app, false) }, "WalkThor guard").start()
             note(app, "Game closed · ${summaryOfGame()}")
             Thread({ runCatching { closeRecords(app) } }, "WalkThor close records").start()
         }
@@ -139,6 +141,8 @@ object MemoryWatch {
         }
         watchApps(c)
         protect(c)
+        // Keeps Keeper's flag fresh (and right, if the game started before WalkThor came back).
+        if (beats % 5 == 1) { setGuarding(c, true); importGuard(c) }
         if (beats % 10 == 0) closeRecords(c)
     }
 
@@ -159,13 +163,7 @@ object MemoryWatch {
         if (AynSystem.knownAvailable() != true) return
         val pkgs = listOfNotNull(if (always && !gameInFront()) null else homePackage(c), c.packageName)
             .filter { PACKAGE.matches(it) }.distinct()
-        // Each line: package, process, rank before, rank after.
-        val script = pkgs.joinToString(" ") { pkg ->
-            "for p in \$(pidof $pkg); do a=\$(cat /proc/\$p/oom_score_adj); " +
-                "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj; fi; " +
-                "echo \"R $pkg \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
-        }
-        val out = AynSystem.shellLines(script) ?: return
+        val out = AynSystem.shellLines(protectScript(pkgs)) ?: return
         val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
         val changed = ranks.filter { it[3] != it[4] }
         val failed = ranks.filter { (it[4].toIntOrNull() ?: 0) > PROTECT_ADJ }
@@ -179,6 +177,42 @@ object MemoryWatch {
             note(c, "Kept " + changed.joinToString(" and ") { "${label(c, it[1])} (${it[3]} → ${it[4]})" } +
                 " next in line after the game")
         }
+    }
+
+    /**
+     * The command that lowers [pkgs]' processes (and any [pids]) to [PROTECT_ADJ] where they rank
+     * higher, never raising one. Each line it prints: "R package process before after".
+     */
+    internal fun protectScript(pkgs: List<String>, pids: List<Int> = emptyList()): String {
+        fun one(pkg: String, list: String) = "for p in $list; do a=\$(cat /proc/\$p/oom_score_adj); " +
+            "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj; fi; " +
+            "echo \"R $pkg \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
+        return pkgs.filter { PACKAGE.matches(it) }.distinct().joinToString(" ") { one(it, "\$(pidof $it)") } +
+            pids.joinToString("") { " " + one("keeper", it.toString()) }
+    }
+
+    // ---- Keeper's share ----
+    // Keeper (a tiny second process) carries on the protection while WalkThor's own process is
+    // gone: in a burst of memory kills, WalkThor is often closed too, and the home app, started
+    // again at its usual rank, would be the next one closed.
+
+    /** Read by Keeper: present while a game is in front, holding the home app's package. */
+    internal fun guardFile(c: Context) = File(c.filesDir, "guard-playing")
+    /** Written by Keeper: what it did. */
+    internal fun guardLog(c: Context) = File(c.filesDir, "guard-log.txt")
+
+    private fun setGuarding(c: Context, on: Boolean) {
+        runCatching { if (on) guardFile(c).writeText(homePackage(c).orEmpty()) else guardFile(c).delete() }
+    }
+
+    /** Puts what Keeper did into the log (once each). */
+    private fun importGuard(c: Context) {
+        val lines = runCatching { guardLog(c).readLines() }.getOrNull() ?: return
+        val last = seen(c).getString("guardSeen", "") ?: ""
+        val at = lines.lastIndexOf(last)
+        val fresh = if (at >= 0) lines.drop(at + 1) else lines
+        fresh.forEach { note(c, "Keeper: $it") }
+        lines.lastOrNull()?.let { seen(c).edit().putString("guardSeen", it).apply() }
     }
 
     /** How the bottom screen's apps rank now, and how the memory killer is set up, for the log. */
@@ -329,6 +363,8 @@ object MemoryWatch {
             runCatching { AynSystem.available() }
             // Straight away: a fresh WalkThor is the easiest thing for the killer to take again.
             runCatching { protectedNoted = false; protect(c, always = true) }
+            // What Keeper did while WalkThor was closed.
+            runCatching { importGuard(c) }
             runCatching { closeRecords(c) }
             runCatching { report(c) }
         }, "WalkThor close records").apply { isDaemon = true }.start()
