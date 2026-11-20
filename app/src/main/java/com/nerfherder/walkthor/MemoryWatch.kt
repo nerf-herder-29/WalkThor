@@ -48,6 +48,19 @@ object MemoryWatch {
     private const val PROTECT_ADJ = 50
     @Volatile private var protectedNoted = false
 
+    // ---- the game comes first ----
+    // When memory gets critical, the bottom screen's apps stop being protected, and WalkThor lets
+    // go of what it can: Android may then close the bottom screen (a blink there) rather than the game.
+    /** Standing aside for the game: memory is critical. */
+    @Volatile var yielding = false
+        private set
+    @Volatile private var lastCritical = 0L
+    /** Free memory under this, during a game, counts as critical. */
+    private const val CRITICAL_MB = 1_500L
+    /** Protection comes back once free memory is over this, with no critical warning for [CALM_MS]. */
+    private const val RECOVERED_MB = 2_500L
+    private const val CALM_MS = 20_000L
+
     // What the last game looked like, for the summary.
     @Volatile private var gameSince = 0L
     @Volatile private var lowestMb = -1L
@@ -78,11 +91,13 @@ object MemoryWatch {
             lowestMb = -1L; lowCount = 0; restarts = 0
             pids.clear()
             protectedNoted = false
+            yielding = false
             Thread({ setGuarding(app, true) }, "WalkThor guard").start()
             val mi = memInfo(app)
             note(app, "Game started · free ${mb(mi.availMem)} of ${gb(mi.totalMem)}" + swap())
             trim(app, "game started")
         } else if (gameSince > 0) {
+            yielding = false
             Thread({ setGuarding(app, false) }, "WalkThor guard").start()
             note(app, "Game closed · ${summaryOfGame()}")
             Thread({ runCatching { closeRecords(app) } }, "WalkThor close records").start()
@@ -94,6 +109,13 @@ object MemoryWatch {
         @Suppress("DEPRECATION")
         val serious = level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
         if (gameInFront()) note(context, "Android is short of memory (level $level)")
+        // Its most serious warning, mid-game: the game comes first.
+        @Suppress("DEPRECATION")
+        // (Exactly that level: the higher ones only mean WalkThor's own screens are out of sight.)
+        if (gameInFront() && level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+            val app = context.applicationContext
+            Thread({ runCatching { yieldToGame(app, "Android's most serious memory warning") } }, "WalkThor yield").start()
+        }
         if (serious || level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) trim(context, null)
     }
 
@@ -139,10 +161,12 @@ object MemoryWatch {
             note(c, "Free ${free} MB" + (if (mi.lowMemory) " (LOW: Android is closing apps)" else "") + swap() + pressure + own)
             lastFreeMb = free
         }
+        if (free < CRITICAL_MB) yieldToGame(c, "free memory under ${CRITICAL_MB / 1000.0} GB")
+        else if (yielding && free > RECOVERED_MB && System.currentTimeMillis() - lastCritical > CALM_MS) standBack(c, free)
         watchApps(c)
         protect(c)
         // Keeps Keeper's flag fresh (and right, if the game started before WalkThor came back).
-        if (beats % 5 == 1) { setGuarding(c, true); importGuard(c) }
+        if (beats % 5 == 1) { if (!yielding) setGuarding(c, true); importGuard(c) }
         if (beats % 10 == 0) closeRecords(c)
     }
 
@@ -161,6 +185,7 @@ object MemoryWatch {
      */
     private fun protect(c: Context, always: Boolean = false) {
         if (AynSystem.knownAvailable() != true) return
+        if (yielding) return
         val pkgs = listOfNotNull(if (always && !gameInFront()) null else homePackage(c), c.packageName)
             .filter { PACKAGE.matches(it) }.distinct()
         val out = AynSystem.shellLines(protectScript(pkgs)) ?: return
@@ -191,6 +216,37 @@ object MemoryWatch {
             pids.joinToString("") { " " + one("keeper", it.toString()) }
     }
 
+    /** Memory's critical: stops protecting the bottom screen's apps, so the game's kept instead. Not on the main thread. */
+    @Synchronized private fun yieldToGame(c: Context, why: String) {
+        lastCritical = System.currentTimeMillis()
+        if (yielding) return
+        yielding = true
+        val home = homePackage(c)
+        // Keeper stands aside too.
+        runCatching { guardFile(c).writeText("yield:" + home.orEmpty()) }
+        // Back to their usual rank, where WalkThor had lowered them (it only ever set 50).
+        if (AynSystem.knownAvailable() == true) {
+            val names = listOfNotNull(home, c.packageName, c.packageName + ":keeper").filter { n -> PACKAGE.matches(n.substringBefore(':')) }
+            AynSystem.shellLines(names.joinToString(" ") { n ->
+                "for p in \$(pidof $n); do if [ \"\$(cat /proc/\$p/oom_score_adj)\" -eq $PROTECT_ADJ ]; then echo 100 > /proc/\$p/oom_score_adj; fi; done;"
+            } + " echo done")
+        }
+        // And WalkThor lets go of what it can.
+        trim(c, "the game comes first")
+        android.os.Handler(android.os.Looper.getMainLooper()).post { runCatching { Drawer.trimIfHidden() } }
+        note(c, "Memory critical ($why): the game comes first. The bottom screen's apps aren't protected until it recovers")
+    }
+
+    /** Memory's recovered: back to protecting the bottom screen's apps. */
+    @Synchronized private fun standBack(c: Context, freeMb: Long) {
+        if (!yielding) return
+        yielding = false
+        protectedNoted = false
+        setGuarding(c, true)
+        note(c, "Memory recovered (free $freeMb MB): protecting the bottom screen's apps again")
+        protect(c)
+    }
+
     // ---- Keeper's share ----
     // Keeper (a tiny second process) carries on the protection while WalkThor's own process is
     // gone: in a burst of memory kills, WalkThor is often closed too, and the home app, started
@@ -200,6 +256,17 @@ object MemoryWatch {
     internal fun guardFile(c: Context) = File(c.filesDir, "guard-playing")
     /** Written by Keeper: what it did. */
     internal fun guardLog(c: Context) = File(c.filesDir, "guard-log.txt")
+    /** Written by Keeper every few seconds: how it's doing. */
+    internal fun guardStatusFile(c: Context) = File(c.filesDir, "guard-status.txt")
+
+    /** Keeper's latest status, for Diagnostics (with how long ago it wrote it). */
+    fun keeperStatus(c: Context): String {
+        val f = guardStatusFile(c)
+        if (!f.exists()) return "hasn't reported yet (it starts with WalkThor's accessibility service)"
+        val ago = (System.currentTimeMillis() - f.lastModified()) / 1000
+        val text = runCatching { f.readText().trim() }.getOrDefault("?")
+        return "$text (${if (ago < 2) "just now" else "${ago} s ago"})" + if (ago > 30) ". It may not be running" else ""
+    }
 
     private fun setGuarding(c: Context, on: Boolean) {
         runCatching { if (on) guardFile(c).writeText(homePackage(c).orEmpty()) else guardFile(c).delete() }
@@ -361,6 +428,13 @@ object MemoryWatch {
         // Why it (and the home app) was last closed, once the system helper has been checked.
         Thread({
             runCatching { AynSystem.available() }
+            // Closed while standing aside for the game: still standing aside, until memory recovers.
+            runCatching {
+                if (guardFile(c).takeIf { it.exists() }?.readText()?.startsWith("yield") == true) {
+                    yielding = true
+                    lastCritical = System.currentTimeMillis()
+                }
+            }
             // Straight away: a fresh WalkThor is the easiest thing for the killer to take again.
             runCatching { protectedNoted = false; protect(c, always = true) }
             // What Keeper did while WalkThor was closed.

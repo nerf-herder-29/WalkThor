@@ -289,6 +289,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "flashes, then share this."
                 )
                 com.nerfherder.walkthor.MemoryWatch.summary()?.let { Body(it) }
+                Body("Keeper (keeps the bottom screen's apps protected while WalkThor is closed): ${com.nerfherder.walkthor.MemoryWatch.keeperStatus(context)}")
                 memLog.takeLast(14).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
                 Row {
                     TextButton(onClick = { memLog = com.nerfherder.walkthor.MemoryWatch.logged() }) { Text("Refresh") }

@@ -159,21 +159,33 @@ private object Guard {
         thread = Thread({
             var helperChecked = 0L
             var helper = false
+            var ticks = 0
+            status(c, "running, no game in front")
             while (true) {
                 try { Thread.sleep(1_000) } catch (_: InterruptedException) { return@Thread }
+                ticks++
                 runCatching {
                     val flag = MemoryWatch.guardFile(c)
-                    if (!flag.exists()) return@runCatching
+                    if (!flag.exists()) { if (ticks % 10 == 0) status(c, "running, no game in front"); return@runCatching }
                     // Whether the helper's usable: checked now and then, not every second.
                     val now = android.os.SystemClock.uptimeMillis()
                     if (now - helperChecked > 30_000) { helper = AynSystem.available(); helperChecked = now }
-                    if (!helper) return@runCatching
-                    val home = flag.readText().trim()
+                    if (!helper) {
+                        if (ticks % 5 == 0) status(c, "running, but can't use AYN's system helper (${AynSystem.problem ?: "not usable"})")
+                        return@runCatching
+                    }
+                    val text = flag.readText().trim()
+                    // Memory's critical: the game comes first, so it stands aside.
+                    if (text.startsWith("yield")) { if (ticks % 5 == 0) status(c, "standing aside: memory is critical, the game comes first"); return@runCatching }
                     val out = AynSystem.shellLines(
-                        MemoryWatch.protectScript(listOfNotNull(home.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()))
-                    ) ?: return@runCatching
-                    val changed = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 && it[3] != it[4] }
+                        MemoryWatch.protectScript(listOfNotNull(text.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()))
+                    )
+                    if (out == null) { status(c, "running, but the system helper didn't answer"); return@runCatching }
+                    val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
+                    val changed = ranks.filter { it[3] != it[4] }
                     if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it[1])} (${it[3]} → ${it[4]})" })
+                    if (ticks % 3 == 0 || changed.isNotEmpty()) status(c,
+                        "protecting during the game: " + (ranks.distinctBy { it[1] }.joinToString { "${name(c, it[1])} ${it[4]}" }.ifEmpty { "found none of the apps" }))
                 }
             }
         }, "WalkThor keeper guard").apply { isDaemon = true; start() }
@@ -183,6 +195,10 @@ private object Guard {
         c.packageName -> "WalkThor"
         "keeper" -> "Keeper"
         else -> runCatching { c.packageManager.getApplicationLabel(c.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+    }
+
+    private fun status(c: Context, text: String) = runCatching {
+        MemoryWatch.guardStatusFile(c).writeText("${clock.format(java.util.Date())} $text")
     }
 
     private fun note(c: Context, text: String) = runCatching {
