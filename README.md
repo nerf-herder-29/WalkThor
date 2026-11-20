@@ -25,8 +25,8 @@ Rendered at the Thor bottom screen's 1240×1080 with a fictional sample game and
 
 1. **Install** the APK from the [latest release](https://github.com/nerf-herder-29/WalkThor/releases/latest)
    (allow "Install unknown apps" for your browser or file manager).
-2. **Allow accessibility access** when WalkThor asks. The drawer, the button shortcuts, the FPS
-   counter and the keyboard all run through it, and it keeps the game at full priority.
+2. **Allow accessibility access** when WalkThor asks. The drawer, the button shortcuts, the
+   performance overlay and the keyboard all run through it, and it keeps the game at full priority.
 3. **Set your shortcuts** in Settings (⋮) → Shortcuts: set *AYN button: press* to *Open the drawer*.
 4. **Link your ROMs folder** (Settings → Guides), the one with a folder per system, to list your games.
 5. **Add guides:** *Add a guide* beside a game, *Add guide* at the top, or *Open with* / *Share* a PDF or TXT.
@@ -50,8 +50,11 @@ step that's done.
 - **Button shortcuts** — Settings → Shortcuts maps the AYN button's press, double press and hold, Back
   pressed twice, and Back held with a D-pad direction, L1, R1, L2 or R2, to things WalkThor can do: open the drawer, AYN's own drawer,
   dim the bottom screen, turn it off, close all apps, take a screenshot, save the last seconds of play,
-  the FPS counter, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, brightness and volume up and down,
+  the performance overlay, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, brightness and volume up and down,
   or step through performance and fan modes. A short rumble confirms each one.
+- **Performance overlay** — while a game is in front, a small glass panel in a corner of either
+  screen shows the frame rate with a graph of the last 30 seconds, and underneath, taking turns
+  every 5 seconds, CPU speed and heat, GPU load and heat, battery draw and time left, and RAM.
 - **Notifications on the bottom screen** — switch it on in Settings → General, and Android's pop-up
   banners stop covering your game: each notification drops down on the bottom screen instead (on the
   top screen while the bottom one is off). Needs notification access and Force SELinux off.

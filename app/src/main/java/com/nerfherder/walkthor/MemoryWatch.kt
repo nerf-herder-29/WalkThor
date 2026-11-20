@@ -295,7 +295,7 @@ object MemoryWatch {
                 ?.filter { it.processName == c.packageName && now - it.timestamp < 60_000 &&
                     it.reason == android.app.ApplicationExitInfo.REASON_LOW_MEMORY }
         }.getOrNull().orEmpty()
-        if (recent.isNotEmpty()) note(c, "Closed for memory ${recent.size}× in the last minute: the FPS counter waits ${SETTLE_AFTER_KILL_MS / 1000} s before coming back")
+        if (recent.isNotEmpty()) note(c, "Closed for memory ${recent.size}× in the last minute: the performance overlay waits ${SETTLE_AFTER_KILL_MS / 1000} s before coming back")
         return recent.isNotEmpty()
     }
 

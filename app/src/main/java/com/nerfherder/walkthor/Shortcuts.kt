@@ -23,7 +23,7 @@ object Shortcuts {
         CLOSE_ALL("Close all apps"),
         SCREENSHOT("Screenshot"),
         CLIP("Save the last seconds"),
-        FPS("FPS counter on / off"),
+        FPS("Performance overlay on / off"),
         STICK_LIGHTS("Stick lights on / off"),
         KEYBOARD("Show / hide the keyboard"),
         BRIGHTER("Brightness up"),
@@ -267,7 +267,7 @@ object Shortcuts {
             Action.FPS -> {
                 val on = !TopFps.enabled(app)
                 TopFps.setEnabled(app, on)
-                ScreenMessage.show(if (on) "FPS counter on" else "FPS counter off", 2_000)
+                ScreenMessage.show(if (on) "Performance overlay on" else "Performance overlay off", 2_000)
             }
             Action.LOCK_TOP -> ControllerLock.toggle(service, ControllerLock.Screen.TOP)
             Action.LOCK_BOTTOM -> ControllerLock.toggle(service, ControllerLock.Screen.BOTTOM)

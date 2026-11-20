@@ -415,7 +415,7 @@ private fun SettingsScreen(
                 SettingsGroup("Access") {
                     SettingSwitch(
                         "Accessibility access",
-                        "For the drawer, the button shortcuts, the FPS counter and the keyboard, and it keeps games at full speed",
+                        "For the drawer, the button shortcuts, the performance overlay and the keyboard, and it keeps games at full speed",
                         checked = swipeToOpen,
                         divider = false,
                     ) { onToggleSwipe(it) }
@@ -558,11 +558,11 @@ private fun SettingsScreen(
                         SettingLink("Move to the other screen") { onDismiss(); swap() }
                     }
                 }
-                SettingsGroup("FPS counter") {
+                SettingsGroup("Performance overlay") {
                     var topFps by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.enabled(context)) }
                     SettingSwitch(
-                        "FPS counter",
-                        if (swipeToOpen) "The top screen's frame rate, small, in a corner, while a game is in front" else "Needs accessibility access switched on",
+                        "Performance overlay",
+                        if (swipeToOpen) "While a game is in front: its frame rate and a graph of it, with CPU, GPU, battery and RAM taking turns underneath every 5 seconds" else "Needs accessibility access switched on",
                         checked = topFps && swipeToOpen,
                         divider = false,
                     ) { if (swipeToOpen) { topFps = it; com.nerfherder.walkthor.TopFps.setEnabled(context, it) } }

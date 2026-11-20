@@ -84,7 +84,7 @@ fun SetupGuideDialog(
 
                 Step(
                     1, "Allow accessibility access", state.swipeReady, "Set up", onSetUpSwipe,
-                    "The drawer, the button shortcuts, the FPS counter and the keyboard all run through it. WalkThor " +
+                    "The drawer, the button shortcuts, the performance overlay and the keyboard all run through it. WalkThor " +
                         "explains exactly what it does, then Android asks you to switch on “WalkThor” in Accessibility settings.",
                 )
                 Step(
