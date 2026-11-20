@@ -162,7 +162,9 @@ object ControllerLock {
      */
     private fun wantedDisplay(c: Context, screen: Screen): Int? {
         val all = c.getSystemService(DisplayManager::class.java)?.displays.orEmpty()
-            .filter { (it.flags and Display.FLAG_PRIVATE) == 0 && (it.flags and Display.FLAG_PRESENTATION) == 0 }
+            // Private displays (a recording's, say) aren't screens. (The bottom screen counts as a
+            // "presentation" display, so that flag isn't a reason to leave one out.)
+            .filter { (it.flags and Display.FLAG_PRIVATE) == 0 }
         fun size(d: Display) = d.mode.physicalWidth.toLong() * d.mode.physicalHeight
         // (A recording's screen, like the clip buffer's, is private, so it's left out above.)
         val builtIn = all
