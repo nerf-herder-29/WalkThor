@@ -208,6 +208,7 @@ object TopFps {
      * graph on top; one stat underneath, with dots for which one it is.
      */
     private class PerfPanel(context: Context) : android.view.View(context) {
+        private companion object { val INK = Color.rgb(237, 230, 218) }
         private var fps = 0
         private var history: List<Int> = emptyList()
         private var line: Pair<String, String>? = null
@@ -216,9 +217,11 @@ object TopFps {
         private var widest = 0f
 
         private fun dp(x: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, resources.displayMetrics)
-        private val accent = runCatching {
-            StickLights.color(context).let { if (it == 0) Color.rgb(43, 224, 216) else StickLights.swatch(it) or 0xFF000000.toInt() }
-        }.getOrDefault(Color.rgb(43, 224, 216))
+        /** Your stick lights' colour, as the keyboard's action key shows it (cream while they're off); looked up again each second. */
+        private var accent = stickColour()
+        private fun stickColour() = runCatching {
+            StickLights.color(context).let { if (it == 0) INK else StickLights.swatch(it) or 0xFF000000.toInt() }
+        }.getOrDefault(INK)
         private val muted = Color.rgb(200, 200, 208)
         private fun paint(size: Float, weight: Int, color: Int) = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
             textSize = dp(size); typeface = WalkThorFont.get(context, weight); this.color = color
@@ -251,6 +254,9 @@ object TopFps {
 
         fun update(fps: Int, history: List<Int>, line: Pair<String, String>?, page: Int, pages: Int) {
             this.fps = fps; this.history = history; this.line = line; this.page = page; this.pages = pages
+            // Follows the stick lights if they change while it's up.
+            accent = stickColour()
+            graph.color = accent
             val w = contentWidth()
             // Only ever grows while shown, so it doesn't jump about as the stats change.
             if (w > widest) { widest = w; requestLayout() }

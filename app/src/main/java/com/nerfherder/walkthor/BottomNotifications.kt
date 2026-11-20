@@ -264,7 +264,6 @@ object BottomNotifications {
         private fun build(ctx: Context, u: Float, app: String, title: String, text: String, icon: Drawable?): View {
             fun px(x: Float) = x.toInt()
             val ink = 0xFFEDE6DA.toInt()
-            val muted = 0xFFA39A8E.toInt()
             val body = 0xFFC9C1B5.toInt()
             val accent = runCatching { StickLights.color(ctx).let { if (it == 0) ink else StickLights.swatch(it) or 0xFF000000.toInt() } }.getOrDefault(ink)
             val row = object : LinearLayout(ctx) {
@@ -276,7 +275,8 @@ object BottomNotifications {
             row.background = GradientDrawable().apply {
                 setColor(0xFF0E0C0E.toInt())
                 cornerRadius = u * 3f
-                setStroke(px(u * 0.15f).coerceAtLeast(1), 0xFF3A353B.toInt())
+                // A faint edge in the same colour.
+                setStroke(px(u * 0.18f).coerceAtLeast(1), (accent and 0x00FFFFFF) or 0x8C000000.toInt())
             }
             row.elevation = u * 2f
             val iconView = if (icon != null) ImageView(ctx).apply { setImageDrawable(icon) }
@@ -302,7 +302,9 @@ object BottomNotifications {
                 includeFontPadding = false
                 setPadding(0, px(top), 0, 0)
             }
-            texts.addView(line("${app.uppercase()} · NOW", u * 2.0f, muted, 600, 1, 0f, 0.14f))
+            // The app's name in your stick lights' colour, as the keyboard's action key and the
+            // close-all countdown use it (cream while they're off).
+            texts.addView(line("${app.uppercase()} · NOW", u * 2.0f, accent, 600, 1, 0f, 0.14f))
             if (title.isNotEmpty()) texts.addView(line(title, u * 3.1f, ink, 600, 1, u * 0.9f))
             if (text.isNotEmpty()) texts.addView(line(text, u * 2.6f, body, 400, 2, u * 0.7f))
             row.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = px(u * 2.6f) })
