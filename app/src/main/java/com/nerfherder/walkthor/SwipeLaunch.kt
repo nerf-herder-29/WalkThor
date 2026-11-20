@@ -697,7 +697,14 @@ class SwipeGestureService : AccessibilityService() {
                 ?: return "game screen not found"
             val size = android.graphics.Point()
             @Suppress("DEPRECATION") display.getRealSize(size)
-            val path = android.graphics.Path().apply { moveTo(size.x / 2f, 2f) }
+            // Just below the status bar: a tap on the bar itself (an app that shows it) doesn't
+            // give the screen the controller. Its height is known even while a game hides it.
+            val barTop = runCatching {
+                createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+                    .getSystemService(WindowManager::class.java)!!.currentWindowMetrics.windowInsets
+                    .getInsetsIgnoringVisibility(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.displayCutout()).top
+            }.getOrDefault(0)
+            val path = android.graphics.Path().apply { moveTo(size.x / 2f, barTop + 3f) }
             val gesture = android.accessibilityservice.GestureDescription.Builder()
                 .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 40))
                 .setDisplayId(gameDisplayId)
@@ -717,7 +724,14 @@ class SwipeGestureService : AccessibilityService() {
             val display = getSystemService(DisplayManager::class.java)?.getDisplay(displayId) ?: return "screen not found"
             val size = android.graphics.Point()
             @Suppress("DEPRECATION") display.getRealSize(size)
-            val path = android.graphics.Path().apply { moveTo(size.x / 2f, 2f) }
+            // Just below the status bar: a tap on the bar itself (an app that shows it) doesn't
+            // give the screen the controller. Its height is known even while a game hides it.
+            val barTop = runCatching {
+                createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+                    .getSystemService(WindowManager::class.java)!!.currentWindowMetrics.windowInsets
+                    .getInsetsIgnoringVisibility(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.displayCutout()).top
+            }.getOrDefault(0)
+            val path = android.graphics.Path().apply { moveTo(size.x / 2f, barTop + 3f) }
             val gesture = android.accessibilityservice.GestureDescription.Builder()
                 .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 40))
                 .setDisplayId(displayId)
