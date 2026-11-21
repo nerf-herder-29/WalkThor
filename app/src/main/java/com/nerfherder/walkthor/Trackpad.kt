@@ -58,13 +58,14 @@ object Trackpad {
             .maxByOrNull { it.mode.physicalWidth.toLong() * it.mode.physicalHeight }
         if (bottom == null || top == null) { ScreenMessage.show("The trackpad needs both screens on"); return }
         runCatching { Drawer.hide() }
-        val size = android.graphics.Point()
-        @Suppress("DEPRECATION") top.getRealSize(size)
-        topId = top.displayId; topW = size.x; topH = size.y
-        px = topW / 2f; py = topH / 2f
+        topId = top.displayId
         runCatching {
             val ctx = service.createDisplayContext(top).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
             val wm = ctx.getSystemService(WindowManager::class.java)!!
+            // The screen as it's shown now (turned on its side, the top one is wider than tall),
+            // not the panel's upright size that the display itself reports.
+            measure(wm)
+            px = topW / 2f; py = topH / 2f
             val v = PointerView(ctx)
             val p = WindowManager.LayoutParams(
                 v.sizePx, v.sizePx, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
@@ -106,6 +107,13 @@ object Trackpad {
         pad?.let { (wm, v) -> runCatching { wm.removeViewImmediate(v) } }
         pointer?.let { (wm, v) -> runCatching { wm.removeViewImmediate(v) } }
         pad = null; pointer = null; pointerParams = null
+    }
+
+    /** The top screen's size as it's shown now. */
+    private fun measure(wm: WindowManager) {
+        val b = wm.maximumWindowMetrics.bounds
+        if (b.width() > 0 && b.height() > 0) { topW = b.width(); topH = b.height() }
+        px = px.coerceIn(0f, topW - 1f); py = py.coerceIn(0f, topH - 1f)
     }
 
     private fun movePointer() {
@@ -198,6 +206,11 @@ object Trackpad {
             close()
         }
         override fun getAccessibilityClassName(): CharSequence = "android.view.View"
+        // The screen turned: measured again, so the pointer can still reach every edge.
+        override fun onConfigurationChanged(newConfig: android.content.res.Configuration?) {
+            super.onConfigurationChanged(newConfig)
+            pointer?.first?.let { measure(it); movePointer() }
+        }
         override fun onDraw(canvas: Canvas) {
             canvas.drawPath(arrow, fill)
             canvas.drawPath(arrow, edge)
