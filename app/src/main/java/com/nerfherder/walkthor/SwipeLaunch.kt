@@ -493,6 +493,7 @@ class SwipeGestureService : AccessibilityService() {
         ComeBack.disarm(this)
         runCatching { unbindService(keeperLink) }
         runCatching { BottomOff.turnOn(this) }
+        runCatching { Trackpad.stop() }
         // Without the service, WalkThor can't show notifications: Android's own banners back on.
         runCatching { BottomNotifications.restore(this) }
         com.nerfherder.walkthor.controls.ControllerInput.clear()

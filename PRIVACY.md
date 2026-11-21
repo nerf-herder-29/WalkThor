@@ -94,6 +94,11 @@ Everything else stays on your device.
   closes the bottom screen's apps before the game, and start again once memory recovers. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
 
+- **The trackpad, only while it's on.** With *Trackpad on / off* (a shortcut), WalkThor covers the
+  bottom screen with its trackpad and, as you use it, touches the top screen for you where its
+  pointer is: taps, drags and scrolls, through its accessibility access. It only follows your finger
+  on the trackpad; nothing on either screen is read, recorded, stored or sent.
+
 - **That a screen was touched, only while the controller is locked to a screen.** With *Lock
   controller to top/bottom screen* on (a shortcut), a one-pixel invisible WalkThor window on the
   other screen is told by Android each time that screen is touched (not where, and the touch still

@@ -50,11 +50,14 @@ step that's done.
 - **Button shortcuts** — Settings → Shortcuts maps the AYN button's press, double press and hold, Back
   pressed twice, and Back held with a D-pad direction, L1, R1, L2 or R2, to things WalkThor can do: open the drawer, AYN's own drawer,
   dim the bottom screen, turn it off, close all apps, take a screenshot, save the last seconds of play,
-  the performance overlay, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, brightness and volume up and down,
+  the performance overlay, stick lights, lock the controller to a screen, show or hide the WalkThor keyboard, the trackpad, brightness and volume up and down,
   or step through performance and fan modes. A short rumble confirms each one.
 - **Performance overlay** — while a game is in front, a small glass panel in a corner of either
   screen shows the frame rate with a graph of the last 30 seconds, and underneath, taking turns
   every 5 seconds, CPU speed and heat, GPU load and heat, battery draw and time left, and RAM.
+- **Trackpad** — a shortcut turns the whole bottom screen into a trackpad for the top one: a pointer
+  in your stick-light colour, tap to tap, hold then slide to drag, two fingers to scroll. It works by
+  touching the top screen for you, so it's for menus, frontends, browsers and apps (not a PC game's mouse).
 - **Notifications on the bottom screen** — switch it on in Settings → General, and Android's pop-up
   banners stop covering your game: each notification drops down on the bottom screen instead (on the
   top screen while the bottom one is off). Needs notification access and Force SELinux off.

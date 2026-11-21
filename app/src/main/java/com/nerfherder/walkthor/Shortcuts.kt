@@ -26,6 +26,7 @@ object Shortcuts {
         FPS("Performance overlay on / off"),
         STICK_LIGHTS("Stick lights on / off"),
         KEYBOARD("Show / hide the keyboard"),
+        TRACKPAD("Trackpad on / off"),
         BRIGHTER("Brightness up"),
         DIMMER("Brightness down"),
         LOUDER("Volume up"),
@@ -280,6 +281,8 @@ object Shortcuts {
                 },
                 2_000,
             )
+            // Its own message says whether it's on.
+            Action.TRACKPAD -> Trackpad.toggle(service)
             Action.LOUDER, Action.QUIETER -> {
                 val am = app.getSystemService(android.media.AudioManager::class.java)
                 if (am == null) { ScreenMessage.show("Couldn't change the volume"); return }
