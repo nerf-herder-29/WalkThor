@@ -91,9 +91,7 @@ Everything else stays on your device.
   else. WalkThor's small second process (Keeper) keeps doing this once a second while a game is in
   front, even while WalkThor itself has been closed, and notes what it changed in that same log.
   When memory gets critical during a game, WalkThor and Keeper stop protecting them, so Android
-  closes the bottom screen's apps before the game, and start again once memory recovers. For
-  those moments WalkThor also turns the bottom screen's brightness right down (so it doesn't flash
-  white) and puts it back after, keeping the level it had in its own settings until then. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
+  closes the bottom screen's apps before the game, and start again once memory recovers. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
 
 - **That a screen was touched, only while the controller is locked to a screen.** With *Lock

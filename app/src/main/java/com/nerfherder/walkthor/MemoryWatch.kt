@@ -161,14 +161,15 @@ object MemoryWatch {
             note(c, "Free ${free} MB" + (if (mi.lowMemory) " (LOW: Android is closing apps)" else "") + swap() + pressure + own)
             lastFreeMb = free
         }
-        // Not left dark for long: back once things have been calm a while, even if memory's still tight.
-        if (System.currentTimeMillis() - lastCritical > LIGHT_BACK_MS) lightBack(c, "memory has settled")
         if (free < CRITICAL_MB) yieldToGame(c, "free memory under ${CRITICAL_MB / 1000.0} GB")
         else if (yielding && free > RECOVERED_MB && System.currentTimeMillis() - lastCritical > CALM_MS) standBack(c, free)
+        // While memory's critical, nothing goes through the system helper (each command is a load
+        // of its own): restarts and Android's records are caught up on once it recovers.
+        if (yielding) return
         watchApps(c)
         protect(c)
         // Keeps Keeper's flag fresh (and right, if the game started before WalkThor came back).
-        if (beats % 5 == 1) { if (!yielding) setGuarding(c, true); importGuard(c) }
+        if (beats % 5 == 1) { setGuarding(c, true); importGuard(c) }
         if (beats % 10 == 0) closeRecords(c)
     }
 
@@ -223,44 +224,24 @@ object MemoryWatch {
         lastCritical = System.currentTimeMillis()
         if (yielding) return
         yielding = true
-        // First, before Android starts closing things: the bottom screen dark, so it doesn't flash white.
-        runCatching { blackout(c) }
         val home = homePackage(c)
         // Keeper stands aside too.
         runCatching { guardFile(c).writeText("yield:" + home.orEmpty()) }
-        // Back to their usual rank, where WalkThor had lowered them (it only ever set 50).
-        if (AynSystem.knownAvailable() == true) {
-            val names = listOfNotNull(home, c.packageName, c.packageName + ":keeper").filter { n -> PACKAGE.matches(n.substringBefore(':')) }
-            AynSystem.shellLines(names.joinToString(" ") { n ->
-                "for p in \$(pidof $n); do if [ \"\$(cat /proc/\$p/oom_score_adj)\" -eq $PROTECT_ADJ ]; then echo 100 > /proc/\$p/oom_score_adj; fi; done;"
-            } + " echo done")
-        }
-        // And WalkThor lets go of what it can.
+        // Nothing is run through the system helper from here until memory recovers: starting any
+        // command is itself a load on memory at the worst moment. The protection just isn't
+        // renewed, and Android ranks the bottom screen's apps afresh on its own as things change.
+        // WalkThor lets go of what it can (within its own process).
         trim(c, "the game comes first")
         android.os.Handler(android.os.Looper.getMainLooper()).post { runCatching { Drawer.trimIfHidden() } }
         note(c, "Memory critical ($why): the game comes first. The bottom screen's apps aren't protected until it recovers")
     }
 
-    // ---- the bottom screen dark while memory is critical ----
-    // Its brightness right down through AYN's helper, which (unlike a cover) stays put even if
-    // Android closes WalkThor too. The level it had is kept, to put back.
+    // ---- a bottom screen 1.86.4 darkened ----
+    // 1.86.4 turned the bottom screen's brightness right down when memory was critical. Starting
+    // the helper's brightness program at that moment could freeze the device, so it no longer
+    // does; this only puts back a level that version saved, when it's safe (no critical moment).
 
     private const val BLACKOUT_KEY = "blackoutLevel"
-    /** The bottom screen comes back after this long with no critical warning, even if memory's still tight. */
-    private const val LIGHT_BACK_MS = 30_000L
-
-    private fun blackout(c: Context) {
-        if (AynSystem.knownAvailable() != true) return
-        val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return
-        val p = seen(c)
-        if (!p.contains(BLACKOUT_KEY)) {
-            val level = AynSystem.brightness(c, bottom) ?: return
-            if (level < 0.02f) return // already dark: nothing to put back
-            p.edit().putFloat(BLACKOUT_KEY, level).commit()
-        }
-        AynSystem.setBrightness(c, bottom, 0f)
-        note(c, "Bottom screen dark until memory settles, so it doesn't flash")
-    }
 
     /** The bottom screen back to the brightness it had, if it was darkened. */
     private fun lightBack(c: Context, why: String) {
@@ -280,7 +261,6 @@ object MemoryWatch {
         yielding = false
         protectedNoted = false
         setGuarding(c, true)
-        lightBack(c, "memory recovered")
         note(c, "Memory recovered (free $freeMb MB): protecting the bottom screen's apps again")
         protect(c)
     }
@@ -477,8 +457,12 @@ object MemoryWatch {
             runCatching { protectedNoted = false; protect(c, always = true) }
             // What Keeper did while WalkThor was closed.
             runCatching { importGuard(c) }
-            runCatching { closeRecords(c) }
-            runCatching { report(c) }
+            // Android's records and the ranks, unless memory's critical (they're read through the
+            // system helper; they'll be read on the next start or check instead).
+            if (!yielding) {
+                runCatching { closeRecords(c) }
+                runCatching { report(c) }
+            }
             // Darkened for a critical moment and WalkThor closed meanwhile: once it's clear whether
             // a game's still in front, the screen comes back if it isn't (or if the moment's passed).
             runCatching {
