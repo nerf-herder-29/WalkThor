@@ -98,7 +98,7 @@ object MemoryWatch {
             trim(app, "game started")
         } else if (gameSince > 0) {
             yielding = false
-            Thread({ setGuarding(app, false) }, "WalkThor guard").start()
+            Thread({ setGuarding(app, false); runCatching { lightBack(app, "the game closed") } }, "WalkThor guard").start()
             note(app, "Game closed · ${summaryOfGame()}")
             Thread({ runCatching { closeRecords(app) } }, "WalkThor close records").start()
         }
@@ -161,6 +161,8 @@ object MemoryWatch {
             note(c, "Free ${free} MB" + (if (mi.lowMemory) " (LOW: Android is closing apps)" else "") + swap() + pressure + own)
             lastFreeMb = free
         }
+        // Not left dark for long: back once things have been calm a while, even if memory's still tight.
+        if (System.currentTimeMillis() - lastCritical > LIGHT_BACK_MS) lightBack(c, "memory has settled")
         if (free < CRITICAL_MB) yieldToGame(c, "free memory under ${CRITICAL_MB / 1000.0} GB")
         else if (yielding && free > RECOVERED_MB && System.currentTimeMillis() - lastCritical > CALM_MS) standBack(c, free)
         watchApps(c)
@@ -221,6 +223,8 @@ object MemoryWatch {
         lastCritical = System.currentTimeMillis()
         if (yielding) return
         yielding = true
+        // First, before Android starts closing things: the bottom screen dark, so it doesn't flash white.
+        runCatching { blackout(c) }
         val home = homePackage(c)
         // Keeper stands aside too.
         runCatching { guardFile(c).writeText("yield:" + home.orEmpty()) }
@@ -237,12 +241,46 @@ object MemoryWatch {
         note(c, "Memory critical ($why): the game comes first. The bottom screen's apps aren't protected until it recovers")
     }
 
+    // ---- the bottom screen dark while memory is critical ----
+    // Its brightness right down through AYN's helper, which (unlike a cover) stays put even if
+    // Android closes WalkThor too. The level it had is kept, to put back.
+
+    private const val BLACKOUT_KEY = "blackoutLevel"
+    /** The bottom screen comes back after this long with no critical warning, even if memory's still tight. */
+    private const val LIGHT_BACK_MS = 30_000L
+
+    private fun blackout(c: Context) {
+        if (AynSystem.knownAvailable() != true) return
+        val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return
+        val p = seen(c)
+        if (!p.contains(BLACKOUT_KEY)) {
+            val level = AynSystem.brightness(c, bottom) ?: return
+            if (level < 0.02f) return // already dark: nothing to put back
+            p.edit().putFloat(BLACKOUT_KEY, level).commit()
+        }
+        AynSystem.setBrightness(c, bottom, 0f)
+        note(c, "Bottom screen dark until memory settles, so it doesn't flash")
+    }
+
+    /** The bottom screen back to the brightness it had, if it was darkened. */
+    private fun lightBack(c: Context, why: String) {
+        val p = seen(c)
+        val level = p.getFloat(BLACKOUT_KEY, -1f)
+        if (level < 0f) return
+        if (!AynSystem.available()) return
+        val bottom = DisplayHelper.bottomDisplay(c)?.displayId ?: return
+        p.edit().remove(BLACKOUT_KEY).commit()
+        AynSystem.setBrightness(c, bottom, level)
+        note(c, "Bottom screen back on ($why)")
+    }
+
     /** Memory's recovered: back to protecting the bottom screen's apps. */
     @Synchronized private fun standBack(c: Context, freeMb: Long) {
         if (!yielding) return
         yielding = false
         protectedNoted = false
         setGuarding(c, true)
+        lightBack(c, "memory recovered")
         note(c, "Memory recovered (free $freeMb MB): protecting the bottom screen's apps again")
         protect(c)
     }
@@ -441,6 +479,18 @@ object MemoryWatch {
             runCatching { importGuard(c) }
             runCatching { closeRecords(c) }
             runCatching { report(c) }
+            // Darkened for a critical moment and WalkThor closed meanwhile: once it's clear whether
+            // a game's still in front, the screen comes back if it isn't (or if the moment's passed).
+            runCatching {
+                if (seen(c).contains(BLACKOUT_KEY)) {
+                    Thread.sleep(8_000)
+                    if (!gameInFront()) {
+                        yielding = false
+                        guardFile(c).delete()
+                        lightBack(c, "no game in front")
+                    } else if (!yielding) lightBack(c, "memory has settled")
+                }
+            }
         }, "WalkThor close records").apply { isDaemon = true }.start()
     }
 
