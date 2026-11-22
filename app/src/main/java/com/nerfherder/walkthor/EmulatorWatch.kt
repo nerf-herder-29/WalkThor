@@ -178,6 +178,8 @@ object EmulatorWatch {
 
     /** The automatic guess, from its package and app name. */
     fun autoEmulator(context: Context, pkg: String): Boolean {
+        // A launcher (a frontend set as a home screen) isn't guessed to be one.
+        if (pkg in launchers(context)) return false
         val p = pkg.lowercase()
         val l = label(context, pkg).lowercase()
         return KNOWN.any { it in p || it in l } ||
@@ -286,16 +288,27 @@ object EmulatorWatch {
         return isGamePkg(context, pkg)
     }
 
+    @Volatile private var launcherCache: Pair<Long, Set<String>>? = null
+
+    /** Every app that can be a home screen (looked up again at most once a minute). */
+    private fun launchers(context: Context): Set<String> {
+        val now = android.os.SystemClock.elapsedRealtime()
+        launcherCache?.let { (at, set) -> if (now - at < 60_000) return set }
+        val set = runCatching {
+            context.packageManager.queryIntentActivities(
+                android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME), 0,
+            ).mapNotNull { it.activityInfo?.packageName }.toSet()
+        }.getOrDefault(emptySet())
+        launcherCache = now to set
+        return set
+    }
+
     private fun isGamePkg(context: Context, pkg: String): Boolean {
         if (pkg == context.packageName) return false
+        // Any launcher, not just the one set as the default home: the top screen's home app can be
+        // a different one (a frontend, say), and a game it's not, unless you've said it's an emulator.
+        if (pkg in launchers(context) && chosen(context)[pkg] != true) return false
         if (isEmulator(context, pkg)) return true
-        val home = runCatching {
-            context.packageManager.resolveActivity(
-                android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME),
-                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
-            )?.activityInfo?.packageName
-        }.getOrNull()
-        if (pkg == home) return false
         val p = pkg.lowercase()
         val l = label(context, pkg).lowercase()
         return NOT_GAMES.none { it in p || it in l }

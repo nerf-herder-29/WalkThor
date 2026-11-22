@@ -35,6 +35,11 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Launchers (home apps): so they're never taken for a game, even without a home-screen icon. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
         <!-- Captions: Android only lets WalkThor see the device's speech recognizer if it says so here. -->
         <intent>
             <action android:name="android.speech.RecognitionService" />
