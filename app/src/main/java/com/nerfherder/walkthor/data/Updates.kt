@@ -6,8 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,7 +95,7 @@ object Updates {
     fun loadAndMaybeCheck(c: Context) {
         load(c)
         val since = System.currentTimeMillis() - prefs(c).getLong("checkedAt", 0L)
-        if (since > AUTO_EVERY_MS || offline.value) check(c)
+        if (since > AUTO_EVERY_MS || prefs(c).getBoolean("offline", false)) check(c)
     }
 
     private fun listed(c: Context): List<Pair<String, String>> {
@@ -155,17 +153,16 @@ object Updates {
             try {
                 val cache = readCache(app)
                 val list = listed(app)
-                if (!online(app)) {
-                    offline.value = true
-                    prefs(app).edit().putBoolean("offline", true).apply()
-                    entries.value = list.map { (pkg, name) -> fromCache(app, pkg, name, cache.optJSONObject(pkg)) }
-                    return@execute
-                }
+                // No asking Android whether there's a connection (WalkThor doesn't hold that
+                // permission): each page is simply tried, and it's offline only if none answer.
                 var reached = false
                 var lostConnection = false
+                var misses = 0
                 entries.value = list.map { (pkg, name) ->
                     val cached = cache.optJSONObject(pkg)
-                    if ((only != null && pkg != only) || lostConnection) return@map fromCache(app, pkg, name, cached)
+                    if (only != null && pkg != only) return@map fromCache(app, pkg, name, cached)
+                    // After two pages in a row couldn't be reached, don't wait on the rest.
+                    if (lostConnection && !reached) return@map fromCache(app, pkg, name, cached)
                     val page = pageFor(app, pkg) ?: return@map fromCache(app, pkg, name, null)
                     when (val r = fetchLatest(page)) {
                         is Fetch.Found -> {
@@ -181,14 +178,22 @@ object Updates {
                             cache.put(pkg, JSONObject().put("page", page).put("notFound", true))
                             fromCache(app, pkg, name, cache.optJSONObject(pkg))
                         }
-                        Fetch.Offline -> { lostConnection = true; fromCache(app, pkg, name, cached) }
+                        Fetch.Offline -> {
+                            if (reached) {
+                                // The internet's there, just not this site.
+                                fromCache(app, pkg, name, cached).let { e -> if (e.latest == null) e.copy(state = State.FAILED, problem = "its release site didn't answer") else e }
+                            } else {
+                                if (misses++ >= 1) lostConnection = true
+                                fromCache(app, pkg, name, cached)
+                            }
+                        }
                         is Fetch.Failed -> fromCache(app, pkg, name, cached).let { e ->
                             if (e.latest == null) e.copy(state = State.FAILED, problem = r.why) else e
                         }
                     }
                 }
                 writeCache(app, cache)
-                offline.value = lostConnection && !reached
+                offline.value = !reached && misses > 0
                 val now = System.currentTimeMillis()
                 prefs(app).edit().putBoolean("offline", offline.value).apply {
                     if (reached) putLong("checkedAt", now)
@@ -202,11 +207,6 @@ object Updates {
         }
     }
 
-    private fun online(c: Context): Boolean = runCatching {
-        val cm = c.getSystemService(ConnectivityManager::class.java)
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }.getOrDefault(false)
 
     private sealed class Fetch {
         class Found(val tag: String, val notes: String, val published: Long, val apkUrl: String?, val apkSize: Long) : Fetch()
@@ -326,7 +326,6 @@ object Updates {
             com.nerfherder.walkthor.ScreenMessage.show("Allow WalkThor to install apps, then tap Update again", 3_500)
             return
         }
-        if (!online(app)) { com.nerfherder.walkthor.ScreenMessage.show("You're offline: updates need the internet"); return }
         setProgress(e.pkg, 0f)
         downloads.execute {
             val dir = File(app.cacheDir, "updates").apply { mkdirs() }
