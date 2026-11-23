@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -24,10 +28,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -78,7 +80,8 @@ fun UpdatesScreen(header: Boolean, modifier: Modifier = Modifier) {
     var settingPage by remember { mutableStateOf<Updates.Entry?>(null) }
     val accent = accentColor()
 
-    Column(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
         val when_ = when {
             checking -> "Checking…"
             checkedAt == 0L -> "Not checked yet"
@@ -125,68 +128,164 @@ fun UpdatesScreen(header: Boolean, modifier: Modifier = Modifier) {
         }
     }
 
-    details?.let { e ->
-        AlertDialog(
-            onDismissRequest = { details = null },
-            containerColor = BookColors.Surface,
-            title = { Text(e.name + (e.latest?.let { " $it" } ?: ""), fontFamily = DisplayFont) },
-            text = {
-                Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState())) {
+    // Panels drawn over the cards, not separate windows: the drawer has no app window for a
+    // dialog to open from, and a panel gets the whole page for the release notes.
+    if (!LocalInDrawer.current && (details != null || settingPage != null)) {
+        androidx.activity.compose.BackHandler { if (settingPage != null) settingPage = null else details = null }
+    }
+    details?.let { e -> DetailsPanel(e, offline, accent, onClose = { details = null }, onChangePage = { details = null; settingPage = e }) }
+    settingPage?.let { e -> PagePanel(e, onClose = { settingPage = null }) }
+    }
+}
+
+/** A dimmed backdrop over the page; tapping it closes [onClose]. */
+@Composable
+private fun Scrim(onClose: () -> Unit, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+    val none = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable(interactionSource = none, indication = null, onClick = onClose),
+        contentAlignment = Alignment.Center,
+        content = content,
+    )
+}
+
+/** Taps inside a panel stay there (rather than closing it). */
+@Composable
+private fun Modifier.keepTaps(): Modifier {
+    val none = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    return this.clickable(interactionSource = none, indication = null) {}
+}
+
+/** One emulator's newest release: what's new, its page, and Update. */
+@Composable
+private fun DetailsPanel(e: Updates.Entry, offline: Boolean, accent: Color, onClose: () -> Unit, onChangePage: () -> Unit) {
+    val context = LocalContext.current
+    Scrim(onClose) {
+        Column(
+            Modifier
+                .padding(14.dp)
+                .widthIn(max = 760.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(20.dp))
+                .background(BookColors.Surface)
+                .border(1.dp, BookColors.Hairline, RoundedCornerShape(20.dp))
+                .keepTaps()
+                .padding(18.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppIconImage(e.pkg)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(e.name + (e.latest?.let { " $it" } ?: ""), color = BookColors.Text, fontSize = 20.sp, fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(
                             e.installed?.let { "You have $it" },
                             e.published.takeIf { it > 0 }?.let { "released " + ago(it) },
                             e.apkSize.takeIf { it > 0 }?.let { "%.0f MB".format(it / 1_048_576.0) },
                         ).joinToString(" · "),
-                        color = BookColors.TextMuted, fontSize = 13.sp,
+                        color = BookColors.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
-                    if (!e.notes.isNullOrBlank()) {
-                        Spacer(Modifier.height(14.dp))
-                        Text("WHAT'S NEW", color = accent, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(6.dp))
-                        Text(plainNotes(e.notes), color = BookColors.Text, fontSize = 13.sp, lineHeight = 19.sp)
-                    }
                 }
-            },
-            confirmButton = {
-                Row {
-                    if (e.page != null) TextButton(onClick = { openPage(context, e.page) }) { Text("Release page") }
-                    if (e.pkg != context.packageName) TextButton(onClick = { details = null; settingPage = e }) { Text("Change page") }
-                    if (e.state == State.UPDATE && !offline) TextButton(onClick = { details = null; Updates.update(context, e) }) { Text("Update", color = accent) }
-                }
-            },
-            dismissButton = { TextButton(onClick = { details = null }) { Text("Close") } },
-        )
-    }
-    settingPage?.let { e ->
-        var text by remember(e.pkg) { mutableStateOf(e.page ?: "") }
-        AlertDialog(
-            onDismissRequest = { settingPage = null },
-            containerColor = BookColors.Surface,
-            title = { Text("${e.name}'s release page", fontFamily = DisplayFont) },
-            text = {
-                Column {
-                    Text(
-                        "Paste the link to where ${e.name} publishes its releases: a GitHub page (github.com/owner/project), or a Forgejo or Gitea site's. WalkThor checks its newest release there.",
-                        color = BookColors.TextMuted, fontSize = 13.sp,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(text, { text = it }, singleLine = true, placeholder = { Text("github.com/owner/project") }, modifier = Modifier.fillMaxWidth())
-                    if (text.isNotBlank() && Updates.normalisePage(text) == null) {
-                        Text("That doesn't look like a project link (it needs the owner and the project)", color = Color(0xFFE8B25A), fontSize = 12.sp)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { Updates.setPage(context, e.pkg, text); settingPage = null },
-                    enabled = text.isBlank() || Updates.normalisePage(text) != null,
-                ) { Text(if (text.isBlank()) "Clear" else "Save") }
-            },
-            dismissButton = { TextButton(onClick = { settingPage = null }) { Text("Cancel") } },
-        )
+                CardButton("Close", BookColors.Text) { onClose() }
+            }
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(BookColors.Hairline))
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 14.dp)) {
+                Text("WHAT'S NEW", color = accent, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (e.notes.isNullOrBlank()) "This release doesn't say what changed. Its release page may have more." else plainNotes(e.notes),
+                    color = BookColors.Text, fontSize = 14.sp, lineHeight = 21.sp,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (e.page != null) CardButton("Release page", BookColors.Text) { openPage(context, e.page) }
+                if (e.pkg != context.packageName) CardButton("Change page", BookColors.Text) { onChangePage() }
+                Spacer(Modifier.weight(1f))
+                if (e.state == State.UPDATE) CardButton(if (offline) "Update (offline)" else "Update", accent, enabled = !offline) { onClose(); Updates.update(context, e) }
+            }
+        }
     }
 }
+
+/** Where an emulator publishes its releases. */
+@Composable
+private fun PagePanel(e: Updates.Entry, onClose: () -> Unit) {
+    val context = LocalContext.current
+    var text by remember(e.pkg) { mutableStateOf(e.page ?: "") }
+    val valid = text.isBlank() || Updates.normalisePage(text) != null
+    Scrim(onClose) {
+        Column(
+            Modifier
+                .padding(14.dp)
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(BookColors.Surface)
+                .border(1.dp, BookColors.Hairline, RoundedCornerShape(20.dp))
+                .keepTaps()
+                .padding(18.dp),
+        ) {
+            Text("${e.name}'s release page", color = BookColors.Text, fontSize = 20.sp, fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Paste the link to where ${e.name} publishes its releases: a GitHub page (github.com/owner/project), or a Forgejo or Gitea site's. WalkThor checks its newest release there.",
+                color = BookColors.TextMuted, fontSize = 13.sp, lineHeight = 19.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(text, { text = it }, singleLine = true, placeholder = { Text("github.com/owner/project") }, modifier = Modifier.fillMaxWidth())
+            if (!valid) Text("That doesn't look like a project link (it needs the owner and the project)", color = Color(0xFFE8B25A), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.weight(1f))
+                CardButton("Cancel", BookColors.TextMuted) { onClose() }
+                CardButton(if (text.isBlank()) "Clear" else "Save", BookColors.Text, enabled = valid) { Updates.setPage(context, e.pkg, text); onClose() }
+            }
+        }
+    }
+}
+
+/**
+ * A tab on the drawer's edge saying what a swipe brings up ([toLeft]: it sits on the left edge,
+ * for going back). Tapping it does the same as the swipe. [count] shows as a badge.
+ */
+@Composable
+fun SwipeTab(label: String, toLeft: Boolean, count: Int = 0, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val accent = accentColor()
+    val shape = if (toLeft) RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp) else RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .background(BookColors.SurfaceHigh)
+            .border(1.dp, BookColors.Hairline, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(if (toLeft) "‹" else "›", color = BookColors.TextMuted, fontSize = 15.sp, lineHeight = 15.sp)
+        Spacer(Modifier.height(4.dp))
+        // The label reads downwards along the edge.
+        Text(
+            label.uppercase(), color = BookColors.TextMuted, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+            modifier = Modifier.verticalText(),
+        )
+        if (count > 0) {
+            Spacer(Modifier.height(6.dp))
+            Box(Modifier.size(16.dp).clip(CircleShape).background(accent), contentAlignment = Alignment.Center) {
+                Text("$count", color = Color.Black, fontSize = 9.sp, lineHeight = 9.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+/** Turns text a quarter turn so it reads top to bottom, taking the room it needs that way. */
+private fun Modifier.verticalText(): Modifier = this
+    .layout { measurable, constraints ->
+        val p = measurable.measure(constraints.copy(minWidth = 0, maxWidth = androidx.compose.ui.unit.Constraints.Infinity, minHeight = 0, maxHeight = constraints.maxWidth.coerceAtLeast(1)))
+        layout(p.height, p.width) { p.place(-(p.width - p.height) / 2, (p.width - p.height) / 2) }
+    }
+    .rotate(90f)
 
 @Composable
 private fun UpdateCard(e: Updates.Entry, progress: Float?, offline: Boolean, accent: Color, onOpen: () -> Unit, onSetPage: () -> Unit) {

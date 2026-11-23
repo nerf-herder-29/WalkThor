@@ -391,6 +391,11 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                     val pages = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
                     // Back on Home each time the drawer comes up.
                     LaunchedEffect(up) { if (up) pages.scrollToPage(0) }
+                    val pageScope = androidx.compose.runtime.rememberCoroutineScope()
+                    val updateContext = androidx.compose.ui.platform.LocalContext.current
+                    LaunchedEffect(Unit) { com.nerfherder.walkthor.data.Updates.load(updateContext) }
+                    val updates by com.nerfherder.walkthor.data.Updates.entries.collectAsState()
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     androidx.compose.foundation.pager.HorizontalPager(
                         state = pages,
                         modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
@@ -406,6 +411,19 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                         } else {
                             com.nerfherder.walkthor.ui.UpdatesScreen(header = true)
                         }
+                    }
+                    // Tabs on the edge saying what a swipe brings up (a tap does the same).
+                    if (pages.currentPage == 0) {
+                        com.nerfherder.walkthor.ui.SwipeTab(
+                            "Updates", toLeft = false, count = com.nerfherder.walkthor.data.Updates.waiting(updates),
+                            modifier = Modifier.align(androidx.compose.ui.Alignment.CenterEnd),
+                        ) { pageScope.launch { pages.animateScrollToPage(1) } }
+                    } else {
+                        com.nerfherder.walkthor.ui.SwipeTab(
+                            "Home", toLeft = true,
+                            modifier = Modifier.align(androidx.compose.ui.Alignment.CenterStart),
+                        ) { pageScope.launch { pages.animateScrollToPage(0) } }
+                    }
                     }
                 }
             }
