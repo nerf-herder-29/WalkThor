@@ -4,6 +4,8 @@
 
     <!-- Only for scraping artwork, and only when you've added a scraper account and start a scrape. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Updates: installs a new version of WalkThor or an emulator you chose to update (Android asks you first). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- A short buzz when a button shortcut is used. -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Only for the test notification in Diagnostics. -->
@@ -112,6 +114,8 @@
         </service>
         <!-- Starts WalkThor again just after a crash (see CrashLog). -->
         <receiver android:name=".ComeBack" android:exported="false" />
+        <!-- Updates: Android's answer to an install WalkThor started. -->
+        <receiver android:name=".data.Updates$InstallResult" android:exported="false" />
         <!-- WalkThor's keyboard (numbers and letters filling the bottom screen), to use in place of AYN's. -->
         <service
             android:name=".keyboard.WalkThorKeyboard"

@@ -387,12 +387,26 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                 LaunchedEffect(emulatorShowing) { Drawer.home.value = Drawer.noGame() }
                 val home by Drawer.home.collectAsState()
                 if (home) {
-                    com.nerfherder.walkthor.ui.HomeScreen(
-                        onOpenWalkThor = { Drawer.home.value = false },
-                        onOpenApp = { pkg ->
-                            if (com.nerfherder.walkthor.ui.openFromHome(service, pkg, displayId)) hide()
-                        },
-                    )
+                    // Home, and one swipe left: Updates for WalkThor and your emulators.
+                    val pages = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
+                    // Back on Home each time the drawer comes up.
+                    LaunchedEffect(up) { if (up) pages.scrollToPage(0) }
+                    androidx.compose.foundation.pager.HorizontalPager(
+                        state = pages,
+                        modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+                        beyondViewportPageCount = 0,
+                    ) { page ->
+                        if (page == 0) {
+                            com.nerfherder.walkthor.ui.HomeScreen(
+                                onOpenWalkThor = { Drawer.home.value = false },
+                                onOpenApp = { pkg ->
+                                    if (com.nerfherder.walkthor.ui.openFromHome(service, pkg, displayId)) hide()
+                                },
+                            )
+                        } else {
+                            com.nerfherder.walkthor.ui.UpdatesScreen(header = true)
+                        }
+                    }
                 }
             }
         }

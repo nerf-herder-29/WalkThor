@@ -55,6 +55,11 @@ step that's done.
 - **Performance overlay** — while a game is in front, a small glass panel in a corner of either
   screen shows the frame rate with a graph of the last 30 seconds, and underneath, taking turns
   every 5 seconds, CPU speed and heat, GPU load and heat, battery draw and time left, and RAM.
+- **Updates** — in the library's list and one swipe left of the drawer's Home: WalkThor and each of
+  your emulators, with the version you have, the newest release and what's new in it, and an Update
+  button that downloads it and hands it to Android's installer. WalkThor knows where several
+  emulators publish their releases; for others, paste the release page once. Without the internet,
+  it shows what it last found.
 - **Trackpad** — a shortcut turns the whole bottom screen into a trackpad for the top one: a pointer
   in your stick-light colour, tap to tap, hold then slide to drag, two fingers to scroll. It works by
   touching the top screen for you, so it's for menus, frontends, browsers and apps (not a PC game's mouse).

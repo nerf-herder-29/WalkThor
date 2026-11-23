@@ -94,6 +94,14 @@ Everything else stays on your device.
   closes the bottom screen's apps before the game, and start again once memory recovers. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
 
+- **Updates: release pages only, and only when you look.** When you open Updates (at most every few
+  hours) or tap Check now, WalkThor asks each release page it knows (GitHub, or a Forgejo or Gitea
+  site you gave it) for its newest release. Those sites see an ordinary request from your device, as
+  a browser visit would; nothing about you or your apps is sent. An update you tap is downloaded from
+  that page, checked to be the same app signed by the same developer, and handed to Android's
+  installer, which asks you before installing. Which emulators you have and their versions stay on
+  the device.
+
 - **The trackpad, only while it's on.** With *Trackpad on / off* (a shortcut), WalkThor covers the
   bottom screen with its trackpad and, as you use it, touches the top screen for you where its
   pointer is: taps, drags and scrolls, through its accessibility access. It only follows your finger

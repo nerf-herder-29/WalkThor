@@ -153,9 +153,9 @@ fun LibraryScreen(
     var chosenSection by remember { mutableStateOf(previewSection ?: LibrarySection.load(libContext)) }
     // A system folder that's gone (relinked, rescanned): back to all games.
     val section = chosenSection.takeIf { s ->
-        s == LibrarySection.ALL || s == LibrarySection.GUIDES || roms.any { it.system == s }
+        s == LibrarySection.ALL || s == LibrarySection.GUIDES || s == LibrarySection.UPDATES || roms.any { it.system == s }
     } ?: LibrarySection.ALL
-    val showGames = roms.isNotEmpty() && section != LibrarySection.GUIDES
+    val showGames = roms.isNotEmpty() && section != LibrarySection.GUIDES && section != LibrarySection.UPDATES
     // Turning accessibility access on always goes through the disclosure first.
     fun startSwipeSetup() {
         if (!actions.hasSwipeConsent()) { showDisclosure = true; return }
@@ -251,12 +251,13 @@ fun LibraryScreen(
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 
         Row(Modifier.weight(1f)) {
-          if (roms.isNotEmpty()) {
-            LibraryRail(roms, books.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
-            Box(Modifier.width(1.dp).fillMaxHeight().background(BookColors.Hairline))
-          }
+          // Always there now: Guides and Updates, and your systems once a ROMs folder is linked.
+          LibraryRail(roms, books.size, section) { chosenSection = it; LibrarySection.save(libContext, it) }
+          Box(Modifier.width(1.dp).fillMaxHeight().background(BookColors.Hairline))
           Box(Modifier.weight(1f)) {
-            if (showGames) {
+            if (section == LibrarySection.UPDATES) {
+                UpdatesScreen(header = false)
+            } else if (showGames) {
                 GamesList(
                     roms = if (section == LibrarySection.ALL) roms else roms.filter { it.system == section },
                     books = books,

@@ -73,6 +73,7 @@ import java.io.File
 object LibrarySection {
     const val ALL = "all"
     const val GUIDES = "guides"
+    const val UPDATES = "updates"
 
     private fun prefs(c: android.content.Context) = c.getSharedPreferences("library", android.content.Context.MODE_PRIVATE)
     fun load(c: android.content.Context): String = prefs(c).getString("section", ALL) ?: ALL
@@ -82,7 +83,7 @@ object LibrarySection {
 /** The game a ROM is, as the rest of WalkThor knows games. */
 internal fun Rom.asGame() = LaunchedGame(title, file, RomLibrary.system(system)?.name, 0L)
 
-/** The list down the library's left: All games, each system folder, then Guides. */
+/** The list down the library's left: All games, each system folder, then Guides and Updates. */
 @Composable
 fun LibraryRail(roms: List<Rom>, guides: Int, section: String, onSection: (String) -> Unit) {
     val narrow = LocalConfiguration.current.screenWidthDp < 520
@@ -99,10 +100,20 @@ fun LibraryRail(roms: List<Rom>, guides: Int, section: String, onSection: (Strin
             .padding(horizontal = if (narrow) 6.dp else 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        RailItem("All games", roms.size, section == LibrarySection.ALL, narrow) { onSection(LibrarySection.ALL) }
-        systems.forEach { (key, name, n) -> RailItem(name, n, section == key, narrow) { onSection(key) } }
-        Box(Modifier.padding(horizontal = 6.dp, vertical = 6.dp).fillMaxWidth().height(1.dp).background(BookColors.Hairline))
+        if (roms.isNotEmpty()) {
+            RailItem("All games", roms.size, section == LibrarySection.ALL, narrow) { onSection(LibrarySection.ALL) }
+            systems.forEach { (key, name, n) -> RailItem(name, n, section == key, narrow) { onSection(key) } }
+            Box(Modifier.padding(horizontal = 6.dp, vertical = 6.dp).fillMaxWidth().height(1.dp).background(BookColors.Hairline))
+        }
         RailItem("Guides", guides, section == LibrarySection.GUIDES, narrow) { onSection(LibrarySection.GUIDES) }
+        // Updates for WalkThor and your emulators, with how many are waiting.
+        val updateContext = LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(Unit) { com.nerfherder.walkthor.data.Updates.load(updateContext) }
+        val updates by com.nerfherder.walkthor.data.Updates.entries.collectAsState()
+        RailItem("Updates", com.nerfherder.walkthor.data.Updates.waiting(updates), section == LibrarySection.UPDATES, narrow, badge = true) {
+            onSection(LibrarySection.UPDATES)
+        }
+        if (roms.isEmpty()) return@Column
         // Reads your ROMs folder again, for games you've added or removed.
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
@@ -132,7 +143,7 @@ private fun shortSystem(name: String) =
     name.removePrefix("Nintendo ").removePrefix("Sony ").removePrefix("Sega ").removePrefix("Microsoft ")
 
 @Composable
-private fun RailItem(label: String, count: Int, on: Boolean, narrow: Boolean, onClick: () -> Unit) {
+private fun RailItem(label: String, count: Int, on: Boolean, narrow: Boolean, badge: Boolean = false, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -151,7 +162,13 @@ private fun RailItem(label: String, count: Int, on: Boolean, narrow: Boolean, on
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Text("$count", fontSize = 12.sp, color = BookColors.TextMuted.copy(alpha = 0.7f), maxLines = 1)
+        if (badge) {
+            // How many are waiting, in your stick lights' colour; nothing when there are none.
+            if (count > 0) Text(
+                "$count", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black, maxLines = 1,
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(guideAccent().takeIf { it != BookColors.Text } ?: Color(0xFF2BE0D8)).padding(horizontal = 7.dp, vertical = 1.dp),
+            )
+        } else Text("$count", fontSize = 12.sp, color = BookColors.TextMuted.copy(alpha = 0.7f), maxLines = 1)
     }
 }
 
