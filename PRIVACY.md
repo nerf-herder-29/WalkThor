@@ -95,8 +95,8 @@ Everything else stays on your device.
   were last closed (and the memory killer's own log lines about them) into that same log.
 
 - **Updates: release pages only, and only when you look.** When you open Updates (at most every few
-  hours) or tap Check now, WalkThor asks each release page it knows (GitHub, or a Forgejo or Gitea
-  site you gave it) for its newest release. Those sites see an ordinary request from your device, as
+  hours) or tap Check now, WalkThor asks each release page it knows (GitHub, a Forgejo or Gitea
+  site you gave it, or Dolphin's download site for Dolphin) for its newest release. Those sites see an ordinary request from your device, as
   a browser visit would; nothing about you or your apps is sent. An update you tap is downloaded from
   that page, checked to be the same app signed by the same developer, and handed to Android's
   installer, which asks you before installing. Which emulators you have and their versions stay on

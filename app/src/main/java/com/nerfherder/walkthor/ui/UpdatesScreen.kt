@@ -203,6 +203,7 @@ private fun DetailsPanel(e: Updates.Entry, offline: Boolean, accent: Color, onCl
                 if (e.page != null) CardButton("Release page", BookColors.Text) { openPage(context, e.page) }
                 if (e.pkg != context.packageName) CardButton("Change page", BookColors.Text) { onChangePage() }
                 Spacer(Modifier.weight(1f))
+                if (e.state == State.PLAY_STORE) CardButton("Update in Play Store", accent) { onClose(); openPlay(context, e.pkg) }
                 if (e.state == State.UPDATE) CardButton(if (offline) "Update (offline)" else "Update", accent, enabled = !offline) { onClose(); Updates.update(context, e) }
             }
         }
@@ -230,7 +231,7 @@ private fun PagePanel(e: Updates.Entry, onClose: () -> Unit) {
             Text("${e.name}'s release page", color = BookColors.Text, fontSize = 20.sp, fontFamily = DisplayFont, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Paste the link to where ${e.name} publishes its releases: a GitHub page (github.com/owner/project), or a Forgejo or Gitea site's. WalkThor checks its newest release there.",
+                "Paste the link to where ${e.name} publishes its releases: a GitHub page (github.com/owner/project), or a Forgejo or Gitea site's. WalkThor checks its newest release there. (Dolphin's site, dolphin-emu.org, works too.)",
                 color = BookColors.TextMuted, fontSize = 13.sp, lineHeight = 19.sp,
             )
             Spacer(Modifier.height(12.dp))
@@ -307,7 +308,7 @@ private fun UpdateCard(e: Updates.Entry, progress: Float?, offline: Boolean, acc
                 Text(e.name, color = BookColors.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     when (e.state) {
-                        State.UPDATE, State.NO_APK, State.WRONG_SIGNER -> "${e.installed ?: "?"} → ${e.latest}"
+                        State.UPDATE, State.NO_APK, State.WRONG_SIGNER, State.PLAY_STORE -> "${e.installed ?: "?"} → ${e.latest}"
                         State.UP_TO_DATE -> "${e.installed ?: "?"} · up to date"
                         else -> e.installed ?: ""
                     },
@@ -326,6 +327,7 @@ private fun UpdateCard(e: Updates.Entry, progress: Float?, offline: Boolean, acc
             }
             e.state == State.UPDATE -> CardButton(if (offline) "Update (offline)" else "Update", accent, enabled = !offline) { Updates.update(context, e) }
             e.state == State.UP_TO_DATE -> Text("Up to date", color = BookColors.Brass, fontSize = 13.sp)
+            e.state == State.PLAY_STORE -> CardButton("Update in Play Store", accent) { openPlay(context, e.pkg) }
             e.state == State.CHECKING -> Text(if (offline) "Not checked yet (offline)" else "Checking…", color = BookColors.Brass, fontSize = 13.sp)
             e.state == State.NO_PAGE -> CardButton("Set release page", BookColors.Text) { onSetPage() }
             e.state == State.PAGE_NOT_FOUND -> Column {
@@ -388,6 +390,16 @@ private fun plainNotes(md: String): String = md.lines().joinToString("\n") { lin
 
 private fun openPage(context: android.content.Context, page: String) {
     runCatching {
-        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("$page/releases")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(Updates.releasesUrl(page))).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+}
+
+/** [pkg]'s page in the Play Store app (or on the Play website, without it). */
+private fun openPlay(context: android.content.Context, pkg: String) {
+    val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+    runCatching {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=$pkg")).setPackage("com.android.vending").addFlags(flags))
+    }.recoverCatching {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store/apps/details?id=$pkg")).addFlags(flags))
     }
 }

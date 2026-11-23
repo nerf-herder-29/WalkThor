@@ -26,7 +26,7 @@ import java.util.concurrent.Executors
  * hours) or tap Check now. Nothing about you or your apps is sent.
  */
 object Updates {
-    enum class State { NO_PAGE, CHECKING, UP_TO_DATE, UPDATE, NO_APK, PAGE_NOT_FOUND, FAILED, DOWNLOADING, WRONG_SIGNER, INSTALLING }
+    enum class State { NO_PAGE, CHECKING, UP_TO_DATE, UPDATE, NO_APK, PAGE_NOT_FOUND, FAILED, DOWNLOADING, WRONG_SIGNER, INSTALLING, PLAY_STORE }
 
     data class Entry(
         val pkg: String,
@@ -44,6 +44,14 @@ object Updates {
 
     /** WalkThor's own releases. */
     const val WALKTHOR_PAGE = "https://github.com/nerf-herder-29/WalkThor"
+
+    /**
+     * Dolphin doesn't publish releases on GitHub: each release (2609a, say) is only a tag in its
+     * code there, and the Android app is on Dolphin's own download server.
+     */
+    const val DOLPHIN_PKG = "org.dolphinemu.dolphinemu"
+    const val DOLPHIN_PAGE = "https://dolphin-emu.org"
+    private const val PLAY = "com.android.vending"
 
     /** Emulators WalkThor knows the release pages of, by a word in their name or package. */
     private val KNOWN = listOf(
@@ -122,7 +130,8 @@ object Updates {
     /** The release page for [pkg]: yours if you've set one, else one WalkThor knows. */
     fun pageFor(c: Context, pkg: String): String? {
         if (pkg == c.packageName) return WALKTHOR_PAGE
-        prefs(c).getString("page.$pkg", null)?.let { return it.ifBlank { null } }
+        prefs(c).getString("page.$pkg", null)?.let { return it.ifBlank { null }?.let { p -> normalisePage(p) ?: p } }
+        if (pkg == DOLPHIN_PKG) return DOLPHIN_PAGE
         val hay = (pkg + " " + label(c, pkg)).lowercase().replace(" ", "")
         return KNOWN.firstOrNull { (word, _) -> word in hay }?.second
     }
@@ -137,8 +146,11 @@ object Updates {
     fun normalisePage(url: String): String? {
         val u = runCatching { Uri.parse(url.trim().let { if ("://" in it) it else "https://$it" }) }.getOrNull() ?: return null
         val host = u.host ?: return null
+        if (host.removePrefix("www.").removePrefix("dl.").equals("dolphin-emu.org", true)) return DOLPHIN_PAGE
         val parts = u.pathSegments.filter { it.isNotBlank() }
         if (parts.size < 2) return null
+        // Dolphin's GitHub has its code but no releases: its own site is where they are.
+        if (host.equals("github.com", true) && parts[0].equals("dolphin-emu", true) && parts[1].equals("dolphin", true)) return DOLPHIN_PAGE
         return "https://$host/${parts[0]}/${parts[1].removeSuffix(".git")}"
     }
 
@@ -217,6 +229,7 @@ object Updates {
 
     /** The newest (non-pre-release) release on [page], from its site's API. */
     private fun fetchLatest(page: String): Fetch {
+        if (page == DOLPHIN_PAGE) return fetchDolphin()
         val u = Uri.parse(page)
         val parts = u.pathSegments
         if (parts.size < 2) return Fetch.NotFound
@@ -263,6 +276,78 @@ object Updates {
         }
     }
 
+    /** Where to see [page]'s releases in a browser. */
+    fun releasesUrl(page: String) = if (page == DOLPHIN_PAGE) "https://dolphin-emu.org/download/" else "$page/releases"
+
+    /**
+     * Dolphin's newest release: the highest release tag in its code on GitHub (2609a, 2603a...),
+     * whose Android app is on Dolphin's download server. A tag whose app isn't up yet is skipped.
+     */
+    private fun fetchDolphin(): Fetch = try {
+        val conn = (URL("https://api.github.com/repos/dolphin-emu/dolphin/tags?per_page=100").openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10_000; readTimeout = 15_000
+            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("User-Agent", "WalkThor")
+        }
+        when (val code = conn.responseCode) {
+            in 200..299 -> {
+                val tags = JSONArray(conn.inputStream.bufferedReader().use { it.readText() })
+                val releases = (0 until tags.length()).map { tags.getJSONObject(it).optString("name") }
+                    .filter { RELEASE_TAG.matches(it) }
+                    .sortedWith(compareByDescending<String> { dolphinKey(it)!!.first }.thenByDescending { dolphinKey(it)!!.second })
+                var found: Fetch? = null
+                for (tag in releases.take(3)) {
+                    val apk = "https://dl.dolphin-emu.org/releases/$tag/dolphin-$tag.apk"
+                    val head = (URL(apk).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "HEAD"; connectTimeout = 10_000; readTimeout = 15_000
+                        setRequestProperty("User-Agent", "WalkThor"); instanceFollowRedirects = true
+                    }
+                    if (head.responseCode in 200..299) {
+                        found = Fetch.Found(
+                            tag,
+                            "Dolphin $tag. Dolphin describes each release in a progress report on its blog (dolphin-emu.org/blog); tap Release page for its downloads.",
+                            0L, apk, head.contentLengthLong.coerceAtLeast(0L),
+                        )
+                        break
+                    }
+                }
+                found ?: if (releases.isEmpty()) Fetch.NotFound else Fetch.Found(releases.first(), "", 0L, null, 0L)
+            }
+            403, 429 -> Fetch.Failed("GitHub asked to wait a while (too many checks)")
+            else -> Fetch.Failed("GitHub answered $code")
+        }
+    } catch (e: java.net.UnknownHostException) { Fetch.Offline
+    } catch (e: java.net.ConnectException) { Fetch.Offline
+    } catch (e: java.net.SocketTimeoutException) { Fetch.Offline
+    } catch (e: Throwable) { Fetch.Failed(e.javaClass.simpleName) }
+
+    private val RELEASE_TAG = Regex("^\\d{4}[a-z]?$")
+    private val DOLPHIN_VERSION = Regex("^(\\d{4})([a-z]?)(?:-(\\d+))?")
+
+    /** A Dolphin version as (year and month, then letter and later builds on top), or null. */
+    private fun dolphinKey(v: String): Pair<Int, Int>? {
+        val m = DOLPHIN_VERSION.find(v.trim()) ?: return null
+        val letter = m.groupValues[2].firstOrNull()?.let { it - 'a' + 1 } ?: 0
+        val dev = m.groupValues[3].toIntOrNull() ?: 0
+        return m.groupValues[1].toInt() to (letter * 100_000 + dev)
+    }
+
+    /** Whether Dolphin release [tag] is newer than [installed] (the old 5.0-... builds are older than any). */
+    private fun dolphinNewer(tag: String, installed: String?): Boolean? {
+        val t = dolphinKey(tag) ?: return null
+        if (installed == null) return true
+        if (installed.startsWith("5.0")) return true
+        val i = dolphinKey(installed) ?: return null
+        return compareValuesBy(t, i, { it.first }, { it.second }) > 0
+    }
+
+    /** Whether the Play Store installed [pkg] (so it's the one that can update it). */
+    private fun fromPlay(c: Context, pkg: String): Boolean = runCatching {
+        val src = if (Build.VERSION.SDK_INT >= 30) c.packageManager.getInstallSourceInfo(pkg).installingPackageName
+        else @Suppress("DEPRECATION") c.packageManager.getInstallerPackageName(pkg)
+        src == PLAY
+    }.getOrDefault(false)
+
     private fun fromCache(c: Context, pkg: String, name: String, o: JSONObject?): Entry {
         val installed = installedVersion(c, pkg)
         val page = pageFor(c, pkg)
@@ -272,10 +357,13 @@ object Updates {
         val latest = o.optString("latest").ifBlank { null }
         val apkUrl = o.optString("apkUrl").ifBlank { null }
         val published = o.optLong("published")
-        val newer = latest != null && isNewer(latest, installed, published, installedAt(c, pkg))
+        val newer = latest != null && ((if (page == DOLPHIN_PAGE) dolphinNewer(latest, installed) else null)
+            ?: isNewer(latest, installed, published, installedAt(c, pkg)))
         val signer = prefs(c).getString("wrongSigner.$pkg", null)
         val state = when {
             !newer -> State.UP_TO_DATE
+            // From the Play Store, Dolphin is updated there (Android won't take the site's over it).
+            page == DOLPHIN_PAGE && fromPlay(c, pkg) -> State.PLAY_STORE
             signer == latest -> State.WRONG_SIGNER
             apkUrl == null -> State.NO_APK
             else -> State.UPDATE

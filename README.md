@@ -58,7 +58,7 @@ step that's done.
 - **Updates** — in the library's list and one swipe left of the drawer's Home: WalkThor and each of
   your emulators, with the version you have, the newest release and what's new in it, and an Update
   button that downloads it and hands it to Android's installer. WalkThor knows where several
-  emulators publish their releases; for others, paste the release page once. Without the internet,
+  emulators publish their releases (Dolphin's own site included); for others, paste the release page once. Without the internet,
   it shows what it last found.
 - **Trackpad** — a shortcut turns the whole bottom screen into a trackpad for the top one: a pointer
   in your stick-light colour, tap to tap, hold then slide to drag, two fingers to scroll. It works by
