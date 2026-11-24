@@ -227,7 +227,10 @@ object EmulatorWatch {
             val was = emulatorShowing.value
             emulatorShowing.value = others.any { isEmulator(context, it) }
             GameFocus.gameRunning.value = emulatorShowing.value
-            if (emulatorShowing.value != was) runCatching { MemoryWatch.gameChanged(context, emulatorShowing.value) }
+            if (emulatorShowing.value != was) {
+                runCatching { MemoryWatch.gameChanged(context, emulatorShowing.value) }
+                runCatching { HomeSwap.gameChanged(context, emulatorShowing.value) }
+            }
         }
     }
 

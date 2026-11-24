@@ -427,6 +427,9 @@ object MemoryWatch {
     fun summary(): String? = if (gameSince == 0L) null else
         (if (gameInFront()) "This game so far: " else "Last game: ") + summaryOfGame()
 
+    /** Adds a line to the memory log from elsewhere in WalkThor (the home app swap). */
+    fun noteFrom(c: Context, text: String) = note(c.applicationContext, text)
+
     @Synchronized private fun note(c: Context, text: String) {
         val line = "${time.format(Date())}  $text"
         lines.addLast(line)
