@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -159,8 +160,17 @@ fun HomeScreen(
 
 /** The time and date, and the battery as a ring. */
 @Composable
-private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
+internal fun ClockRow(preview: Pair<String, String>?, roomy: Boolean, report: Boolean = true) {
     val context = LocalContext.current
+    // Where it is, so auto-dim can keep it bright (a copy drawn exactly over it); not the copy itself.
+    val token = remember { Any() }
+    if (report && preview == null) DisposableEffect(token) {
+        onDispose { AutoDim.homeClocks.remove(token) }
+    }
+    val placed = if (report && preview == null) Modifier.onGloballyPositioned {
+        AutoDim.homeClocks[token] = it
+        AutoDim.homeClockRoomy = roomy
+    } else Modifier
     var now by remember { mutableStateOf(Date()) }
     var level by remember { mutableIntStateOf(if (preview != null) 78 else -1) }
     var charging by remember { mutableStateOf(false) }
@@ -184,7 +194,7 @@ private fun ClockRow(preview: Pair<String, String>?, roomy: Boolean) {
     val time = preview?.first ?: remember(now) { DateFormat.format(if (h24) "H:mm" else "h:mm", now).toString() }
     val ampm = if (h24) "" else if (preview != null) "AM" else remember(now) { DateFormat.format("a", now).toString() }
     val date = preview?.second ?: remember(now) { DateFormat.format("EEEE, MMM d", now).toString() }
-    Column {
+    Column(placed) {
     // The time and date on the left, the battery level beside them on the right.
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

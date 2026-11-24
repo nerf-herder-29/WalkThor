@@ -23,6 +23,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -85,9 +86,17 @@ object AutoDim {
     /** Every readout laid out now (pages side by side can each have one): the one on screen is used. */
     internal val allStatusCoords = java.util.concurrent.ConcurrentHashMap<Any, androidx.compose.ui.layout.LayoutCoordinates>()
 
+    /** Home's own clock and battery (it has no small readout): kept bright where it is instead. */
+    internal val homeClocks = java.util.concurrent.ConcurrentHashMap<Any, androidx.compose.ui.layout.LayoutCoordinates>()
+    @Volatile internal var homeClockRoomy = false
+
     /** Where the readout that's actually on screen is now, or null. */
-    internal fun liveStatusBounds(): Rect? {
-        val candidates = allStatusCoords.values.toList() + listOfNotNull(statusCoords)
+    internal fun liveStatusBounds(): Rect? = onScreen(allStatusCoords.values.toList() + listOfNotNull(statusCoords))
+
+    /** Where Home's clock is now, if it's on screen. */
+    internal fun liveHomeClockBounds(): Rect? = onScreen(homeClocks.values.toList())
+
+    private fun onScreen(candidates: List<androidx.compose.ui.layout.LayoutCoordinates>): Rect? {
         return candidates.asSequence().filter { it.isAttached }.mapNotNull { c ->
             runCatching {
                 val b = c.boundsInRoot()
@@ -230,6 +239,8 @@ fun AutoDimOverlay() {
     val status = remember(target > 0f, reported) {
         AutoDim.liveStatusBounds() ?: reported
     }
+    // Home has its own clock and battery instead of the small readout: that stays bright.
+    val homeClock = remember(target > 0f, reported) { if (status == null) AutoDim.liveHomeClockBounds() else null }
 
     if (alpha <= 0.001f) return
     Box(
@@ -252,13 +263,19 @@ fun AutoDimOverlay() {
         status?.let { b ->
             StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
         }
+        homeClock?.let { b ->
+            val width = with(androidx.compose.ui.platform.LocalDensity.current) { b.width.toDp() }
+            Box(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }.width(width)) {
+                ClockRow(null, AutoDim.homeClockRoomy, report = false)
+            }
+        }
         // During a game: the tabs stay, exactly where the tab bar has them (a tab opens on touch
         // down, since that same touch also wakes the screen), and the time in the middle.
         if (onGameScreens && !previewing) {
             val tabs by GameTabs.state.collectAsState()
             val shade = Modifier.graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) }
             tabs?.let { t -> GameTabPillInBarPosition(t.selected, t.onSelect, Modifier.align(Alignment.TopStart).then(shade)) }
-            if (status == null) StatusClock(Modifier.align(Alignment.Center).then(shade), anchor = false)
+            if (status == null && homeClock == null) StatusClock(Modifier.align(Alignment.Center).then(shade), anchor = false)
         }
         // Performance check readout (⋮ → Performance check).
         val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
