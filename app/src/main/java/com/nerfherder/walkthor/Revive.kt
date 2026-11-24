@@ -234,7 +234,7 @@ object Revive {
                 .putExtra(EXTRA_FROM_SWIPE, true)
                 // Coming back, not opening fresh: no startup animation, and a quicker hand-back.
                 .putExtra(EXTRA_REVIVED, true)
-            runCatching { context.startActivity(intent, ActivityOptions.makeCustomAnimation(context, android.R.anim.fade_in, 0).setLaunchDisplayId(bottom).toBundle()) }
+            runCatching { context.startActivity(intent, ActivityOptions.makeCustomAnimation(context, R.anim.walkthor_zoom_in, 0).setLaunchDisplayId(bottom).toBundle()) }
         }
     }
 }

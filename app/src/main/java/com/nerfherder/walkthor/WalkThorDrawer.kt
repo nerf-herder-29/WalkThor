@@ -193,7 +193,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     private var attached = false
     /** Where the drawer is headed: up (true) or away (false). */
     private var up by mutableStateOf(false)
-    /** Coming up by fading in (not sliding); putting it away always slides. */
+    /** Coming up by zooming in (not sliding); putting it away always slides. */
     private var fading by mutableStateOf(false)
     private var firstShow = true
     /**
@@ -375,7 +375,9 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         val slide = remember { Animatable(0f) }
         val target = up
         LaunchedEffect(target) {
-            slide.animateTo(if (target) 1f else 0f, tween(if (target) (if (fading) 320 else 280) else 220, easing = FastOutSlowInEasing))
+            // Zooming in (coming up by itself): from slightly smaller, quick at first and settling.
+            val zoomEase = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+            slide.animateTo(if (target) 1f else 0f, tween(if (target) (if (fading) 380 else 280) else 220, easing = if (target && fading) zoomEase else FastOutSlowInEasing))
             if (!target) hidden()
         }
         CompositionLocalProvider(
@@ -386,8 +388,12 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer {
-                        if (fading) alpha = slide.value
-                        else translationY = size.height * (1f - slide.value)
+                        if (fading) {
+                            // Grows in from 90%, fading up as it does.
+                            alpha = slide.value
+                            val s = 0.9f + 0.1f * slide.value
+                            scaleX = s; scaleY = s
+                        } else translationY = size.height * (1f - slide.value)
                     }
                     // The app's window paints this behind every screen; the drawer has to itself.
                     .background(androidx.compose.ui.graphics.Color.Black),
