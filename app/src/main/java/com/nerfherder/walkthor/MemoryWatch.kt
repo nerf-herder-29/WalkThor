@@ -122,6 +122,8 @@ object MemoryWatch {
     /** Lets go of cached guide pages and images. */
     private fun trim(context: Context, why: String?) {
         runCatching { com.nerfherder.walkthor.data.PdfSource.trimAll() }
+        // Every app's icon, kept for the dock and app lists: loaded again when one's shown.
+        if (!Drawer.shown.value && AppState.resumedDisplayId == null) runCatching { com.nerfherder.walkthor.ui.AppCatalog.apps.value = null }
         runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
         if (why != null) Runtime.getRuntime().gc()
     }
@@ -167,11 +169,19 @@ object MemoryWatch {
         // of its own): restarts and Android's records are caught up on once it recovers.
         if (yielding) return
         watchApps(c)
-        protect(c)
+        // Keeper renews this every few seconds too: WalkThor's own is a back-up.
+        if (beats % 2 == 0) protect(c)
         // Keeps Keeper's flag fresh (and right, if the game started before WalkThor came back).
         if (beats % 5 == 1) { setGuarding(c, true); importGuard(c) }
         if (beats % 10 == 0) closeRecords(c)
     }
+
+    /**
+     * The home app to keep next in line: the default one, unless it's only Android's launcher
+     * standing in while yours is paused for the game. That one Android can have back for the
+     * game (it's quick to start again), so it isn't protected.
+     */
+    private fun protectedHome(c: Context): String? = if (HomeSwap.pausedNow(c)) null else homePackage(c)
 
     /** The default home app's package (whatever you use: Cocoon, ES-DE, a launcher…); null if there's none. */
     private fun homePackage(c: Context): String? = runCatching {
@@ -189,7 +199,7 @@ object MemoryWatch {
     private fun protect(c: Context, always: Boolean = false) {
         if (AynSystem.knownAvailable() != true) return
         if (yielding) return
-        val pkgs = listOfNotNull(if (always && !gameInFront()) null else homePackage(c), c.packageName)
+        val pkgs = listOfNotNull(if (always && !gameInFront()) null else protectedHome(c), c.packageName)
             .filter { PACKAGE.matches(it) }.distinct()
         val out = AynSystem.shellLines(protectScript(pkgs)) ?: return
         val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
@@ -295,7 +305,7 @@ object MemoryWatch {
     }
 
     private fun setGuarding(c: Context, on: Boolean) {
-        runCatching { if (on) guardFile(c).writeText(homePackage(c).orEmpty()) else guardFile(c).delete() }
+        runCatching { if (on) guardFile(c).writeText(protectedHome(c).orEmpty()) else guardFile(c).delete() }
     }
 
     /** Puts what Keeper did into the log (once each). */
@@ -372,8 +382,13 @@ object MemoryWatch {
             bottom?.let { EmulatorWatch.frontOn(it) }?.takeIf { it != c.packageName && it != "com.android.systemui" }?.let(::add)
             add(c.packageName)
         }
-        for (pkg in watched) {
-            val now = AynSystem.shell("pidof $pkg")?.trim()?.takeIf { it.isNotEmpty() }
+        // All of them in one command (each command through the helper starts a shell of its own).
+        val list = watched.filter { PACKAGE.matches(it) }
+        val out = AynSystem.shellLines(list.joinToString(" ") { "echo \"$it:\$(pidof $it)\";" }) ?: return
+        val found = out.mapNotNull { l -> l.substringBefore(':', "").takeIf { it.isNotEmpty() }?.let { it to l.substringAfter(':').trim() } }.toMap()
+        for (pkg in list) {
+            if (pkg !in found) continue
+            val now = found[pkg]?.takeIf { it.isNotEmpty() }
             val seen = pids[pkg]
             val before = seen?.takeIf { it.isNotEmpty() }
             if (seen != null && before != now) {

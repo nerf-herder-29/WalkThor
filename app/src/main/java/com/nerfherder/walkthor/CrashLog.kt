@@ -167,6 +167,9 @@ private object Guard {
                 runCatching {
                     val flag = MemoryWatch.guardFile(c)
                     if (!flag.exists()) { if (ticks % 10 == 0) status(c, "running, no game in front"); return@runCatching }
+                    // Every 3 seconds: each look starts a shell through the helper, and ranks don't
+                    // drift that fast.
+                    if (ticks % 3 != 0) return@runCatching
                     // Whether the helper's usable: checked now and then, not every second.
                     val now = android.os.SystemClock.uptimeMillis()
                     if (now - helperChecked > 30_000) { helper = AynSystem.available(); helperChecked = now }

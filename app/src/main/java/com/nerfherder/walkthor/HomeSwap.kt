@@ -42,6 +42,9 @@ object HomeSwap {
 
     fun isOn(c: Context) = prefs(c).getBoolean(KEY_ON, false)
 
+    /** Your home app is paused right now (Android's launcher standing in). */
+    fun pausedNow(c: Context) = prefs(c).getString(KEY_ORIGINAL, null) != null
+
     fun setOn(c: Context, on: Boolean) {
         val app = c.applicationContext
         prefs(app).edit().putBoolean(KEY_ON, on).apply()

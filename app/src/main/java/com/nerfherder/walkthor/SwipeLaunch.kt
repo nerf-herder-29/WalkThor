@@ -160,6 +160,7 @@ class SwipeGestureService : AccessibilityService() {
         super.onServiceConnected()
         instance = java.lang.ref.WeakReference(this)
         CrashLog.install(this)
+        runCatching { installWalkThorImageLoader(this) }
         runCatching { ExitHistory.collect(this) }
         runCatching { MemoryWatch.start(this) }
         runCatching { ControllerLock.restore(this) }

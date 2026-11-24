@@ -298,15 +298,7 @@ class MainActivity : ComponentActivity(), WalkThorHost {
      * Cover images: a small in-memory cache (the default takes a quarter of the app's memory),
      * so WalkThor leaves room for the game and other apps running alongside it.
      */
-    private fun installImageLoader() {
-        if (imageLoaderSet) return
-        imageLoaderSet = true
-        coil.Coil.setImageLoader(
-            coil.ImageLoader.Builder(applicationContext)
-                .memoryCache { coil.memory.MemoryCache.Builder(applicationContext).maxSizePercent(0.08).build() }
-                .build()
-        )
-    }
+    private fun installImageLoader() = installWalkThorImageLoader(applicationContext)
 
     /**
      * Android is short of memory (often a heavy game loading), or WalkThor went to the background:
@@ -811,6 +803,25 @@ private const val HAND_BACK_WINDOW_MS = 20_000L
 private const val BOOT_MIN_MS = 1_100L
 /** Set once per process. */
 private var imageLoaderSet = false
+
+/**
+ * WalkThor's image loader, with a small memory cache (covers, icons). Set up by whichever starts
+ * first, the app or the service: before, only the app set it, so when the drawer was all that
+ * had run, images used the library's default cache, several times the size.
+ */
+@Synchronized
+fun installWalkThorImageLoader(context: android.content.Context) {
+    if (imageLoaderSet) return
+    imageLoaderSet = true
+    val app = context.applicationContext
+    coil.Coil.setImageLoader(
+        coil.ImageLoader.Builder(app)
+            .memoryCache { coil.memory.MemoryCache.Builder(app).maxSizePercent(0.06).build() }
+            // Covers and other images without see-through parts at half the memory per pixel.
+            .allowRgb565(true)
+            .build()
+    )
+}
 
 /** The pinned tab is the same for every game, kept under this one key. */
 private const val PIN_KEY = "any game"
