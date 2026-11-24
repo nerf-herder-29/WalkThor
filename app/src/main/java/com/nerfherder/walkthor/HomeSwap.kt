@@ -86,8 +86,12 @@ object HomeSwap {
 
     private fun pause(c: Context) {
         if (MemoryWatch.yielding) return
-        if (prefs(c).getString(KEY_ORIGINAL, null) != null) return // already paused
         val home = currentHome(c) ?: return
+        if (prefs(c).getString(KEY_ORIGINAL, null) != null) {
+            // Already paused, unless you've set a home app yourself since: then that's the one to pause.
+            if (home.packageName == prefs(c).getString(KEY_STOCK, null)) return
+            prefs(c).edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).commit()
+        }
         if (isSystem(c, home.packageName)) return // Android's own already: nothing to do
         val stock = stockLauncher(c) ?: run {
             MemoryWatch.noteFrom(c, "Home app: couldn't find Android's own launcher to use while playing")

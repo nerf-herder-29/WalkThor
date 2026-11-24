@@ -323,7 +323,10 @@ object EmulatorWatch {
     )
 
     private fun isApp(context: Context, pkg: String): Boolean = appCache.getOrPut(pkg) {
-        isEmulator(context, pkg) || runCatching { context.packageManager.getLaunchIntentForPackage(pkg) != null }.getOrDefault(false)
+        // Home apps too: Android's own launcher has no icon of its own to open, but it coming to the
+        // front (after a game closes, with your home app paused) is the game no longer being there.
+        isEmulator(context, pkg) || pkg in launchers(context) ||
+            runCatching { context.packageManager.getLaunchIntentForPackage(pkg) != null }.getOrDefault(false)
     }
 
     private fun label(context: Context, pkg: String): String = labelCache.getOrPut(pkg) {
