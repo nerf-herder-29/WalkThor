@@ -86,8 +86,12 @@ object Drawer {
     /** Why the drawer last couldn't open, for Diagnostics; null if it's been fine. */
     val problem = MutableStateFlow<String?>(null)
 
-    /** Slides the drawer up on [displayId]. Returns false if it couldn't (the caller opens the app instead). */
-    fun show(service: AccessibilityService, displayId: Int, opened: Boolean, onFail: () -> Unit = {}): Boolean {
+    /**
+     * Slides the drawer up on [displayId] ([fade]: fades it in instead, for when it comes up by
+     * itself, as a game starts or when it's back mid-game). Returns false if it couldn't (the
+     * caller opens the app instead).
+     */
+    fun show(service: AccessibilityService, displayId: Int, opened: Boolean, fade: Boolean = false, onFail: () -> Unit = {}): Boolean {
         // Your settings, as the app reads them when it opens: the drawer can be the only WalkThor
         // that's run since the device started (or since a crash), and without this it would have
         // Auto-dim off, light pages and the play timer showing whatever you'd set.
@@ -101,7 +105,7 @@ object Drawer {
                 current?.destroy()
                 WalkThorDrawer(service, displayId).also { current = it }
             }
-            val ok = d.show(opened, onFail)
+            val ok = d.show(opened, fade, onFail)
             if (ok) { problem.value = null; runCatching { Revive.noteDrawer(service, true) } }
             ok
         } catch (e: Throwable) {
@@ -189,6 +193,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     private var attached = false
     /** Where the drawer is headed: up (true) or away (false). */
     private var up by mutableStateOf(false)
+    /** Coming up by fading in (not sliding); putting it away always slides. */
+    private var fading by mutableStateOf(false)
     private var firstShow = true
     /**
      * The drawer's own update loop for its screens. Compose's usual one ends whenever the window
@@ -234,8 +240,10 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     /** When the drawer's screens last drew (uptimeMillis). */
     @Volatile private var drewAt = 0L
 
-    fun show(opened: Boolean, onFail: () -> Unit = {}): Boolean {
+    fun show(opened: Boolean, fade: Boolean = false, onFail: () -> Unit = {}): Boolean {
         if (!attached) attach()
+        // Already up: nothing to animate.
+        if (!up) fading = fade
         if (!attached) return false
         // Safety net: if it hasn't actually drawn shortly after, take it away and fall back.
         val askedAt = android.os.SystemClock.uptimeMillis()
@@ -259,6 +267,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     }
 
     fun hide() {
+        fading = false
         up = false
         Drawer.shown.value = false
         AppState.drawerDisplayId = null
@@ -366,7 +375,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         val slide = remember { Animatable(0f) }
         val target = up
         LaunchedEffect(target) {
-            slide.animateTo(if (target) 1f else 0f, tween(if (target) 280 else 220, easing = FastOutSlowInEasing))
+            slide.animateTo(if (target) 1f else 0f, tween(if (target) (if (fading) 320 else 280) else 220, easing = FastOutSlowInEasing))
             if (!target) hidden()
         }
         CompositionLocalProvider(
@@ -376,7 +385,10 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
         ) {
             Box(
                 Modifier.fillMaxSize()
-                    .graphicsLayer { translationY = size.height * (1f - slide.value) }
+                    .graphicsLayer {
+                        if (fading) alpha = slide.value
+                        else translationY = size.height * (1f - slide.value)
+                    }
                     // The app's window paints this behind every screen; the drawer has to itself.
                     .background(androidx.compose.ui.graphics.Color.Black),
             ) {

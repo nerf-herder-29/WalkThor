@@ -127,7 +127,7 @@ object BottomOff {
         turnOn(service)
         if (!EmulatorWatch.gameShowing.value) return
         val bottom = DisplayHelper.bottomDisplay(service)?.displayId ?: return
-        if (kind == "drawer") runCatching { Drawer.show(service, bottom, opened = true) }
+        if (kind == "drawer") runCatching { Drawer.show(service, bottom, opened = true, fade = true) }
         else runCatching { Revive.openApp(service) }
         MemoryWatch.noteFrom(service, "WalkThor back on the bottom screen ($why)")
     }

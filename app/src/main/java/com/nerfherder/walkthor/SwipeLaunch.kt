@@ -296,7 +296,8 @@ class SwipeGestureService : AccessibilityService() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
             .putExtra(EXTRA_FROM_EMULATOR, session.pkg)
-        runCatching { startActivity(intent, ActivityOptions.makeBasic().setLaunchDisplayId(bottom).toBundle()) }
+        // Fading in, as the drawer does when a game starts.
+        runCatching { startActivity(intent, ActivityOptions.makeCustomAnimation(this, android.R.anim.fade_in, 0).setLaunchDisplayId(bottom).toBundle()) }
     }
 
     /**
@@ -651,8 +652,9 @@ class SwipeGestureService : AccessibilityService() {
         }
     }
 
+    /** As a game starts: the drawer fades in (the app, if the drawer can't open). */
     private fun openDrawerOrApp(bottom: Int) {
-        if (!Drawer.show(this, bottom, opened = true, onFail = { onSwipe(bottom) })) onSwipe(bottom)
+        if (!Drawer.show(this, bottom, opened = true, fade = true, onFail = { onSwipe(bottom) })) onSwipe(bottom)
     }
 
     private fun onSwipe(bottomDisplayId: Int) {
