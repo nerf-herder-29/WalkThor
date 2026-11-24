@@ -100,6 +100,13 @@ object BottomOff {
         val drawerUp = Drawer.shown.value && AppState.drawerDisplayId == bottom
         val appUp = AppState.resumedDisplayId == bottom
         if (!drawerUp && !appUp) return
+        // The game uses the bottom screen itself: WalkThor just gets out of its way, no cover.
+        if (EmulatorWatch.bothScreensGameShowing(service)) {
+            if (drawerUp) runCatching { Drawer.hide() }
+            if (appUp) runCatching { AppState.activity?.get()?.moveTaskToBack(true) }
+            MemoryWatch.noteFrom(service, "WalkThor stepped off the bottom screen for the game (it uses both screens)")
+            return
+        }
         if (appUp) runCatching { AppState.activity?.get()?.finishAndRemoveTask() }
         turnOff(service, game = true, note = false)
         if (off.value) {
@@ -223,7 +230,8 @@ object BottomOff {
         if (showing != gameWas) {
             gameWas = showing
             runCatching {
-                if (showing) { if (gameEnabled(service)) turnOff(service, game = true) }
+                // Not over a game that draws on the bottom screen itself.
+                if (showing) { if (gameEnabled(service) && !EmulatorWatch.bothScreensGameShowing(service)) turnOff(service, game = true) }
                 // Off for the game (by this setting, or to free memory): back on once it's gone.
                 else if (byGame) turnOn(service)
             }

@@ -189,6 +189,8 @@ object Revive {
                 // The bottom screen's off: nothing to show until it's on (if WalkThor stepped off
                 // it for memory, the screen's own memory watch brings it back).
                 if (BottomOff.off.value) return
+                // A game that uses both screens has the bottom one: not back over it.
+                if (EmulatorWatch.bothScreensGameShowing(context)) return
                 val waited = android.os.SystemClock.elapsedRealtime() - started
                 // With a game still playing, coming back before memory has really recovered can
                 // be what gets the game closed: only then, and if it doesn't, WalkThor stays off

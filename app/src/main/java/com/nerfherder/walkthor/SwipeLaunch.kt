@@ -284,6 +284,8 @@ class SwipeGestureService : AccessibilityService() {
     /** An emulator just started a game: bring WalkThor up on the bottom screen (it then works out the game). */
     private fun openForGame(session: EmulatorWatch.Session) {
         val bottom = DisplayHelper.bottomDisplay(this)?.displayId ?: return
+        // It draws on the bottom screen itself.
+        if (EmulatorWatch.bothScreensGameShowing(this)) return
         // With the AYN button set up, as the drawer (Cocoon stays put underneath).
         if (AynButton.on) {
             if (!Drawer.shown.value && AppState.resumedDisplayId != bottom) openDrawerOrApp(bottom)

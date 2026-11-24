@@ -1,6 +1,7 @@
 package com.nerfherder.walkthor.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
@@ -56,7 +57,7 @@ fun EmulatorsDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    "These count as games: while one is in front, the drawer has its tabs along the top, and play time counts. With Open when an emulator starts on, WalkThor also opens when one comes to the front. Tick any it missed.",
+                    "These count as games: while one is in front, the drawer has its tabs along the top, and play time counts. With Open when an emulator starts on, WalkThor also opens when one comes to the front. Tick any it missed.\n\nBoth screens: for emulators that draw on the bottom screen too (3DS, DS). WalkThor stays off it while they play: it doesn't open there, black it out, or cover it.",
                     color = BookColors.TextMuted, fontSize = 13.sp,
                 )
                 SearchBox(query, { query = it }, Modifier.fillMaxWidth().padding(vertical = 8.dp))
@@ -86,7 +87,26 @@ fun EmulatorsDialog(onDismiss: () -> Unit) {
                             app.icon?.let {
                                 androidx.compose.foundation.Image(it, contentDescription = null, modifier = Modifier.padding(end = 10.dp).size(28.dp))
                             }
-                            Text(app.label, color = BookColors.Text, fontSize = 15.sp, maxLines = 1)
+                            Text(app.label, color = BookColors.Text, fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                            if (on) {
+                                // Uses both screens: tap to switch (its own tap, not the row's).
+                                val both = remember(app.packageName, version) { com.nerfherder.walkthor.EmulatorWatch.usesBothScreens(context, app.packageName) }
+                                Text(
+                                    "Both screens",
+                                    color = if (both) androidx.compose.ui.graphics.Color.Black else BookColors.TextMuted,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                        .background(if (both) BookColors.Text else BookColors.SurfaceHigh)
+                                        .clickable {
+                                            com.nerfherder.walkthor.EmulatorWatch.setBothScreens(context, app.packageName, !both)
+                                            version++
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                                )
+                            }
                         }
                     }
                 }

@@ -171,6 +171,39 @@ object EmulatorWatch {
         }
     }
 
+    /**
+     * Emulators that draw on both screens themselves (3DS and DS): WalkThor knows these by a word
+     * in their package or name, and keeps off their bottom screen unless you say otherwise.
+     */
+    private val BOTH_SCREENS = listOf("azahar", "citra", "lime3ds", "borked3ds", "mandarine", "pablomk7", "melonds", "drastic")
+
+    /** The automatic guess for whether [pkg] uses both screens. */
+    fun autoBothScreens(context: Context, pkg: String): Boolean {
+        val label = runCatching { context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault("")
+        val hay = (pkg + " " + label).lowercase().replace(" ", "")
+        return BOTH_SCREENS.any { it in hay }
+    }
+
+    /**
+     * Whether emulator [pkg] uses both screens: then it still counts as a game (play time, memory
+     * protection, pausing your home app, the overlay), but WalkThor stays off the bottom screen
+     * while it plays: it doesn't open there, black it out, or put its cover over it.
+     */
+    fun usesBothScreens(context: Context, pkg: String): Boolean {
+        val p = prefs(context)
+        return if (p.contains("both.$pkg")) p.getBoolean("both.$pkg", false) else autoBothScreens(context, pkg)
+    }
+
+    fun setBothScreens(context: Context, pkg: String, on: Boolean) {
+        val p = prefs(context).edit()
+        if (on == autoBothScreens(context, pkg)) p.remove("both.$pkg") else p.putBoolean("both.$pkg", on)
+        p.apply()
+    }
+
+    /** A game that uses both screens is in front (on either screen). */
+    fun bothScreensGameShowing(context: Context): Boolean =
+        frontByDisplay.values.any { isEmulator(context, it) && usesBothScreens(context, it) }
+
     /** Whether [pkg] is an emulator: your choice if you made one, else a guess from its names. */
     fun isEmulator(context: Context, pkg: String): Boolean = synchronized(emulatorCache) {
         emulatorCache.getOrPut(pkg) { chosen(context)[pkg] ?: autoEmulator(context, pkg) }
