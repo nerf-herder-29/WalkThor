@@ -40,8 +40,9 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun EmulatorsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    androidx.compose.runtime.LaunchedEffect(Unit) { if (AppCatalog.apps.value == null) AppCatalog.refresh(context) }
     val apps by AppCatalog.apps.collectAsState()
+    // Loaded again if it's let go while open (it's dropped to save memory when a game starts).
+    androidx.compose.runtime.LaunchedEffect(apps == null) { if (AppCatalog.apps.value == null) AppCatalog.refresh(context) }
     var query by remember { mutableStateOf("") }
     // Bumped on each tick so the list re-reads the choices.
     var version by remember { mutableStateOf(0) }
@@ -57,12 +58,13 @@ fun EmulatorsDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    "These count as games: while one is in front, the drawer has its tabs along the top, and play time counts. With Open when an emulator starts on, WalkThor also opens when one comes to the front. Tick any it missed.\n\nBoth screens: for emulators that draw on the bottom screen too (3DS, DS). WalkThor stays off it while they play: it doesn't open there, black it out, or cover it.",
+                    "These count as games (the drawer's tabs, play time, and opening WalkThor when one starts). Tick any it missed. Both screens: for emulators that draw on the bottom screen too, so WalkThor stays off it while they play.",
                     color = BookColors.TextMuted, fontSize = 13.sp,
                 )
                 SearchBox(query, { query = it }, Modifier.fillMaxWidth().padding(vertical = 8.dp))
                 if (apps == null) Text("Loading your apps…", color = BookColors.TextMuted)
-                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 340.dp)) {
+                // The list always keeps room on a short screen, however the text above wraps.
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f, fill = false).heightIn(min = 160.dp, max = 340.dp)) {
                     items(shown.size) { i ->
                         val (app, on) = shown[i]
                         Row(
