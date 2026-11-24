@@ -28,8 +28,11 @@ object HomeSwap {
     private const val KEY_ON = "on"
     private const val KEY_ORIGINAL = "original"
     private const val KEY_STOCK = "stock"
-    /** How long no game has to be in front before your home app comes back (not just a quick look at the drawer). */
-    private const val BACK_AFTER_MS = 20_000L
+    /** How long no game has to be in front before your home app comes back. */
+    private const val BACK_AFTER_MS = 3_000L
+    /** While the drawer may be covering the game, how often to look again, and for how long at most. */
+    private const val COVERED_RECHECK_MS = 2_000L
+    private const val COVERED_MAX_MS = 10_000L
 
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor home swap").apply { isDaemon = true } }
     private val main = Handler(Looper.getMainLooper())
@@ -62,12 +65,15 @@ object HomeSwap {
             if (playing) {
                 if (isOn(app)) worker.execute { runCatching { pause(app) } }
             } else if (prefs(app).getString(KEY_ORIGINAL, null) != null) {
+                val since = android.os.SystemClock.elapsedRealtime()
                 lateinit var r: Runnable
                 r = Runnable {
                     when {
                         EmulatorWatch.emulatorShowing.value -> pendingRestore = null
-                        // A launcher came over the game as the drawer opened: the game's still there.
-                        EmulatorWatch.gameCovered -> main.postDelayed(r, BACK_AFTER_MS)
+                        // A launcher came over the game as the drawer opened: the game's still there
+                        // (but not for long, or a game closed from the drawer would hold it up).
+                        EmulatorWatch.gameCovered && android.os.SystemClock.elapsedRealtime() - since < COVERED_MAX_MS ->
+                            main.postDelayed(r, COVERED_RECHECK_MS)
                         else -> { pendingRestore = null; worker.execute { runCatching { restore(app, "no game in front") } } }
                     }
                 }
