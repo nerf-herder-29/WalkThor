@@ -435,6 +435,9 @@ object MemoryWatch {
     fun summary(): String? = if (gameSince == 0L) null else
         (if (gameInFront()) "This game so far: " else "Last game: ") + summaryOfGame()
 
+    /** How long since Android's last critical memory warning (very long if none since WalkThor started). */
+    fun msSinceCritical(): Long = System.currentTimeMillis() - lastCritical
+
     /** Adds a line to the memory log from elsewhere in WalkThor (the home app swap). */
     fun noteFrom(c: Context, text: String) = note(c.applicationContext, text)
 

@@ -135,15 +135,16 @@ object BottomOff {
     private var recoveredSince = 0L
 
     /**
-     * While stepped off for memory: looks every couple of seconds (just Android's memory figures)
-     * and brings WalkThor back once there's been 2.5 GB free for 20 seconds, with no critical
-     * warning. Works even if Android closed WalkThor meanwhile and it started again.
+     * While stepped off for memory: looks every second (just Android's memory figures) and brings
+     * WalkThor back once Android's critical warnings have stopped for 8 seconds and there's over
+     * 1.8 GB free (well clear of the 1.5 GB where the game is put first). Works even if Android
+     * closed WalkThor meanwhile and it started again.
      */
     private fun watchMemory(service: AccessibilityService) {
         recoveredSince = 0L
         main.removeCallbacks(memoryCheck)
         memoryFor = service
-        main.postDelayed(memoryCheck, 2_000)
+        main.postDelayed(memoryCheck, 1_000)
     }
     private var memoryFor: AccessibilityService? = null
     private val memoryCheck = object : Runnable {
@@ -153,11 +154,12 @@ object BottomOff {
             if (!EmulatorWatch.gameShowing.value) return // the game closing turns the screen on
             val info = android.app.ActivityManager.MemoryInfo()
             runCatching { service.getSystemService(android.app.ActivityManager::class.java)?.getMemoryInfo(info) }
-            val ok = !info.lowMemory && info.availMem > 2_500L * 1024 * 1024 && !MemoryWatch.yielding
+            val ok = !info.lowMemory && info.availMem > 1_800L * 1024 * 1024 && MemoryWatch.msSinceCritical() >= 8_000L
             val now = android.os.SystemClock.elapsedRealtime()
             if (!ok) recoveredSince = 0L else if (recoveredSince == 0L) recoveredSince = now
-            if (ok && now - recoveredSince >= 20_000L) { resumeFromMemory(service, "memory recovered"); return }
-            main.postDelayed(this, 2_000)
+            // A couple of good readings in a row, so a momentary dip or spike doesn't decide it.
+            if (ok && now - recoveredSince >= 2_000L) { resumeFromMemory(service, "memory settled"); return }
+            main.postDelayed(this, 1_000)
         }
     }
 
