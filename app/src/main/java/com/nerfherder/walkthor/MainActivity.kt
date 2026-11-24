@@ -38,6 +38,7 @@ import com.nerfherder.walkthor.ui.MirrorScreen
 import com.nerfherder.walkthor.ui.TabsState
 import com.nerfherder.walkthor.ui.rememberMirrorFrame
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -189,7 +190,30 @@ class MainActivity : ComponentActivity(), WalkThorHost {
             }
         }
 
-        setContent { WalkThorRoot(initialBookId = initialBook, boot = boot, host = this@MainActivity) }
+        // Opened by itself on the bottom screen (a game starting, or back after Android closed it):
+        // the window comes up black at once and WalkThor zooms in out of it, as the drawer does.
+        val zoom = savedInstanceState == null &&
+            (intent.getStringExtra(EXTRA_FROM_EMULATOR) != null || intent.getBooleanExtra(EXTRA_REVIVED, false))
+        setContent {
+            if (!zoom) WalkThorRoot(initialBookId = initialBook, boot = boot, host = this@MainActivity)
+            else {
+                val grow = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    grow.animateTo(1f, androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)))
+                }
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer {
+                            alpha = grow.value
+                            val s = 0.9f + 0.1f * grow.value
+                            scaleX = s; scaleY = s
+                        },
+                    ) { WalkThorRoot(initialBookId = initialBook, boot = boot, host = this@MainActivity) }
+                }
+            }
+        }
     }
 
     private var yielding: Boolean? = null

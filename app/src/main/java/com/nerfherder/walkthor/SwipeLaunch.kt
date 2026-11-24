@@ -296,8 +296,8 @@ class SwipeGestureService : AccessibilityService() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
             .putExtra(EXTRA_FROM_EMULATOR, session.pkg)
-        // Zooming in, as the drawer does when a game starts.
-        runCatching { startActivity(intent, ActivityOptions.makeCustomAnimation(this, R.anim.walkthor_zoom_in, 0).setLaunchDisplayId(bottom).toBundle()) }
+        // No window animation: it appears at once, black, and WalkThor zooms in inside it (see MainActivity).
+        runCatching { startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).setLaunchDisplayId(bottom).toBundle()) }
     }
 
     /**

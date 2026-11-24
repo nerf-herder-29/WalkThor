@@ -243,7 +243,12 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     fun show(opened: Boolean, fade: Boolean = false, onFail: () -> Unit = {}): Boolean {
         if (!attached) attach()
         // Already up: nothing to animate.
-        if (!up) fading = fade
+        if (!up) {
+            fading = fade
+            // Zooming in: the screen goes black at once (before the drawer's first frame is even
+            // drawn), and the drawer comes up out of that, so what was underneath never shows.
+            root?.setBackgroundColor(if (fade) android.graphics.Color.BLACK else android.graphics.Color.TRANSPARENT)
+        }
         if (!attached) return false
         // Safety net: if it hasn't actually drawn shortly after, take it away and fall back.
         val askedAt = android.os.SystemClock.uptimeMillis()
@@ -268,6 +273,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
 
     fun hide() {
         fading = false
+        // Sliding away shows what's underneath as it goes.
+        root?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         up = false
         Drawer.shown.value = false
         AppState.drawerDisplayId = null
@@ -385,6 +392,8 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
             LocalOnBackPressedDispatcherOwner provides this,
             com.nerfherder.walkthor.ui.LocalInDrawer provides true,
         ) {
+            // Behind a zoom: black, so nothing underneath shows around or through it.
+            Box(Modifier.fillMaxSize().then(if (fading) Modifier.background(androidx.compose.ui.graphics.Color.Black) else Modifier)) {
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer {
@@ -444,6 +453,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
                     }
                     }
                 }
+            }
             }
         }
     }
