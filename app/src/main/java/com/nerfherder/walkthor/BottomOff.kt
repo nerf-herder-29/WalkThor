@@ -87,6 +87,28 @@ object BottomOff {
         runCatching { coil.Coil.imageLoader(service).memoryCache?.clear() }
     }
 
+    /**
+     * Memory's critical mid-game: WalkThor gets off the bottom screen before Android closes it (and
+     * then brings it back, which can be what costs the game). The drawer or app there is put away
+     * and the plain black cover takes its place: tiny, and it keeps the home app from coming up
+     * underneath. Double-tap for the screen back; it's back by itself when the game closes.
+     * Only WalkThor's own windows, never the system helper.
+     */
+    fun pauseForMemory(service: AccessibilityService) {
+        if (off.value) return
+        val bottom = DisplayHelper.bottomDisplay(service)?.displayId ?: return
+        val drawerUp = Drawer.shown.value && AppState.drawerDisplayId == bottom
+        val appUp = AppState.resumedDisplayId == bottom
+        if (!drawerUp && !appUp) return
+        if (appUp) runCatching { AppState.activity?.get()?.finishAndRemoveTask() }
+        turnOff(service, game = true, note = false)
+        if (off.value) {
+            gameWas = true
+            AynButton.note("memory critical → WalkThor off the bottom screen")
+            MemoryWatch.noteFrom(service, "WalkThor stepped off the bottom screen for the game (black until the game closes; double-tap for it back)")
+        }
+    }
+
     fun turnOn(service: Context) {
         if (!off.value) return
         off.value = false
@@ -143,7 +165,11 @@ object BottomOff {
         val showing = EmulatorWatch.gameShowing.value
         if (showing != gameWas) {
             gameWas = showing
-            if (gameEnabled(service)) runCatching { if (showing) turnOff(service, game = true) else if (byGame) turnOn(service) }
+            runCatching {
+                if (showing) { if (gameEnabled(service)) turnOff(service, game = true) }
+                // Off for the game (by this setting, or to free memory): back on once it's gone.
+                else if (byGame) turnOn(service)
+            }
         }
     }
 

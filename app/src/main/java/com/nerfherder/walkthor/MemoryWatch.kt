@@ -232,7 +232,11 @@ object MemoryWatch {
         // renewed, and Android ranks the bottom screen's apps afresh on its own as things change.
         // WalkThor lets go of what it can (within its own process).
         trim(c, "the game comes first")
-        android.os.Handler(android.os.Looper.getMainLooper()).post { runCatching { Drawer.trimIfHidden() } }
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            // Off the bottom screen before Android closes WalkThor for the memory.
+            runCatching { SwipeGestureService.instance?.get()?.let { BottomOff.pauseForMemory(it) } }
+            runCatching { Drawer.trimIfHidden() }
+        }
         note(c, "Memory critical ($why): the game comes first. The bottom screen's apps aren't protected until it recovers")
     }
 

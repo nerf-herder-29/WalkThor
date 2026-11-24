@@ -38,6 +38,8 @@ object Revive {
     private const val CHECK_EVERY_MS = 1_000L
     /** Comes back by then whatever memory looks like. */
     private const val MAX_WAIT_MS = 10_000L
+    /** With a game playing, how long to wait for memory to recover before staying down. */
+    private const val GAME_GIVE_UP_MS = 60_000L
     /** Free memory, beyond Android's low-memory line, that WalkThor would like before it reopens. */
     private const val SPARE_BYTES = 256L * 1024 * 1024
     /** At most this many reopens in [LIMIT_WINDOW_MS]. */
@@ -67,6 +69,13 @@ object Revive {
         val info = ActivityManager.MemoryInfo()
         runCatching { am.getMemoryInfo(info) }.onFailure { return false }
         return !info.lowMemory && info.availMem > info.threshold + SPARE_BYTES
+    }
+
+    /** Mid-game: as much free as memory protection waits for before it comes back. */
+    private fun memoryRecovered(am: ActivityManager): Boolean {
+        val info = ActivityManager.MemoryInfo()
+        runCatching { am.getMemoryInfo(info) }.onFailure { return false }
+        return !info.lowMemory && info.availMem > 2_500L * 1024 * 1024
     }
 
     /** What happened last time Android closed WalkThor, for Diagnostics; null if it hasn't. */
@@ -179,7 +188,17 @@ object Revive {
                 if (AppState.activity?.get() != null || Drawer.shown.value) return // already back (e.g. you opened it)
                 if (BottomOff.off.value) return // the bottom screen's off: nothing to show until it's on
                 val waited = android.os.SystemClock.elapsedRealtime() - started
-                if (crashed || (waited >= MIN_WAIT_MS && memoryCalm(am)) || waited >= MAX_WAIT_MS) {
+                // With a game still playing, coming back before memory has really recovered can
+                // be what gets the game closed: only then, and if it doesn't, WalkThor stays off
+                // the bottom screen (black) until the game's over.
+                val gameOn = EmulatorWatch.gameShowing.value
+                if (!crashed && gameOn && waited >= GAME_GIVE_UP_MS) {
+                    p.edit().putString("note", "$closed. Memory didn't recover while the game played, so it stayed off the bottom screen.").apply()
+                    runCatching { BottomOff.turnOff(context, game = true) }
+                    return
+                }
+                val calm = if (gameOn) memoryRecovered(am) else memoryCalm(am)
+                if (crashed || (waited >= MIN_WAIT_MS && calm) || (!gameOn && waited >= MAX_WAIT_MS)) {
                     val secs = (System.currentTimeMillis() - stopped) / 1000
                     p.edit().putString("note", "$closed; WalkThor was back ${secs}s later.").putLong("lastBack", System.currentTimeMillis()).apply()
                     reopen(context, drawerWasUp)
