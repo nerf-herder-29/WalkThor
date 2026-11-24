@@ -104,9 +104,15 @@ object StickLights {
     /** AYN's settings were last seen matching yours (so a difference since is a change on AYN's side). */
     @Volatile private var aynMatched = false
 
+    @Volatile private var lastAynLook = 0L
+
     private fun adoptAynChange(c: Context) {
         if (!aynMatched || demo) return
-        if (android.os.SystemClock.elapsedRealtime() - changedAt < 6_000L) return // still catching up
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - changedAt < 6_000L) return // still catching up
+        // At most every 5 seconds (the performance overlay asks for the colour every second in a game).
+        if (now - lastAynLook < 5_000L) return
+        lastAynLook = now
         val cr = c.contentResolver
         val mine = prefs(c).getInt("color", COLORS[0])
         val enabled = (Settings.System.getString(cr, "joystick_light_enabled") ?: return).split(",").firstOrNull()?.trim() != "0"
