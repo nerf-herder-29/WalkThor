@@ -13,6 +13,7 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.findRootCoordinates
 import android.content.Context
 import android.os.SystemClock
 import androidx.compose.animation.core.animateFloatAsState
@@ -81,6 +82,20 @@ object AutoDim {
      * when it comes up by itself) and nothing has moved it since.
      */
     @Volatile internal var statusCoords: androidx.compose.ui.layout.LayoutCoordinates? = null
+    /** Every readout laid out now (pages side by side can each have one): the one on screen is used. */
+    internal val allStatusCoords = java.util.concurrent.ConcurrentHashMap<Any, androidx.compose.ui.layout.LayoutCoordinates>()
+
+    /** Where the readout that's actually on screen is now, or null. */
+    internal fun liveStatusBounds(): Rect? {
+        val candidates = allStatusCoords.values.toList() + listOfNotNull(statusCoords)
+        return candidates.asSequence().filter { it.isAttached }.mapNotNull { c ->
+            runCatching {
+                val b = c.boundsInRoot()
+                val root = c.findRootCoordinates().size
+                b.takeIf { it.width > 0f && it.left >= 0f && it.right <= root.width + 0.5f && it.top >= 0f && it.bottom <= root.height + 0.5f }
+            }.getOrNull()
+        }.firstOrNull()
+    }
     val dimmed = MutableStateFlow(false)
     /**
      * True once the screen has stayed dimmed for [REST_AFTER_MS]: rendered pages and cover images
@@ -213,7 +228,7 @@ fun AutoDimOverlay() {
     val reported by AutoDim.statusBounds.collectAsState()
     // Where the readout is now (as the screen dims), rather than where it was last laid out.
     val status = remember(target > 0f, reported) {
-        AutoDim.statusCoords?.takeIf { it.isAttached }?.let { runCatching { it.boundsInRoot() }.getOrNull() } ?: reported
+        AutoDim.liveStatusBounds() ?: reported
     }
 
     if (alpha <= 0.001f) return

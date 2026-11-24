@@ -277,7 +277,7 @@ fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
                 )
             }
             Spacer(Modifier.weight(1f))
-            StatusClock(Modifier.padding(start = 8.dp, end = 10.dp), anchor = false)
+            StatusClock(Modifier.padding(start = 8.dp, end = 10.dp))
         }
     }
 }

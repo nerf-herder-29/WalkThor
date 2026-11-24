@@ -571,7 +571,7 @@ private fun StatsPanel(preview: StatsPreview?, compact: Boolean) {
                     modifier = Modifier.weight(1f),
                 )
             } else Spacer(Modifier.weight(1f))
-            StatusClock(anchor = false)
+            StatusClock()
         }
     }
 }
