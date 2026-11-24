@@ -186,7 +186,9 @@ object Revive {
         val check = object : Runnable {
             override fun run() {
                 if (AppState.activity?.get() != null || Drawer.shown.value) return // already back (e.g. you opened it)
-                if (BottomOff.off.value) return // the bottom screen's off: nothing to show until it's on
+                // The bottom screen's off: nothing to show until it's on (if WalkThor stepped off
+                // it for memory, the screen's own memory watch brings it back).
+                if (BottomOff.off.value) return
                 val waited = android.os.SystemClock.elapsedRealtime() - started
                 // With a game still playing, coming back before memory has really recovered can
                 // be what gets the game closed: only then, and if it doesn't, WalkThor stays off
@@ -220,7 +222,7 @@ object Revive {
         openApp(context)
     }
 
-    private fun openApp(context: Context) {
+    internal fun openApp(context: Context) {
         run {
             val bottom = DisplayHelper.bottomDisplay(context)?.displayId ?: return
             val intent = Intent(context, MainActivity::class.java)

@@ -103,13 +103,66 @@ object BottomOff {
         if (appUp) runCatching { AppState.activity?.get()?.finishAndRemoveTask() }
         turnOff(service, game = true, note = false)
         if (off.value) {
+            // What to bring back once memory's recovered (kept, in case Android closes WalkThor meanwhile).
+            prefs(service).edit().putString(MEM_PAUSE, if (drawerUp) "drawer" else "app").apply()
+            watchMemory(service)
             gameWas = true
             AynButton.note("memory critical → WalkThor off the bottom screen")
             MemoryWatch.noteFrom(service, "WalkThor stepped off the bottom screen for the game (black until the game closes; double-tap for it back)")
         }
     }
 
+    private const val MEM_PAUSE = "bottomMemPause"
+
+    /** WalkThor stepped off the bottom screen for memory (and hasn't come back yet). */
+    fun pausedForMemory(c: Context) = off.value && prefs(c).getString(MEM_PAUSE, null) != null
+
+    /**
+     * Memory's recovered (or you double-tapped): the screen back on, with the drawer or app that
+     * was there, if the game's still playing. Once the game's over, just the screen.
+     */
+    fun resumeFromMemory(service: AccessibilityService, why: String) {
+        val kind = prefs(service).getString(MEM_PAUSE, null) ?: return
+        if (!off.value) { prefs(service).edit().remove(MEM_PAUSE).apply(); return }
+        turnOn(service)
+        if (!EmulatorWatch.gameShowing.value) return
+        val bottom = DisplayHelper.bottomDisplay(service)?.displayId ?: return
+        if (kind == "drawer") runCatching { Drawer.show(service, bottom, opened = true) }
+        else runCatching { Revive.openApp(service) }
+        MemoryWatch.noteFrom(service, "WalkThor back on the bottom screen ($why)")
+    }
+
+    private var recoveredSince = 0L
+
+    /**
+     * While stepped off for memory: looks every couple of seconds (just Android's memory figures)
+     * and brings WalkThor back once there's been 2.5 GB free for 20 seconds, with no critical
+     * warning. Works even if Android closed WalkThor meanwhile and it started again.
+     */
+    private fun watchMemory(service: AccessibilityService) {
+        recoveredSince = 0L
+        main.removeCallbacks(memoryCheck)
+        memoryFor = service
+        main.postDelayed(memoryCheck, 2_000)
+    }
+    private var memoryFor: AccessibilityService? = null
+    private val memoryCheck = object : Runnable {
+        override fun run() {
+            val service = memoryFor ?: return
+            if (!pausedForMemory(service)) return
+            if (!EmulatorWatch.gameShowing.value) return // the game closing turns the screen on
+            val info = android.app.ActivityManager.MemoryInfo()
+            runCatching { service.getSystemService(android.app.ActivityManager::class.java)?.getMemoryInfo(info) }
+            val ok = !info.lowMemory && info.availMem > 2_500L * 1024 * 1024 && !MemoryWatch.yielding
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (!ok) recoveredSince = 0L else if (recoveredSince == 0L) recoveredSince = now
+            if (ok && now - recoveredSince >= 20_000L) { resumeFromMemory(service, "memory recovered"); return }
+            main.postDelayed(this, 2_000)
+        }
+    }
+
     fun turnOn(service: Context) {
+        prefs(service).edit().remove(MEM_PAUSE).apply()
         if (!off.value) return
         off.value = false
         byGame = false
@@ -130,6 +183,8 @@ object BottomOff {
             turnOff(service, game, note = false)
             // So that the game closing still turns it back on.
             if (off.value && game) gameWas = true
+            // Stepped off for memory: back once there's memory for it.
+            if (pausedForMemory(service)) watchMemory(service)
             AynButton.note("WalkThor restarted → bottom screen off again")
         }
         val old = prefs(service).getFloat("bottomOffLevel", -1f)
@@ -180,7 +235,10 @@ object BottomOff {
         val w = ctx.getSystemService(WindowManager::class.java) ?: return false
         val taps = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent) = true
-            override fun onDoubleTap(e: MotionEvent): Boolean { turnOn(service); return true }
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                if (pausedForMemory(service)) resumeFromMemory(service, "double-tapped") else turnOn(service)
+                return true
+            }
         })
         val v = View(ctx).apply {
             setBackgroundColor(Color.BLACK)

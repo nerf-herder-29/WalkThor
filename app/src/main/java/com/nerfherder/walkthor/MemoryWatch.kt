@@ -267,6 +267,10 @@ object MemoryWatch {
         setGuarding(c, true)
         note(c, "Memory recovered (free $freeMb MB): protecting the bottom screen's apps again")
         protect(c)
+        // WalkThor back on the bottom screen, if it stepped off for the game.
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            runCatching { SwipeGestureService.instance?.get()?.let { BottomOff.resumeFromMemory(it, "memory recovered") } }
+        }
     }
 
     // ---- Keeper's share ----
