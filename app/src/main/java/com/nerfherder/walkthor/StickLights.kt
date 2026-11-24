@@ -58,9 +58,16 @@ object StickLights {
     /** Whether you've set them from WalkThor (only then does WalkThor put them back after a wake). */
     fun chosen(c: Context) = prefs(c).contains("color")
 
-    /** The colour (0 = off): yours if you've chosen one, else AYN's. */
+    /**
+     * The colour (0 = off): yours if you've chosen one, else AYN's. If AYN's own settings had been
+     * matched to yours and have since changed (you changed the lights on AYN's side, and AYN
+     * redrew them), AYN's is what the lights show, so it becomes yours: the accents follow the lights.
+     */
     fun color(c: Context): Int {
-        if (chosen(c)) return prefs(c).getInt("color", COLORS[0])
+        if (chosen(c)) {
+            runCatching { adoptAynChange(c) }
+            return prefs(c).getInt("color", COLORS[0])
+        }
         val enabled = (Settings.System.getString(c.contentResolver, "joystick_light_enabled") ?: "1,1").split(",").firstOrNull()?.trim() != "0"
         if (!enabled) return 0
         val ayn = Settings.System.getString(c.contentResolver, "joystick_led_light_picker_color")?.split(",")?.firstOrNull()?.trim()
@@ -92,12 +99,35 @@ object StickLights {
         }
     }
 
+    /** When you last changed the lights from WalkThor (AYN's settings catch up a moment after). */
+    @Volatile private var changedAt = 0L
+    /** AYN's settings were last seen matching yours (so a difference since is a change on AYN's side). */
+    @Volatile private var aynMatched = false
+
+    private fun adoptAynChange(c: Context) {
+        if (!aynMatched || demo) return
+        if (android.os.SystemClock.elapsedRealtime() - changedAt < 6_000L) return // still catching up
+        val cr = c.contentResolver
+        val mine = prefs(c).getInt("color", COLORS[0])
+        val enabled = (Settings.System.getString(cr, "joystick_light_enabled") ?: return).split(",").firstOrNull()?.trim() != "0"
+        val ayn = if (!enabled) 0 else Settings.System.getString(cr, "joystick_led_light_picker_color")?.split(",")?.firstOrNull()?.trim()
+            ?.let { runCatching { android.graphics.Color.parseColor(it) }.getOrNull() } ?: return
+        val same = if (ayn == 0 || mine == 0) (ayn == 0) == (mine == 0) else (ayn and 0xFFFFFF) == (mine and 0xFFFFFF)
+        if (same) return
+        // The nearest of WalkThor's colours, so its swatch (how it's shown on screen) is used.
+        val adopted = if (ayn == 0) 0 else COLORS.filter { it != 0 }.firstOrNull { (it and 0xFFFFFF) == (ayn and 0xFFFFFF) } ?: (ayn or 0xFF000000.toInt())
+        prefs(c).edit().putInt("color", adopted).apply()
+        log("AYN's lights changed to ${String.format("#%06X", ayn and 0xFFFFFF)}: WalkThor follows")
+    }
+
     fun setColor(c: Context, color: Int) {
+        changedAt = android.os.SystemClock.elapsedRealtime()
         prefs(c).edit().putInt("color", color).apply()
         apply(c, syncAyn = true)
     }
 
     fun setLevel(c: Context, level: Float) {
+        changedAt = android.os.SystemClock.elapsedRealtime()
         prefs(c).edit().putFloat("level", level.coerceIn(0f, 1f)).apply()
         if (!prefs(c).contains("color")) prefs(c).edit().putInt("color", color(c)).apply()
         apply(c, syncAyn = true)
@@ -156,7 +186,7 @@ object StickLights {
                 if (cur == null || Math.abs(cur - k) > 0.006f) add("led_light_brightness_percent" to levelText)
             }
         }
-        if (changes.isEmpty()) { aynNote = "AYN's settings match (${now()})"; log("AYN settings already match"); return }
+        if (changes.isEmpty()) { aynMatched = true; aynNote = "AYN's settings match (${now()})"; log("AYN settings already match"); return }
         var ok = true
         for ((name, value) in changes) {
             val done = AynSystem.putSetting(name, value)
@@ -164,6 +194,8 @@ object StickLights {
             log("set AYN $name=$value" + if (done) "" else " FAILED")
         }
         aynNote = if (ok) "AYN's settings set to match at ${now()}" else "couldn't set AYN's settings (system helper unavailable) at ${now()}"
+        // Only once AYN's match yours can a later difference be read as a change on AYN's side.
+        aynMatched = ok
         // AYN redraws on its own a moment after its settings change: make sure yours are what shows.
         for (wait in longArrayOf(250, 900, 2_000)) {
             Thread.sleep(wait)

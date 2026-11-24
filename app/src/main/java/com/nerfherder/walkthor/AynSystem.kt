@@ -305,27 +305,51 @@ object AynSystem {
             .getOrElse { closeLive(sendQuit = false); false } // it quit (idle): the next level tries to restart it
     }
 
-    private val pending = AtomicReference<Pair<Int, Float>?>(null)
+    /** The level waiting to be applied, per screen (one each, so neither screen's change is lost). */
+    private val pendingLevels = java.util.concurrent.ConcurrentHashMap<Int, Float>()
+    private val draining = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val retry = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Right after a critical memory warning: no new programs started through the helper for this long. */
+    private const val CRITICAL_HOLD_MS = 10_000L
 
     /**
      * Sets [displayId]'s brightness (0–1) in the background. While a slider moves, only the latest
-     * level is applied, so the screen keeps up instead of working through every step.
+     * level for each screen is applied, so the screen keeps up instead of working through every step.
      */
     fun setBrightness(context: Context, displayId: Int, level: Float) {
         val app = context.applicationContext
-        lastLevel[displayId] = level.coerceIn(0f, 1f)
-        if (pending.getAndSet(displayId to level.coerceIn(0f, 1f)) != null) return // one's already queued
+        val l = level.coerceIn(0f, 1f)
+        lastLevel[displayId] = l
+        pendingLevels[displayId] = l
+        drain(app)
+    }
+
+    private fun drain(app: Context) {
+        if (!draining.compareAndSet(false, true)) return // already working through them
         worker.execute {
-            val next = pending.getAndSet(null) ?: return@execute
-            // Memory's critical: no new programs started through the helper (it's what froze the
-            // device once). The level is kept, and applied with the next change after.
-            if (MemoryWatch.yielding && liveOut == null) return@execute
-            if (!available()) return@execute
-            // Straight to the live program if it's running (or can start); otherwise one at a time.
-            if (!sendLive(app, next.first, next.second) && !sendLive(app, next.first, next.second)) {
-                tool(app, "set", next.first.toString(), "%.4f".format(java.util.Locale.US, next.second))
-                if (liveUsers.get() <= 0) liveNote = "one change at a time"
+            try {
+                while (true) {
+                    // Just after Android's critical memory warning, nothing new is started through
+                    // the helper (that's what froze the device once): the levels wait a moment and
+                    // are applied after, rather than dropped (which let the screens drift apart).
+                    if (liveOut == null && MemoryWatch.msSinceCritical() < CRITICAL_HOLD_MS) {
+                        retry.postDelayed({ drain(app) }, 2_000)
+                        return@execute
+                    }
+                    val e = pendingLevels.entries.firstOrNull() ?: break
+                    if (!pendingLevels.remove(e.key, e.value)) continue // a newer level came in: take that
+                    if (!available()) { pendingLevels.clear(); break }
+                    // Straight to the live program if it's running (or can start); otherwise one at a time.
+                    if (!sendLive(app, e.key, e.value) && !sendLive(app, e.key, e.value)) {
+                        tool(app, "set", e.key.toString(), "%.4f".format(java.util.Locale.US, e.value))
+                        if (liveUsers.get() <= 0) liveNote = "one change at a time"
+                    }
+                }
+            } finally {
+                draining.set(false)
             }
+            // One that came in just as it finished.
+            if (pendingLevels.isNotEmpty()) drain(app)
         }
     }
 }
