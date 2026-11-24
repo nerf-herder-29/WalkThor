@@ -126,14 +126,16 @@ object BottomOff {
     }
 
     /**
-     * What's in front on the top screen changed: off when a game comes up, on when it goes. Waits
-     * a moment for things to settle first (frontends and emulators flick past each other as a
-     * game starts or closes), so the screen doesn't flash on and off.
+     * What's in front on the top screen changed: off when a game comes up, on when it goes.
+     * Going off is almost at once: a frontend flicking past afterwards doesn't matter while the
+     * screen's black. Coming back on waits for things to settle (frontends and emulators flick
+     * past each other as a game starts or closes), so the screen doesn't light up mid-launch.
      */
     fun gameFront(service: AccessibilityService) {
         settleFor = service
         main.removeCallbacks(settle)
-        main.postDelayed(settle, 1_200)
+        val goingOff = EmulatorWatch.gameShowing.value && !gameWas
+        main.postDelayed(settle, if (goingOff) 250L else 1_200L)
     }
     private var settleFor: AccessibilityService? = null
     private val settle = Runnable {
