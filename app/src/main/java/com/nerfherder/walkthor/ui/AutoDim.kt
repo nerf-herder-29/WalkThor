@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -74,6 +75,12 @@ object AutoDim {
     val statusBounds = MutableStateFlow<Rect?>(null)
 
     @Volatile internal var statusOwner: Any? = null
+    /**
+     * The readout's own layout, to ask where it is right as the screen dims: the position reported
+     * when it was laid out can be stale, if it was laid out mid-animation (WalkThor zooming in
+     * when it comes up by itself) and nothing has moved it since.
+     */
+    @Volatile internal var statusCoords: androidx.compose.ui.layout.LayoutCoordinates? = null
     val dimmed = MutableStateFlow(false)
     /**
      * True once the screen has stayed dimmed for [REST_AFTER_MS]: rendered pages and cover images
@@ -203,7 +210,11 @@ fun AutoDimOverlay() {
         else -> 0f
     }
     val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 400 else 150), label = "dim")
-    val status by AutoDim.statusBounds.collectAsState()
+    val reported by AutoDim.statusBounds.collectAsState()
+    // Where the readout is now (as the screen dims), rather than where it was last laid out.
+    val status = remember(target > 0f, reported) {
+        AutoDim.statusCoords?.takeIf { it.isAttached }?.let { runCatching { it.boundsInRoot() }.getOrNull() } ?: reported
+    }
 
     if (alpha <= 0.001f) return
     Box(

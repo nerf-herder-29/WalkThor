@@ -93,11 +93,12 @@ fun StatusClock(modifier: Modifier = Modifier, anchor: Boolean = true) {
     val token = remember { Any() }
     if (anchor) {
         DisposableEffect(token) {
-            onDispose { if (AutoDim.statusOwner == token) AutoDim.statusBounds.value = null }
+            onDispose { if (AutoDim.statusOwner == token) { AutoDim.statusBounds.value = null; AutoDim.statusCoords = null } }
         }
     }
     val placed = if (anchor) Modifier.onGloballyPositioned {
         AutoDim.statusOwner = token
+        AutoDim.statusCoords = it
         AutoDim.statusBounds.value = it.boundsInRoot()
     } else Modifier
 
