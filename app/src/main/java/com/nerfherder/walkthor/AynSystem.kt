@@ -210,10 +210,19 @@ object AynSystem {
         return run("CLASSPATH='$apk' app_process /system/bin ${ScreenBrightnessTool::class.java.name} ${args.joinToString(" ")} 2>/dev/null")
     }
 
-    /** [displayId]'s brightness, 0–1, or null. Not on the main thread. */
+    /** Each screen's brightness as last read or set, so it needn't be asked for again mid-game. */
+    private val lastLevel = java.util.concurrent.ConcurrentHashMap<Int, Float>()
+
+    /**
+     * [displayId]'s brightness, 0–1, or null. Not on the main thread. Asking starts a small Java
+     * program through the helper (tens of MB, for a moment), so while a game is playing the last
+     * known level is used instead (null if there isn't one: the caller falls back).
+     */
     fun brightness(context: Context, displayId: Int): Float? {
+        if (EmulatorWatch.gameShowing.value) return lastLevel[displayId]
         if (!available()) return null
         return tool(context, "get", displayId.toString())?.takeIf { it.startsWith("OK ") }?.removePrefix("OK ")?.trim()?.toFloatOrNull()
+            ?.also { lastLevel[displayId] = it }
     }
 
     // ---- the live brightness program: kept running while the brightness controls are on screen ----
@@ -228,12 +237,17 @@ object AynSystem {
 
     private fun fifo(context: Context) = java.io.File(context.filesDir, "bright.fifo")
 
-    /** A brightness control came on screen: start the live program (in the background). */
+    /**
+     * A brightness control came on screen: start the live program (in the background), so the
+     * first drag is smooth. Not while a game is playing: the program is a second Java runtime
+     * (tens of MB), and the drawer coming up as a game loads is the worst moment for it. Then it
+     * starts on the first drag instead (see sendLive).
+     */
     fun liveStart(context: Context) {
         val app = context.applicationContext
         if (liveUsers.incrementAndGet() == 1) {
             liveFailed = false
-            worker.execute { runCatching { openLive(app) } }
+            if (!EmulatorWatch.gameShowing.value) worker.execute { runCatching { openLive(app) } }
         }
     }
 
@@ -299,9 +313,13 @@ object AynSystem {
      */
     fun setBrightness(context: Context, displayId: Int, level: Float) {
         val app = context.applicationContext
+        lastLevel[displayId] = level.coerceIn(0f, 1f)
         if (pending.getAndSet(displayId to level.coerceIn(0f, 1f)) != null) return // one's already queued
         worker.execute {
             val next = pending.getAndSet(null) ?: return@execute
+            // Memory's critical: no new programs started through the helper (it's what froze the
+            // device once). The level is kept, and applied with the next change after.
+            if (MemoryWatch.yielding && liveOut == null) return@execute
             if (!available()) return@execute
             // Straight to the live program if it's running (or can start); otherwise one at a time.
             if (!sendLive(app, next.first, next.second) && !sendLive(app, next.first, next.second)) {
