@@ -102,8 +102,11 @@ object CloseApps {
                 lastNote = "AYN's helper couldn't be reached (${AynSystem.problem ?: "no reason given"}); only background apps closed"
                 "Closed background apps only (AYN's helper wasn't reachable)"
             }
-            AynButton.note("close all apps → $message")
-            main.post { runCatching { onDone(message, lastNote) } }
+            // Your home app, if it was paused for the game: back now, and said so.
+            val back = if (helper) runCatching { HomeSwap.restoreNow(app) }.getOrNull() else null
+            val said = if (back != null) "$message · $back is back" else message
+            AynButton.note("close all apps → $said")
+            main.post { runCatching { onDone(said, lastNote) } }
         }
     }
 }

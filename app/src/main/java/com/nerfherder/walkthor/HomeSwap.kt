@@ -28,8 +28,8 @@ object HomeSwap {
     private const val KEY_ON = "on"
     private const val KEY_ORIGINAL = "original"
     private const val KEY_STOCK = "stock"
-    /** How long no game has to be in front before your home app comes back. */
-    private const val BACK_AFTER_MS = 3_000L
+    /** How long no game has to be in front before your home app comes back (just enough to ride out a flicker). */
+    private const val BACK_AFTER_MS = 300L
     /** While the drawer may be covering the game, how often to look again, and for how long at most. */
     private const val COVERED_RECHECK_MS = 2_000L
     private const val COVERED_MAX_MS = 10_000L
@@ -78,7 +78,8 @@ object HomeSwap {
                     }
                 }
                 pendingRestore = r
-                main.postDelayed(r, BACK_AFTER_MS)
+                // While the drawer may be over the game, a little longer before looking.
+                main.postDelayed(r, if (EmulatorWatch.gameCovered) COVERED_RECHECK_MS else BACK_AFTER_MS)
             }
         }
     }
@@ -119,12 +120,26 @@ object HomeSwap {
         }
     }
 
-    private fun restore(c: Context, why: String) {
+    /**
+     * Puts your home app back now, for "Close all apps" (so its message can say so), and brings
+     * it up on the screens. The name of the app that's home again, or null if none was paused.
+     * Not on the main thread.
+     */
+    fun restoreNow(c: Context): String? {
+        val app = c.applicationContext
+        main.post { pendingRestore?.let { main.removeCallbacks(it) }; pendingRestore = null }
+        val pkg = prefs(app).getString(KEY_ORIGINAL, null)?.let { ComponentName.unflattenFromString(it)?.packageName } ?: return null
+        restore(app, "apps closed", bringUp = true)
+        return if (prefs(app).getString(KEY_ORIGINAL, null) == null) label(app, pkg) else null
+    }
+
+    @Synchronized
+    private fun restore(c: Context, why: String, bringUp: Boolean = false) {
         val p = prefs(c)
         val original = p.getString(KEY_ORIGINAL, null)?.let { ComponentName.unflattenFromString(it) } ?: return
         val stock = p.getString(KEY_STOCK, null)
         if (MemoryWatch.yielding) { // later, once memory has settled
-            main.postDelayed({ gameChanged(c, EmulatorWatch.emulatorShowing.value) }, BACK_AFTER_MS)
+            main.postDelayed({ gameChanged(c, EmulatorWatch.emulatorShowing.value) }, 5_000L)
             return
         }
         // Gone since (uninstalled): nothing to put back.
@@ -141,7 +156,7 @@ object HomeSwap {
         val displays = listOfNotNull(0, bottom).distinct()
         main.post {
             displays.forEach { id ->
-                if (stock != null && EmulatorWatch.frontOn(id) == stock) runCatching {
+                if (bringUp || (stock != null && EmulatorWatch.frontOn(id) == stock)) runCatching {
                     val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(original.packageName)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     c.startActivity(intent, ActivityOptions.makeBasic().setLaunchDisplayId(id).toBundle())
