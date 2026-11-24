@@ -221,13 +221,31 @@ object ScreenControls {
         }
         val volumeWords = Regex("vol|audio|sound|speaker|balance|gain", RegexOption.IGNORE_CASE)
         if (helper && android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            // Filtered on the device, so only the matching lines come back through the helper (a
+            // whole list can be too long for it).
+            val pattern = "'vol|audio|sound|speaker|balance|gain|screen'"
             for (table in listOf("system", "global", "secure")) {
-                val lines = AynSystem.shellLines("settings list $table")?.filter { volumeWords.containsMatchIn(it.substringBefore('=')) }.orEmpty()
-                add("Volume-like $table settings: " + lines.ifEmpty { listOf("none") }.joinToString(", "))
+                val out = AynSystem.shellLines("settings list $table | grep -iE $pattern")
+                add("Volume-like $table settings: " + when {
+                    out == null -> "couldn't read"
+                    out.none { it.isNotBlank() } -> "none"
+                    else -> out.filter { it.isNotBlank() }.take(40).joinToString(", ")
+                })
             }
-        } else {
+            // System properties (AYN's own may be here), and what Android's audio service says about
+            // volume groups and screens.
+            AynSystem.shellLines("getprop | grep -iE 'vol|audio|speaker|ayn|dual'")?.filter { it.isNotBlank() }?.take(40)?.let {
+                add("Volume-like properties: " + it.ifEmpty { listOf("none") }.joinToString(", "))
+            } ?: add("Volume-like properties: couldn't read")
+            AynSystem.shellLines("dumpsys audio | grep -iE 'display|screen|ayn|dual|secondary' | head -30")?.filter { it.isNotBlank() }?.let {
+                add("Audio service (screens): " + it.ifEmpty { listOf("nothing") }.joinToString(" | ") { l -> l.trim() })
+            } ?: add("Audio service (screens): couldn't read")
+        }
+        run {
+            // Without the helper as well: what this app can see of the system settings directly.
+            val volumeWords = Regex("vol|audio|sound|speaker|balance|gain", RegexOption.IGNORE_CASE)
             val names = systemSettingNames(c).filter { volumeWords.containsMatchIn(it) }
-            add("Volume-like system settings: " + names.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
+            add("Volume-like system settings (direct): " + names.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
                 n + "=" + (runCatching { Settings.System.getString(c.contentResolver, n) }.getOrNull() ?: "?")
             })
         }
