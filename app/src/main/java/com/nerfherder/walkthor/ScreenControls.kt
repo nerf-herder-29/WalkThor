@@ -205,6 +205,32 @@ object ScreenControls {
         add("Brightness settings on this device: " + bright.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
             n + "=" + (runCatching { Settings.System.getString(c.contentResolver, n) }.getOrNull() ?: "?")
         })
+        // Volume: Android's streams, and every setting that looks like a volume (AYN keeps one per
+        // screen of its own, undocumented: this is to find out where).
+        runCatching {
+            val am = c.getSystemService(AudioManager::class.java)
+            if (am != null) {
+                val streams = listOf(
+                    "media" to AudioManager.STREAM_MUSIC, "ring" to AudioManager.STREAM_RING, "notification" to AudioManager.STREAM_NOTIFICATION,
+                    "alarm" to AudioManager.STREAM_ALARM, "system" to AudioManager.STREAM_SYSTEM, "call" to AudioManager.STREAM_VOICE_CALL,
+                    "accessibility" to AudioManager.STREAM_ACCESSIBILITY,
+                )
+                add("Volume streams: " + streams.joinToString(", ") { (n, st) -> "$n ${am.getStreamVolume(st)}/${am.getStreamMaxVolume(st)}" } +
+                    if (am.isVolumeFixed) " (fixed by the device)" else "")
+            }
+        }
+        val volumeWords = Regex("vol|audio|sound|speaker|balance|gain", RegexOption.IGNORE_CASE)
+        if (helper && android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            for (table in listOf("system", "global", "secure")) {
+                val lines = AynSystem.shellLines("settings list $table")?.filter { volumeWords.containsMatchIn(it.substringBefore('=')) }.orEmpty()
+                add("Volume-like $table settings: " + lines.ifEmpty { listOf("none") }.joinToString(", "))
+            }
+        } else {
+            val names = systemSettingNames(c).filter { volumeWords.containsMatchIn(it) }
+            add("Volume-like system settings: " + names.ifEmpty { listOf("none visible") }.joinToString(", ") { n ->
+                n + "=" + (runCatching { Settings.System.getString(c.contentResolver, n) }.getOrNull() ?: "?")
+            })
+        }
         FPS_FILES.forEach { p ->
             val f = File(p)
             add("$p: " + when {
