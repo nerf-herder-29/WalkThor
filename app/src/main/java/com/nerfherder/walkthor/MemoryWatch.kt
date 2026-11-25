@@ -132,6 +132,12 @@ object MemoryWatch {
         val real = critical && freeMb < REAL_CRITICAL_MB
         if (gameInFront()) note(context, "Android is short of memory (level $level)" +
             if (critical && !real) " · ignored: $freeMb MB still free" else "")
+        // At Android's warnings: the ranking just then (not when memory's really short: no helper commands then).
+        if (gameInFront() && !real && level >= 10 && System.currentTimeMillis() - ranksAt >= 15_000L) {
+            val app = context.applicationContext
+            ranksAt = System.currentTimeMillis()
+            Thread({ runCatching { logRanks(app, "at Android's warning") } }, "WalkThor ranks").start()
+        }
         if (gameInFront() && real) {
             val app = context.applicationContext
             Thread({ runCatching { yieldToGame(app, "Android's most serious memory warning") } }, "WalkThor yield").start()
@@ -188,6 +194,11 @@ object MemoryWatch {
         // While memory's critical, nothing goes through the system helper (each command is a load
         // of its own): restarts and Android's records are caught up on once it recovers.
         if (yielding) return
+        // How Android ranks the game against the bottom screen's apps: 15 s in, then every minute.
+        val sinceStart = System.currentTimeMillis() - gameSince
+        if (sinceStart >= 15_000L && System.currentTimeMillis() - ranksAt >= 60_000L) {
+            logRanks(c, if (ranksAt < gameSince) "15 s in" else "a minute on")
+        }
         watchApps(c)
         // Keeper renews this every few seconds too: WalkThor's own is a back-up.
         if (beats % 2 == 0) protect(c)
@@ -247,6 +258,43 @@ object MemoryWatch {
             "echo \"R $pkg \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
         return pkgs.filter { PACKAGE.matches(it) }.distinct().joinToString(" ") { one(it, "\$(pidof $it)") } +
             pids.joinToString("") { " " + one("keeper", it.toString()) }
+    }
+
+    @Volatile private var ranksAt = 0L
+
+    /**
+     * Puts in the memory log how Android's memory killer ranks the game's processes, WalkThor's
+     * and the home app's right now (lower is kept longer; the game in front is normally 0), and
+     * which app Android counts as the one in front. Through the system helper; read only.
+     */
+    @Synchronized internal fun logRanks(c: Context, why: String) {
+        if (AynSystem.knownAvailable() != true || yielding) return
+        val game = gamePkg ?: return
+        ranksAt = System.currentTimeMillis()
+        val pkgs = listOfNotNull(game, c.packageName, protectedHome(c), homePackage(c)).filter { PACKAGE.matches(it) }.distinct()
+        val pattern = pkgs.joinToString("|") { it.replace(".", "\\.") }
+        val script = "for n in \$(ps -A -o NAME | grep -E '^($pattern)(:.*)?\$'); do for p in \$(pidof \$n); do " +
+            "echo \"A \$n \$(cat /proc/\$p/oom_score_adj)\"; done; done; dumpsys activity activities | grep -m1 mTopResumedActivity"
+        val out = AynSystem.shellLines(script) ?: return
+        val procs = out.filter { it.startsWith("A ") }.map { it.split(' ') }.filter { it.size >= 3 }
+            .mapNotNull { f -> f[2].toIntOrNull()?.let { f[1] to it } }.distinct().sortedBy { it.second }
+        if (procs.isEmpty()) return
+        fun name(proc: String): String {
+            val pkg = proc.substringBefore(':')
+            val part = proc.substringAfter(':', "")
+            return (if (pkg == game) "game " else "") + label(c, pkg) + (if (part.isNotEmpty()) " ($part)" else "")
+        }
+        val gameBest = procs.filter { it.first.substringBefore(':') == game }.minOfOrNull { it.second }
+        val othersBest = procs.filter { it.first.substringBefore(':') != game }.minOfOrNull { it.second }
+        val top = out.firstOrNull { "mTopResumedActivity" in it }
+            ?.let { Regex(" ([A-Za-z0-9_.]+)/").find(it)?.groupValues?.get(1) }?.let { label(c, it) } ?: "?"
+        val warn = when {
+            gameBest == null -> " · the game's process wasn't found"
+            othersBest != null && othersBest <= gameBest -> " · the game is NOT ranked lowest: it would be closed before or with these"
+            else -> ""
+        }
+        note(c, "Ranks ($why; lower is kept longer): " + procs.joinToString(", ") { "${name(it.first)} ${it.second}" } +
+            " · Android's app in front: $top$warn")
     }
 
     /** Memory's critical: stops protecting the bottom screen's apps, so the game's kept instead. Not on the main thread. */
