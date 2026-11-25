@@ -290,6 +290,25 @@ object EmulatorWatch {
     }
 
     /**
+     * The game was taken to have left the screen, but Android says it's still in front (a launcher
+     * window appeared on its screen as the launcher restarted): back to playing, as far as WalkThor
+     * goes (protection, the bottom screen, the drawer's tabs).
+     */
+    fun gameStillThere(c: Context, pkg: String) {
+        val top = android.view.Display.DEFAULT_DISPLAY // the top screen
+        frontByDisplay[top] = pkg
+        val was = emulatorShowing.value
+        gameShowing.value = true
+        emulatorShowing.value = isEmulator(c, pkg) || emulatorShowing.value
+        gameCovered = false
+        if (!was && emulatorShowing.value) {
+            runCatching { MemoryWatch.gameChanged(c, true) }
+            runCatching { HomeSwap.gameChanged(c, true) }
+        }
+        SwipeGestureService.instance?.get()?.let { s -> runCatching { BottomOff.gameFront(s) } }
+    }
+
+    /**
      * After WalkThor restarts with a game remembered as in front: checks (through AYN's helper,
      * one short command) that it's still running. If it isn't (it closed, or crashed, while
      * WalkThor was down), nothing's in front any more, and what follows a game closing happens:

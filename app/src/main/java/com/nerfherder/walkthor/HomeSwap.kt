@@ -77,7 +77,7 @@ object HomeSwap {
                         // (but not for long, or a game closed from the drawer would hold it up).
                         EmulatorWatch.gameCovered && android.os.SystemClock.elapsedRealtime() - since < COVERED_MAX_MS ->
                             main.postDelayed(r, COVERED_RECHECK_MS)
-                        else -> { pendingRestore = null; worker.execute { runCatching { restore(app, "no game in front") } } }
+                        else -> { pendingRestore = null; worker.execute { runCatching { restoreIfGameGone(app) } } }
                     }
                 }
                 pendingRestore = r
@@ -152,6 +152,28 @@ object HomeSwap {
         val pkg = prefs(app).getString(KEY_ORIGINAL, null)?.let { ComponentName.unflattenFromString(it)?.packageName } ?: return null
         restore(app, "apps closed", bringUp = true)
         return if (prefs(app).getString(KEY_ORIGINAL, null) == null) label(app, pkg) else null
+    }
+
+    /**
+     * The game seemed to leave the screen: first asks Android what's really in front. A launcher
+     * restarting (Android's memory killer closes it, and it starts again) puts a window on the game's
+     * screen that looked like you'd left the game, and your home app was then brought up over the
+     * game, which was still running. If the game's still in front, nothing's changed.
+     */
+    private fun restoreIfGameGone(c: Context) {
+        val game = MemoryWatch.gamePkg
+        if (game != null && gameStillInFront(game)) {
+            MemoryWatch.noteFrom(c, "Home app: not put back: the game is still in front (a launcher restarting looked like you'd left it)")
+            main.post { runCatching { EmulatorWatch.gameStillThere(c, game) } }
+            return
+        }
+        restore(c, "no game in front")
+    }
+
+    /** Whether [pkg] has the resumed (front) activity on any screen, by Android's own account. */
+    private fun gameStillInFront(pkg: String): Boolean {
+        val lines = AynSystem.shellLines("dumpsys activity activities | grep -E 'ResumedActivity'") ?: return false
+        return lines.any { pkg in it }
     }
 
     @Synchronized
