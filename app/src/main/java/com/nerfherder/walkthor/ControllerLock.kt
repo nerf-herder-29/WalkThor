@@ -73,9 +73,10 @@ object ControllerLock {
         val want = wantDisplay ?: return
         if (event.displayId == want || event.displayId < 0) return
         val pkg = event.packageName?.toString() ?: return
-        // WalkThor's own little windows (the drawer, messages) never take focus.
-        if (pkg == service.packageName && event.className?.toString()?.let { it.startsWith("android.widget.") || it == "android.view.View" } == true) return
-        if (pkg != service.packageName && !EmulatorWatch.isApp(service, pkg)) return // keyboards, system overlays
+        // WalkThor's own windows: the drawer and its overlays never take focus, and the app hands
+        // focus back to the game itself.
+        if (pkg == service.packageName) return
+        if (!EmulatorWatch.isApp(service, pkg)) return // keyboards, system overlays
         takeBack(service, want, APP_FRONT_AFTER_MS)
         lastNote = "keeping the controller on the ${locked.value?.label} (display $want); ${pkg.substringAfterLast('.')} came up on the other screen"
     }
@@ -169,6 +170,8 @@ object ControllerLock {
         val screen = locked.value ?: return@Runnable
         // Typing in WalkThor's search needs the keyboard on the bottom screen for a moment.
         if (screen == Screen.TOP && GameFocus.wantFocus.value) return@Runnable
+        // "Close all apps" is up: its screens are tapped to cancel, so a tap now would cancel it.
+        if (CloseCountdown.showing) return@Runnable
         val how = service.tapToFocus(want)
         movedBack++
         lastNote = "keeping the controller on the ${screen.label} (display $want); moved it back $movedBack time(s), last: $how"

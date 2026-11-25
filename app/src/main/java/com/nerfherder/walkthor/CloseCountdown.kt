@@ -97,6 +97,9 @@ object CloseCountdown {
         main.postDelayed(giveUp, 20_000)
     }
 
+    /** The countdown or the closing screens are up (a tap on them cancels). */
+    val showing get() = active || views.isNotEmpty()
+
     /** Stops the countdown before anything is closed. True if there was one to stop. */
     fun cancel(): Boolean {
         if (!active) return false
