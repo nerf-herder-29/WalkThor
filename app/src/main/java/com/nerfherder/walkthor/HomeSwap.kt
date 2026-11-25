@@ -88,11 +88,21 @@ object HomeSwap {
     }
 
     /** The game turned out to have closed while WalkThor was down: your home app back, and up on the screens. */
-    fun gameGone(c: Context) {
+    fun gameGone(c: Context, attempt: Int = 1) {
         val app = c.applicationContext
         main.post { pendingRestore?.let { main.removeCallbacks(it) }; pendingRestore = null }
-        worker.execute { runCatching { restore(app, "the game had closed", bringUp = true) } }
+        worker.execute {
+            runCatching { restore(app, "the game had closed", bringUp = true) }
+            // Just after WalkThor restarts, AYN's helper can take a moment to answer: again shortly.
+            if (pausedNow(app)) {
+                if (attempt < 6) main.postDelayed({ gameGone(app, attempt + 1) }, 3_000)
+                else MemoryWatch.noteFrom(app, "Home app: couldn't put ${pausedName(app)} back (AYN's system helper didn't answer); it will be at the next game, or set it in Android's settings")
+            }
+        }
     }
+
+    private fun pausedName(c: Context) =
+        prefs(c).getString(KEY_ORIGINAL, null)?.let { ComponentName.unflattenFromString(it)?.packageName }?.let { label(c, it) } ?: "your home app"
 
     /** WalkThor (re)started: if it left your home app paused and no game is playing, it comes back. */
     fun recover(c: Context) {
