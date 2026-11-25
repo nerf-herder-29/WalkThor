@@ -112,7 +112,6 @@ object BottomOff {
         if (off.value) {
             // What to bring back once memory's recovered (kept, in case Android closes WalkThor meanwhile).
             prefs(service).edit().putString(MEM_PAUSE, if (drawerUp) "drawer" else "app").apply()
-            watchMemory(service)
             gameWas = true
             AynButton.note("memory critical → WalkThor off the bottom screen")
             MemoryWatch.noteFrom(service, "WalkThor stepped off the bottom screen for the game (black until the game closes; double-tap for it back)")
@@ -120,6 +119,17 @@ object BottomOff {
     }
 
     private const val MEM_PAUSE = "bottomMemPause"
+
+    /** Android closed WalkThor mid-game: black until the game's over, a double-tap for WalkThor back. */
+    fun stayOffForGame(service: AccessibilityService, drawerWasUp: Boolean) {
+        if (EmulatorWatch.bothScreensGameShowing(service)) return
+        turnOff(service, game = true, note = false)
+        if (off.value) {
+            gameWas = true
+            prefs(service).edit().putString(MEM_PAUSE, if (drawerWasUp) "drawer" else "app").apply()
+            MemoryWatch.noteFrom(service, "WalkThor stays off the bottom screen until the game closes (double-tap for it back)")
+        }
+    }
 
     /** WalkThor stepped off the bottom screen for memory (and hasn't come back yet). */
     fun pausedForMemory(c: Context) = off.value && prefs(c).getString(MEM_PAUSE, null) != null
@@ -192,8 +202,8 @@ object BottomOff {
             turnOff(service, game, note = false)
             // So that the game closing still turns it back on.
             if (off.value && game) gameWas = true
-            // Stepped off for memory: back once there's memory for it.
-            if (pausedForMemory(service)) watchMemory(service)
+            // Stepped off for memory: back with a double-tap (rebuilding WalkThor by itself mid-game
+            // was a burst of work just when the game could least afford it).
             AynButton.note("WalkThor restarted → bottom screen off again")
         }
         val old = prefs(service).getFloat("bottomOffLevel", -1f)

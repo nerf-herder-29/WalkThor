@@ -95,7 +95,8 @@ object HomeSwap {
             runCatching { restore(app, "the game had closed", bringUp = true) }
             // Just after WalkThor restarts, AYN's helper can take a moment to answer: again shortly.
             if (pausedNow(app)) {
-                if (attempt < 6) main.postDelayed({ gameGone(app, attempt + 1) }, 3_000)
+                // Every 5 seconds for 2 minutes.
+                if (attempt < 24) main.postDelayed({ gameGone(app, attempt + 1) }, 5_000)
                 else MemoryWatch.noteFrom(app, "Home app: couldn't put ${pausedName(app)} back (AYN's system helper didn't answer); it will be at the next game, or set it in Android's settings")
             }
         }

@@ -55,6 +55,8 @@ object MemoryWatch {
     @Volatile var yielding = false
         private set
     @Volatile private var lastCritical = 0L
+    /** Below this much free, Android's critical warning is taken as real (above it, it's about background apps). */
+    private const val REAL_CRITICAL_MB = 2_500L
     /** Free memory under this, during a game, counts as critical. */
     private const val CRITICAL_MB = 1_500L
     /** Protection comes back once free memory is over this, with no critical warning for [CALM_MS]. */
@@ -108,11 +110,22 @@ object MemoryWatch {
     fun trimRequested(context: Context, level: Int) {
         @Suppress("DEPRECATION")
         val serious = level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
-        if (gameInFront()) note(context, "Android is short of memory (level $level)")
-        // Its most serious warning, mid-game: the game comes first.
+        // Its most serious warning, mid-game: the game comes first, if memory really is short.
+        // Android gives this warning by how few apps it has idling in the background, not by how
+        // much memory is free: it came with 7 GB free. Acting on those (WalkThor stepping off the
+        // bottom screen and coming back) was itself a burst of work at the wrong moment.
         @Suppress("DEPRECATION")
         // (Exactly that level: the higher ones only mean WalkThor's own screens are out of sight.)
-        if (gameInFront() && level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+        val critical = level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
+        val freeMb = runCatching {
+            val mi = ActivityManager.MemoryInfo()
+            context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(mi)
+            mi.availMem / (1024 * 1024)
+        }.getOrDefault(0L)
+        val real = critical && freeMb < REAL_CRITICAL_MB
+        if (gameInFront()) note(context, "Android is short of memory (level $level)" +
+            if (critical && !real) " · ignored: $freeMb MB still free" else "")
+        if (gameInFront() && real) {
             val app = context.applicationContext
             Thread({ runCatching { yieldToGame(app, "Android's most serious memory warning") } }, "WalkThor yield").start()
         }
@@ -277,10 +290,7 @@ object MemoryWatch {
         setGuarding(c, true)
         note(c, "Memory recovered (free $freeMb MB): protecting the bottom screen's apps again")
         protect(c)
-        // WalkThor back on the bottom screen, if it stepped off for the game.
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            runCatching { SwipeGestureService.instance?.get()?.let { BottomOff.resumeFromMemory(it, "memory recovered") } }
-        }
+        // (WalkThor stays off the bottom screen, if it stepped off: a double-tap brings it back.)
     }
 
     // ---- Keeper's share ----
