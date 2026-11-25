@@ -180,15 +180,21 @@ private object Guard {
                     val text = flag.readText().trim()
                     // Memory's critical: the game comes first, so it stands aside.
                     if (text.startsWith("yield")) { if (ticks % 5 == 0) status(c, "standing aside: memory is critical, the game comes first"); return@runCatching }
+                    // First line the home app, second the game.
+                    val home = text.lineSequence().firstOrNull()?.trim().orEmpty()
+                    val game = text.lineSequence().drop(1).firstOrNull()?.trim().orEmpty()
                     val out = AynSystem.shellLines(
-                        MemoryWatch.protectScript(listOfNotNull(text.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()))
+                        MemoryWatch.protectScript(listOfNotNull(home.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()),
+                            game.takeIf { it.isNotEmpty() })
                     )
                     if (out == null) { status(c, "running, but the system helper didn't answer"); return@runCatching }
                     val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
                     val changed = ranks.filter { it[3] != it[4] }
                     if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it[1])} (${it[3]} → ${it[4]})" })
+                    val gameRanks = out.filter { it.startsWith("G ") }.map { it.split(' ') }.filter { it.size >= 5 }
                     if (ticks % 3 == 0 || changed.isNotEmpty()) status(c,
-                        "protecting during the game: " + (ranks.distinctBy { it[1] }.joinToString { "${name(c, it[1])} ${it[4]}" }.ifEmpty { "found none of the apps" }))
+                        "protecting during the game: " + (ranks.distinctBy { it[1] }.joinToString { "${name(c, it[1])} ${it[4]}" }.ifEmpty { "found none of the apps" }) +
+                            (if (gameRanks.isNotEmpty()) "; the game " + gameRanks.joinToString { it[4] } else ""))
                 }
             }
         }, "WalkThor keeper guard").apply { isDaemon = true; start() }

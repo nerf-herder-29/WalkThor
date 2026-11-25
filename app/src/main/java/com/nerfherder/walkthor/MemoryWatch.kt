@@ -47,6 +47,7 @@ object MemoryWatch {
     /** How high the bottom screen's apps may rank for the memory killer during a game (visible apps are 100; the game 0). */
     private const val PROTECT_ADJ = 50
     @Volatile private var protectedNoted = false
+    @Volatile private var gameFirstNoted = false
 
     // ---- the game comes first ----
     // When memory gets critical, the bottom screen's apps stop being protected, and WalkThor lets
@@ -94,6 +95,7 @@ object MemoryWatch {
             lowestMb = -1L; lowCount = 0; restarts = 0
             pids.clear()
             protectedNoted = false
+            gameFirstNoted = false
             yielding = false
             Thread({ setGuarding(app, true) }, "WalkThor guard").start()
             val mi = memInfo(app)
@@ -234,7 +236,14 @@ object MemoryWatch {
         if (yielding) return
         val pkgs = listOfNotNull(if (always && !gameInFront()) null else protectedHome(c), c.packageName)
             .filter { PACKAGE.matches(it) }.distinct()
-        val out = AynSystem.shellLines(protectScript(pkgs)) ?: return
+        val game = gamePkg?.takeIf { gameInFront() }
+        val out = AynSystem.shellLines(protectScript(pkgs, game = game)) ?: return
+        val firsts = out.filter { it.startsWith("G ") }.map { it.split(' ') }.filter { it.size >= 5 && it[3] != it[4] }
+        if (firsts.isNotEmpty() && !gameFirstNoted) {
+            gameFirstNoted = true
+            note(c, "Put the game first for the memory killer: " + firsts.joinToString(", ") { "${it[3]} → ${it[4]}" } +
+                " (Android had it ranked behind the bottom screen's apps)")
+        }
         val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
         val changed = ranks.filter { it[3] != it[4] }
         val failed = ranks.filter { (it[4].toIntOrNull() ?: 0) > PROTECT_ADJ }
@@ -252,15 +261,29 @@ object MemoryWatch {
 
     /**
      * The command that lowers [pkgs]' processes (and any [pids]) to [PROTECT_ADJ] where they rank
-     * higher, never raising one. Each line it prints: "R package process before after".
+     * higher, never raising one, and puts the [game]'s visible processes first (rank 0, as the app
+     * in front normally is). Each line it prints: "R package process before after" ("G" for the game).
+     *
+     * The game first: Android doesn't always rank it as the app in front (on two screens it was
+     * ranked 101, behind the bottom screen's apps kept at 50), and with this device's memory killer
+     * taking the heaviest app of the worst-ranked group, that made the game the one closed.
      */
-    internal fun protectScript(pkgs: List<String>, pids: List<Int> = emptyList()): String {
+    internal fun protectScript(pkgs: List<String>, pids: List<Int> = emptyList(), game: String? = null): String {
         fun one(pkg: String, list: String) = "for p in $list; do a=\$(cat /proc/\$p/oom_score_adj); " +
             "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj; fi; " +
             "echo \"R $pkg \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
+        val first = game?.takeIf { PACKAGE.matches(it) }?.let { g ->
+            " ps -A -o PID,NAME | grep -E ' ${g.replace(".", "\\.")}(:[^ ]*)?\$' | while read p n; do a=\$(cat /proc/\$p/oom_score_adj); " +
+                "if [ \"\$a\" -gt 0 ] && [ \"\$a\" -le $GAME_VISIBLE_MAX_ADJ ]; then echo 0 > /proc/\$p/oom_score_adj; fi; " +
+                "echo \"G $g \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
+        }.orEmpty()
         return pkgs.filter { PACKAGE.matches(it) }.distinct().joinToString(" ") { one(it, "\$(pidof $it)") } +
-            pids.joinToString("") { " " + one("keeper", it.toString()) }
+            pids.joinToString("") { " " + one("keeper", it.toString()) } + first
     }
+
+    /** The game's processes up to this rank are the ones on screen (put first); above it they're in the background (left alone). */
+    private const val GAME_VISIBLE_MAX_ADJ = 250
+
 
     @Volatile private var ranksAt = 0L
 
@@ -381,7 +404,8 @@ object MemoryWatch {
     }
 
     private fun setGuarding(c: Context, on: Boolean) {
-        runCatching { if (on) guardFile(c).writeText(protectedHome(c).orEmpty()) else guardFile(c).delete() }
+        // First line the home app, second the game (Keeper puts it first).
+        runCatching { if (on) guardFile(c).writeText(protectedHome(c).orEmpty() + "\n" + gamePkg.orEmpty()) else guardFile(c).delete() }
     }
 
     /** Puts what Keeper did into the log (once each). */
