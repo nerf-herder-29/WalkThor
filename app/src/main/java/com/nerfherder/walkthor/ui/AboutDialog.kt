@@ -296,6 +296,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     TextButton(onClick = { Thread({ com.nerfherder.walkthor.MemoryWatch.share(context) }, "WalkThor memory share").start() }) { Text("Share log") }
                     TextButton(onClick = { com.nerfherder.walkthor.MemoryWatch.clear(context); memLog = emptyList() }) { Text("Clear", color = BookColors.TextMuted) }
                 }
+                // How the last game ended, from the device's own records (saved after each game).
+                if (com.nerfherder.walkthor.GameReport.exists(context)) {
+                    Body("After each game, WalkThor saves the device's own records of how it ended: what Android's memory killer, the kernel and the emulator reported. Share it after a crash.")
+                    TextButton(onClick = { Thread({ com.nerfherder.walkthor.GameReport.share(context) }, "WalkThor game report share").start() }) { Text("Share game report") }
+                }
                 // If the drawer couldn't open, why (WalkThor opened as an app instead).
                 com.nerfherder.walkthor.Drawer.problem.collectAsState().value?.let { Body(it) }
                 // Every recent time WalkThor closed, and why (for finding a pattern).

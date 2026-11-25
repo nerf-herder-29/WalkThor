@@ -106,6 +106,8 @@ object MemoryWatch {
             val game = gamePkg
             // A moment for Android to write its record of how the game ended.
             Thread({ runCatching { Thread.sleep(2_000); closeRecords(app, listOfNotNull(game)) } }, "WalkThor close records").start()
+            // The device's own records of how it ended, for Diagnostics.
+            GameReport.capture(app, game, "the game closed")
         }
     }
 
@@ -350,6 +352,7 @@ object MemoryWatch {
     fun gameEndedUnseen(c: Context, pkg: String) {
         val app = c.applicationContext
         Thread({ runCatching { closeRecords(app, listOf(pkg)) } }, "WalkThor close records").start()
+        GameReport.capture(app, pkg, "the game had closed while WalkThor was restarting")
     }
 
     /** Where we've got to in Android's records, so each is written in once. */

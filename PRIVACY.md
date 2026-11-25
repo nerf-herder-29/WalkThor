@@ -90,6 +90,13 @@ Everything else stays on your device.
   Android's memory killer, through the system helper, so they're closed only after everything
   else. WalkThor's small second process (Keeper) keeps doing this once a second while a game is in
   front, even while WalkThor itself has been closed, and notes what it changed in that same log.
+
+- **A game report after each game, kept on the device.** A couple of seconds after a game closes,
+  WalkThor reads the device's own records of how it ended through the system helper: Android's
+  record for the game's app, the system and event logs' lines about apps being killed, started or
+  crashing, the crash log, the kernel's log lines about memory and the graphics driver, and memory
+  figures. These can name other apps on the device. The report is kept in WalkThor's own storage
+  (the last three) and leaves the device only if you press Share game report.
   When memory gets critical during a game, WalkThor and Keeper stop protecting them, so Android
   closes the bottom screen's apps before the game, and start again once memory recovers. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
   were last closed (and the memory killer's own log lines about them) into that same log.
