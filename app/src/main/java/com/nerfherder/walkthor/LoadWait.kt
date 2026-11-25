@@ -59,7 +59,12 @@ object LoadWait {
                 while (readings.isNotEmpty() && now - readings.first().first > WINDOW_MS) readings.removeFirst()
                 val waited = now - started
                 val peak = readings.maxOf { it.second }
-                val calmNow = peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L
+                // And Android's memory pressure low (how much time things spend waiting on memory):
+                // coming up while it's high was what tipped games over.
+                val pressure = runCatching {
+                    java.io.File("/proc/pressure/memory").readLines().firstOrNull()?.substringAfter("avg10=")?.substringBefore(' ')?.toFloat()
+                }.getOrNull() ?: 0f
+                val calmNow = peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L && pressure < 0.15f
                 val steady = waited >= MIN_WAIT_MS && calmNow
                 // The log on screen: a line every 6 seconds, the newest one kept up to date.
                 log?.let { v ->

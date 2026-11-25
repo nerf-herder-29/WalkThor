@@ -91,6 +91,27 @@ object AppCatalog {
     }
 
     /** Reads the installed apps (everything with a home-screen icon, except WalkThor). */
+    /** Just your pinned apps' icons, for the dock while a game plays (not every app's at once). */
+    val pinnedOnly = MutableStateFlow<Map<String, InstalledApp>>(emptyMap())
+
+    suspend fun loadPinnedOnly(context: Context) {
+        val wanted = pinned.value.filter { it !in pinnedOnly.value }
+        if (wanted.isEmpty()) return
+        val loaded = withContext(Dispatchers.IO) {
+            val pm = context.packageManager
+            val size = (56 * context.resources.displayMetrics.density).toInt()
+            wanted.mapNotNull { pkg ->
+                runCatching {
+                    val launch = pm.getLaunchIntentForPackage(pkg) ?: return@runCatching null
+                    @Suppress("DEPRECATION")
+                    val ri = pm.resolveActivity(launch, 0) ?: return@runCatching null
+                    InstalledApp(pkg, ri.loadLabel(pm).toString(), runCatching { ri.loadIcon(pm).toBitmap(size, size).asImageBitmap() }.getOrNull())
+                }.getOrNull()
+            }
+        }
+        pinnedOnly.value = pinnedOnly.value + loaded.associateBy { it.packageName }
+    }
+
     suspend fun refresh(context: Context) {
         val list = withContext(Dispatchers.IO) {
             val pm = context.packageManager

@@ -585,21 +585,26 @@ private fun Apps(modifier: Modifier, preview: List<InstalledApp>?, onOpenApp: (S
     LaunchedEffect(Unit) {
         if (preview == null) {
             AppCatalog.loadPins(context)
-            if (AppCatalog.apps.value == null) AppCatalog.refresh(context)
+            if (AppCatalog.apps.value == null) {
+                // During a game, only the pinned apps' icons (every app's at once is a burst the
+                // game may not survive); the full list loads when you open All apps.
+                if (com.nerfherder.walkthor.gameInFront()) AppCatalog.loadPinnedOnly(context) else AppCatalog.refresh(context)
+            }
         }
     }
     val loaded by AppCatalog.apps.collectAsState()
+    val pinnedOnly by AppCatalog.pinnedOnly.collectAsState()
     val pins by AppCatalog.pinned.collectAsState()
-    val apps = remember(loaded, pins, preview) {
+    val apps = remember(loaded, pinnedOnly, pins, preview) {
         preview ?: run {
-            val byPkg = loaded?.associateBy { it.packageName } ?: emptyMap()
+            val byPkg = loaded?.associateBy { it.packageName } ?: pinnedOnly
             pins.mapNotNull { byPkg[it] }
         }
     }
     Column(modifier) {
         if (apps.isEmpty()) {
             Text(
-                if (loaded == null && preview == null) "Loading…" else "Tap All apps, then press and hold an app to pin it here.",
+                if (loaded == null && pinnedOnly.isEmpty() && preview == null) "Loading…" else "Tap All apps, then press and hold an app to pin it here.",
                 color = BookColors.TextMuted, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp),
             )
             return@Column

@@ -135,8 +135,8 @@ object MemoryWatch {
     /** Lets go of cached guide pages and images. */
     private fun trim(context: Context, why: String?) {
         runCatching { com.nerfherder.walkthor.data.PdfSource.trimAll() }
-        // Every app's icon, kept for the dock and app lists: loaded again when one's shown.
-        if (!Drawer.shown.value && AppState.resumedDisplayId == null) runCatching { com.nerfherder.walkthor.ui.AppCatalog.apps.value = null }
+        // (App icons are kept: about 8 MB, and loading every app's icon again as the drawer came
+        // up for a game was a sudden burst at the worst moment.)
         runCatching { coil.Coil.imageLoader(context).memoryCache?.clear() }
         if (why != null) Runtime.getRuntime().gc()
     }
