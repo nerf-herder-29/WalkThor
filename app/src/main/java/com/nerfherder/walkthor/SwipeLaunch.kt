@@ -201,6 +201,8 @@ class SwipeGestureService : AccessibilityService() {
         handler.post(standingAlarm)
         // What's in front on the game screen, as it was (Android only reports changes).
         runCatching { EmulatorWatch.restoreFront(this) }
+        // Is the game it remembers still running? (It may have closed while WalkThor was down.)
+        runCatching { EmulatorWatch.checkRestoredFront(this) }
         // Your home app back, if WalkThor stopped while it was paused for a game.
         runCatching { HomeSwap.recover(this) }
         // The bottom screen off again, if it was (before the drawer's turn: it stays down then).

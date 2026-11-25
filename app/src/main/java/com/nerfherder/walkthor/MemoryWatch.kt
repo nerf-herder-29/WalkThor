@@ -177,11 +177,11 @@ object MemoryWatch {
     }
 
     /**
-     * The home app to keep next in line: the default one, unless it's only Android's launcher
-     * standing in while yours is paused for the game. That one Android can have back for the
-     * game (it's quick to start again), so it isn't protected.
+     * The home app to keep next in line: whichever is home now, Android's own launcher included
+     * while yours is paused for the game. Android starts whatever is home again the moment it's
+     * closed, so closing it under pressure only has it take the memory straight back.
      */
-    private fun protectedHome(c: Context): String? = if (HomeSwap.pausedNow(c)) null else homePackage(c)
+    private fun protectedHome(c: Context): String? = homePackage(c)
 
     /** The default home app's package (whatever you use: Cocoon, ES-DE, a launcher…); null if there's none. */
     private fun homePackage(c: Context): String? = runCatching {

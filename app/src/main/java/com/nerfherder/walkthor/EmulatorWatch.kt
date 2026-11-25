@@ -289,6 +289,42 @@ object EmulatorWatch {
     }
 
     /**
+     * After WalkThor restarts with a game remembered as in front: checks (through AYN's helper,
+     * one short command) that it's still running. If it isn't (it closed, or crashed, while
+     * WalkThor was down), nothing's in front any more, and what follows a game closing happens:
+     * your home app back, the bottom screen on, the game's end in the memory log.
+     */
+    fun checkRestoredFront(service: android.accessibilityservice.AccessibilityService) {
+        val games = frontByDisplay.values.filter { isGamePkg(service, it) }.distinct()
+        if (games.isEmpty()) return
+        Thread({
+            runCatching {
+                Thread.sleep(2_500)
+                if (!AynSystem.available()) return@runCatching
+                val alive = games.any { pkg -> AynSystem.shell("pidof $pkg")?.trim()?.isNotEmpty() == true }
+                if (alive) return@runCatching
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    runCatching {
+                        // Still what was remembered (no newer window seen meanwhile)?
+                        if (frontByDisplay.values.none { it in games }) return@runCatching
+                        frontByDisplay.entries.removeAll { it.value in games }
+                        val was = emulatorShowing.value
+                        gameShowing.value = frontByDisplay.values.any { isGamePkg(service, it) }
+                        emulatorShowing.value = frontByDisplay.values.any { isEmulator(service, it) }
+                        gameCovered = false
+                        MemoryWatch.noteFrom(service, "The game had closed while WalkThor was restarting")
+                        if (was && !emulatorShowing.value) {
+                            runCatching { MemoryWatch.gameChanged(service, false) }
+                            runCatching { HomeSwap.gameGone(service) }
+                        }
+                        runCatching { BottomOff.gameFront(service) }
+                    }
+                }
+            }
+        }, "WalkThor game check").start()
+    }
+
+    /**
      * The game app in front on the game screen (not the bottom one), and since when, as a session;
      * null when none is (or nothing's been seen there yet).
      */

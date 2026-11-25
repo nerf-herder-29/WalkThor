@@ -87,6 +87,13 @@ object HomeSwap {
         }
     }
 
+    /** The game turned out to have closed while WalkThor was down: your home app back, and up on the screens. */
+    fun gameGone(c: Context) {
+        val app = c.applicationContext
+        main.post { pendingRestore?.let { main.removeCallbacks(it) }; pendingRestore = null }
+        worker.execute { runCatching { restore(app, "the game had closed", bringUp = true) } }
+    }
+
     /** WalkThor (re)started: if it left your home app paused and no game is playing, it comes back. */
     fun recover(c: Context) {
         val app = c.applicationContext
