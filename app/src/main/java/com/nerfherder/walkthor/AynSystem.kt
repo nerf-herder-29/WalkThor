@@ -88,6 +88,7 @@ object AynSystem {
     private val SETTINGS = setOf(
         "joystick_light_enabled", "joystick_led_light_picker_color", "led_light_brightness_percent",
         "performance_mode", "fan_mode", "temp_abxy_layout_mode", "flip_button_layout", "no_create_gamepad_button_layout",
+        "secondary_screen_volume_level",
     )
 
     /**

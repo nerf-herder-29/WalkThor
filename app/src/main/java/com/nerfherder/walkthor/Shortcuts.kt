@@ -291,6 +291,8 @@ object Shortcuts {
                 am.adjustStreamVolume(stream, if (a == Action.LOUDER) android.media.AudioManager.ADJUST_RAISE else android.media.AudioManager.ADJUST_LOWER, 0)
                 val max = am.getStreamMaxVolume(stream).coerceAtLeast(1)
                 val now = am.getStreamVolume(stream)
+                // The bottom screen's own volume too, with both screens together.
+                ScreenControls.followTopVolume(app, now)
                 ScreenMessage.show(if (now == 0) "Volume off" else "Volume ${Math.round(now * 100f / max)}%", 1_500)
             }
             Action.BRIGHTER -> worker.execute { stepBrightness(app, +STEP) }

@@ -166,7 +166,43 @@ object ScreenControls {
     fun setVolume(c: Context, level: Float) {
         val am = c.getSystemService(AudioManager::class.java) ?: return
         val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        runCatching { am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.round(level.coerceIn(0f, 1f) * max), 0) }
+        val index = Math.round(level.coerceIn(0f, 1f) * max)
+        runCatching { am.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0) }
+        followTopVolume(c, index)
+    }
+
+    /**
+     * AYN keeps a volume of its own for the bottom screen (what plays there), as a system setting
+     * on the same 0–15 steps as the media volume; the media volume is the top screen's.
+     */
+    private const val BOTTOM_VOLUME = "secondary_screen_volume_level"
+
+    /** The bottom screen's own volume (0–15), or null if this device hasn't one. */
+    fun bottomVolume(c: Context): Int? =
+        runCatching { Settings.System.getString(c.contentResolver, BOTTOM_VOLUME)?.trim()?.toIntOrNull() }.getOrNull()
+
+    private val volumeWriter = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor bottom volume").apply { isDaemon = true } }
+    private val pendingVolume = java.util.concurrent.atomic.AtomicInteger(-1)
+
+    /**
+     * With both screens together, the bottom screen's volume follows the top's (media) [index]:
+     * set through AYN's helper (one short command; while a slider moves, only the newest is sent).
+     */
+    fun followTopVolume(c: Context, index: Int) {
+        if (target(c) != Target.BOTH) return
+        val now = bottomVolume(c) ?: return
+        if (now == index) return
+        if (pendingVolume.getAndSet(index.coerceIn(0, 15)) != -1) return // one's already queued
+        volumeWriter.execute {
+            val v = pendingVolume.getAndSet(-1)
+            if (v >= 0) AynSystem.putSetting(BOTTOM_VOLUME, v.toString())
+        }
+    }
+
+    /** Both screens together was turned on: the bottom screen's volume matched to the top's now. */
+    fun matchVolumes(c: Context) {
+        val am = c.getSystemService(AudioManager::class.java) ?: return
+        followTopVolume(c, am.getStreamVolume(AudioManager.STREAM_MUSIC))
     }
 
     // ---- the top screen's frame rate, from the display driver ----

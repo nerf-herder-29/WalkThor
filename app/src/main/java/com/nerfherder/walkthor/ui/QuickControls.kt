@@ -257,7 +257,7 @@ fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
                 Modifier.clip(RoundedCornerShape(50)).clickable {
                     linked = !linked
                     ScreenControls.setTarget(context, if (linked) ScreenControls.Target.BOTH else ScreenControls.Target.TOP)
-                    if (linked) setTop(top)
+                    if (linked) { setTop(top); ScreenControls.matchVolumes(context) }
                 }.padding(vertical = 4.dp, horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -270,7 +270,7 @@ fun LevelsScreen(topBar: (@Composable () -> Unit)? = null) {
                 }
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    if (compact) "Both screens together" else "Move both screens' brightness together",
+                    if (compact) "Both screens together" else "Move both screens' brightness and volume together",
                     color = BookColors.Text.copy(alpha = 0.85f),
                     fontSize = if (compact) 11.sp else 13.sp,
                     maxLines = 1,
