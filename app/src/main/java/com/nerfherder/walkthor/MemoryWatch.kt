@@ -45,7 +45,7 @@ object MemoryWatch {
     private var beats = 0
 
     /** How high the bottom screen's apps may rank for the memory killer during a game (visible apps are 100; the game 0). */
-    private const val PROTECT_ADJ = 50
+    internal const val PROTECT_ADJ = 50
     @Volatile private var protectedNoted = false
     @Volatile private var gameFirstNoted = false
 
@@ -237,52 +237,31 @@ object MemoryWatch {
         val pkgs = listOfNotNull(if (always && !gameInFront()) null else protectedHome(c), c.packageName)
             .filter { PACKAGE.matches(it) }.distinct()
         val game = gamePkg?.takeIf { gameInFront() }
-        val out = AynSystem.shellLines(protectScript(pkgs, game = game)) ?: return
-        val firsts = out.filter { it.startsWith("G ") }.map { it.split(' ') }.filter { it.size >= 5 && it[3] != it[4] }
+        val rows = OomRanks.protect(pkgs, emptyList(), game, PROTECT_ADJ, GAME_VISIBLE_MAX_ADJ) ?: return
+        val firsts = rows.filter { it.kind == 'G' && it.before != it.after }
         if (firsts.isNotEmpty() && !gameFirstNoted) {
             gameFirstNoted = true
-            note(c, "Put the game first for the memory killer: " + firsts.joinToString(", ") { "${it[3]} → ${it[4]}" } +
+            note(c, "Put the game first for the memory killer: " + firsts.joinToString(", ") { "${it.before} → ${it.after}" } +
                 " (Android had it ranked behind the bottom screen's apps)")
         }
-        val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
-        val changed = ranks.filter { it[3] != it[4] }
-        val failed = ranks.filter { (it[4].toIntOrNull() ?: 0) > PROTECT_ADJ }
-        if (failed.isNotEmpty() && !protectedNoted) {
+        val gameStuck = rows.filter { it.kind == 'G' && it.after in 1..GAME_VISIBLE_MAX_ADJ }
+        val ranks = rows.filter { it.kind == 'R' }
+        val changed = ranks.filter { it.before != it.after }
+        val failed = ranks.filter { it.after > PROTECT_ADJ }
+        if ((failed.isNotEmpty() || gameStuck.isNotEmpty()) && !protectedNoted) {
             protectedNoted = true
-            val errors = out.filterNot { it.startsWith("R ") }.take(2).joinToString("; ")
-            note(c, "Couldn't keep " + failed.joinToString(" and ") { "${label(c, it[1])} (ranked ${it[4]})" } +
-                " next in line" + (if (errors.isNotEmpty()) ": $errors" else ""))
+            note(c, "Couldn't set the ranks: " + (failed.map { "${label(c, it.pkg)} still ${it.after}" } +
+                gameStuck.map { "the game still ${it.after}" }).joinToString(", ") + " (AYN's system helper may not be allowed to)")
         } else if (changed.isNotEmpty() && (!protectedNoted || always)) {
             protectedNoted = true
-            note(c, "Kept " + changed.joinToString(" and ") { "${label(c, it[1])} (${it[3]} → ${it[4]})" } +
+            note(c, "Kept " + changed.joinToString(" and ") { "${label(c, it.pkg)} (${it.before} → ${it.after})" } +
                 " next in line after the game")
         }
     }
-
-    /**
-     * The command that lowers [pkgs]' processes (and any [pids]) to [PROTECT_ADJ] where they rank
-     * higher, never raising one, and puts the [game]'s visible processes first (rank 0, as the app
-     * in front normally is). Each line it prints: "R package process before after" ("G" for the game).
-     *
-     * The game first: Android doesn't always rank it as the app in front (on two screens it was
-     * ranked 101, behind the bottom screen's apps kept at 50), and with this device's memory killer
-     * taking the heaviest app of the worst-ranked group, that made the game the one closed.
-     */
-    internal fun protectScript(pkgs: List<String>, pids: List<Int> = emptyList(), game: String? = null): String {
-        fun one(pkg: String, list: String) = "for p in $list; do a=\$(cat /proc/\$p/oom_score_adj); " +
-            "if [ \"\$a\" -gt $PROTECT_ADJ ]; then echo $PROTECT_ADJ > /proc/\$p/oom_score_adj; fi; " +
-            "echo \"R $pkg \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
-        val first = game?.takeIf { PACKAGE.matches(it) }?.let { g ->
-            " ps -A -o PID,NAME | grep -E ' ${g.replace(".", "\\.")}(:[^ ]*)?\$' | while read p n; do a=\$(cat /proc/\$p/oom_score_adj); " +
-                "if [ \"\$a\" -gt 0 ] && [ \"\$a\" -le $GAME_VISIBLE_MAX_ADJ ]; then echo 0 > /proc/\$p/oom_score_adj; fi; " +
-                "echo \"G $g \$p \$a \$(cat /proc/\$p/oom_score_adj)\"; done;"
-        }.orEmpty()
-        return pkgs.filter { PACKAGE.matches(it) }.distinct().joinToString(" ") { one(it, "\$(pidof $it)") } +
-            pids.joinToString("") { " " + one("keeper", it.toString()) } + first
     }
 
     /** The game's processes up to this rank are the ones on screen (put first); above it they're in the background (left alone). */
-    private const val GAME_VISIBLE_MAX_ADJ = 250
+    internal const val GAME_VISIBLE_MAX_ADJ = 250
 
 
     @Volatile private var ranksAt = 0L
@@ -298,13 +277,10 @@ object MemoryWatch {
         ranksAt = System.currentTimeMillis()
         if (!AynSystem.available()) { ranksProblem(c, "AYN's system helper isn't available (${AynSystem.problem ?: "no reason given"})"); return }
         val pkgs = listOfNotNull(game, c.packageName, protectedHome(c), homePackage(c)).filter { PACKAGE.matches(it) }.distinct()
-        val pattern = pkgs.joinToString("|") { it.replace(".", "\\.") }
-        val script = "ps -A -o PID,NAME | grep -E ' ($pattern)(:[^ ]*)?\$' | while read p n; do " +
-            "echo \"A \$n \$(cat /proc/\$p/oom_score_adj)\"; done; dumpsys activity activities | grep -m1 mTopResumedActivity"
-        val out = AynSystem.shellLines(script) ?: run { ranksProblem(c, "the helper didn't answer"); return }
-        val procs = out.filter { it.startsWith("A ") }.map { it.split(' ') }.filter { it.size >= 3 }
-            .mapNotNull { f -> f[2].toIntOrNull()?.let { f[1] to it } }.distinct().sortedBy { it.second }
-        if (procs.isEmpty()) { ranksProblem(c, "no processes found: " + out.take(2).joinToString("; ").take(160).ifEmpty { "no output" }); return }
+        val ps = OomRanks.procs(pkgs) ?: run { ranksProblem(c, "the helper didn't answer"); return }
+        val ranks = OomRanks.adj(ps.map { it.pid })
+        val procs = ps.mapNotNull { p -> ranks[p.pid]?.let { p.name to it } }.distinct().sortedBy { it.second }
+        if (procs.isEmpty()) { ranksProblem(c, "found ${ps.size} of the apps' processes, but no ranks came back"); return }
         fun name(proc: String): String {
             val pkg = proc.substringBefore(':')
             val part = proc.substringAfter(':', "")
@@ -312,8 +288,7 @@ object MemoryWatch {
         }
         val gameBest = procs.filter { it.first.substringBefore(':') == game }.minOfOrNull { it.second }
         val othersBest = procs.filter { it.first.substringBefore(':') != game }.minOfOrNull { it.second }
-        val top = out.firstOrNull { "mTopResumedActivity" in it }
-            ?.let { Regex(" ([A-Za-z0-9_.]+)/").find(it)?.groupValues?.get(1) }?.let { label(c, it) } ?: "?"
+        val top = OomRanks.topApp()?.let { label(c, it) } ?: "?"
         val warn = when {
             gameBest == null -> " · the game's process wasn't found"
             othersBest != null && othersBest <= gameBest -> " · the game is NOT ranked lowest: it would be closed before or with these"
@@ -422,8 +397,17 @@ object MemoryWatch {
     private fun report(c: Context) {
         if (AynSystem.knownAvailable() != true) { note(c, "System helper not usable: no ranks or records"); return }
         val pkgs = listOfNotNull(homePackage(c), c.packageName).filter { PACKAGE.matches(it) }.distinct()
-        val ranks = AynSystem.shellLines(pkgs.joinToString(" ") { "for p in \$(pidof $it); do echo \"$it \$(cat /proc/\$p/oom_score_adj)\"; done;" })
-            .orEmpty().mapNotNull { l -> l.split(' ').takeIf { it.size == 2 }?.let { "${label(c, it[0])} ${it[1]}" } }
+        val ps = OomRanks.procs(pkgs).orEmpty()
+        val adj = OomRanks.adj(ps.map { it.pid })
+        val ranks = ps.mapNotNull { p -> adj[p.pid]?.let { "${label(c, p.pkg)}${p.name.substringAfter(':', "").let { if (it.isEmpty()) "" else " ($it)" }} $it" } }
+        // What the helper passes through (some game report sections have always come back empty).
+        if (!gameInFront()) runCatching {
+            val dq = AynSystem.shellLines("echo \"dq\"")?.firstOrNull()
+            val sub = AynSystem.shellLines("echo \$(echo sub)")?.firstOrNull()
+            val sq = AynSystem.shellLines("echo 'sq x'")?.firstOrNull()
+            note(c, "Helper check: double quotes ${if (dq == "dq") "work" else "broken ($dq)"}, " +
+                "\$( ) ${if (sub == "sub") "works" else "broken ($sub)"}, single quotes ${if (sq == "sq x") "work" else "broken ($sq)"}")
+        }
         if (ranks.isNotEmpty()) note(c, "Ranks for the memory killer (lower is safer; the game is 0): " + ranks.joinToString(", "))
         val props = AynSystem.shellLines("getprop | grep -E 'lmk|lowmem' | head -20").orEmpty()
             .map { it.replace("[", "").replace("]", "") }.filter { ':' in it }
@@ -508,8 +492,9 @@ object MemoryWatch {
         }
         // All of them in one command (each command through the helper starts a shell of its own).
         val list = watched.filter { PACKAGE.matches(it) }
-        val out = AynSystem.shellLines(list.joinToString(" ") { "echo \"$it:\$(pidof $it)\";" }) ?: return
-        val found = out.mapNotNull { l -> l.substringBefore(':', "").takeIf { it.isNotEmpty() }?.let { it to l.substringAfter(':').trim() } }.toMap()
+        // One look at the process list (plain commands only: see OomRanks).
+        val ps = OomRanks.procs(list) ?: return
+        val found = list.associateWith { pkg -> ps.filter { it.name == pkg }.joinToString(" ") { it.pid.toString() } }
         for (pkg in list) {
             if (pkg !in found) continue
             val now = found[pkg]?.takeIf { it.isNotEmpty() }

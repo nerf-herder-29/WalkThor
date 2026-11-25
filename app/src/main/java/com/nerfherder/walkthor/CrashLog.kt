@@ -183,18 +183,16 @@ private object Guard {
                     // First line the home app, second the game.
                     val home = text.lineSequence().firstOrNull()?.trim().orEmpty()
                     val game = text.lineSequence().drop(1).firstOrNull()?.trim().orEmpty()
-                    val out = AynSystem.shellLines(
-                        MemoryWatch.protectScript(listOfNotNull(home.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()),
-                            game.takeIf { it.isNotEmpty() })
-                    )
-                    if (out == null) { status(c, "running, but the system helper didn't answer"); return@runCatching }
-                    val ranks = out.filter { it.startsWith("R ") }.map { it.split(' ') }.filter { it.size >= 5 }
-                    val changed = ranks.filter { it[3] != it[4] }
-                    if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it[1])} (${it[3]} → ${it[4]})" })
-                    val gameRanks = out.filter { it.startsWith("G ") }.map { it.split(' ') }.filter { it.size >= 5 }
+                    val rows = OomRanks.protect(listOfNotNull(home.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()),
+                        game.takeIf { it.isNotEmpty() }, MemoryWatch.PROTECT_ADJ, MemoryWatch.GAME_VISIBLE_MAX_ADJ)
+                    if (rows == null) { status(c, "running, but the system helper didn't answer"); return@runCatching }
+                    val ranks = rows.filter { it.kind != 'G' }
+                    val changed = ranks.filter { it.before != it.after }
+                    if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it.pkg)} (${it.before} → ${it.after})" })
+                    val gameRanks = rows.filter { it.kind == 'G' }
                     if (ticks % 3 == 0 || changed.isNotEmpty()) status(c,
-                        "protecting during the game: " + (ranks.distinctBy { it[1] }.joinToString { "${name(c, it[1])} ${it[4]}" }.ifEmpty { "found none of the apps" }) +
-                            (if (gameRanks.isNotEmpty()) "; the game " + gameRanks.joinToString { it[4] } else ""))
+                        "protecting during the game: " + (ranks.distinctBy { it.pkg }.joinToString { "${name(c, it.pkg)} ${it.after}" }.ifEmpty { "found none of the apps" }) +
+                            (if (gameRanks.isNotEmpty()) "; the game " + gameRanks.joinToString { "${it.before}→${it.after}" } else ""))
                 }
             }
         }, "WalkThor keeper guard").apply { isDaemon = true; start() }
