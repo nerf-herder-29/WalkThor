@@ -17,13 +17,13 @@ import android.view.WindowManager
  * first minute or so, while it loads, and that is when Android's critical warnings came and games
  * were closed, with WalkThor up on the bottom screen beside them. So while the game loads, the
  * bottom screen is just black (a plain window, next to no memory), and WalkThor comes up once
- * memory has stopped dropping: no big fall in the last 15 seconds, and no critical warning for 8.
+ * memory has stopped dropping: at least 10 seconds in, no big fall in the last 8 seconds, and no critical warning for 8.
  * At most 2½ minutes. A tap on the black brings WalkThor up straight away.
  */
 object LoadWait {
-    private const val MIN_WAIT_MS = 20_000L
+    private const val MIN_WAIT_MS = 10_000L
     private const val MAX_WAIT_MS = 150_000L
-    private const val WINDOW_MS = 15_000L
+    private const val WINDOW_MS = 8_000L
     private const val STEADY_DROP_MB = 150L
 
     private val main = Handler(Looper.getMainLooper())
@@ -65,7 +65,7 @@ object LoadWait {
                 log?.let { v ->
                     if (waited - lastLine >= 6_000L) { v.lines.add(waited to free); lastLine = waited }
                     else if (v.lines.isNotEmpty()) v.lines[v.lines.size - 1] = v.lines.last().first to free
-                    v.steadying = calmNow && readings.size >= 5
+                    v.steadying = calmNow && readings.size >= 4
                     v.blink = !v.blink
                     v.invalidate()
                 }
