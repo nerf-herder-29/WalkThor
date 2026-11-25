@@ -114,7 +114,8 @@ object BottomOff {
             prefs(service).edit().putString(MEM_PAUSE, if (drawerUp) "drawer" else "app").apply()
             gameWas = true
             AynButton.note("memory critical → WalkThor off the bottom screen")
-            MemoryWatch.noteFrom(service, "WalkThor stepped off the bottom screen for the game (black until the game closes; double-tap for it back)")
+            MemoryWatch.noteFrom(service, "WalkThor stepped off the bottom screen for the game (back once memory settles; double-tap for it sooner)")
+            watchMemory(service)
         }
     }
 
@@ -127,7 +128,8 @@ object BottomOff {
         if (off.value) {
             gameWas = true
             prefs(service).edit().putString(MEM_PAUSE, if (drawerWasUp) "drawer" else "app").apply()
-            MemoryWatch.noteFrom(service, "WalkThor stays off the bottom screen until the game closes (double-tap for it back)")
+            MemoryWatch.noteFrom(service, "WalkThor off the bottom screen until memory settles (double-tap for it sooner)")
+            watchMemory(service)
         }
     }
 
@@ -202,8 +204,8 @@ object BottomOff {
             turnOff(service, game, note = false)
             // So that the game closing still turns it back on.
             if (off.value && game) gameWas = true
-            // Stepped off for memory: back with a double-tap (rebuilding WalkThor by itself mid-game
-            // was a burst of work just when the game could least afford it).
+            // Stepped off for memory: back once there's memory for it.
+            if (pausedForMemory(service)) watchMemory(service)
             AynButton.note("WalkThor restarted → bottom screen off again")
         }
         val old = prefs(service).getFloat("bottomOffLevel", -1f)

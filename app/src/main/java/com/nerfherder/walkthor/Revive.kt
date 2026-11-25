@@ -196,11 +196,10 @@ object Revive {
                 // be what gets the game closed: only then, and if it doesn't, WalkThor stays off
                 // the bottom screen (black) until the game's over.
                 val gameOn = EmulatorWatch.gameShowing.value
-                // Mid-game, not back by itself at all (building it up again is a burst of work
-                // while the game still needs the memory): the bottom screen stays black, and a
-                // double-tap brings WalkThor back.
+                // Mid-game: black meanwhile (not your home app coming up underneath), and back once
+                // memory has settled, by the same watch as when WalkThor steps off for memory.
                 if (!crashed && gameOn) {
-                    p.edit().putString("note", "$closed. A game was playing, so it stayed off the bottom screen (double-tap for it).").apply()
+                    p.edit().putString("note", "$closed during a game; back once memory settled.").apply()
                     runCatching { BottomOff.stayOffForGame(context, drawerWasUp) }
                     return
                 }

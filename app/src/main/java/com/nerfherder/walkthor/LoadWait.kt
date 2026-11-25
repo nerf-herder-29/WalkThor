@@ -31,6 +31,7 @@ object LoadWait {
     private var view: View? = null
     private var tick: Runnable? = null
     private var openNow: (() -> Unit)? = null
+    private var log: LogView? = null
 
     /** Waiting now (for Diagnostics, and so a second game start doesn't start another wait). */
     val waiting get() = tick != null
@@ -41,6 +42,7 @@ object LoadWait {
         cover(service, bottom)
         openNow = open
         val started = SystemClock.elapsedRealtime()
+        var lastLine = -10_000L
         val readings = ArrayDeque<Pair<Long, Long>>() // (when, free MB)
         MemoryWatch.noteFrom(service, "Game loading: WalkThor waits on a black bottom screen until memory steadies")
         val am = service.getSystemService(ActivityManager::class.java)
@@ -57,7 +59,16 @@ object LoadWait {
                 while (readings.isNotEmpty() && now - readings.first().first > WINDOW_MS) readings.removeFirst()
                 val waited = now - started
                 val peak = readings.maxOf { it.second }
-                val steady = waited >= MIN_WAIT_MS && peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L
+                val calmNow = peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L
+                val steady = waited >= MIN_WAIT_MS && calmNow
+                // The log on screen: a line every 6 seconds, the newest one kept up to date.
+                log?.let { v ->
+                    if (waited - lastLine >= 6_000L) { v.lines.add(waited to free); lastLine = waited }
+                    else if (v.lines.isNotEmpty()) v.lines[v.lines.size - 1] = v.lines.last().first to free
+                    v.steadying = calmNow && readings.size >= 5
+                    v.blink = !v.blink
+                    v.invalidate()
+                }
                 if (steady || waited >= MAX_WAIT_MS) {
                     MemoryWatch.noteFrom(service, if (steady) "Game loaded (memory steady after ${waited / 1000} s, free $free MB): WalkThor up" else "Still loading after ${waited / 1000} s: WalkThor up anyway")
                     finish()
@@ -88,12 +99,56 @@ object LoadWait {
         uncover()
     }
 
+    /**
+     * The loading log: a dim line of free memory every few seconds, so the drop shows as it
+     * happens, the newest line brighter. Drawn straight on the window (no WalkThor screens loaded).
+     */
+    private class LogView(ctx: android.content.Context, private val accent: Int) : View(ctx) {
+        val lines = mutableListOf<Pair<Long, Long>>() // (ms since the start, free MB)
+        var steadying = false
+        var blink = false
+        private val mono = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { typeface = android.graphics.Typeface.MONOSPACE }
+        private val hint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textAlign = android.graphics.Paint.Align.CENTER }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            canvas.drawColor(Color.BLACK)
+            val w = width.toFloat(); val h = height.toFloat()
+            val size = w * 0.03f
+            mono.textSize = size
+            val step = size * 1.75f
+            val left = w * 0.14f
+            var y = h * 0.24f
+            mono.color = accent; mono.alpha = 205
+            canvas.drawText("› game loading", left, y, mono)
+            y += step * 1.3f
+            val shown = lines.takeLast(12)
+            shown.forEachIndexed { i, (at, free) ->
+                val newest = i == shown.size - 1
+                val time = "%02d:%02d".format(at / 60_000, (at / 1000) % 60)
+                mono.color = 0xFF3A3632.toInt()
+                canvas.drawText(time, left, y, mono)
+                mono.color = if (newest) 0xFFBDB6AB.toInt() else 0xFF5D5850.toInt()
+                val gb = "%.1f GB".format(java.util.Locale.US, free / 1024f) +
+                    (if (i == 0) " free" else "") + (if (newest && steadying) "  steadying" else "")
+                canvas.drawText(gb, left + mono.measureText("00:00") + size * 0.9f, y, mono)
+                y += step
+            }
+            if (blink) { mono.color = accent; canvas.drawText("_", left, y, mono) }
+            hint.textSize = w * 0.024f
+            hint.color = 0xFF4A4540.toInt()
+            canvas.drawText("Tap for WalkThor", w / 2f, h - w * 0.06f, hint)
+        }
+    }
+
     private fun cover(service: AccessibilityService, displayId: Int) {
         runCatching {
             val display = service.getSystemService(DisplayManager::class.java)?.getDisplay(displayId) ?: return
             val ctx = service.createDisplayContext(display).createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
             val w = ctx.getSystemService(WindowManager::class.java) ?: return
-            val v = View(ctx).apply {
+            val accent = runCatching {
+                StickLights.color(service).let { if (it == 0) 0xFFEDE6DA.toInt() else StickLights.swatch(it) or 0xFF000000.toInt() }
+            }.getOrDefault(0xFF2BE0D8.toInt())
+            val v = LogView(ctx, accent).apply {
                 setBackgroundColor(Color.BLACK)
                 // A tap: WalkThor now, without waiting.
                 @Suppress("ClickableViewAccessibility")
@@ -113,6 +168,7 @@ object LoadWait {
             w.addView(v, params)
             wm = w
             view = v
+            log = v
         }
     }
 
@@ -120,6 +176,7 @@ object LoadWait {
         val v = view ?: return
         runCatching { wm?.removeView(v) }
         view = null
+        log = null
         wm = null
     }
 }

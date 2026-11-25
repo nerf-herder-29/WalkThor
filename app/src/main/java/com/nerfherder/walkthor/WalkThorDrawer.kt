@@ -123,13 +123,16 @@ object Drawer {
         if (!shown.value && current != null && gameInFront()) {
             runCatching { destroy() }
             MemoryWatch.noteDrawerTakenDown()
+            SwipeGestureService.instance?.get()?.let { s -> if (Lean.isOn(s)) Lean.letGo(s) }
         }
     }
 
     /** The drawer was put away: during a game, it's taken down after a while. */
     internal fun afterHide() {
         main.removeCallbacks(takeDown)
-        main.postDelayed(takeDown, MemoryWatch.DRAWER_KEEP_MS)
+        // Lean during games: let go as soon as it's put away (once it has slid down).
+        val lean = SwipeGestureService.instance?.get()?.let { Lean.isOn(it) } == true && gameInFront()
+        main.postDelayed(takeDown, if (lean) 400L else MemoryWatch.DRAWER_KEEP_MS)
     }
 
     /** Android is short of memory: if the drawer's away, take it down now. */

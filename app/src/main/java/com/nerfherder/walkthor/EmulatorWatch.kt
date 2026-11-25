@@ -263,6 +263,7 @@ object EmulatorWatch {
             if (emulatorShowing.value != was) {
                 runCatching { MemoryWatch.gameChanged(context, emulatorShowing.value) }
                 runCatching { HomeSwap.gameChanged(context, emulatorShowing.value) }
+                runCatching { Lean.gameChanged(context, emulatorShowing.value) }
             }
         }
     }
