@@ -136,7 +136,7 @@ object MemoryWatch {
         if (gameInFront() && !real && level >= 10 && System.currentTimeMillis() - ranksAt >= 15_000L) {
             val app = context.applicationContext
             ranksAt = System.currentTimeMillis()
-            Thread({ runCatching { logRanks(app, "at Android's warning") } }, "WalkThor ranks").start()
+            Thread({ runCatching { logRanks(app, "at Android's warning") }.onFailure { ranksProblem(app, "${it.javaClass.simpleName}: ${it.message?.take(120)}") } }, "WalkThor ranks").start()
         }
         if (gameInFront() && real) {
             val app = context.applicationContext
@@ -197,7 +197,9 @@ object MemoryWatch {
         // How Android ranks the game against the bottom screen's apps: 15 s in, then every minute.
         val sinceStart = System.currentTimeMillis() - gameSince
         if (sinceStart >= 15_000L && System.currentTimeMillis() - ranksAt >= 60_000L) {
-            logRanks(c, if (ranksAt < gameSince) "15 s in" else "a minute on")
+            val why = if (ranksAt < gameSince) "15 s in" else "a minute on"
+            ranksAt = System.currentTimeMillis()
+            runCatching { logRanks(c, why) }.onFailure { ranksProblem(c, "${it.javaClass.simpleName}: ${it.message?.take(120)}") }
         }
         watchApps(c)
         // Keeper renews this every few seconds too: WalkThor's own is a back-up.
@@ -268,17 +270,18 @@ object MemoryWatch {
      * which app Android counts as the one in front. Through the system helper; read only.
      */
     @Synchronized internal fun logRanks(c: Context, why: String) {
-        if (AynSystem.knownAvailable() != true || yielding) return
-        val game = gamePkg ?: return
+        if (yielding) return
+        val game = gamePkg ?: run { ranksProblem(c, "no game known"); return }
         ranksAt = System.currentTimeMillis()
+        if (!AynSystem.available()) { ranksProblem(c, "AYN's system helper isn't available (${AynSystem.problem ?: "no reason given"})"); return }
         val pkgs = listOfNotNull(game, c.packageName, protectedHome(c), homePackage(c)).filter { PACKAGE.matches(it) }.distinct()
         val pattern = pkgs.joinToString("|") { it.replace(".", "\\.") }
-        val script = "for n in \$(ps -A -o NAME | grep -E '^($pattern)(:.*)?\$'); do for p in \$(pidof \$n); do " +
-            "echo \"A \$n \$(cat /proc/\$p/oom_score_adj)\"; done; done; dumpsys activity activities | grep -m1 mTopResumedActivity"
-        val out = AynSystem.shellLines(script) ?: return
+        val script = "ps -A -o PID,NAME | grep -E ' ($pattern)(:[^ ]*)?\$' | while read p n; do " +
+            "echo \"A \$n \$(cat /proc/\$p/oom_score_adj)\"; done; dumpsys activity activities | grep -m1 mTopResumedActivity"
+        val out = AynSystem.shellLines(script) ?: run { ranksProblem(c, "the helper didn't answer"); return }
         val procs = out.filter { it.startsWith("A ") }.map { it.split(' ') }.filter { it.size >= 3 }
             .mapNotNull { f -> f[2].toIntOrNull()?.let { f[1] to it } }.distinct().sortedBy { it.second }
-        if (procs.isEmpty()) return
+        if (procs.isEmpty()) { ranksProblem(c, "no processes found: " + out.take(2).joinToString("; ").take(160).ifEmpty { "no output" }); return }
         fun name(proc: String): String {
             val pkg = proc.substringBefore(':')
             val part = proc.substringAfter(':', "")
@@ -295,6 +298,14 @@ object MemoryWatch {
         }
         note(c, "Ranks ($why; lower is kept longer): " + procs.joinToString(", ") { "${name(it.first)} ${it.second}" } +
             " · Android's app in front: $top$warn")
+    }
+
+    @Volatile private var ranksProblemAt = 0L
+    /** Why a Ranks line couldn't be written (once per game). */
+    private fun ranksProblem(c: Context, why: String) {
+        if (ranksProblemAt >= gameSince) return
+        ranksProblemAt = System.currentTimeMillis()
+        note(c, "Ranks: couldn't read them ($why)")
     }
 
     /** Memory's critical: stops protecting the bottom screen's apps, so the game's kept instead. Not on the main thread. */
