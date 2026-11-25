@@ -65,9 +65,21 @@ object AynSystem {
      */
     fun shellLines(command: String): List<String>? {
         if (works == false) return null
-        val out = run("( $command ) 2>&1") ?: return null
-        return out.lines().map { it.trimEnd() }.filter { it.isNotEmpty() }
+        // AYN's helper only hands back the first line of what a command prints. So the command
+        // writes everything to a file in WalkThor's own storage instead (readable to it), and
+        // WalkThor reads that. (Before, every multi-line answer here was cut to its first line.)
+        val path = "$OUT_DIR/helper-${android.os.Process.myPid()}-${outSeq.incrementAndGet()}.txt"
+        run("( $command ) >$path 2>&1; chmod 644 $path") ?: return null
+        val file = java.io.File(path)
+        val text = runCatching { file.readText() }.getOrNull()
+        runCatching { file.delete() }
+        if (text == null) { problem = "couldn't read what AYN's system helper wrote"; return emptyList() }
+        return text.lines().map { it.trimEnd() }.filter { it.isNotEmpty() }
     }
+
+    /** WalkThor's own files folder (the helper, as the system, can write there; WalkThor can read). */
+    private val OUT_DIR = "/data/data/${BuildConfig.APPLICATION_ID}/files"
+    private val outSeq = java.util.concurrent.atomic.AtomicInteger()
 
     /** Whether the helper works here (checked once it succeeds; retried now and then if not). Not on the main thread. */
     fun available(): Boolean {
