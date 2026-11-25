@@ -470,7 +470,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     val swipeNeedsPermission by SwipeLauncher.needsPermission.collectAsState()
     val pending by host.incomingFlow.collectAsState()
     val canSwap by host.hasOtherScreenFlow.collectAsState()
-    var openId by rememberSaveable { mutableStateOf(initialBookId) }
+    // Built again mid-game (the drawer's let go while put away, to give the game its memory):
+    // back where you were in this game, the same tab and guide.
+    val resumeGame = remember { EmulatorWatch.topGame(context)?.pkg?.takeIf { it == DrawerPlace.gamePkg } }
+    var openId by rememberSaveable { mutableStateOf(initialBookId ?: resumeGame?.let { DrawerPlace.bookId }) }
 
     LaunchedEffect(pending) {
         pending?.let {
@@ -488,21 +491,32 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     LaunchedEffect(gameOn) { GameFocus.gameRunning.value = gameOn }
 
     /** The tab open while you play (Home unless you've pinned another); a guide being read is [openId]. */
-    var gameTab by remember { mutableStateOf(GameTab.HOME) }
+    var gameTab by remember { mutableStateOf(resumeGame?.let { DrawerPlace.tab } ?: GameTab.HOME) }
     /** The library, reached from Home's WalkThor button while a game is in front. */
     var libraryOpen by remember { mutableStateOf(false) }
     /** The open tab was reached from Multi, so Back goes back there. */
     var fromAll by remember { mutableStateOf(false) }
     /** The guide whose opening flourish is playing, and the last guide opened (no flourish again). */
     var introFor by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastOpened by rememberSaveable { mutableStateOf<String?>(resumeGame?.let { DrawerPlace.lastOpened }) }
     /** "Add a guide" beside a game in the library: the next imported guide goes with that game. */
     var linkImportTo by remember { mutableStateOf<com.nerfherder.walkthor.data.LaunchedGame?>(null) }
     var pinned by remember { mutableStateOf(GameTabs.openOn(context, PIN_KEY)?.takeIf { it != GameTab.HOME }) }
 
-    // A game came to the front: start on Home (or the tab you pinned).
+    // Where you are, for the game in front, so a rebuilt drawer comes back there.
+    LaunchedEffect(gameOn, gameTab, openId, lastOpened) {
+        if (!gameOn) return@LaunchedEffect
+        EmulatorWatch.topGame(context)?.pkg?.let { pkg ->
+            DrawerPlace.gamePkg = pkg; DrawerPlace.tab = gameTab; DrawerPlace.bookId = openId; DrawerPlace.lastOpened = lastOpened
+        }
+    }
+    var resuming by remember { mutableStateOf(resumeGame != null) }
+
+    // A game came to the front: start on Home (or the tab you pinned). Not when this is the drawer
+    // built again for the same game: then it's where you were.
     LaunchedEffect(gameOn) {
         if (!gameOn) return@LaunchedEffect
+        if (resuming) { resuming = false; return@LaunchedEffect }
         libraryOpen = false
         fromAll = false
         val first = pinned ?: GameTab.HOME
@@ -825,6 +839,14 @@ fun installWalkThorImageLoader(context: android.content.Context) {
 
 /** The pinned tab is the same for every game, kept under this one key. */
 private const val PIN_KEY = "any game"
+
+/** Where you were in the drawer during the current game (kept while the drawer itself is let go). */
+internal object DrawerPlace {
+    @Volatile var gamePkg: String? = null
+    @Volatile var tab: GameTab? = null
+    @Volatile var bookId: String? = null
+    @Volatile var lastOpened: String? = null
+}
 
 /**
  * One of your emulators (Settings → Emulators) is in front on the game screen; before anything's

@@ -10,11 +10,10 @@ import android.content.Context
  * pages. Nothing changes outside games.
  */
 object Lean {
-    private fun prefs(c: Context) = c.getSharedPreferences("lean", Context.MODE_PRIVATE)
 
-    fun isOn(c: Context) = prefs(c).getBoolean("on", false)
-
-    fun setOn(c: Context, on: Boolean) = prefs(c).edit().putBoolean("on", on).apply()
+    /** Always: it costs only a moment's rebuild when you reopen the drawer, and that comes back where you were. */
+    @Suppress("UNUSED_PARAMETER")
+    fun isOn(c: Context) = true
 
     /** A game came to the front, or went (from EmulatorWatch). */
     fun gameChanged(c: Context, playing: Boolean) {

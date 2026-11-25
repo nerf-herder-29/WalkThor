@@ -604,13 +604,6 @@ private fun SettingsScreen(
                 }
                 SettingsNote("While one of these is in front, the drawer has its tabs along the top and play time counts.")
                 SettingsGroup("While you play") {
-                    val leanContext = androidx.compose.ui.platform.LocalContext.current
-                    var leanOn by remember { mutableStateOf(com.nerfherder.walkthor.Lean.isOn(leanContext)) }
-                    SettingSwitch(
-                        "Lean during games",
-                        "WalkThor keeps as little in memory as it can: its app is closed if it's only in the background, and the drawer, images and guide pages are let go as soon as you put the drawer away (it opens a moment slower)",
-                        checked = leanOn,
-                    ) { leanOn = it; com.nerfherder.walkthor.Lean.setOn(leanContext, it) }
                     val swapContext = androidx.compose.ui.platform.LocalContext.current
                     var swapOn by remember { mutableStateOf(com.nerfherder.walkthor.HomeSwap.isOn(swapContext)) }
                     val homeName = remember { com.nerfherder.walkthor.HomeSwap.pausable(swapContext) }
