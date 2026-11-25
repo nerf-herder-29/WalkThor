@@ -16,19 +16,16 @@ import android.view.WindowManager
  * "Open when an emulator starts", once the game has loaded. A game is hungriest for memory in its
  * first minute or so, while it loads, and that is when Android's critical warnings came and games
  * were closed, with WalkThor up on the bottom screen beside them. So while the game loads, the
- * bottom screen is just black (a plain window, next to no memory), and WalkThor comes up once
- * memory has stopped dropping: at least 10 seconds in, no big fall in the last 8 seconds, and no critical warning for 8.
- * Memory pressure low too (looser after 30 seconds: some games keep swapping a little all the
- * way through, and waited a minute or more for nothing). At most 90 seconds. A tap on the black brings WalkThor up straight away.
+ * bottom screen is just black (a plain window, next to no memory). At 10 seconds WalkThor checks
+ * memory: if free memory has stopped falling (under 150 MB in the last 5 seconds) and at least
+ * 2.5 GB is free, WalkThor comes up. If not, it checks again every 5 seconds. At most 90 seconds.
+ * A tap on the black brings WalkThor up straight away.
  */
 object LoadWait {
-    private const val MIN_WAIT_MS = 10_000L
+    private const val FIRST_CHECK_MS = 10_000L
+    private const val CHECK_EVERY_MS = 5_000L
     private const val MAX_WAIT_MS = 90_000L
-    /** Memory pressure (avg10, %) that counts as calm: strict at first, looser once the game's had a while. */
-    private const val CALM_PRESSURE = 0.5f
-    private const val CALM_PRESSURE_LATE = 1.5f
-    private const val LATE_MS = 30_000L
-    private const val WINDOW_MS = 8_000L
+    /** Free memory may fall this much between checks and still count as loaded. */
     private const val STEADY_DROP_MB = 150L
 
     private val main = Handler(Looper.getMainLooper())
@@ -61,16 +58,15 @@ object LoadWait {
                 runCatching { am?.getMemoryInfo(info) }
                 val free = info.availMem / (1024 * 1024)
                 readings.addLast(now to free)
-                while (readings.isNotEmpty() && now - readings.first().first > WINDOW_MS) readings.removeFirst()
+                while (readings.isNotEmpty() && now - readings.first().first > CHECK_EVERY_MS) readings.removeFirst()
                 val waited = now - started
-                val peak = readings.maxOf { it.second }
-                // And Android's memory pressure low (how much time things spend waiting on memory):
-                // coming up while it's high was what tipped games over.
-                val pressure = runCatching {
-                    java.io.File("/proc/pressure/memory").readLines().firstOrNull()?.substringAfter("avg10=")?.substringBefore(' ')?.toFloat()
-                }.getOrNull() ?: 0f
-                val calmNow = peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L && pressure < (if (now - started >= LATE_MS) CALM_PRESSURE_LATE else CALM_PRESSURE)
-                val steady = waited >= MIN_WAIT_MS && calmNow
+                // Free memory 5 seconds ago (the oldest reading kept).
+                val before = readings.first().second
+                // Loaded: free memory stopped falling, and enough of it left.
+                val calmNow = before - free < STEADY_DROP_MB && free >= MemoryWatch.REAL_CRITICAL_MB
+                // Checked at 10 seconds, then every 5.
+                val checkNow = waited >= FIRST_CHECK_MS && (waited - FIRST_CHECK_MS) % CHECK_EVERY_MS < 1_000L
+                val steady = checkNow && calmNow && readings.size >= 4
                 // The log on screen: a line every 6 seconds, the newest one kept up to date.
                 log?.let { v ->
                     if (waited - lastLine >= 6_000L) { v.lines.add(waited to free); lastLine = waited }

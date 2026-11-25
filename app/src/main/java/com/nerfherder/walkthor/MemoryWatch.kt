@@ -56,7 +56,7 @@ object MemoryWatch {
         private set
     @Volatile private var lastCritical = 0L
     /** Below this much free, Android's critical warning is taken as real (above it, it's about background apps). */
-    private const val REAL_CRITICAL_MB = 2_500L
+    internal const val REAL_CRITICAL_MB = 2_500L
     /** Free memory under this, during a game, counts as critical. */
     private const val CRITICAL_MB = 1_500L
     /** Protection comes back once free memory is over this, with no critical warning for [CALM_MS]. */
