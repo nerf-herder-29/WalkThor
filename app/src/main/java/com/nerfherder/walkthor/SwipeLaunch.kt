@@ -292,9 +292,7 @@ class SwipeGestureService : AccessibilityService() {
         // With the AYN button set up, as the drawer (Cocoon stays put underneath).
         // Already showing there: it picks the new game up by itself.
         if (Drawer.shown.value || AppState.resumedDisplayId == bottom) return
-        // Not while the game loads (its hungriest moment): black meanwhile, WalkThor once it's loaded.
-        runCatching { LoadWait.start(this, bottom, session.pkg) { openForGameNow(session, bottom) } }
-            .onFailure { openForGameNow(session, bottom) }
+        openForGameNow(session, bottom)
     }
 
     private fun openForGameNow(session: EmulatorWatch.Session, bottom: Int) {

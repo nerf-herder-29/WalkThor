@@ -73,7 +73,7 @@ object ControllerLock {
         val want = wantDisplay ?: return
         if (event.displayId == want || event.displayId < 0) return
         val pkg = event.packageName?.toString() ?: return
-        // WalkThor's own little windows (the drawer, the loading cover, messages) never take focus.
+        // WalkThor's own little windows (the drawer, messages) never take focus.
         if (pkg == service.packageName && event.className?.toString()?.let { it.startsWith("android.widget.") || it == "android.view.View" } == true) return
         if (pkg != service.packageName && !EmulatorWatch.isApp(service, pkg)) return // keyboards, system overlays
         takeBack(service, want, APP_FRONT_AFTER_MS)

@@ -595,7 +595,7 @@ private fun SettingsScreen(
                 SettingsGroup("Emulators") {
                     SettingSwitch(
                         "Open when an emulator starts",
-                        "The drawer comes up by itself once a game has loaded, from any frontend (not for emulators set to Both screens)",
+                        "The drawer comes up by itself when a game starts, from any frontend (not for emulators set to Both screens)",
                         checked = detecting,
                         divider = false,
                     ) { onToggleEmulators(it) }
