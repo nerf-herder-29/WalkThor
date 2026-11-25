@@ -314,6 +314,7 @@ object EmulatorWatch {
                         emulatorShowing.value = frontByDisplay.values.any { isEmulator(service, it) }
                         gameCovered = false
                         MemoryWatch.noteFrom(service, "The game had closed while WalkThor was restarting")
+                        games.forEach { MemoryWatch.gameEndedUnseen(service, it) }
                         if (was && !emulatorShowing.value) {
                             runCatching { MemoryWatch.gameChanged(service, false) }
                             runCatching { HomeSwap.gameGone(service) }

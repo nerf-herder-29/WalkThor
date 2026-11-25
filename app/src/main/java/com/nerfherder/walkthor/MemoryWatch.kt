@@ -89,6 +89,7 @@ object MemoryWatch {
     fun gameChanged(context: Context, playing: Boolean) {
         val app = context.applicationContext
         if (playing) {
+            runCatching { EmulatorWatch.topGame(app)?.pkg }.getOrNull()?.let { gamePkg = it }
             gameSince = System.currentTimeMillis()
             lowestMb = -1L; lowCount = 0; restarts = 0
             pids.clear()
@@ -102,7 +103,9 @@ object MemoryWatch {
             yielding = false
             Thread({ setGuarding(app, false); runCatching { lightBack(app, "the game closed") } }, "WalkThor guard").start()
             note(app, "Game closed · ${summaryOfGame()}")
-            Thread({ runCatching { closeRecords(app) } }, "WalkThor close records").start()
+            val game = gamePkg
+            // A moment for Android to write its record of how the game ended.
+            Thread({ runCatching { Thread.sleep(2_000); closeRecords(app, listOfNotNull(game)) } }, "WalkThor close records").start()
         }
     }
 
@@ -340,6 +343,15 @@ object MemoryWatch {
         if (props.isNotEmpty()) note(c, "Memory killer settings: " + props.joinToString("; "))
     }
 
+    /** The game's app (its emulator), for Android's record of how it ended. */
+    @Volatile var gamePkg: String? = null
+
+    /** The game turned out to have closed while WalkThor was down: Android's record of how. */
+    fun gameEndedUnseen(c: Context, pkg: String) {
+        val app = c.applicationContext
+        Thread({ runCatching { closeRecords(app, listOf(pkg)) } }, "WalkThor close records").start()
+    }
+
     /** Where we've got to in Android's records, so each is written in once. */
     private fun seen(c: Context) = c.getSharedPreferences("memory_watch", Context.MODE_PRIVATE)
 
@@ -347,10 +359,10 @@ object MemoryWatch {
      * Writes in why Android last closed the home app and WalkThor (from Android's own records), and
      * the memory killer's records of closing them, if they're newer than what's already written.
      */
-    private fun closeRecords(c: Context) {
+    private fun closeRecords(c: Context, games: List<String> = emptyList()) {
         if (AynSystem.knownAvailable() != true) return
         val prefs = seen(c)
-        val pkgs = listOfNotNull(homePackage(c), c.packageName).distinct()
+        val pkgs = (games + listOfNotNull(homePackage(c), c.packageName)).distinct()
         // Android's reason, per app.
         for (pkg in pkgs) runCatching {
             val out = AynSystem.shellLines("dumpsys activity exit-info $pkg | head -30")?.joinToString("\n") ?: return@runCatching
@@ -361,7 +373,21 @@ object MemoryWatch {
             val why = Regex("reason=\\d+ \\(([A-Z_]+)\\)").find(first)?.groupValues?.get(1)?.lowercase()?.replace('_', ' ') ?: "unknown"
             val desc = Regex("description=([^\\n]*?)(?: state=| trace=|$)").find(first)?.groupValues?.get(1)?.trim()
                 ?.takeIf { it.isNotEmpty() && it != "null" }
-            note(c, "Android's record: ${label(c, pkg)} closed at ${stamp.substringAfter(' ').substringBefore('.')} (${why}${desc?.let { ", $it" } ?: ""})")
+            // What it means, in a word, for the game's own record especially.
+            val meaning = when (why) {
+                "crash" -> "the app crashed"
+                "crash native" -> "the app crashed (in its native code: an emulator's own fault, usually)"
+                "anr" -> "the app froze and Android closed it"
+                "low memory" -> "the memory killer closed it"
+                "exit self" -> "the app closed itself"
+                "signaled" -> "it was stopped by a signal (often the memory killer)"
+                "user requested", "user stopped" -> "closed on purpose (from recents, settings or a close-all)"
+                "dependency died" -> "something it relied on stopped"
+                else -> null
+            }
+            val game = if (pkg in games) "the game, " else ""
+            note(c, "Android's record: ${game}${label(c, pkg)} closed at ${stamp.substringAfter(' ').substringBefore('.')} (${why}${desc?.let { ", $it" } ?: ""})" +
+                (meaning?.let { ": $it" } ?: ""))
         }
         // The memory killer's own record of each close (it says which rule it acted on).
         runCatching {
