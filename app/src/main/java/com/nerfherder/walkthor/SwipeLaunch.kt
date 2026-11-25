@@ -217,8 +217,6 @@ class SwipeGestureService : AccessibilityService() {
         } else runCatching { TopFps.start(this) }
         handler.removeCallbacks(drawerBeat)
         handler.postDelayed(drawerBeat, 5_000)
-        // RAM saver mode: watches memory while the drawer's up during a game.
-        runCatching { Saver.start(this) }
     }
 
     private val keeperLink = object : android.content.ServiceConnection {
@@ -237,7 +235,7 @@ class SwipeGestureService : AccessibilityService() {
     /** While the drawer is up during a game, note it, so it can come back if Android closes WalkThor. */
     private val drawerBeat = object : Runnable {
         override fun run() {
-            if ((Drawer.shown.value || Saver.showing) && GameFocus.gameRunning.value) runCatching { Revive.heartbeat(this@SwipeGestureService, drawer = true) }
+            if (Drawer.shown.value && GameFocus.gameRunning.value) runCatching { Revive.heartbeat(this@SwipeGestureService, drawer = true) }
             handler.postDelayed(this, 5_000)
         }
     }

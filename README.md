@@ -82,10 +82,6 @@ step that's done.
   apps to free memory while they load. If that closes WalkThor during a game, it reopens on the
   bottom screen right away and hands the game its priority back (Settings → About → *About & licences* →
   Diagnostics shows when this happened).
-- **RAM saver mode** — during a game, when memory gets tight (under 3 GB free, or falling fast
-  as a game loads), the drawer steps down to a plain screen with just the time, battery and free
-  memory, using a few MB instead of the drawer's 50 or so. The drawer comes back where you were
-  once memory is steady again, or straight away with a tap.
 - **Shots** — screenshots of the top screen without leaving your game: the whole screen or just
   the part you frame (kept for each game), saved in Pictures/WalkThor and listed in the tab to view,
   share or delete. **Clip** mode records the top screen with the game's sound: switch on *Keep the
