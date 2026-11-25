@@ -57,6 +57,32 @@ object ControllerLock {
         main.post { apply(service, announce = true) }
     }
 
+    /** The display the controller's kept on, while locked. */
+    @Volatile private var wantDisplay: Int? = null
+
+    /**
+     * An app came to the front on the other screen. Android gives the controller to the screen an
+     * app starts on, with no touch at all: Android starting your stand-in home app on the bottom
+     * screen while a game loads (when WalkThor pauses your home app, or the memory killer closed
+     * it and Android started it again) took the controller from the game. Taken back a moment
+     * later, once the app is up.
+     */
+    fun onAppFront(service: SwipeGestureService, event: android.view.accessibility.AccessibilityEvent) {
+        if (locked.value == null || android.os.Build.VERSION.SDK_INT < 30) return
+        if (event.eventType != android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val want = wantDisplay ?: return
+        if (event.displayId == want || event.displayId < 0) return
+        val pkg = event.packageName?.toString() ?: return
+        // WalkThor's own little windows (the drawer, the loading cover, messages) never take focus.
+        if (pkg == service.packageName && event.className?.toString()?.let { it.startsWith("android.widget.") || it == "android.view.View" } == true) return
+        if (pkg != service.packageName && !EmulatorWatch.isApp(service, pkg)) return // keyboards, system overlays
+        takeBack(service, want, APP_FRONT_AFTER_MS)
+        lastNote = "keeping the controller on the ${locked.value?.label} (display $want); ${pkg.substringAfterLast('.')} came up on the other screen"
+    }
+
+    /** How long after an app comes up on the other screen the controller's taken back (it's resumed by then). */
+    private const val APP_FRONT_AFTER_MS = 600L
+
     /** Kept for the service's window events (no longer needed). */
     fun onWindowsChanged(service: SwipeGestureService) = Unit
 
@@ -76,6 +102,7 @@ object ControllerLock {
     private fun apply(service: SwipeGestureService, announce: Boolean) {
         clear()
         val screen = locked.value
+        wantDisplay = null
         if (screen == null) {
             lastNote = "unlocked"
             if (announce) ScreenMessage.show("Controller unlocked", 2_000)
@@ -94,6 +121,7 @@ object ControllerLock {
                 .onFailure { lastNote = "couldn't watch display ${display.displayId} (${it.javaClass.simpleName})" }
         }
         watchedScreens = screensOn(service)
+        wantDisplay = want
         movedBack = 0
         // The controller to the locked screen now.
         val how = service.tapToFocus(want)
@@ -129,10 +157,10 @@ object ControllerLock {
         watchers += wm to v
     }
 
-    private fun takeBack(service: SwipeGestureService, want: Int) {
+    private fun takeBack(service: SwipeGestureService, want: Int, after: Long = BACK_AFTER_MS) {
         main.removeCallbacks(back)
         backTo = service to want
-        main.postDelayed(back, BACK_AFTER_MS)
+        main.postDelayed(back, after)
     }
 
     private var backTo: Pair<SwipeGestureService, Int>? = null

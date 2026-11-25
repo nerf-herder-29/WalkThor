@@ -412,7 +412,7 @@ object EmulatorWatch {
         "settings", "systemui", "android.vending", "play store", "files", "documentsui",
     )
 
-    private fun isApp(context: Context, pkg: String): Boolean = appCache.getOrPut(pkg) {
+    internal fun isApp(context: Context, pkg: String): Boolean = appCache.getOrPut(pkg) {
         // Home apps too: Android's own launcher has no icon of its own to open, but it coming to the
         // front (after a game closes, with your home app paused) is the game no longer being there.
         isEmulator(context, pkg) || pkg in launchers(context) ||

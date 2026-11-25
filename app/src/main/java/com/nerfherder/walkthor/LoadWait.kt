@@ -18,11 +18,16 @@ import android.view.WindowManager
  * were closed, with WalkThor up on the bottom screen beside them. So while the game loads, the
  * bottom screen is just black (a plain window, next to no memory), and WalkThor comes up once
  * memory has stopped dropping: at least 10 seconds in, no big fall in the last 8 seconds, and no critical warning for 8.
- * At most 2½ minutes. A tap on the black brings WalkThor up straight away.
+ * Memory pressure low too (looser after 30 seconds: some games keep swapping a little all the
+ * way through, and waited a minute or more for nothing). At most 90 seconds. A tap on the black brings WalkThor up straight away.
  */
 object LoadWait {
     private const val MIN_WAIT_MS = 10_000L
-    private const val MAX_WAIT_MS = 150_000L
+    private const val MAX_WAIT_MS = 90_000L
+    /** Memory pressure (avg10, %) that counts as calm: strict at first, looser once the game's had a while. */
+    private const val CALM_PRESSURE = 0.5f
+    private const val CALM_PRESSURE_LATE = 1.5f
+    private const val LATE_MS = 30_000L
     private const val WINDOW_MS = 8_000L
     private const val STEADY_DROP_MB = 150L
 
@@ -64,7 +69,7 @@ object LoadWait {
                 val pressure = runCatching {
                     java.io.File("/proc/pressure/memory").readLines().firstOrNull()?.substringAfter("avg10=")?.substringBefore(' ')?.toFloat()
                 }.getOrNull() ?: 0f
-                val calmNow = peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L && pressure < 0.15f
+                val calmNow = peak - free < STEADY_DROP_MB && MemoryWatch.msSinceCritical() >= 8_000L && pressure < (if (now - started >= LATE_MS) CALM_PRESSURE_LATE else CALM_PRESSURE)
                 val steady = waited >= MIN_WAIT_MS && calmNow
                 // The log on screen: a line every 6 seconds, the newest one kept up to date.
                 log?.let { v ->
