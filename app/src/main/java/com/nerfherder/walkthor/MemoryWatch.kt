@@ -258,7 +258,6 @@ object MemoryWatch {
                 " next in line after the game")
         }
     }
-    }
 
     /** The game's processes up to this rank are the ones on screen (put first); above it they're in the background (left alone). */
     internal const val GAME_VISIBLE_MAX_ADJ = 250
