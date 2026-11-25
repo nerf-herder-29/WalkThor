@@ -102,7 +102,9 @@ object MemoryWatch {
         } else if (gameSince > 0) {
             yielding = false
             Thread({ setGuarding(app, false); runCatching { lightBack(app, "the game closed") } }, "WalkThor guard").start()
-            note(app, "Game closed · ${summaryOfGame()}")
+            // Only that it's no longer in front (you went Home, switched away, quit, or it crashed):
+            // Android's record of how it ended follows a moment later.
+            note(app, "Game left the screen · ${summaryOfGame()}")
             val game = gamePkg
             // A moment for Android to write its record of how the game ended.
             Thread({ runCatching { Thread.sleep(2_000); closeRecords(app, listOfNotNull(game)) } }, "WalkThor close records").start()
