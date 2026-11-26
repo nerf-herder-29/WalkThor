@@ -90,15 +90,8 @@ fun frontAccent(): Color {
     val context = LocalContext.current
     val bump by com.nerfherder.walkthor.StickLights.changed.collectAsState()
     return remember(bump) {
-        val c = runCatching { com.nerfherder.walkthor.StickLights.color(context) }.getOrDefault(0)
-        val dark = runCatching { com.nerfherder.walkthor.StickLights.level(context) <= 0.01f }.getOrDefault(false) ||
-            // Switched off on AYN's side.
-            runCatching {
-                android.provider.Settings.System.getString(context.contentResolver, "joystick_light_enabled")
-                    ?.split(",")?.all { it.trim() == "0" } == true
-            }.getOrDefault(false)
         // Lights off (or turned all the way down): plain white.
-        if (c == 0 || dark) Color(0xFFF5F5FA) else Color(com.nerfherder.walkthor.StickLights.swatch(c) or 0xFF000000.toInt())
+        com.nerfherder.walkthor.StickLights.accent(context)?.let { Color(it) } ?: Color(0xFFF5F5FA)
     }
 }
 

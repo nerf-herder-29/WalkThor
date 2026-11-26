@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,8 +68,8 @@ private fun PlayCard(preview: Boolean, modifier: Modifier) {
             delay(30_000)
         }
     }
-    val color = StickLights.color(context)
-    val todayColor = if (color == 0) BookColors.Text else Color(StickLights.swatch(color))
+    val lightsBump by StickLights.changed.collectAsState()
+    val todayColor = remember(lightsBump) { StickLights.accent(context)?.let { Color(it) } ?: BookColors.Text }
     Column(modifier.glanceCard()) {
         Text("Play time", color = BookColors.TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.Bottom) {

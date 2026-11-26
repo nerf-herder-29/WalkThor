@@ -88,6 +88,21 @@ object StickLights {
     fun followsScreens(c: Context) = prefs(c).getBoolean("follow", false)
     fun setFollowsScreens(c: Context, on: Boolean) = prefs(c).edit().putBoolean("follow", on).apply()
 
+    /**
+     * The accent colour for WalkThor's screens: how the lights' colour shows on screen, or null
+     * while they're off (switched off here or on AYN's side, or turned all the way down).
+     */
+    fun accent(c: Context): Int? {
+        val col = runCatching { color(c) }.getOrDefault(0)
+        if (col == 0) return null
+        if (runCatching { level(c) <= 0.01f }.getOrDefault(false)) return null
+        val aynOff = runCatching {
+            Settings.System.getString(c.contentResolver, "joystick_light_enabled")?.split(",")?.all { it.trim() == "0" } == true
+        }.getOrDefault(false)
+        if (aynOff) return null
+        return swatch(col) or 0xFF000000.toInt()
+    }
+
     /** Whether the stick lights are on (any colour but off). */
     fun isOn(c: Context) = color(c) != 0
 
@@ -110,7 +125,10 @@ object StickLights {
     @Volatile private var lastAynLook = 0L
 
     private fun adoptAynChange(c: Context) {
-        if (!aynMatched || demo) return
+        if (demo) return
+        // Remembered across restarts: once AYN's settings have matched yours, any difference
+        // later (even while WalkThor wasn't running) is you changing the lights on AYN's side.
+        if (!aynMatched) aynMatched = prefs(c).getBoolean("aynMatched", false)
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - changedAt < 6_000L) return // still catching up
         // At most every 5 seconds (the performance overlay asks for the colour every second in a game).
@@ -122,7 +140,11 @@ object StickLights {
         val ayn = if (!enabled) 0 else Settings.System.getString(cr, "joystick_led_light_picker_color")?.split(",")?.firstOrNull()?.trim()
             ?.let { runCatching { android.graphics.Color.parseColor(it) }.getOrNull() } ?: return
         val same = if (ayn == 0 || mine == 0) (ayn == 0) == (mine == 0) else (ayn and 0xFFFFFF) == (mine and 0xFFFFFF)
-        if (same) return
+        if (same) {
+            if (!aynMatched) { aynMatched = true; prefs(c).edit().putBoolean("aynMatched", true).apply() }
+            return
+        }
+        if (!aynMatched) return
         // The nearest of WalkThor's colours, so its swatch (how it's shown on screen) is used.
         val adopted = if (ayn == 0) 0 else COLORS.filter { it != 0 }.firstOrNull { (it and 0xFFFFFF) == (ayn and 0xFFFFFF) } ?: (ayn or 0xFF000000.toInt())
         prefs(c).edit().putInt("color", adopted).apply()
@@ -197,7 +219,7 @@ object StickLights {
                 if (cur == null || Math.abs(cur - k) > 0.006f) add("led_light_brightness_percent" to levelText)
             }
         }
-        if (changes.isEmpty()) { aynMatched = true; aynNote = "AYN's settings match (${now()})"; log("AYN settings already match"); return }
+        if (changes.isEmpty()) { aynMatched = true; prefs(c).edit().putBoolean("aynMatched", true).apply(); aynNote = "AYN's settings match (${now()})"; log("AYN settings already match"); return }
         var ok = true
         for ((name, value) in changes) {
             val done = AynSystem.putSetting(name, value)
@@ -207,6 +229,7 @@ object StickLights {
         aynNote = if (ok) "AYN's settings set to match at ${now()}" else "couldn't set AYN's settings (system helper unavailable) at ${now()}"
         // Only once AYN's match yours can a later difference be read as a change on AYN's side.
         aynMatched = ok
+        prefs(c).edit().putBoolean("aynMatched", ok).apply()
         // AYN redraws on its own a moment after its settings change: make sure yours are what shows.
         for (wait in longArrayOf(250, 900, 2_000)) {
             Thread.sleep(wait)

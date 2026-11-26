@@ -52,16 +52,9 @@ import androidx.core.graphics.drawable.toBitmap
 import com.nerfherder.walkthor.data.Updates
 import com.nerfherder.walkthor.data.Updates.State
 
-/** Your stick lights' colour (as the keyboard's action key), or WalkThor's teal while they're off. */
+/** Your stick lights' colour, the same accent as everywhere else (white while they're off). */
 @Composable
-private fun accentColor(): Color {
-    val context = LocalContext.current
-    return remember {
-        runCatching {
-            com.nerfherder.walkthor.StickLights.color(context).let { if (it == 0) Color(0xFF2BE0D8) else Color(com.nerfherder.walkthor.StickLights.swatch(it) or 0xFF000000.toInt()) }
-        }.getOrDefault(Color(0xFF2BE0D8))
-    }
-}
+private fun accentColor(): Color = frontAccent()
 
 /**
  * Updates for WalkThor and your emulators, as cards. [header] adds the title, when it was last

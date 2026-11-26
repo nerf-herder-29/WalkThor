@@ -659,6 +659,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             }
         }
     }
+    // The accents follow the stick lights, also when you change them on AYN's side: look now and then.
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(3_000L)
+            runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { StickLights.color(context) } }
+        }
+    }
     // A game ended: back on your games.
     LaunchedEffect(gameOn) { if (!gameOn) mainTab = com.nerfherder.walkthor.ui.MainTab.Games }
 

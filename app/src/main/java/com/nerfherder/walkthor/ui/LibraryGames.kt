@@ -183,8 +183,9 @@ private val LIBRARY_KEYS = setOf(
 @Composable
 private fun guideAccent(): Color {
     val context = LocalContext.current
-    val color = remember { runCatching { StickLights.color(context) }.getOrDefault(0) }
-    return if (color == 0) BookColors.Text else Color(StickLights.swatch(color))
+    val bump by StickLights.changed.collectAsState()
+    val accent = remember(bump) { StickLights.accent(context) }
+    return accent?.let { Color(it) } ?: BookColors.Text
 }
 
 /**
