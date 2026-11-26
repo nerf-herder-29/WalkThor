@@ -22,7 +22,6 @@ object FocusBack {
     private val main = Handler(Looper.getMainLooper())
     /** After the home app's paused: while the game loads, and once it has. */
     private val AFTER_PAUSE_MS = longArrayOf(2_000L, 8_000L, 20_000L, 40_000L)
-    @Volatile private var notedFor = 0L
     private val pending = mutableListOf<Runnable>()
 
     /** The home app was just paused for a game. */
@@ -62,13 +61,42 @@ object FocusBack {
         val bottom = DisplayHelper.bottomDisplay(service)?.displayId ?: return
         val gameDisplay = DisplayHelper.usableDisplays(service).filter { it.displayId != bottom }
             .maxByOrNull { d -> d.mode.physicalWidth.toLong() * d.mode.physicalHeight }?.displayId ?: return
-        val how = service.tapToFocus(gameDisplay)
-        val since = MemoryWatch.gameStartedAt()
-        if (notedFor != since) {
-            notedFor = since
-            MemoryWatch.noteFrom(service, "Kept the game in front for the memory killer ($why): tapped the top edge of its screen ($how)")
+        val point = topEdge(service, gameDisplay) ?: return
+        // Through AYN's system helper, as an ordinary touch (Android's own "input tap"): the
+        // accessibility tap didn't hold the game in front the way a finger did. Not while memory is
+        // critical (the input tool starts a small Java program); the accessibility tap then.
+        val free = runCatching {
+            val mi = android.app.ActivityManager.MemoryInfo()
+            service.getSystemService(android.app.ActivityManager::class.java)?.getMemoryInfo(mi)
+            mi.availMem / (1024 * 1024)
+        }.getOrDefault(0L)
+        if (AynSystem.knownAvailable() == true && free >= MemoryWatch.REAL_CRITICAL_MB) {
+            Thread({
+                val out = runCatching { AynSystem.shellLines("input -d $gameDisplay tap ${point.first} ${point.second}") }.getOrNull()
+                main.post { noted(service, why, if (out == null) "input tap: the helper didn't answer" else "input tap" + out.firstOrNull()?.let { " ($it)" }.orEmpty()) }
+            }, "WalkThor focus tap").start()
+        } else {
+            noted(service, why, "accessibility tap: " + service.tapToFocus(gameDisplay))
         }
     }
+
+    private fun noted(service: SwipeGestureService, why: String, how: String) {
+        // Each one, for now: whether this way holds the game in front is still being tested.
+        MemoryWatch.noteFrom(service, "Kept the game in front for the memory killer ($why): tapped the top edge of its screen ($how)")
+    }
+
+    /** Just below the status bar, in the middle of [displayId] (where a tap gives that screen the controller and presses nothing). */
+    private fun topEdge(service: SwipeGestureService, displayId: Int): Pair<Int, Int>? = runCatching {
+        val display = service.getSystemService(android.hardware.display.DisplayManager::class.java)?.getDisplay(displayId) ?: return null
+        val size = android.graphics.Point()
+        @Suppress("DEPRECATION") display.getRealSize(size)
+        val barTop = runCatching {
+            service.createDisplayContext(display).createWindowContext(android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+                .getSystemService(android.view.WindowManager::class.java)!!.currentWindowMetrics.windowInsets
+                .getInsetsIgnoringVisibility(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.displayCutout()).top
+        }.getOrDefault(0)
+        (size.x / 2) to (barTop + 3)
+    }.getOrNull()
 
     private val homeCache = HashMap<String, Boolean>()
     private fun isHomeApp(c: android.content.Context, pkg: String): Boolean = homeCache.getOrPut(pkg) {
