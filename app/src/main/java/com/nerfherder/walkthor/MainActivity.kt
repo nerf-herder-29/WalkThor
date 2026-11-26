@@ -87,6 +87,10 @@ class MainActivity : ComponentActivity(), WalkThorHost {
     private val romFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) onRomFolderPicked(this, lifecycleScope, uri)
     }
+    /** Your music folder: background music on your games. */
+    private val musicFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) com.nerfherder.walkthor.data.MenuMusic.link(this, uri)
+    }
     /** Your art folder: covers and pictures for your games. */
     private val artFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) onArtFolderPicked(this, lifecycleScope, uri)
@@ -418,6 +422,7 @@ class MainActivity : ComponentActivity(), WalkThorHost {
 
     override fun pickRomFolder() = romFolderPicker.launch(null)
     override fun pickArtFolder() = artFolderPicker.launch(null)
+    override fun pickMusicFolder() = musicFolderPicker.launch(null)
 
     override fun swapScreen(bookId: String?) = DisplayHelper.moveToOtherScreen(this, bookId)
 
@@ -436,6 +441,28 @@ class MainActivity : ComponentActivity(), WalkThorHost {
         if (!KeyBus.readerActive && com.nerfherder.walkthor.ui.MainTabs.shoulder?.invoke(event) == true) {
             AutoDim.interact()
             return true
+        }
+        if (!KeyBus.readerActive && !GameFocus.gameRunning.value && com.nerfherder.walkthor.ui.MainTabs.shoulder != null) {
+            // In Settings and Apps: the first D-pad press puts the controller on the first row.
+            val dpad = event.keyCode in listOf(
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+            )
+            val first = com.nerfherder.walkthor.ui.MainTabs.focusFirst
+            if (dpad && first != null && !com.nerfherder.walkthor.ui.MainTabs.rowFocused) {
+                if (event.action == KeyEvent.ACTION_DOWN) first()
+                AutoDim.interact()
+                return true
+            }
+            // A picks the row the controller is on (Android's own "select" key).
+            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A && first != null) {
+                AutoDim.interact()
+                return super.dispatchKeyEvent(
+                    KeyEvent(
+                        event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount,
+                        event.metaState, event.deviceId, event.scanCode, event.flags, event.source,
+                    ),
+                )
+            }
         }
         if (event.action == KeyEvent.ACTION_DOWN && AutoDim.interact()) {
             wakeKey = event.keyCode
@@ -622,7 +649,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         val activity = context as? android.app.Activity ?: return@LaunchedEffect
         keepTopOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
             while (true) {
-                kotlinx.coroutines.delay(1_500L)
+                kotlinx.coroutines.delay(400L)
                 runCatching { com.nerfherder.walkthor.ui.Frontend.ensureTop(activity) }
             }
         }
@@ -649,6 +676,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                     onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
                     onBackToGame = if (gameOn) ({ libraryOpen = false }) else null,
                     onLinkArt = host::pickArtFolder,
+                    onLinkMusic = host::pickMusicFolder,
                     onBackToGames = backToGames,
                 )
 
@@ -853,6 +881,22 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             }
         }
         DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.MainTabs.shoulder = null } }
+        // Background music while these are up and WalkThor is on screen (not during a game).
+        val musicOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+        DisposableEffect(musicOwner) {
+            val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+                when (e) {
+                    androidx.lifecycle.Lifecycle.Event.ON_RESUME -> com.nerfherder.walkthor.data.MenuMusic.showing(context, true)
+                    androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> com.nerfherder.walkthor.data.MenuMusic.showing(context, false)
+                    else -> {}
+                }
+            }
+            musicOwner.lifecycle.addObserver(obs)
+            onDispose {
+                musicOwner.lifecycle.removeObserver(obs)
+                com.nerfherder.walkthor.data.MenuMusic.showing(context, false)
+            }
+        }
         Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
             com.nerfherder.walkthor.ui.MainTabBar(
                 mainTab, { mainTab = it },

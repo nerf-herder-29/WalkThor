@@ -28,6 +28,7 @@ interface WalkThorHost {
     fun pickGuide()
     fun pickRomFolder()
     fun pickArtFolder()
+    fun pickMusicFolder()
     fun swapScreen(bookId: String?)
 }
 

@@ -176,8 +176,31 @@ object Frontend {
     fun ensureTop(activity: Activity) {
         val wanted = keyHandler != null || SettingsTop.section.value != null || LibraryTop.active.value || AppsTop.active.value
         if (!wanted || com.nerfherder.walkthor.GameFocus.gameRunning.value) return
-        if (top?.get()?.let { !it.isFinishing && !it.isDestroyed } == true) return
-        showTop(activity, moveDown = false)
+        val alive = top?.get()?.let { !it.isFinishing && !it.isDestroyed } == true
+        if (!alive) { showTop(activity, moveDown = false); return }
+        if (topVisible) return
+        // Still open but covered: bring it back if what covers it is only a home screen or launcher
+        // (left behind when an app was closed), not an app you opened up there.
+        val topId = runCatching { DisplayHelper.topDisplay(activity)?.displayId }.getOrNull() ?: return
+        val front = com.nerfherder.walkthor.EmulatorWatch.frontOn(topId) ?: return
+        if (front == activity.packageName || front !in launchers(activity)) return
+        bringTop(activity, topId)
+    }
+
+    /** Whether the top screen's WalkThor is showing (not covered, the screen on). */
+    @Volatile var topVisible = false
+
+    private var launcherCache: Set<String>? = null
+    private fun launchers(c: Context): Set<String> = launcherCache ?: runCatching {
+        c.packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            .map { it.activityInfo.packageName }.toSet() + setOf("com.android.launcher3", "com.android.systemui")
+    }.getOrDefault(emptySet()).also { launcherCache = it }
+
+    private fun bringTop(activity: Activity, displayId: Int) {
+        val intent = Intent(activity, com.nerfherder.walkthor.FrontendTopActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
+        runCatching { activity.startActivity(intent, options) }
     }
 
     /** Closes the top screen shortly, unless the games or Settings still want it by then. */
@@ -253,10 +276,10 @@ private fun Cover(rom: Rom, picture: Uri?, selected: Boolean, modifier: Modifier
     val shape = RoundedCornerShape(24.dp)
     // A quick fade of the ring and a slight lift as the choice moves from game to game.
     val ring by androidx.compose.animation.animateColorAsState(
-        if (selected) frontAccent() else Color.Transparent, androidx.compose.animation.core.tween(160), label = "ring",
+        if (selected) frontAccent() else Color.Transparent, androidx.compose.animation.core.tween(240), label = "ring",
     )
     val lift by androidx.compose.animation.core.animateFloatAsState(
-        if (selected) 1f else 0.95f, androidx.compose.animation.core.tween(160), label = "lift",
+        if (selected) 1f else 0.97f, androidx.compose.animation.core.tween(240), label = "lift",
     )
     Box(
         modifier
@@ -395,6 +418,8 @@ fun FrontendScreen(
     val current = shown.getOrNull(selected)
     LaunchedEffect(current?.id, artVersion, plays, guideFor) {
         val rom = current ?: run { Frontend.spotlight.value = null; return@LaunchedEffect }
+        // Moving quickly through games: only the one you stop on goes up top (no flicker on the way).
+        if (Frontend.spotlight.value?.rom?.id != rom.id && Frontend.spotlight.value != null) kotlinx.coroutines.delay(140)
         Frontend.spotlight.value = Spotlight(
             rom = rom,
             system = RomLibrary.system(rom.system)?.name ?: rom.system,
@@ -627,9 +652,14 @@ fun TopSpotlight(spot: Spotlight?) {
     // Moving from game to game fades the top screen across, quickly.
     androidx.compose.animation.AnimatedContent(
         targetState = spot,
+        // The new game fades in over the old one (which stays until it's covered), so the
+        // screen never dips to black between them.
         transitionSpec = {
-            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) togetherWith
-                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(220))
+            (
+                androidx.compose.animation.fadeIn(
+                    androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                ) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(1, delayMillis = 380))
+            ).apply { targetContentZIndex = 1f }
         },
         contentKey = { it?.rom?.id },
         label = "spotlight",

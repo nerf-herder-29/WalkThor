@@ -84,7 +84,18 @@ class FrontendTopActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event)
     }
 
+    override fun onStart() {
+        super.onStart()
+        Frontend.topVisible = true
+    }
+
+    override fun onStop() {
+        Frontend.topVisible = false
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        Frontend.topVisible = false
         if (Frontend.top?.get() === this) Frontend.top = null
         super.onDestroy()
     }

@@ -11,6 +11,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.focus.onFocusChanged
@@ -209,9 +211,14 @@ fun AppsScreen(
             val byPkg = remember(all) { all.associateBy { it.packageName } }
             val pinnedApps = pinnedIds.mapNotNull { byPkg[it] }
             val shown = if (query.isBlank()) all else all.filter { it.label.contains(query.trim(), ignoreCase = true) }
+            val first = remember { androidx.compose.ui.focus.FocusRequester() }
+            DisposableEffect(Unit) {
+                MainTabs.focusFirst = { runCatching { first.requestFocus() }.isSuccess }
+                onDispose { MainTabs.focusFirst = null; MainTabs.rowFocused = false }
+            }
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(if (compact) 76.dp else 92.dp),
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp).focusRequester(first),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 16.dp),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -307,6 +314,7 @@ internal fun SearchBox(query: String, onChange: (String) -> Unit, modifier: Modi
 @Composable
 internal fun AppIcon(app: InstalledApp, compact: Boolean, onOpen: () -> Unit, onHold: (() -> Unit)?) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var appFocused by remember { mutableStateOf(false) }
     Column(
         Modifier
             // The top screen shows the app you touch or move to.
@@ -318,7 +326,12 @@ internal fun AppIcon(app: InstalledApp, compact: Boolean, onOpen: () -> Unit, on
                     AppsTop.current.value = app
                 }
             }
-            .onFocusChanged { if (it.hasFocus) AppsTop.current.value = app }
+            .onFocusChanged {
+                appFocused = it.hasFocus
+                MainTabs.rowFocused = it.hasFocus
+                if (it.hasFocus) AppsTop.current.value = app
+            }
+            .border(2.dp, if (appFocused) frontAccent() else Color.Transparent, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },

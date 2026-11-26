@@ -102,7 +102,7 @@ fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifi
                     drawLine(Color(0xFFF5F5FA), Offset(cx - half, y), Offset(cx + half, y), 3.dp.toPx(), StrokeCap.Round)
                 }
             },
-        horizontalArrangement = Arrangement.spacedBy(if (narrow) 2.dp else 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (items.size > 6) 0.dp else if (narrow) 2.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEachIndexed { i, item ->
@@ -110,7 +110,8 @@ fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifi
             val tint = if (on) BookColors.Text else Color.White.copy(alpha = 0.55f)
             Column(
                 Modifier
-                    .weight(1f)
+                    // Longer names get more room, so none is cut off.
+                    .weight(item.label.length.coerceAtLeast(5) + 3f)
                     .fillMaxHeight()
                     .onGloballyPositioned { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() }
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) },
@@ -123,7 +124,8 @@ fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifi
                     item.label,
                     color = tint,
                     fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
-                    fontSize = if (narrow) 11.sp else 12.sp,
+                    fontSize = if (items.size > 6) 10.5.sp else if (narrow) 11.sp else 12.sp,
+                    letterSpacing = if (items.size > 6) (-0.2).sp else androidx.compose.ui.unit.TextUnit.Unspecified,
                     maxLines = 1,
                     softWrap = false,
                 )
@@ -157,6 +159,10 @@ sealed class MainTab(val label: String) {
 /** The L1 / R1 handler for the main tabs, while they're up (MainActivity passes it presses first). */
 object MainTabs {
     @Volatile var shoulder: ((android.view.KeyEvent) -> Boolean)? = null
+    /** Whether a row of the open tab has the controller's focus (so the D-pad moves between rows). */
+    @Volatile var rowFocused = false
+    /** Puts the controller's focus on the open tab's first row; returns whether it could. */
+    @Volatile var focusFirst: (() -> Boolean)? = null
 }
 
 /** The main tabs' row, with the search button (on Games) at the right. */
@@ -173,11 +179,13 @@ fun MainTabBar(selected: MainTab, onSelect: (MainTab) -> Unit, onSearch: (() -> 
             }
         }
     }
-    TabBarFrame(
-        overlay = false,
-        start = {},
-        middle = { TabsRow(items, MainTab.all.indexOf(selected).coerceAtLeast(0), { onSelect(MainTab.all[it]) }, Modifier.weight(1f)) },
-        end = {
+    // The whole width for the tabs, with just the search button's room at the right.
+    Row(
+        Modifier.fillMaxWidth().height(TabBarHeight).background(BookColors.Ink).padding(start = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TabsRow(items, MainTab.all.indexOf(selected).coerceAtLeast(0), { onSelect(MainTab.all[it]) }, Modifier.weight(1f))
+        Box(Modifier.width(44.dp), contentAlignment = Alignment.Center) {
             if (onSearch != null) {
                 androidx.compose.material3.IconButton(onClick = onSearch) {
                     androidx.compose.material3.Icon(
@@ -186,8 +194,8 @@ fun MainTabBar(selected: MainTab, onSelect: (MainTab) -> Unit, onSearch: (() -> 
                     )
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 /** A rounded screen with a play mark: your games. */

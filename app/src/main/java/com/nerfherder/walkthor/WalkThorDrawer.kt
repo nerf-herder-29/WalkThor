@@ -211,6 +211,7 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
 
     private val guidePicker = activityResultRegistry.register("guide", ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) incomingFlow.value = uri }
     private val romPicker = activityResultRegistry.register("roms", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) onRomFolderPicked(app, lifecycleScope, uri) }
+    private val musicPicker = activityResultRegistry.register("music", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) com.nerfherder.walkthor.data.MenuMusic.link(app, uri) }
     private val artPicker = activityResultRegistry.register("art", ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) onArtFolderPicked(app, lifecycleScope, uri) }
     init {
         savedState.performAttach()
@@ -508,5 +509,6 @@ class WalkThorDrawer(private val service: AccessibilityService, val displayId: I
     override fun pickGuide() = guidePicker.launch(GUIDE_TYPES)
     override fun pickRomFolder() = romPicker.launch(null)
     override fun pickArtFolder() = artPicker.launch(null)
+    override fun pickMusicFolder() = musicPicker.launch(null)
     override fun swapScreen(bookId: String?) = Unit
 }

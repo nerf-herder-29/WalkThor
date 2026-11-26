@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -117,11 +119,18 @@ fun SettingsFrame(
             end = {},
         )
         if (showBar) HorizontalDivider(color = BookColors.Hairline)
+        // The controller: the first D-pad press puts the focus on the first setting.
+        val first = remember { androidx.compose.ui.focus.FocusRequester() }
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            MainTabs.focusFirst = { runCatching { first.requestFocus() }.isSuccess }
+            onDispose { MainTabs.focusFirst = null; MainTabs.rowFocused = false }
+        }
         androidx.compose.runtime.CompositionLocalProvider(LocalSettingsSection provides section.label) {
             Column(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f)
+                    .focusRequester(first)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = if (narrow) 12.dp else 20.dp, vertical = 15.dp),
                 content = content,
@@ -184,10 +193,18 @@ fun SettingRow(
     androidx.compose.runtime.LaunchedEffect(info) {
         if (SettingsTop.current.value?.title == title) SettingsTop.pick(info)
     }
+    var focused by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val ring = frontAccent()
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
-            .onFocusChanged { if (it.hasFocus) SettingsTop.pick(latest.value) }
+            .onFocusChanged {
+                focused = it.hasFocus
+                MainTabs.rowFocused = it.hasFocus
+                if (it.hasFocus) SettingsTop.pick(latest.value)
+            }
+            // Where the controller is.
+            .border(2.dp, if (focused) ring else Color.Transparent, RoundedCornerShape(10.dp))
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
