@@ -264,6 +264,8 @@ fun AppsScreen(
                     onActivate = { whereFor = list.getOrNull(it) },
                     onLongPress = { menuFor = list.getOrNull(it) },
                     ring = frontAccent(),
+                    // Apps: Android's green ring.
+                    ringColor = { SystemColors.ANDROID },
                 ) { i ->
                     val app = list[i]
                     Box(Modifier.fillMaxSize().background(Color(0xFF1E1C22)), contentAlignment = Alignment.Center) {

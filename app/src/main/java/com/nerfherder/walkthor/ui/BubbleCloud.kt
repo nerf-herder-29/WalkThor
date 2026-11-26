@@ -28,6 +28,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -116,6 +120,10 @@ fun BubbleCloud(
     modifier: Modifier = Modifier,
     step: Dp = 84.dp,
     baseSize: Dp = 72.dp,
+    /** The colour of the ring around each bubble (its system's), or null for none. */
+    ringColor: (Int) -> Color? = { null },
+    /** The words written along the bottom of the ring ("SWITCH"), on the bigger bubbles. */
+    ringLabel: (Int) -> String? = { null },
     item: @Composable (index: Int) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -184,6 +192,8 @@ fun BubbleCloud(
             val y = cy + vy * k * stepPx
             val s = scaleAt(sd)
             val isSel = i == selected
+            val sysColor = ringColor(i)
+            val label = if (s >= 0.8f) ringLabel(i) else null
             Box(
                 Modifier
                     .offset { IntOffset((x - basePx / 2).toInt(), (y - basePx / 2).toInt()) }
@@ -192,15 +202,58 @@ fun BubbleCloud(
                         scaleX = s; scaleY = s
                         alpha = alphaAt(sd)
                     }
-                    .then(if (isSel) Modifier.border(3.dp / s.coerceAtLeast(0.5f), ring, CircleShape) else Modifier)
-                    .clip(CircleShape)
                     .pointerInput(i) {
                         detectTapGestures(
                             onTap = { if (i == latestSelected) onActivate(i) else onSelect(i) },
                             onLongPress = { onSelect(i); onLongPress(i) },
                         )
                     },
-            ) { item(i) }
+            ) {
+                // The picture, inside the system's ring.
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(if (sysColor != null) 4.dp else 0.dp)
+                        .clip(CircleShape),
+                ) { item(i) }
+                if (sysColor != null || isSel) {
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        val w = 3.dp.toPx()
+                        val r = size.minDimension / 2f
+                        if (sysColor != null) {
+                            drawCircle(sysColor, radius = r - w / 2f, style = androidx.compose.ui.graphics.drawscope.Stroke(w))
+                            if (label != null) {
+                                // A thicker band along the bottom, with the system's name around the curve.
+                                val band = 11.dp.toPx()
+                                val inset = band / 2f
+                                val arc = androidx.compose.ui.geometry.Rect(inset, inset, size.width - inset, size.height - inset)
+                                drawArc(
+                                    sysColor, startAngle = 28f, sweepAngle = 124f, useCenter = false,
+                                    topLeft = arc.topLeft, size = arc.size,
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(band, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                                )
+                                drawIntoCanvas { canvas ->
+                                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                        color = if (sysColor.luminance() > 0.55f) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+                                        textSize = 7.dp.toPx()
+                                        isFakeBoldText = true
+                                        letterSpacing = 0.08f
+                                    }
+                                    // The path runs right to left along the bottom, so the words read upright.
+                                    val path = android.graphics.Path().apply {
+                                        addArc(arc.left, arc.top, arc.right, arc.bottom, 152f, -124f)
+                                    }
+                                    val length = android.graphics.PathMeasure(path, false).length
+                                    val start = ((length - paint.measureText(label)) / 2f).coerceAtLeast(0f)
+                                    canvas.nativeCanvas.drawTextOnPath(label, path, start, paint.textSize * 0.35f, paint)
+                                }
+                            }
+                        }
+                        // The chosen one: your accent, just outside.
+                        if (isSel) drawCircle(ring, radius = r + 3.dp.toPx(), style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx()))
+                    }
+                }
+            }
         }
     }
 }

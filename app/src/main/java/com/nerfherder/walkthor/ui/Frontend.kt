@@ -542,6 +542,9 @@ fun FrontendScreen(
                             onActivate = { shown.getOrNull(it)?.let(::play) },
                             onLongPress = { i -> shown.getOrNull(i)?.let { menuFor = it } },
                             ring = ring,
+                            // Each game's system, as a coloured ring with its name.
+                            ringColor = { i -> shown.getOrNull(i)?.let { SystemColors.color(it.system) } },
+                            ringLabel = { i -> shown.getOrNull(i)?.let { SystemColors.label(it.system) } },
                         ) { i ->
                             val rom = shown[i]
                             val picture = remember(rom.id, artVersion) { art.picture(rom, GameArt.Kind.COVER) }
