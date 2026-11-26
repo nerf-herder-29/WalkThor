@@ -113,6 +113,8 @@ data class Spotlight(
 object Frontend {
     /** The game chosen on the bottom screen, for the top screen. */
     val spotlight = MutableStateFlow<Spotlight?>(null)
+    /** 0–1 while a game is launching (the top screen sweeps and fades along), else null. */
+    val launching = MutableStateFlow<Float?>(null)
 
     private fun prefs(c: Context) = c.getSharedPreferences("frontend", Context.MODE_PRIVATE)
     private val _enabled = MutableStateFlow<Boolean?>(null)
@@ -371,6 +373,11 @@ fun FrontendScreen(
     val rows = 3
     var choosingFor by remember { mutableStateOf<Rom?>(null) }
     var launchError by remember { mutableStateOf<String?>(null) }
+    /** The launch ripple's progress (0 at rest). */
+    val launchAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) { com.nerfherder.walkthor.data.UiSounds.warm(context) }
+    // The top screen follows the ripple.
+    LaunchedEffect(launchAnim.value) { Frontend.launching.value = launchAnim.value.takeIf { it > 0f } }
     /** The game whose options are open (X, or a long press). */
     var menuFor by remember { mutableStateOf<Rom?>(null) }
     // Choosing your own icon, hero picture or logo for a game.
@@ -389,6 +396,7 @@ fun FrontendScreen(
     fun select(i: Int) {
         if (shown.isEmpty()) return
         val n = i.coerceIn(0, shown.lastIndex)
+        if (shown[n].id != shown.getOrNull(selected)?.id) com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.MOVE)
         selectedId = shown[n].id
     }
 
@@ -424,10 +432,28 @@ fun FrontendScreen(
     }
 
     fun play(rom: Rom) {
+        if (launchAnim.isRunning) return
+        com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.LAUNCH)
         scope.launch {
-            Toast.makeText(context, "Starting ${rom.title}…", Toast.LENGTH_SHORT).show()
+            // The ripple: rings spread out, the others are pushed away, the top screen sweeps and fades.
+            launchAnim.snapTo(0f)
+            val ripple = launch {
+                launchAnim.animateTo(1f, androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing))
+            }
+            kotlinx.coroutines.delay(450)
             val error = GameLaunch.start(context, rom, runCatching { DisplayHelper.topDisplay(context) }.getOrNull())
-            if (error != null) launchError = error
+            if (error != null) {
+                ripple.cancel()
+                launchAnim.snapTo(0f)
+                Frontend.launching.value = null
+                launchError = error
+            } else {
+                ripple.join()
+                // Back to normal shortly (the game is up by now; if it isn't, the games come back).
+                kotlinx.coroutines.delay(1500)
+                launchAnim.snapTo(0f)
+                Frontend.launching.value = null
+            }
         }
     }
     fun guide(rom: Rom) {
@@ -457,7 +483,10 @@ fun FrontendScreen(
             KeyEvent.KEYCODE_DPAD_DOWN -> BubbleLayout.neighbor(selected, shown.size, 0, 1)?.let(::select)
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
-            KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let { menuFor = it }
+            KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let {
+                com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
+                menuFor = it
+            }
             // L2 / R2: the previous or next letter of your games.
             KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_R2 -> {
                 val at = rom?.let { Frontend.letter(it.title) }
@@ -542,6 +571,7 @@ fun FrontendScreen(
                             onActivate = { shown.getOrNull(it)?.let(::play) },
                             onLongPress = { i -> shown.getOrNull(i)?.let { menuFor = it } },
                             ring = ring,
+                            launching = launchAnim.value.takeIf { it > 0f },
                             // Each game's system, as a coloured ring with its name.
                             ringColor = { i -> shown.getOrNull(i)?.let { SystemColors.color(it.system) } },
                             ringLabel = { i -> shown.getOrNull(i)?.let { SystemColors.label(it.system) } },
@@ -666,7 +696,7 @@ private fun Pill(text: String, onClick: () -> Unit) {
  * and guide, with the buttons that act on it.
  */
 @Composable
-fun TopSpotlight(spot: Spotlight?) {
+fun TopSpotlight(spot: Spotlight?) = Box(Modifier.fillMaxSize()) {
     // Moving from game to game fades the top screen across, quickly.
     androidx.compose.animation.AnimatedContent(
         targetState = spot,
@@ -682,6 +712,24 @@ fun TopSpotlight(spot: Spotlight?) {
         contentKey = { it?.rom?.id },
         label = "spotlight",
     ) { s -> TopSpotlightBody(s) }
+    // Launching: a band of light sweeps across, then the screen fades to black for the game.
+    val launching by Frontend.launching.collectAsState()
+    launching?.let { t ->
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val sweep = (t / 0.8f).coerceIn(0f, 1f)
+            val e = sweep * sweep * (3 - 2 * sweep)
+            val x = -size.width * 0.25f + e * size.width * 1.5f
+            val band = size.width * 0.18f
+            drawRect(
+                Brush.horizontalGradient(
+                    0f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.22f), 1f to Color.Transparent,
+                    startX = x - band, endX = x + band,
+                ),
+            )
+            val fade = ((t - 0.6f) / 0.4f).coerceIn(0f, 1f)
+            if (fade > 0f) drawRect(Color.Black.copy(alpha = fade))
+        }
+    }
 }
 
 @Composable

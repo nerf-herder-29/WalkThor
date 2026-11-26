@@ -124,6 +124,8 @@ fun BubbleCloud(
     ringColor: (Int) -> Color? = { null },
     /** The words written along the bottom of the ring ("SWITCH"), on the bigger bubbles. */
     ringLabel: (Int) -> String? = { null },
+    /** 0–1 while the chosen bubble is launching (the ripple), else null. */
+    launching: Float? = null,
     item: @Composable (index: Int) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -140,9 +142,17 @@ fun BubbleCloud(
         if (count == 0 || dragging) return@LaunchedEffect
         camera.animateTo(
             BubbleLayout.position(selected.coerceIn(0, count - 1), count),
-            spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow),
+            // Floaty: a soft glide that settles gently.
+            spring(dampingRatio = 0.8f, stiffness = 110f),
         )
     }
+    // Every bubble bobs a little, as if floating.
+    val bob by androidx.compose.animation.core.rememberInfiniteTransition(label = "bob").animateFloat(
+        0f, (2 * Math.PI).toFloat(),
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(7000, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "bob",
+    )
+    val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
 
     /** How far from the middle a bubble shows, how big and how bright, from its real distance. */
     fun shown(d: Float): Float = d + 0.45f * exp(-d / 1.4f) * if (d > 0.01f) 1f else 0f
@@ -155,24 +165,32 @@ fun BubbleCloud(
             .background(Brush.radialGradient(listOf(Color(0xFF16202A), Color(0xFF07080B))))
             .pointerInput(count) {
                 detectDragGestures(
-                    onDragStart = { dragging = true },
+                    onDragStart = { dragging = true; tracker.resetTracking() },
                     onDragEnd = {
-                        dragging = false
-                        // Settle on the bubble nearest the middle.
-                        val c = camera.value
-                        val nearest = (0 until latestCount).minByOrNull { j ->
-                            val p = BubbleLayout.position(j, latestCount); hypot(p.x - c.x, p.y - c.y)
-                        }
-                        if (nearest != null) {
-                            if (nearest == latestSelected) {
-                                scope.launch { camera.animateTo(BubbleLayout.position(nearest, latestCount), spring(0.86f, Spring.StiffnessLow)) }
+                        // A flick coasts on, slowing down, then settles on the bubble nearest the middle.
+                        val v = tracker.calculateVelocity()
+                        scope.launch {
+                            camera.animateDecay(
+                                Offset(-v.x / stepPx, -v.y / stepPx),
+                                androidx.compose.animation.core.exponentialDecay(frictionMultiplier = 1.6f),
+                            )
+                            dragging = false
+                            val c = camera.value
+                            val nearest = (0 until latestCount).minByOrNull { j ->
+                                val p = BubbleLayout.position(j, latestCount); hypot(p.x - c.x, p.y - c.y)
                             }
-                            onSelect(nearest)
+                            if (nearest != null) {
+                                if (nearest == latestSelected) {
+                                    camera.animateTo(BubbleLayout.position(nearest, latestCount), spring(0.8f, 110f))
+                                }
+                                onSelect(nearest)
+                            }
                         }
                     },
                     onDragCancel = { dragging = false },
                 ) { change, drag ->
                     change.consume()
+                    tracker.addPosition(change.uptimeMillis, change.position)
                     scope.launch { camera.snapTo(camera.value - Offset(drag.x / stepPx, drag.y / stepPx)) }
                 }
             },
@@ -192,17 +210,38 @@ fun BubbleCloud(
             val k = if (d > 0.001f) sd / d else 1f
             val x = cx + vx * k * stepPx
             val y = cy + vy * k * stepPx
-            val s = scaleAt(sd)
+            var s = scaleAt(sd)
             val isSel = i == selected
+            var fade = 1f
+            var push = 0f
+            if (launching != null) {
+                if (isSel) {
+                    // The chosen one pulses, then shrinks away.
+                    s *= 1f + 0.15f * kotlin.math.sin(((launching / 0.3f).coerceIn(0f, 1f) * Math.PI).toFloat()) -
+                        0.9f * ((launching - 0.3f) / 0.45f).coerceIn(0f, 1f)
+                } else {
+                    // The others are pushed out by the ripple and fade.
+                    val g = ((launching - 0.05f) / 0.6f).coerceIn(0f, 1f)
+                    push = g * g * (3 - 2 * g) * 1.9f
+                    fade = 1f - g
+                }
+            }
+            val px = if (d > 0.001f) vx / d * push * stepPx else 0f
+            val py = if (d > 0.001f) vy / d * push * stepPx else 0f
+            val phase = i * 1.7f
             val sysColor = ringColor(i)
             val label = if (s >= 0.8f) ringLabel(i) else null
             Box(
                 Modifier
-                    .offset { IntOffset((x - basePx / 2).toInt(), (y - basePx / 2).toInt()) }
+                    .offset {
+                        val bx = 2.dp.toPx() * kotlin.math.cos(bob + phase)
+                        val by = 3.dp.toPx() * kotlin.math.sin(bob * 1.3f + phase)
+                        IntOffset((x + px + bx - basePx / 2).toInt(), (y + py + by - basePx / 2).toInt())
+                    }
                     .size(baseSize)
                     .graphicsLayer {
-                        scaleX = s; scaleY = s
-                        alpha = alphaAt(sd)
+                        scaleX = s.coerceAtLeast(0.01f); scaleY = s.coerceAtLeast(0.01f)
+                        alpha = alphaAt(sd) * fade
                     }
                     .pointerInput(i) {
                         detectTapGestures(
@@ -255,6 +294,19 @@ fun BubbleCloud(
                         // The chosen one: your accent, just outside.
                         if (isSel) drawCircle(ring, radius = r + 3.dp.toPx(), style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx()))
                     }
+                }
+            }
+        }
+        // The launch ripple: rings in the game's system colour, spreading from the middle.
+        if (launching != null) {
+            val rc = ringColor(selected) ?: ring
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                for (k in 0 until 3) {
+                    val t = launching - k * 0.12f
+                    if (t <= 0f) continue
+                    val r = 20.dp.toPx() + t * size.maxDimension * 0.9f
+                    val a = (1f - t / 0.9f).coerceIn(0f, 1f) * 0.8f
+                    drawCircle(rc.copy(alpha = a), radius = r, center = androidx.compose.ui.geometry.Offset(cx, cy), style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx()))
                 }
             }
         }

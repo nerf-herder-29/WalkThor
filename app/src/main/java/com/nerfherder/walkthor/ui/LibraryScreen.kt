@@ -732,6 +732,12 @@ private fun SettingsScreen(
                         "Its picture, title and play time, big, while you choose",
                         checked = topOn,
                     ) { com.nerfherder.walkthor.ui.Frontend.setTopOn(context, it); topOn = it }
+                    var uiSounds by remember { mutableStateOf(com.nerfherder.walkthor.data.UiSounds.enabled(context)) }
+                    SettingSwitch(
+                        "Sounds",
+                        "Soft taps as you move between games, a chime when you pick something, and a chord when a game starts",
+                        checked = uiSounds,
+                    ) { uiSounds = it; com.nerfherder.walkthor.data.UiSounds.setEnabled(context, it) }
                     // Background music on your games.
                     val music = com.nerfherder.walkthor.data.MenuMusic
                     LaunchedEffect(Unit) { music.load(context) }

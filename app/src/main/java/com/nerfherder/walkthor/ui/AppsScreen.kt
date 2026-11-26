@@ -223,7 +223,12 @@ fun AppsScreen(
             var selectedPkg by remember { mutableStateOf<String?>(null) }
             val selected = list.indexOfFirst { it.packageName == selectedPkg }.takeIf { it >= 0 } ?: 0
             LaunchedEffect(selected, list) { AppsTop.current.value = list.getOrNull(selected) }
-            fun select(i: Int) { list.getOrNull(i)?.let { selectedPkg = it.packageName } }
+            fun select(i: Int) {
+                list.getOrNull(i)?.let {
+                    if (i != selected) com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.MOVE)
+                    selectedPkg = it.packageName
+                }
+            }
             fun onKey(k: android.view.KeyEvent): Boolean {
                 if (whereFor != null || menuFor != null) return false
                 val keys = setOf(
@@ -238,7 +243,10 @@ fun AppsScreen(
                     android.view.KeyEvent.KEYCODE_DPAD_UP -> BubbleLayout.neighbor(selected, list.size, 0, -1)?.let(::select)
                     android.view.KeyEvent.KEYCODE_DPAD_DOWN -> BubbleLayout.neighbor(selected, list.size, 0, 1)?.let(::select)
                     android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER ->
-                        if (k.repeatCount == 0) whereFor = list.getOrNull(selected)
+                        if (k.repeatCount == 0) {
+                            com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
+                            whereFor = list.getOrNull(selected)
+                        }
                     android.view.KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) menuFor = list.getOrNull(selected)
                     else -> return false
                 }
@@ -261,7 +269,10 @@ fun AppsScreen(
                     count = list.size,
                     selected = selected,
                     onSelect = ::select,
-                    onActivate = { whereFor = list.getOrNull(it) },
+                    onActivate = {
+                        com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
+                        whereFor = list.getOrNull(it)
+                    },
                     onLongPress = { menuFor = list.getOrNull(it) },
                     ring = frontAccent(),
                     // Apps: Android's green ring.

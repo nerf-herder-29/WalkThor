@@ -907,6 +907,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                     if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0) {
                         val i = tabs.indexOf(mainTab).coerceAtLeast(0) + if (e.keyCode == KeyEvent.KEYCODE_BUTTON_R1) 1 else -1
                         mainTab = tabs[(i + tabs.size) % tabs.size]
+                        com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
                     }
                     true
                 }
@@ -931,7 +932,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
         Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
             com.nerfherder.walkthor.ui.MainTabBar(
-                mainTab, { mainTab = it },
+                mainTab, { if (it != mainTab) com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK); mainTab = it },
                 onSearch = if (mainTab == com.nerfherder.walkthor.ui.MainTab.Games) ({ searchRequests++ }) else null,
             )
             Box(Modifier.weight(1f).fillMaxWidth()) {
