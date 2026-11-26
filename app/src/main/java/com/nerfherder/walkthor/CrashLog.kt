@@ -160,7 +160,6 @@ private object Guard {
             var helperChecked = 0L
             var helper = false
             var ticks = 0
-            val gameNoted = mutableSetOf<Int>()
             status(c, "running, no game in front")
             while (true) {
                 try { Thread.sleep(1_000) } catch (_: InterruptedException) { return@Thread }
@@ -181,26 +180,8 @@ private object Guard {
                     val text = flag.readText().trim()
                     // Memory's critical: the game comes first, so it stands aside.
                     if (text.startsWith("yield")) { if (ticks % 5 == 0) status(c, "standing aside: memory is critical, the game comes first"); return@runCatching }
-                    // First line the home app, second the game.
-                    val home = text.lineSequence().firstOrNull()?.trim().orEmpty()
-                    val game = text.lineSequence().drop(1).firstOrNull()?.trim().orEmpty()
-                    val rows = OomRanks.protect(listOfNotNull(home.takeIf { it.isNotEmpty() }, c.packageName), listOf(android.os.Process.myPid()),
-                        game.takeIf { it.isNotEmpty() }, MemoryWatch.PROTECT_ADJ, MemoryWatch.GAME_VISIBLE_MAX_ADJ)
-                    if (rows == null) { status(c, "running, but the system helper didn't answer"); return@runCatching }
-                    val ranks = rows.filter { it.kind != 'G' }
-                    val changed = ranks.filter { it.before != it.after }
-                    if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it.pkg)} (${it.before} → ${it.after})" })
-                    val gameRanks = rows.filter { it.kind == 'G' }
-                    // The game put first: noted once for each game process (Android ranks it back often).
-                    rows.filter { it.kind == 'G' && it.before != it.after && it.pid !in gameNoted }.let { firsts ->
-                        if (firsts.isNotEmpty()) {
-                            gameNoted += firsts.map { it.pid }
-                            note(c, "put the game first: " + firsts.joinToString(", ") { "${it.before} → ${it.after}" })
-                        }
-                    }
-                    if (ticks % 3 == 0 || changed.isNotEmpty()) status(c,
-                        "protecting during the game: " + (ranks.distinctBy { it.pkg }.joinToString { "${name(c, it.pkg)} ${it.after}" }.ifEmpty { "found none of the apps" }) +
-                            (if (gameRanks.isNotEmpty()) "; the game " + gameRanks.joinToString { "${it.before}→${it.after}" } else ""))
+                    // (Keeper used to set ranks here; that doesn't move the memory killer: see MemoryWatch.protect.)
+                    if (ticks % 9 == 0) status(c, "running during the game (ranks are left to Android)")
                 }
             }
         }, "WalkThor keeper guard").apply { isDaemon = true; start() }

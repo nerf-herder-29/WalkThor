@@ -49,7 +49,7 @@ object DisplayHelper {
             activity.windowManager.defaultDisplay.displayId
         }
 
-    private fun usableDisplays(context: Context): List<Display> {
+    internal fun usableDisplays(context: Context): List<Display> {
         val dm = context.getSystemService(DisplayManager::class.java) ?: return emptyList()
         return dm.displays.filter { it.state != Display.STATE_OFF && (it.flags and Display.FLAG_PRIVATE) == 0 }
     }

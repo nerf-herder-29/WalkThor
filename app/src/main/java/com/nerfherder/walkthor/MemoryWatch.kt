@@ -66,6 +66,8 @@ object MemoryWatch {
 
     // What the last game looked like, for the summary.
     @Volatile private var gameSince = 0L
+    /** When the game in front started (0 when none has). */
+    fun gameStartedAt() = gameSince
     @Volatile private var lowestMb = -1L
     @Volatile private var lowCount = 0
     @Volatile private var restarts = 0
@@ -231,33 +233,15 @@ object MemoryWatch {
      * (Android re-ranks apps now and then, so it's put back every few seconds while you play).
      * Only ever lowers a rank, never raises one.
      */
-    private fun protect(c: Context, always: Boolean = false) {
-        if (AynSystem.knownAvailable() != true) return
-        if (yielding) return
-        val pkgs = listOfNotNull(if (always && !gameInFront()) null else protectedHome(c), c.packageName)
-            .filter { PACKAGE.matches(it) }.distinct()
-        val game = gamePkg?.takeIf { gameInFront() }
-        val rows = OomRanks.protect(pkgs, emptyList(), game, PROTECT_ADJ, GAME_VISIBLE_MAX_ADJ) ?: return
-        val firsts = rows.filter { it.kind == 'G' && it.before != it.after }
-        if (firsts.isNotEmpty() && !gameFirstNoted) {
-            gameFirstNoted = true
-            note(c, "Put the game first for the memory killer: " + firsts.joinToString(", ") { "${it.before} → ${it.after}" } +
-                " (Android had it ranked behind the bottom screen's apps)")
-        }
-        val gameStuck = rows.filter { it.kind == 'G' && it.after in 1..GAME_VISIBLE_MAX_ADJ }
-        val ranks = rows.filter { it.kind == 'R' }
-        val changed = ranks.filter { it.before != it.after }
-        val failed = ranks.filter { it.after > PROTECT_ADJ }
-        if ((failed.isNotEmpty() || gameStuck.isNotEmpty()) && !protectedNoted) {
-            protectedNoted = true
-            note(c, "Couldn't set the ranks: " + (failed.map { "${label(c, it.pkg)} still ${it.after}" } +
-                gameStuck.map { "the game still ${it.after}" }).joinToString(", ") + " (AYN's system helper may not be allowed to)")
-        } else if (changed.isNotEmpty() && (!protectedNoted || always)) {
-            protectedNoted = true
-            note(c, "Kept " + changed.joinToString(" and ") { "${label(c, it.pkg)} (${it.before} → ${it.after})" } +
-                " next in line after the game")
-        }
-    }
+    /**
+     * No longer sets anything. Writing ranks into /proc doesn't change whom the memory killer
+     * picks: it goes by the ranks Android tells it directly (the logs showed WalkThor still "ranked
+     * 100" when closed, right after being set to 50). What decides the game's rank is which screen
+     * Android counts as in front: see [FocusBack].
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun protect(c: Context, always: Boolean = false) = Unit
+
 
     /** The game's processes up to this rank are the ones on screen (put first); above it they're in the background (left alone). */
     internal const val GAME_VISIBLE_MAX_ADJ = 250

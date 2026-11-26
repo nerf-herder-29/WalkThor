@@ -245,6 +245,7 @@ class SwipeGestureService : AccessibilityService() {
         // Only heard while the controller's locked to a screen: which window has focus changed.
         if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) { runCatching { ControllerLock.onWindowsChanged(this) }; return }
         runCatching { ControllerLock.onAppFront(this, event) }
+        runCatching { FocusBack.onAppFront(this, event) }
         runCatching { ButtonTest.onWindow(event) }
         // Only ever subscribed to while "Open when an emulator starts" is on (see applyEventTypes).
         // Never let a bad event take the service down: Android turns off an accessibility
