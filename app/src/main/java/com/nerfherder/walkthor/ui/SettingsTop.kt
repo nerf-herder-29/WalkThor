@@ -148,7 +148,8 @@ sealed class MainTab(val label: String) {
         override fun hashCode() = section.hashCode()
     }
     companion object {
-        val all: List<MainTab> = listOf(Games, Apps) + SettingsSection.entries.map { Settings(it) }
+        // Lazily: the tabs are subclasses, not yet made while this class is first being set up.
+        val all: List<MainTab> by lazy { listOf(Games, Apps) + SettingsSection.entries.map { Settings(it) } }
         fun byName(name: String?): MainTab = all.firstOrNull { it.label == name } ?: Games
     }
 }
