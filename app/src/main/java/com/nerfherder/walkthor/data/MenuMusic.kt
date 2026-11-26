@@ -15,10 +15,12 @@ import kotlinx.coroutines.flow.asStateFlow
  * Background music on your games: the tracks in a folder you pick (your own music, or a theme's
  * music folder, such as one of Cocoon's), shuffled, quietly, while the games are on screen. It
  * fades out as soon as you leave them or a game starts, and stays silent if something else (a
- * music app) is already playing.
+ * music app) is already playing. With no folder linked, WalkThor plays its own soft lo-fi tracks.
  */
 object MenuMusic {
     private const val PREFS = "menu_music"
+    /** WalkThor's own music, for when no folder is linked. */
+    private val BUILT_IN = intArrayOf(com.nerfherder.walkthor.R.raw.lofi_1, com.nerfherder.walkthor.R.raw.lofi_2, com.nerfherder.walkthor.R.raw.lofi_3)
     private val AUDIO = setOf("mp3", "ogg", "opus", "m4a", "aac", "flac", "wav")
 
     private val _folder = MutableStateFlow<Uri?>(null)
@@ -61,7 +63,11 @@ object MenuMusic {
         prefs(c).edit().remove("tree").apply()
         _folder.value = null
         tracks = emptyList()
+        if (wanted) play(c)
     }
+
+    private fun builtIn(c: Context): List<Uri> =
+        BUILT_IN.map { Uri.parse("android.resource://${c.packageName}/$it") }
 
     fun setOn(c: Context, on: Boolean) {
         prefs(c).edit().putBoolean("on", on).apply()
@@ -83,12 +89,12 @@ object MenuMusic {
     }
 
     private fun play(c: Context) {
-        if (!_on.value || _folder.value == null || player != null) return
+        if (!_on.value || player != null) return
         val am = c.getSystemService(AudioManager::class.java)
         // Something else is playing (a music app): leave it be.
         if (am?.isMusicActive == true) return
         Background.dispatcher.executor.execute {
-            if (tracks.isEmpty()) tracks = listTracks(c).shuffled()
+            if (tracks.isEmpty()) tracks = listTracks(c).ifEmpty { builtIn(c) }.shuffled()
             main.post { if (wanted && player == null) startTrack(c) }
         }
     }

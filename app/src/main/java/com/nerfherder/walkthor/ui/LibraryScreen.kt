@@ -750,22 +750,28 @@ private fun SettingsScreen(
                     SettingSwitch(
                         "Background music",
                         when {
-                            musicFolder == null -> "Plays the music in a folder you pick while your games are on screen"
-                            tracks == 0 -> "No music files found in that folder"
-                            tracks != null -> "$tracks tracks, shuffled. Stops when a game starts or another app plays music"
+                            musicFolder == null -> "WalkThor’s own soft lo-fi while your games are on screen. Stops when a game starts or another app plays music"
+                            tracks == 0 -> "No music files found in your folder, so WalkThor’s own music plays"
+                            tracks != null -> "$tracks tracks from your folder, shuffled. Stops when a game starts or another app plays music"
                             else -> "Reading your music…"
                         },
-                        checked = musicOn && musicFolder != null,
-                    ) { want -> if (musicFolder == null) actions.onLinkMusic() else music.setOn(context, want) }
+                        checked = musicOn,
+                    ) { want -> music.setOn(context, want) }
+                    if (musicOn) SettingRow(
+                        "Volume",
+                        "How loud the music plays",
+                        value = "${(musicVolume * 100).toInt()}%",
+                        buttons = {
+                            listOf("Quiet" to 0.2f, "Medium" to 0.4f, "Loud" to 0.7f).forEach { (label, v) ->
+                                PillButton(label, quiet = kotlin.math.abs(musicVolume - v) > 0.05f) { music.setVolume(context, v) }
+                            }
+                        },
+                    )
                     SettingRow(
-                        "Music folder",
-                        if (musicFolder == null) "Your own music, or a theme's music folder (such as one of Cocoon's themes)" else "How loud it plays",
-                        value = if (musicFolder == null) null else "${(musicVolume * 100).toInt()}%",
+                        "Your own music",
+                        if (musicFolder == null) "Play a folder of your music instead, or a theme’s music folder (such as one of Cocoon’s themes)" else "Plays instead of WalkThor’s own music",
                         buttons = {
                             if (musicFolder != null) {
-                                listOf("Quiet" to 0.2f, "Medium" to 0.4f, "Loud" to 0.7f).forEach { (label, v) ->
-                                    PillButton(label, quiet = kotlin.math.abs(musicVolume - v) > 0.05f) { music.setVolume(context, v) }
-                                }
                                 PillButton("Change") { actions.onLinkMusic() }
                                 PillButton("Unlink", quiet = true) { music.unlink(context) }
                             } else {
