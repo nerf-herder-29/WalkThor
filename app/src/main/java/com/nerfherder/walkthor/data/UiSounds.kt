@@ -43,13 +43,13 @@ object UiSounds {
         // Holding the D-pad down: not a tap for every bubble that flies past.
         if (kind == Kind.MOVE) {
             val now = android.os.SystemClock.uptimeMillis()
-            if (now - lastMove < 60) return
+            if (now - lastMove < 90) return
             lastMove = now
         }
         runCatching {
             val p = ready(c)
             val id = ids[kind] ?: return
-            val vol = when (kind) { Kind.MOVE -> 0.35f; Kind.PICK -> 0.45f; Kind.LAUNCH -> 0.6f }
+            val vol = when (kind) { Kind.MOVE -> 0.16f; Kind.PICK -> 0.3f; Kind.LAUNCH -> 0.55f }
             p.play(id, vol, vol, 1, 0, 1f)
         }
     }
