@@ -28,6 +28,8 @@ object HomeSwap {
     private const val KEY_ON = "on"
     private const val KEY_ORIGINAL = "original"
     private const val KEY_STOCK = "stock"
+    /** The game your home app was paused for (so a report can still be saved if WalkThor was closed with it). */
+    private const val KEY_GAME = "game"
     /** How long no game has to be in front before your home app comes back (just enough to ride out a flicker). */
     private const val BACK_AFTER_MS = 300L
     /** While the drawer may be covering the game, how often to look again, and for how long at most. */
@@ -140,7 +142,8 @@ object HomeSwap {
             return
         }
         // Noted first, so that if anything stops part-way, it's put back.
-        prefs(c).edit().putString(KEY_ORIGINAL, home.flattenToString()).putString(KEY_STOCK, stock.packageName).commit()
+        prefs(c).edit().putString(KEY_ORIGINAL, home.flattenToString()).putString(KEY_STOCK, stock.packageName)
+            .putString(KEY_GAME, MemoryWatch.gamePkg).commit()
         // WalkThor's black screen up on the bottom screen first, over your home app: when that's
         // closed, there's no empty screen for Android to fill. (Android picks the bottom screen's
         // home on its own, and on this device that's always its own launcher, so being home isn't
@@ -187,7 +190,15 @@ object HomeSwap {
             main.post { runCatching { EmulatorWatch.gameStillThere(c, game) } }
             return
         }
+        // WalkThor was closed along with the game (it's only just started again): it never saw the
+        // game leave, so the game report is taken now.
+        val pausedFor = prefs(c).getString(KEY_GAME, null)
+        val justStarted = android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime() < 60_000L
         restore(c, "no game in front")
+        if (justStarted && pausedFor != null) {
+            MemoryWatch.noteFrom(c, "The game closed while WalkThor was closed too: saving its report now")
+            GameReport.capture(c, pausedFor, "the game closed while WalkThor was closed too")
+        }
     }
 
     /** Whether [pkg] has the resumed (front) activity on any screen, by Android's own account. */
@@ -211,7 +222,7 @@ object HomeSwap {
             if (!AynSystem.available()) return // tried again next time
             AynSystem.shellLines("cmd package set-home-activity --user 0 ${original.flattenToString()}")
         }
-        p.edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).commit()
+        p.edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).remove(KEY_GAME).commit()
         // WalkThor's stand-in home screen off again (a moment later, once yours has come up),
         // unless a new game has paused things again meanwhile.
         main.postDelayed({ if (!pausedNow(c)) worker.execute { enableGameHome(c, false) } }, 3_000L)
