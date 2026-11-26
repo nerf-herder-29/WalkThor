@@ -138,6 +138,12 @@ class MainActivity : ComponentActivity(), WalkThorHost {
                     if (yielding == true && PerfCheck.walkThorIsTop.value == true) scheduleHandBack()
                 }
         }
+        // Only one WalkThor on the bottom screen: Android may start a second as the bottom
+        // screen's home (when WalkThor is your home app); the newer one stays.
+        AppState.activity?.get()?.takeIf { old ->
+            old !== this && !old.isFinishing &&
+                runCatching { DisplayHelper.currentDisplayId(old) == DisplayHelper.currentDisplayId(this) }.getOrDefault(false)
+        }?.let { old -> runCatching { old.finishAndRemoveTask() } }
         AppState.activity = java.lang.ref.WeakReference(this)
 
         if (savedInstanceState == null) handleIntent(intent)

@@ -97,6 +97,7 @@ object ArtScraper {
             var none = 0
             var done = 0
             val listings = HashMap<String, Map<String, String>?>()
+            firstMiss = null
             val gate = Semaphore(4)
             try {
                 wanted.chunked(16).forEach { batch ->
@@ -123,7 +124,8 @@ object ArtScraper {
                 _result.value = when {
                     wanted.isEmpty() -> "Every game already has its pictures."
                     else -> "Downloaded $covers covers" + (if (heroes) " and $shots screenshots" else "") +
-                        (if (none > 0) ". $none games have no cover online (Switch games and PC games without a Steam id aren't in the free collections)." else ".")
+                        (if (none > 0) ". $none games have no cover online (Switch games and PC games without a Steam id aren't in the free collections)." else ".") +
+                        (if (covers + shots == 0) firstMiss?.let { " First problem: $it" } ?: "" else "")
                 }
             }
         }
@@ -166,7 +168,7 @@ object ArtScraper {
             // …then the closest title in the collection's list.
             val key = "$system/$folder"
             val list = synchronized(listings) { listings[key] } ?: listing(system, folder).also { synchronized(listings) { listings[key] = it } }
-            val name = list[rom.title.lowercase()] ?: return false
+            val name = list[rom.title.lowercase()] ?: closest(rom.title, list) ?: return false
             if (download(listOf("$LIBRETRO/${Uri.encode(system)}/$folder/${Uri.encode(name)}"), f)) {
                 art.addScraped(rom, kind, f); return true
             }
@@ -177,15 +179,31 @@ object ArtScraper {
         return covers to shots
     }
 
+    /** The collection's file whose title is clearly the game's ("Pokemon Emerald" → "Pokemon - Emerald Version"). */
+    private fun closest(title: String, list: Map<String, String>): String? {
+        val want = Matcher.words(title).toSet()
+        if (want.isEmpty()) return null
+        var best: String? = null
+        var bestScore = 0f
+        var next = 0f
+        for ((t, file) in list) {
+            val score = Matcher.closeness(want, Matcher.words(t).toSet())
+            if (score > bestScore) { next = bestScore; bestScore = score; best = file }
+            else if (score > next) next = score
+        }
+        return best.takeIf { bestScore >= 0.8f && bestScore - next >= 0.05f }
+    }
+
     /** The collection's files for a system: tidied title → file name, preferring USA releases. */
     private fun listing(system: String, folder: String): Map<String, String> {
         val html = runCatching {
             val conn = URL("$LIBRETRO/${Uri.encode(system)}/$folder/").openConnection() as HttpURLConnection
             conn.connectTimeout = 15_000
             conn.readTimeout = 30_000
-            conn.setRequestProperty("User-Agent", "WalkThor")
+            conn.setRequestProperty("User-Agent", AGENT)
             conn.inputStream.use { it.readBytes().decodeToString() }
-        }.getOrNull() ?: return emptyMap()
+        }.onFailure { e -> if (firstMiss == null) firstMiss = "$system list → ${e.javaClass.simpleName}: ${e.message?.take(80)}" }
+            .getOrNull() ?: return emptyMap()
         val out = HashMap<String, String>()
         Regex("""href="([^"]+\.png)"""").findAll(html).forEach { m ->
             val file = Uri.decode(m.groupValues[1]).substringAfterLast('/')
@@ -196,22 +214,40 @@ object ArtScraper {
         return out
     }
 
+    /** The first thing that went wrong in this run, to show if nothing came down. */
+    @Volatile private var firstMiss: String? = null
+    private const val AGENT = "Mozilla/5.0 (Linux; Android 13) WalkThor"
+
     private fun download(urls: List<String>, to: File): Boolean {
         for (url in urls) {
-            val ok = runCatching {
+            val ok = try {
                 val conn = URL(url).openConnection() as HttpURLConnection
                 conn.connectTimeout = 15_000
                 conn.readTimeout = 30_000
                 conn.instanceFollowRedirects = true
-                conn.setRequestProperty("User-Agent", "WalkThor")
-                if (conn.responseCode != 200 || conn.contentType?.startsWith("image") != true) {
-                    conn.disconnect(); return@runCatching false
+                conn.setRequestProperty("User-Agent", AGENT)
+                val code = conn.responseCode
+                if (code != 200) {
+                    if (code != 404 && firstMiss == null) firstMiss = "$url → HTTP $code"
+                    conn.disconnect()
+                    false
+                } else {
+                    to.parentFile?.mkdirs()
+                    val tmp = File(to.path + ".part")
+                    conn.inputStream.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+                    // A picture, whatever the server calls it (PNG, JPEG, WebP or GIF).
+                    val head = tmp.inputStream().use { i -> ByteArray(4).also { i.read(it) } }
+                    val picture = (head[0] == 0x89.toByte() && head[1] == 'P'.code.toByte()) ||
+                        (head[0] == 0xFF.toByte() && head[1] == 0xD8.toByte()) ||
+                        (head[0] == 'R'.code.toByte() && head[1] == 'I'.code.toByte()) ||
+                        (head[0] == 'G'.code.toByte() && head[1] == 'I'.code.toByte())
+                    if (picture && tmp.length() > 0 && tmp.renameTo(to)) true
+                    else { tmp.delete(); if (firstMiss == null) firstMiss = "$url → not a picture"; false }
                 }
-                to.parentFile?.mkdirs()
-                val tmp = File(to.path + ".part")
-                conn.inputStream.use { input -> tmp.outputStream().use { input.copyTo(it) } }
-                tmp.length() > 0 && tmp.renameTo(to)
-            }.getOrDefault(false)
+            } catch (e: Exception) {
+                if (firstMiss == null) firstMiss = "$url → ${e.javaClass.simpleName}: ${e.message?.take(80)}"
+                false
+            }
             if (ok) return true
         }
         return false

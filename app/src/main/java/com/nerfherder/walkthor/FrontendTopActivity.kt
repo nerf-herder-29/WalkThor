@@ -16,8 +16,9 @@ import com.nerfherder.walkthor.ui.WalkThorTheme
 
 /**
  * The top screen while you choose a game on the bottom one: the chosen game, big. Buttons
- * pressed while it has the controller go to the games on the bottom screen. It closes as soon
- * as anything covers it (a game starting), so it holds no memory while you play.
+ * pressed while it has the controller go to the games on the bottom screen. It stays put when
+ * something covers it for a moment (the screen turning off, another app); the games close it
+ * when a game starts, so it holds no memory while you play.
  *
  * It's also WalkThor's home screen, for when you make WalkThor your home app: Home brings it
  * back, with your games on the bottom screen.
@@ -72,12 +73,6 @@ class FrontendTopActivity : ComponentActivity() {
         // Otherwise (Settings, say) the bottom screen's WalkThor takes them.
         Frontend.bottom?.get()?.takeIf { !it.isFinishing }?.let { if (it.dispatchKeyEvent(event)) return true }
         return super.dispatchKeyEvent(event)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        // Covered (a game started) or the screen went off: let it go; the games bring it back.
-        if (!isChangingConfigurations) finish()
     }
 
     override fun onDestroy() {

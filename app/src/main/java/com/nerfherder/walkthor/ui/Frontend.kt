@@ -284,11 +284,8 @@ fun FrontendScreen(
         onDispose { lifecycle.lifecycle.removeObserver(obs) }
     }
 
-    val shelves = remember(roms) {
-        listOf(Shelf.All, Shelf.Recent, Shelf.Favorites) +
-            roms.map { it.system }.distinct().mapNotNull { k -> RomLibrary.system(k)?.let { Shelf.System(k, it.name) } }
-                .sortedBy { it.label }
-    }
+    // All your games on one screen.
+    val shelves = remember { listOf<Shelf>(Shelf.All) }
     var shelfIndex by remember { mutableStateOf(0) }
     val shelf = shelves[shelfIndex.coerceIn(0, shelves.lastIndex)]
     var searching by remember { mutableStateOf(false) }
@@ -296,7 +293,7 @@ fun FrontendScreen(
     val shown = remember(roms, shelf, query, plays) {
         val q = query.trim()
         val base = when (shelf) {
-            Shelf.All -> roms.sortedBy { it.title.lowercase() }
+            Shelf.All -> roms.sortedWith(compareBy({ Frontend.letter(it.title) }, { it.title.lowercase().removePrefix("the ") }))
             Shelf.Recent -> roms.filter { GamePlays.lastPlayed(context, it) > 0 }.sortedByDescending { GamePlays.lastPlayed(context, it) }
             Shelf.Favorites -> GamePlays.favorites(context).let { f -> roms.filter { it.id in f }.sortedBy { it.title.lowercase() } }
             is Shelf.System -> roms.filter { it.system == shelf.key }.sortedBy { it.title.lowercase() }
@@ -383,8 +380,15 @@ fun FrontendScreen(
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
             KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let(::favorite)
-            KeyEvent.KEYCODE_BUTTON_L1 -> if (k.repeatCount == 0) moveShelf(-1)
-            KeyEvent.KEYCODE_BUTTON_R1 -> if (k.repeatCount == 0) moveShelf(1)
+            // L1 / R1: the previous or next letter.
+            KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
+                val at = rom?.let { Frontend.letter(it.title) }
+                val i = if (k.keyCode == KeyEvent.KEYCODE_BUTTON_R1) shown.indexOfFirst { Frontend.letter(it.title) > (at ?: ' ') }
+                else shown.indexOfLast { Frontend.letter(it.title) < (at ?: '~') }.let { j ->
+                    if (j < 0) -1 else shown.indexOfFirst { Frontend.letter(it.title) == Frontend.letter(shown[j].title) }
+                }
+                if (i >= 0) select(i)
+            }
             KeyEvent.KEYCODE_BUTTON_SELECT -> if (k.repeatCount == 0) searching = true
             KeyEvent.KEYCODE_BUTTON_START -> if (k.repeatCount == 0) onOpenLibrary()
             else -> return false
@@ -426,7 +430,6 @@ fun FrontendScreen(
                     Text(
                         shelf.label,
                         color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                        modifier = Modifier.clickable { moveShelf(1) },
                     )
                     Text(
                         " · ${shown.size}",
@@ -442,28 +445,6 @@ fun FrontendScreen(
                     Pill("Apps") { onOpenApps() }
                     Spacer(Modifier.width(8.dp))
                     Pill("WalkThor") { onOpenLibrary() }
-                }
-            }
-            // Shelves: L1 / R1 (or a tap).
-            Row(
-                Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                val from = (shelfIndex - 1).coerceAtLeast(0)
-                shelves.drop(from).take(4).forEachIndexed { j, s ->
-                    val on = from + j == shelfIndex
-                    Text(
-                        s.label,
-                        color = if (on) Color(0xFF06201F) else BookColors.TextMuted,
-                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (on) FrontAccent else Color(0xFF1D1B20))
-                            .clickable { shelfIndex = from + j; selectedId = null }
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                            .widthIn(max = 140.dp),
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
             }
             Row(Modifier.weight(1f).fillMaxWidth()) {

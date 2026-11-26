@@ -22,7 +22,7 @@ import java.io.File
 class GameArt private constructor(private val context: Context) {
 
     enum class Kind(val words: List<String>) {
-        COVER(listOf("covers", "cover", "box2dfront", "boxart", "box-2d", "boxfront", "2dbox", "box", "boxes", "front", "grid", "capsule", "poster", "3dboxes", "box3d", "3dbox", "miximages", "mixrbv2", "mix")),
+        COVER(listOf("covers", "cover", "icons", "icon", "tiles", "tile", "box2dfront", "boxart", "box-2d", "boxfront", "2dbox", "box", "boxes", "front", "grid", "capsule", "poster", "3dboxes", "box3d", "3dbox", "miximages", "mixrbv2", "mix")),
         /** The big picture behind the top screen. */
         HERO(listOf("fanart", "hero", "heroes", "background", "backgrounds", "screenshots", "screenshot", "screen", "snap", "snaps", "titlescreens", "titlescreen", "titles", "title")),
         LOGO(listOf("marquees", "marquee", "wheel", "logos", "logo", "clearlogo")),
@@ -85,7 +85,9 @@ class GameArt private constructor(private val context: Context) {
             val kind = runCatching { Kind.valueOf(r[1]) }.getOrNull() ?: continue
             val pic = Pic(r[3], r[4].toIntOrNull() ?: 99)
             put(exact, r[0], kind, r[2], pic)
+            // Named like the file ("golden sun (usa)") or with its ending ("golden sun (usa).gba").
             put(tidy, r[0], kind, RomLibrary.tidy(r[2], true).lowercase(), pic)
+            put(tidy, r[0], kind, RomLibrary.tidy(r[2], false).lowercase(), pic)
         }
         index = exact
         loose = tidy
@@ -163,10 +165,11 @@ class GameArt private constructor(private val context: Context) {
             prefs.edit().putString(
                 KEY_SUMMARY,
                 "$pictures pictures found, ${rows.size} placed by system" +
-                    (if (rows.isEmpty() && examples.isNotEmpty()) ". For example: ${examples.joinToString(", ")}" else ""),
+                    (if (examples.isNotEmpty()) ". For example: ${examples.joinToString(", ")}" else ""),
             ).apply()
-        } catch (_: Exception) {
-            // Folder moved or access lost: keep what we had.
+        } catch (e: Exception) {
+            // Folder moved or access lost: keep what we had, and say so.
+            prefs.edit().putString(KEY_SUMMARY, "Couldn't read the folder (${e.javaClass.simpleName}: ${e.message?.take(80)})").apply()
         } finally {
             _scanning.value = null
         }
