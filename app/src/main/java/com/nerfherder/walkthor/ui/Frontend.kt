@@ -306,6 +306,8 @@ fun FrontendScreen(
     onOpenApps: () -> Unit = {},
     /** No ROMs folder yet: link one. */
     onLinkRoms: () -> Unit = {},
+    /** Bumped by the search button on the tabs. */
+    searchRequests: Int = 0,
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -442,10 +444,10 @@ fun FrontendScreen(
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
             KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let { menuFor = it }
-            // L1 / R1: the previous or next letter.
-            KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
+            // L2 / R2: the previous or next letter of your games.
+            KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_R2 -> {
                 val at = rom?.let { Frontend.letter(it.title) }
-                val i = if (k.keyCode == KeyEvent.KEYCODE_BUTTON_R1) shown.indexOfFirst { Frontend.letter(it.title) > (at ?: ' ') }
+                val i = if (k.keyCode == KeyEvent.KEYCODE_BUTTON_R2) shown.indexOfFirst { Frontend.letter(it.title) > (at ?: ' ') }
                 else shown.indexOfLast { Frontend.letter(it.title) < (at ?: '~') }.let { j ->
                     if (j < 0) -1 else shown.indexOfFirst { Frontend.letter(it.title) == Frontend.letter(shown[j].title) }
                 }
@@ -461,6 +463,7 @@ fun FrontendScreen(
     androidx.compose.runtime.SideEffect { Frontend.keyHandler = ::onKey }
     DisposableEffect(Unit) { onDispose { Frontend.keyHandler = null } }
 
+    LaunchedEffect(searchRequests) { if (searchRequests > 0) searching = true }
     val focus = remember { FocusRequester() }
     LaunchedEffect(searching) { if (!searching) runCatching { focus.requestFocus() } }
     Box(
@@ -472,9 +475,9 @@ fun FrontendScreen(
             .focusable(),
     ) {
         Column(Modifier.fillMaxSize()) {
-            // ---- header: the shelf and its count, search, the library ----
-            Row(
-                Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
+            // ---- search (from the search button on the tabs, or Select) ----
+            if (searching || query.isNotBlank()) Row(
+                Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, top = 10.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (searching) {
@@ -490,23 +493,12 @@ fun FrontendScreen(
                     Pill("Done") { searching = false }
                 } else {
                     Text(
-                        shelf.label,
-                        color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                        "${shown.size} games matching",
+                        color = Color(0xFF7D766D), fontSize = 14.sp,
                     )
-                    Text(
-                        " · ${shown.size}",
-                        color = Color(0xFF7D766D), fontFamily = DisplayFont, fontSize = 17.sp,
-                    )
-                    if (query.isNotBlank()) {
-                        Spacer(Modifier.width(8.dp))
-                        Pill("“${query.trim()}” ×") { query = "" }
-                    }
+                    Spacer(Modifier.width(8.dp))
+                    Pill("“${query.trim()}” ×") { query = "" }
                     Spacer(Modifier.weight(1f))
-                    Pill("Search") { searching = true }
-                    Spacer(Modifier.width(8.dp))
-                    Pill("Apps") { onOpenApps() }
-                    Spacer(Modifier.width(8.dp))
-                    Pill("Settings") { onOpenLibrary() }
                 }
             }
             Column(Modifier.weight(1f).fillMaxWidth()) {
@@ -542,28 +534,6 @@ fun FrontendScreen(
                                     onClick = { if (i == selected) play(rom) else select(i) },
                                     onLongClick = { select(i); menuFor = rom },
                                 ),
-                            )
-                        }
-                    }
-                }
-                // A–Z: tap a letter to jump there.
-                if (shown.size > 12 && shelf != Shelf.Recent) {
-                    val letters = remember(shown) { shown.map { Frontend.letter(it.title) }.distinct() }
-                    val at = shown.getOrNull(selected)?.let { Frontend.letter(it.title) }
-                    Row(
-                        Modifier.fillMaxWidth().height(26.dp).padding(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        letters.forEach { c ->
-                            Text(
-                                c.toString(),
-                                color = if (c == at) frontAccent() else Color(0xFF5D5850),
-                                fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clickable {
-                                    val i = shown.indexOfFirst { Frontend.letter(it.title) == c }
-                                    if (i >= 0) { selectedId = shown[i].id; scope.launch { grid.scrollToItem(i / rows * rows) } }
-                                },
                             )
                         }
                     }
@@ -630,7 +600,7 @@ fun FrontendScreen(
 private val HANDLED = setOf(
     KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
     KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_BUTTON_Y,
-    KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_SELECT,
+    KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_R2, KeyEvent.KEYCODE_BUTTON_SELECT,
     KeyEvent.KEYCODE_BUTTON_START,
 )
 

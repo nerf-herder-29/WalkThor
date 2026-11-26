@@ -828,10 +828,13 @@ class StoreScreenshots {
     @Test
     fun frontendBottom() {
         content {
-            com.nerfherder.walkthor.ui.FrontendScreen(
-                roms = frontendRoms(), books = shelf, coverFile = { null },
-                onOpenGuide = {}, onAddGuideFor = {}, onOpenLibrary = {},
-            )
+            androidx.compose.foundation.layout.Column {
+                com.nerfherder.walkthor.ui.MainTabBar(com.nerfherder.walkthor.ui.MainTab.Games, {}, onSearch = {})
+                com.nerfherder.walkthor.ui.FrontendScreen(
+                    roms = frontendRoms(), books = shelf, coverFile = { null },
+                    onOpenGuide = {}, onAddGuideFor = {}, onOpenLibrary = {},
+                )
+            }
         }
         settle()
         shot("40-frontend-bottom")

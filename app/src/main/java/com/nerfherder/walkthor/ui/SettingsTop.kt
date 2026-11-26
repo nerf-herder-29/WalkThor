@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,14 +71,17 @@ val LocalSettingsGroup = compositionLocalOf<String?> { null }
 /** The section a row sits in. */
 val LocalSettingsSection = compositionLocalOf<String> { "" }
 
+/** One tab: its name and its small icon, drawn in the given colour. */
+class TabItem(val label: String, val icon: @Composable (Color) -> Unit)
+
 /**
- * The sections as tabs, drawn like the tabs during a game: a small icon over each name, and a
- * short line under the open one that glides to whichever you pick.
+ * A row of tabs drawn like the tabs during a game: a small icon over each name, and a short line
+ * under the open one that glides to whichever you pick.
  */
 @Composable
-fun SettingsTabsRow(selected: SettingsSection, onSelect: (SettingsSection) -> Unit, modifier: Modifier = Modifier) {
-    val narrow = LocalConfiguration.current.screenWidthDp < 480
-    val bounds = remember { mutableStateMapOf<SettingsSection, Pair<Float, Float>>() }
+fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val narrow = LocalConfiguration.current.screenWidthDp < 480 || items.size > 6
+    val bounds = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
     val indicator = remember { Animatable(Float.NaN) }
     val target = bounds[selected]?.let { (x, w) -> x + w / 2 }
     LaunchedEffect(target) {
@@ -101,22 +105,22 @@ fun SettingsTabsRow(selected: SettingsSection, onSelect: (SettingsSection) -> Un
         horizontalArrangement = Arrangement.spacedBy(if (narrow) 2.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SettingsSection.entries.forEach { s ->
-            val on = s == selected
+        items.forEachIndexed { i, item ->
+            val on = i == selected
             val tint = if (on) BookColors.Text else Color.White.copy(alpha = 0.55f)
             Column(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .onGloballyPositioned { c -> bounds[s] = c.positionInParent().x to c.size.width.toFloat() }
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(s) },
+                    .onGloballyPositioned { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() }
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                SectionIcon(s, tint)
+                item.icon(tint)
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    s.label,
+                    item.label,
                     color = tint,
                     fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
                     fontSize = if (narrow) 11.sp else 12.sp,
@@ -124,6 +128,90 @@ fun SettingsTabsRow(selected: SettingsSection, onSelect: (SettingsSection) -> Un
                     softWrap = false,
                 )
             }
+        }
+    }
+}
+
+/** The settings sections as tabs (Settings during a game). */
+@Composable
+fun SettingsTabsRow(selected: SettingsSection, onSelect: (SettingsSection) -> Unit, modifier: Modifier = Modifier) {
+    val items = remember { SettingsSection.entries.map { s -> TabItem(s.label) { c -> SectionIcon(s, c) } } }
+    TabsRow(items, SettingsSection.entries.indexOf(selected), { onSelect(SettingsSection.entries[it]) }, modifier)
+}
+
+/** The bottom screen's tabs with no game running: your games, your apps, then each settings section. */
+sealed class MainTab(val label: String) {
+    data object Games : MainTab("Games")
+    data object Apps : MainTab("Apps")
+    class Settings(val section: SettingsSection) : MainTab(section.label) {
+        override fun equals(other: Any?) = other is Settings && other.section == section
+        override fun hashCode() = section.hashCode()
+    }
+    companion object {
+        val all: List<MainTab> = listOf(Games, Apps) + SettingsSection.entries.map { Settings(it) }
+        fun byName(name: String?): MainTab = all.firstOrNull { it.label == name } ?: Games
+    }
+}
+
+/** The L1 / R1 handler for the main tabs, while they're up (MainActivity passes it presses first). */
+object MainTabs {
+    @Volatile var shoulder: ((android.view.KeyEvent) -> Boolean)? = null
+}
+
+/** The main tabs' row, with the search button (on Games) at the right. */
+@Composable
+fun MainTabBar(selected: MainTab, onSelect: (MainTab) -> Unit, onSearch: (() -> Unit)?) {
+    val items = remember {
+        MainTab.all.map { t ->
+            TabItem(t.label) { c ->
+                when (t) {
+                    MainTab.Games -> GamesIcon(c)
+                    MainTab.Apps -> AppsIcon(c)
+                    is MainTab.Settings -> SectionIcon(t.section, c)
+                }
+            }
+        }
+    }
+    TabBarFrame(
+        overlay = false,
+        start = {},
+        middle = { TabsRow(items, MainTab.all.indexOf(selected).coerceAtLeast(0), { onSelect(MainTab.all[it]) }, Modifier.weight(1f)) },
+        end = {
+            if (onSearch != null) {
+                androidx.compose.material3.IconButton(onClick = onSearch) {
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Filled.Search,
+                        contentDescription = "Search your games", tint = BookColors.TextMuted,
+                    )
+                }
+            }
+        },
+    )
+}
+
+/** A rounded screen with a play mark: your games. */
+@Composable
+private fun GamesIcon(tint: Color) {
+    Canvas(Modifier.size(20.dp)) {
+        val s = size.width
+        val w = 1.6.dp.toPx()
+        drawRoundRect(tint, Offset(s * 0.06f, s * 0.14f), Size(s * 0.88f, s * 0.72f), CornerRadius(s * 0.2f), style = Stroke(w))
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(s * 0.42f, s * 0.34f); lineTo(s * 0.66f, s * 0.5f); lineTo(s * 0.42f, s * 0.66f); close()
+        }
+        drawPath(p, tint)
+    }
+}
+
+/** Four small squares: your apps. */
+@Composable
+private fun AppsIcon(tint: Color) {
+    Canvas(Modifier.size(20.dp)) {
+        val s = size.width
+        val w = 1.6.dp.toPx()
+        val k = s * 0.36f
+        for ((x, y) in listOf(0.08f to 0.08f, 0.56f to 0.08f, 0.08f to 0.56f, 0.56f to 0.56f)) {
+            drawRoundRect(tint, Offset(s * x, s * y), Size(k, k), CornerRadius(s * 0.08f), style = Stroke(w))
         }
     }
 }

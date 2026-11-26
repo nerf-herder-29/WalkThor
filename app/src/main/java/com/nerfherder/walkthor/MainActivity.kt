@@ -432,6 +432,11 @@ class MainActivity : ComponentActivity(), WalkThorHost {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // L1 and R1 move along the tabs with no game running (the guide reader keeps its own).
+        if (!KeyBus.readerActive && com.nerfherder.walkthor.ui.MainTabs.shoulder?.invoke(event) == true) {
+            AutoDim.interact()
+            return true
+        }
         if (event.action == KeyEvent.ACTION_DOWN && AutoDim.interact()) {
             wakeKey = event.keyCode
             return true
@@ -595,8 +600,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     val allRoms by romLibrary.roms.collectAsState()
     LaunchedEffect(Unit) { romLibrary.load() }
     /** The library (guides, settings), reached from the games' WalkThor button. */
-    var libraryFromGames by rememberSaveable { mutableStateOf(false) }
-    var appsFromGames by rememberSaveable { mutableStateOf(false) }
+    var mainTab by remember { mutableStateOf<com.nerfherder.walkthor.ui.MainTab>(com.nerfherder.walkthor.ui.MainTab.Games) }
+    var searchRequests by remember { mutableStateOf(0) }
     // As your home app, WalkThor's screens don't dim while no game is running.
     val homeHold = remember { Any() }
     DisposableEffect(gameOn) {
@@ -623,7 +628,29 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
     }
     // A game ended: back on your games.
-    LaunchedEffect(gameOn) { if (!gameOn) { libraryFromGames = false; appsFromGames = false } }
+    LaunchedEffect(gameOn) { if (!gameOn) mainTab = com.nerfherder.walkthor.ui.MainTab.Games }
+
+    fun libraryActions(backToGames: (() -> Unit)?) = LibraryActions(
+                    onOpen = { openId = it.id },
+                    onImport = host::pickGuide,
+                    onDelete = library::delete,
+                    onRename = library::rename,
+                    coverFile = library::coverFile,
+                    onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
+                    onToggleSwipeToOpen = { SwipeLauncher.setEnabled(context, it) },
+                    onClose = host::closeApp,
+                    onGrantSwipePermission = { SwipeLauncher.requestPermission(context) },
+                    hasSwipeConsent = { SwipeLauncher.hasConsent(context) },
+                    onSwipeConsent = { SwipeLauncher.setConsent(context, it) },
+                    isSwipeServiceOn = { SwipeLauncher.isServiceOn(context) },
+                    onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
+                    onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
+                    onLinkRoms = host::pickRomFolder,
+                    onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
+                    onBackToGame = if (gameOn) ({ libraryOpen = false }) else null,
+                    onLinkArt = host::pickArtFolder,
+                    onBackToGames = backToGames,
+                )
 
     val current = openId
     if (gameOn && !libraryOpen) {
@@ -808,83 +835,78 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
     } else if (current != null) {
         Reader(current, onBack = { openId = null }, tabs = null)
-    } else if (appsFromGames && !gameOn) {
-        BackHandler { appsFromGames = false }
-        // The top screen shows the app you're on, the way Settings' does.
-        val appsActivity = context as? android.app.Activity
-        DisposableEffect(Unit) {
-            com.nerfherder.walkthor.ui.AppsTop.current.value = null
-            com.nerfherder.walkthor.ui.AppsTop.active.value = true
-            appsActivity?.let { com.nerfherder.walkthor.ui.Frontend.showTop(it, moveDown = false) }
-            onDispose {
-                com.nerfherder.walkthor.ui.AppsTop.active.value = false
-                com.nerfherder.walkthor.ui.Frontend.hideTopSoon()
+    } else if (!gameOn) {
+        // ---- no game running: one row of tabs (your games, your apps, each settings section) ----
+        DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTopSoon() } }
+        // L1 and R1 move along the tabs, whichever has the controller.
+        val tabs = com.nerfherder.walkthor.ui.MainTab.all
+        androidx.compose.runtime.SideEffect {
+            com.nerfherder.walkthor.ui.MainTabs.shoulder = { e ->
+                if (e.keyCode != KeyEvent.KEYCODE_BUTTON_L1 && e.keyCode != KeyEvent.KEYCODE_BUTTON_R1) false
+                else {
+                    if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0) {
+                        val i = tabs.indexOf(mainTab).coerceAtLeast(0) + if (e.keyCode == KeyEvent.KEYCODE_BUTTON_R1) 1 else -1
+                        mainTab = tabs[(i + tabs.size) % tabs.size]
+                    }
+                    true
+                }
             }
         }
-        com.nerfherder.walkthor.ui.AppsScreen(
-            topBar = {
-                androidx.compose.foundation.layout.Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                ) {
-                    androidx.compose.material3.IconButton(onClick = { appsFromGames = false }) {
-                        androidx.compose.material3.Icon(
-                            androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back to your games", tint = BookColors.TextMuted,
-                        )
+        DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.MainTabs.shoulder = null } }
+        Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+            com.nerfherder.walkthor.ui.MainTabBar(
+                mainTab, { mainTab = it },
+                onSearch = if (mainTab == com.nerfherder.walkthor.ui.MainTab.Games) ({ searchRequests++ }) else null,
+            )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (val tab = mainTab) {
+                    com.nerfherder.walkthor.ui.MainTab.Games -> com.nerfherder.walkthor.ui.FrontendScreen(
+                        roms = allRoms,
+                        books = books,
+                        coverFile = library::coverFile,
+                        onOpenGuide = { openId = it.id },
+                        onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
+                        onOpenLibrary = { mainTab = com.nerfherder.walkthor.ui.MainTab.Settings(com.nerfherder.walkthor.ui.SettingsSection.GENERAL) },
+                        onOpenApps = { mainTab = com.nerfherder.walkthor.ui.MainTab.Apps },
+                        onLinkRoms = host::pickRomFolder,
+                        searchRequests = searchRequests,
+                    )
+                    com.nerfherder.walkthor.ui.MainTab.Apps -> {
+                        BackHandler { mainTab = com.nerfherder.walkthor.ui.MainTab.Games }
+                        // The top screen shows the app you're on, the way Settings' does.
+                        val appsActivity = context as? android.app.Activity
+                        DisposableEffect(Unit) {
+                            com.nerfherder.walkthor.ui.AppsTop.current.value = null
+                            com.nerfherder.walkthor.ui.AppsTop.active.value = true
+                            appsActivity?.let { com.nerfherder.walkthor.ui.Frontend.showTop(it, moveDown = false) }
+                            onDispose {
+                                com.nerfherder.walkthor.ui.AppsTop.active.value = false
+                                com.nerfherder.walkthor.ui.Frontend.hideTopSoon()
+                            }
+                        }
+                        com.nerfherder.walkthor.ui.AppsScreen()
                     }
-                    androidx.compose.material3.Text(
-                        "Apps", color = BookColors.Text, fontSize = androidx.compose.ui.unit.TextUnit(17f, androidx.compose.ui.unit.TextUnitType.Sp),
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    is com.nerfherder.walkthor.ui.MainTab.Settings -> LibraryScreen(
+                        startInSettings = tab.section,
+                        settingsOnly = true,
+                        settingsInTabs = true,
+                        books = books,
+                        alwaysBottom = alwaysBottom,
+                        swipeToOpen = swipeOn,
+                        swipeNeedsPermission = swipeNeedsPermission,
+                        actions = libraryActions { mainTab = com.nerfherder.walkthor.ui.MainTab.Games },
                     )
                 }
-            },
-        )
-    } else if (!gameOn && !libraryFromGames) {
-        // ---- no game running: your games, to start one (the chosen one big on the top screen) ----
-        DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTopSoon() } }
-        com.nerfherder.walkthor.ui.FrontendScreen(
-            roms = allRoms,
-            books = books,
-            coverFile = library::coverFile,
-            onOpenGuide = { openId = it.id },
-            onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
-            onOpenLibrary = { libraryFromGames = true },
-            onOpenApps = { appsFromGames = true },
-            onLinkRoms = host::pickRomFolder,
-        )
+            }
+        }
     } else {
-        // With no game running there's no list of guides: your games, and Settings.
-        val backToGames = !gameOn
-        if (backToGames) BackHandler { libraryFromGames = false }
+        // ---- the library, during a game ----
         LibraryScreen(
-            startInSettings = if (backToGames) com.nerfherder.walkthor.ui.SettingsSection.GENERAL else null,
-            settingsOnly = backToGames,
             books = books,
             alwaysBottom = alwaysBottom,
             swipeToOpen = swipeOn,
             swipeNeedsPermission = swipeNeedsPermission,
-            actions = LibraryActions(
-                onOpen = { openId = it.id },
-                onImport = host::pickGuide,
-                onDelete = library::delete,
-                onRename = library::rename,
-                coverFile = library::coverFile,
-                onToggleAlwaysBottom = { DisplayHelper.setAlwaysBottom(context, it) },
-                onToggleSwipeToOpen = { SwipeLauncher.setEnabled(context, it) },
-                onClose = host::closeApp,
-                onGrantSwipePermission = { SwipeLauncher.requestPermission(context) },
-                hasSwipeConsent = { SwipeLauncher.hasConsent(context) },
-                onSwipeConsent = { SwipeLauncher.setConsent(context, it) },
-                isSwipeServiceOn = { SwipeLauncher.isServiceOn(context) },
-                onOpenAppInfo = { SwipeLauncher.openAppInfo(context) },
-                onSwapScreen = if (canSwap) ({ host.swapScreen(null) }) else null,
-                onLinkRoms = host::pickRomFolder,
-                onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
-                onBackToGame = if (gameOn) ({ libraryOpen = false }) else null,
-                onLinkArt = host::pickArtFolder,
-                onBackToGames = if (backToGames) ({ libraryFromGames = false }) else null,
-            ),
+            actions = libraryActions(null),
         )
         if (gameOn) BackHandler { libraryOpen = false }
     }

@@ -144,6 +144,8 @@ fun LibraryScreen(
     startInSettings: SettingsSection? = null,
     /** Only Settings (no game list under it): leaving Settings leaves this screen. */
     settingsOnly: Boolean = false,
+    /** The main tabs show the sections: Settings draws no tabs of its own and shows [startInSettings]. */
+    settingsInTabs: Boolean = false,
 ) {
     var explainSwipe by remember { mutableStateOf(false) }
     var showDisclosure by remember { mutableStateOf(false) }
@@ -300,6 +302,7 @@ fun LibraryScreen(
         SettingsScreen(
             alwaysBottom, swipeToOpen, actions,
             startSection = startInSettings ?: SettingsSection.GENERAL,
+            inTabs = settingsInTabs,
             onToggleSwipe = { on -> if (on) startSwipeSetup() else actions.onToggleSwipeToOpen(false) },
             onAbout = { showAbout = true },
             onSetupGuide = { showSetup = true },
@@ -399,10 +402,13 @@ private fun SettingsScreen(
     onSetupGuide: () -> Unit,
     onToggleEmulators: (Boolean) -> Unit,
     onDismiss: () -> Unit,
+    inTabs: Boolean = false,
 ) {
     var pickDim by remember { mutableStateOf(false) }
     var showEmulators by remember { mutableStateOf(false) }
-    var section by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(startSection) }
+    var chosenSection by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(startSection) }
+    // In the main tabs, the tab chosen there is the section.
+    val section = if (inTabs) startSection else chosenSection
     val menuScope = androidx.compose.runtime.rememberCoroutineScope()
     val context = LocalContext.current
     val dimDelay by AutoDim.delayMs.collectAsState()
@@ -417,7 +423,8 @@ private fun SettingsScreen(
 
     SettingsFrame(
         section = section,
-        onSection = { section = it },
+        onSection = { chosenSection = it },
+        showBar = !inTabs,
         version = com.nerfherder.walkthor.BuildConfig.VERSION_NAME,
         onBack = onDismiss,
         onClose = { onDismiss(); actions.onClose() },

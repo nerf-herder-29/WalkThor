@@ -73,6 +73,8 @@ fun SettingsFrame(
     version: String,
     onBack: () -> Unit,
     onClose: () -> Unit,
+    /** Its own row of section tabs (not when the main tabs already show the sections). */
+    showBar: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val narrow = LocalConfiguration.current.screenWidthDp < 520
@@ -103,7 +105,7 @@ fun SettingsFrame(
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
         // The sections as tabs, the way the tabs look during a game.
-        TabBarFrame(
+        if (showBar) TabBarFrame(
             overlay = false,
             start = {
                 IconButton(onClick = onBack) {
@@ -114,7 +116,7 @@ fun SettingsFrame(
             // No close button: closing WalkThor from here left the screens in a bad state.
             end = {},
         )
-        HorizontalDivider(color = BookColors.Hairline)
+        if (showBar) HorizontalDivider(color = BookColors.Hairline)
         androidx.compose.runtime.CompositionLocalProvider(LocalSettingsSection provides section.label) {
             Column(
                 Modifier
