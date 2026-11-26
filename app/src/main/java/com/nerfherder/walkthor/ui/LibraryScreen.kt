@@ -634,7 +634,7 @@ private fun SettingsScreen(
                             confirmButton = { androidx.compose.material3.TextButton(onClick = { picking = null }) { Text("Cancel") } },
                             title = { Text("${sys.name} games start in") },
                             text = {
-                                Column {
+                                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                                     androidx.compose.material3.TextButton(onClick = {
                                         com.nerfherder.walkthor.data.GameLaunch.setPreferred(context, sys.key, null); choiceVersion++; picking = null
                                     }) { Text("Let WalkThor pick") }

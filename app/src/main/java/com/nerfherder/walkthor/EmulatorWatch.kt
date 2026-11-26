@@ -175,7 +175,7 @@ object EmulatorWatch {
      * Emulators that draw on both screens themselves (3DS and DS): WalkThor knows these by a word
      * in their package or name, and keeps off their bottom screen unless you say otherwise.
      */
-    private val BOTH_SCREENS = listOf("azahar", "citra", "lime3ds", "borked3ds", "mandarine", "pablomk7", "melonds", "drastic")
+    private val BOTH_SCREENS = listOf("azahar", "citra", "lime3ds", "borked3ds", "mandarine", "pablomk7", "melonds", "drastic", "panda3ds", "noods", "seedlessds")
 
     /** The automatic guess for whether [pkg] uses both screens. */
     fun autoBothScreens(context: Context, pkg: String): Boolean {
@@ -216,6 +216,7 @@ object EmulatorWatch {
         val p = pkg.lowercase()
         val l = label(context, pkg).lowercase()
         return KNOWN.any { it in p || it in l } ||
+            pkg in com.nerfherder.walkthor.data.EsDeLaunch.packages(context) ||
             "emulator" in p || "emulator" in l ||
             p.split('.', '_').any { it.endsWith("emu") && it.length > 3 }
     }

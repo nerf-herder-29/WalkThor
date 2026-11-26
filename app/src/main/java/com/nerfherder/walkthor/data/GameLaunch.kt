@@ -11,8 +11,9 @@ import android.view.Display
 
 /**
  * Starts a game from your ROMs folder in its emulator, on the game screen. The emulators below
- * are opened straight into the game, the way ES-DE opens them; for other systems WalkThor hands
- * the game's file to an emulator you have for that system and lets it open it.
+ * are opened straight into the game; so is every emulator ES-DE Frontend knows how to start
+ * ([EsDeLaunch]), RetroArch with each of its cores too. For anything else WalkThor hands the
+ * game's file to an emulator you have for that system and lets it open it.
  */
 object GameLaunch {
 
@@ -76,17 +77,27 @@ object GameLaunch {
 
     /** The emulator WalkThor would start [rom] in ("Eden"), or null if there's none. */
     fun emulatorName(c: Context, rom: Rom): String? {
-        val all = installed(c)
-        KNOWN.filter { rom.system in it.systems }.forEach { e ->
-            if (e.packages.any { find(c, all, it) != null }) return e.name
-        }
-        return generic(c, all, rom)?.let { label(c, it) }
+        preferred(c, rom.system)?.let { id -> choices(c, rom.system).firstOrNull { it.id == id }?.let { return it.label } }
+        return choices(c, rom.system).firstOrNull()?.label
+    }
+
+    /**
+     * ES-DE's ways to start [system]'s games with emulators you have, apart from those in
+     * [skip]: standalone emulators first, then RetroArch's cores, each once.
+     */
+    private fun esDe(c: Context, system: String, skip: Set<String>): List<Pair<EsDeLaunch.Command, ComponentName>> {
+        val resolved = HashMap<String, ComponentName?>()
+        val seen = HashSet<String>()
+        return EsDeLaunch.commands(c, system)
+            .mapNotNull { cmd -> resolved.getOrPut(cmd.emulator) { EsDeLaunch.resolve(c, cmd.emulator) }?.let { cmd to it } }
+            .filter { (_, comp) -> comp.packageName !in skip }
+            .sortedBy { if (it.first.retroArch) 1 else 0 }
+            .filter { seen.add(it.first.title) }
     }
 
     private fun label(c: Context, pkg: String): String =
         runCatching { c.packageManager.getApplicationLabel(c.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
 
-    /** An installed app whose name says it plays the game's system. */
     /** Every installed app whose name says it plays [system]. */
     private fun generics(c: Context, all: List<String>, system: String): List<String> {
         val words = RomLibrary.system(system)?.emulators.orEmpty()
@@ -105,7 +116,11 @@ object GameLaunch {
         KNOWN.filter { system in it.systems }.forEach { e ->
             e.packages.firstNotNullOfOrNull { find(c, all, it) }?.let { pkg -> knownPkgs += pkg; out += Choice("known:${e.name}", e.name) }
         }
-        generics(c, all, system).filter { it !in knownPkgs }.forEach { out += Choice("pkg:$it", label(c, it)) }
+        val es = esDe(c, system, knownPkgs)
+        val esPkgs = es.map { it.second.packageName }.toSet()
+        es.filter { !it.first.retroArch }.forEach { (cmd, _) -> out += Choice("es:${cmd.title}", cmd.title) }
+        generics(c, all, system).filter { it !in knownPkgs && it !in esPkgs }.forEach { out += Choice("pkg:$it", label(c, it)) }
+        es.filter { it.first.retroArch }.forEach { (cmd, _) -> out += Choice("es:${cmd.title}", cmd.title) }
         return out
     }
 
@@ -114,12 +129,6 @@ object GameLaunch {
     fun preferred(c: Context, system: String): String? = prefs(c).getString(system, null)
     fun setPreferred(c: Context, system: String, id: String?) {
         prefs(c).edit().apply { if (id == null) remove(system) else putString(system, id) }.apply()
-    }
-
-    private fun generic(c: Context, all: List<String>, rom: Rom): String? {
-        val words = RomLibrary.system(rom.system)?.emulators.orEmpty()
-        if (words.isEmpty()) return null
-        return all.firstOrNull { pkg -> val l = label(c, pkg).lowercase(); words.any { it in l } }
     }
 
     /**
@@ -156,9 +165,20 @@ object GameLaunch {
             // Second try: hand it the file the ordinary way.
             tagged += Triple("known:${e.name}", "${e.name} (open file)", Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri))
         }
-        generics(c, all, rom.system).filter { it !in knownPkgs }.forEach { pkg ->
+        // Every other emulator ES-DE knows how to start: standalone ones, then RetroArch's cores.
+        val es = esDe(c, rom.system, knownPkgs)
+        val esPkgs = es.map { it.second.packageName }.toSet()
+        val game = EsDeLaunch.Game(uri, RomLibrary.get(c).folder.value, rom.file)
+        fun addEs(retroArch: Boolean) = es.filter { it.first.retroArch == retroArch }.forEach { (cmd, comp) ->
+            runCatching { EsDeLaunch.intent(c, cmd, comp, game) }
+                .onSuccess { tagged += Triple("es:${cmd.title}", cmd.title, it) }
+                .onFailure { why += "${cmd.title}: needs ${it.message ?: it.javaClass.simpleName}" }
+        }
+        addEs(retroArch = false)
+        generics(c, all, rom.system).filter { it !in knownPkgs && it !in esPkgs }.forEach { pkg ->
             tagged += Triple("pkg:$pkg", label(c, pkg), Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri))
         }
+        addEs(retroArch = true)
         // The emulator you chose for this system (Settings → Emulators) goes first.
         val chosen = preferred(c, rom.system)
         val tries = tagged.sortedBy { if (it.first == chosen) 0 else 1 }.map { it.second to it.third }

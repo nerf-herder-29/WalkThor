@@ -59,6 +59,12 @@ class RomLibrary private constructor(private val context: Context) {
                 if (p.size == 3) Rom(p[0], p[1], p[2]) else null
             }
         }.getOrDefault(emptyList())
+        // WalkThor knows more systems than when the folder was last read: read it again.
+        if (_folder.value != null && prefs.getInt(KEY_SYSTEMS, 0) != SYSTEMS.size) {
+            prefs.edit().putInt(KEY_SYSTEMS, SYSTEMS.size).apply()
+            scan()
+        }
+        Unit
     }
 
     suspend fun link(tree: Uri) {
@@ -184,6 +190,7 @@ class RomLibrary private constructor(private val context: Context) {
 
     companion object {
         private const val KEY_TREE = "tree"
+        private const val KEY_SYSTEMS = "systems"
         @Volatile private var instance: RomLibrary? = null
         fun get(context: Context): RomLibrary =
             instance ?: synchronized(this) { instance ?: RomLibrary(context.applicationContext).also { instance = it } }
@@ -255,7 +262,7 @@ class RomLibrary private constructor(private val context: Context) {
                 setOf("winlator", "gamehub", "mobox", "gamenative", "pluvia", "box64", "exagear", "termux"),
             ),
             GameSystem("pc", "PC (DOS)", 135, setOf("pc", "dos", "msdos", "pcdos"), setOf("dosbox", "magic dosbox")),
-        )
+        ) + MORE_SYSTEMS
         private val BY_FOLDER: Map<String, GameSystem> = SYSTEMS.flatMap { s -> s.folders.map { it to s } }.toMap()
 
         fun systemForFolder(name: String): GameSystem? =

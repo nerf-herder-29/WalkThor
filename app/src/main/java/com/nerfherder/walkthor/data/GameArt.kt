@@ -434,7 +434,7 @@ class GameArt private constructor(private val context: Context) {
 
     companion object {
         /** Bumped when reading folders changes, so linked folders are read again. */
-        private const val FORMAT = 5
+        private const val FORMAT = 6
         private const val KEY_FORMAT = "format"
         private const val KEY_TREE = "tree"
         private const val KEY_SUMMARY = "summary"

@@ -1,0 +1,763 @@
+# Emulator launch rules for Android, from ES-DE Frontend (es-de.org), MIT License, Copyright (c) Leon Styhre and contributors. See es-de-LICENSE.txt.
+E	2600-EMU	com.explusalpha.A2600Emu/com.imagine.BaseActivity
+E	APS3E	aenu.aps3e.premium/aenu.aps3e.EmulatorActivity	aenu.aps3e/aenu.aps3e.EmulatorActivity
+E	ARMSX1	com.nanodata.armsx/com.armsx2.Main
+E	ARMSX2	come.nanodata.armsx2/com.armsx2.MainActivity	com.armsx2/com.armsx2.MainActivity	com.armsx2.nightly/com.armsx2.MainActivity	come.nanodata.armsx2/kr.co.iefriends.pcsx2.MainActivity	come.nanodata.armsx2.debug/kr.co.iefriends.pcsx2.MainActivity
+E	ARMSX3	com.armsx3/com.armsx2.Main
+E	AX360E	aenu.ax360e/aenu.ax360e.EmulatorActivity	aenu.ax360e.free/aenu.ax360e.EmulatorActivity
+E	AZAHAR	org.azahar_emu.azahar/org.citra.citra_emu.activities.EmulationActivity	io.github.lime3ds.android/org.citra.citra_emu.activities.EmulationActivity
+E	AZAHARPLUS	io.github.azaharplus.android/org.citra.citra_emu.activities.EmulationActivity
+E	BACHATAS4	com.bachatas4.android/com.bachatas4.android.DirectLaunchActivity	com.bachatas4.android.github/com.bachatas4.android.DirectLaunchActivity
+E	C64-EMU	com.explusalpha.C64Emu/com.imagine.BaseActivity
+E	CEMU	info.cemu.cemu/info.cemu.cemu.emulation.EmulationActivity	info.cemu.Cemu/info.cemu.Cemu.emulation.EmulationActivity
+E	CITRA	org.citra.citra_emu/org.citra.citra_emu.activities.EmulationActivity	org.citra.citra_emu/org.citra.citra_emu.ui.main.MainActivity
+E	CITRA-CANARY	org.citra.citra_emu.canary/org.citra.citra_emu.activities.EmulationActivity
+E	CITRA-MMJ	org.citra.emu/org.citra.emu.ui.EmulationActivity	com.antutu.ABenchMark/org.citra.emu.ui.EmulationActivity
+E	COLEM	com.fms.colem.deluxe/com.fms.emulib.TVActivity	com.fms.colem/com.fms.emulib.TVActivity
+E	DOLPHIN	org.dolphinemu.dolphinemu/org.dolphinemu.dolphinemu.ui.main.TvMainActivity
+E	DOLPHIN-MMJR	org.mm.jr/org.dolphinemu.dolphinemu.ui.main.MainActivity
+E	DOLPHIN-MMJR2	org.dolphinemu.mmjr/org.dolphinemu.dolphinemu.ui.main.MainActivity
+E	DRASTIC	com.dsemu.drastic/com.dsemu.drastic.DraSticActivity
+E	DROIDARCADIA	com.amigan.droidarcadia/com.amigan.droidarcadia.MainActivity
+E	DSMILE	com.dsmile.emulator/com.dsmile.emulator.ui.EmuActivity
+E	DUCKSTATION	com.github.stenzek.duckstation/com.github.stenzek.duckstation.EmulationActivity
+E	EDEN	dev.eden.eden_emulator/org.yuzu.yuzu_emu.activities.EmulationActivity	dev.legacy.eden_emulator/org.yuzu.yuzu_emu.activities.EmulationActivity	com.miHoYo.Yuanshen/org.yuzu.yuzu_emu.activities.EmulationActivity
+E	EDEN-NIGHTLY	dev.eden.eden_emulator.nightly/org.yuzu.yuzu_emu.activities.EmulationActivity	dev.legacy.eden_emulator.nightly/org.yuzu.yuzu_emu.activities.EmulationActivity	com.miHoYo.Yuanshen.nightly/org.yuzu.yuzu_emu.activities.EmulationActivity
+E	EKA2L1	com.github.eka2l1/com.github.eka2l1.emu.EmulatorActivity
+E	EMUCOREC	com.sbro.emucorec/com.sbro.emucorec.core.ps3.Emulator
+E	EMUCOREV	com.sbro.emucorev/com.sbro.emucorev.core.vita.Emulator
+E	EMUCOREX	com.sbro.emucorex/com.sbro.emucorex.MainActivity
+E	EPSXE	com.epsxe.ePSXe/com.epsxe.ePSXe.ePSXe
+E	FLYCAST	com.flycast.emulator/com.flycast.emulator.MainActivity	com.flycast.emulator/com.reicast.emulator.MainActivity
+E	FMSX	com.fms.fmsx.deluxe/com.fms.emulib.TVActivity	com.fms.fmsx/com.fms.emulib.TVActivity
+E	FPSE	com.emulator.fpse/com.emulator.fpse.Main
+E	FPSE-NG	com.emulator.fpse64/com.emulator.fpse64.Main
+E	GAMEHUB-LITE	emuready.gamehub.lite/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity	gamehub.lite/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity	com.antutu.ABenchMark/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity	com.tencent.ig/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity	com.ludashi.aibench/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity	com.antutu.benchmark.full/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity
+E	GAMENATIVE	app.gamenative/app.gamenative.MainActivity
+E	GBA-EMU	com.explusalpha.GbaEmu/com.imagine.BaseActivity
+E	GBC-EMU	com.explusalpha.GbcEmu/com.imagine.BaseActivity
+E	HAKUX	com.rfandango.haku_x/com.rfandango.haku_x.LauncherActivity
+E	IDTECH4A++	com.karin.idTech4Amm/com.n0n3m4.q3e.Q3EMain
+E	INES	com.fms.ines.free/com.fms.emulib.TVActivity
+E	INFINITY	me.dt2dev.infinity/me.dt2dev.infinity.SchemeActivity
+E	IRATAJAGUAR	ru.vastness.altmer.iratajaguar/ru.vastness.altmer.iratajaguar.EmulatorActivity
+E	J2ME-LOADER	ru.playsoftware.j2meloader/ru.playsoftware.j2meloader.MainActivity
+E	JL-MOD	ru.woesss.j2meloader/ru.playsoftware.j2meloader.MainActivity
+E	KENJI-NX	org.kenjinx.android/org.kenjinx.android.MainActivity
+E	LIME3DS	io.github.lime3ds.android/io.github.lime3ds.android.activities.EmulationActivity
+E	LINKBOY	com.pixelrespawn.linkboy/com.pixelrespawn.linkboy.EmulatorActivity
+E	LYNX-EMU	com.explusalpha.LynxEmu/com.imagine.BaseActivity
+E	M64PLUS-FZ	org.mupen64plusae.v3.fzurita.amazon/paulscode.android.mupen64plusae.SplashActivity	org.mupen64plusae.v3.fzurita.pro/paulscode.android.mupen64plusae.SplashActivity	org.mupen64plusae.v3.fzurita/paulscode.android.mupen64plusae.SplashActivity
+E	MAME4DROID	com.seleuco.mame4droid/com.seleuco.mame4droid.MAME4droid
+E	MAME4DROID-2024	com.seleuco.mame4d2024/com.seleuco.mame4droid.MAME4droid
+E	MAME4DROID-CURRENT	com.seleuco.mame4d2024/com.seleuco.mame4droid.MAME4droid
+E	MANDARINE	io.github.mandarine3ds.mandarine/io.github.mandarine3ds.mandarine.activities.EmulationActivity
+E	MASTERGEAR	com.fms.mg/com.fms.emulib.TVActivity
+E	MD-EMU	com.explusalpha.MdEmu/com.imagine.BaseActivity
+E	MELONDS	me.magnum.melonds/me.magnum.melonds.ui.emulator.EmulatorActivity	me.magnum.melondualds/me.magnum.melonds.ui.emulator.EmulatorActivity
+E	MELONDS-NIGHTLY	me.magnum.melonds.nightly/me.magnum.melonds.ui.emulator.EmulatorActivity
+E	MSX-EMU	com.explusalpha.MsxEmu/com.imagine.BaseActivity
+E	MUPEN64PLUS-AE	org.mupen64plusae.v3.alpha/paulscode.android.mupen64plusae.SplashActivity
+E	MY-BOY	com.fastemulator.gba/com.fastemulator.gba.EmulatorActivity
+E	MY-OLDBOY	com.fastemulator.gbc/com.fastemulator.gbc.EmulatorActivity
+E	NEO-EMU	com.explusalpha.NeoEmu/com.imagine.BaseActivity
+E	NES-EMU	com.explusalpha.NesEmu/com.imagine.BaseActivity
+E	NESOID	com.androidemu.nes/com.androidemu.nes.EmulatorActivity
+E	NETHERSX2	xyz.aethersx2.android/xyz.aethersx2.android.EmulationActivity
+E	NETHERSX2-TURNIP	xyz.aethersx2.tturnip/xyz.aethersx2.android.EmulationActivity
+E	NETHERSX2-TURNIP-CLASSIC	xyz.aethersx2.cturnip/xyz.aethersx2.android.EmulationActivity
+E	NGP-EMU	com.explusalpha.NgpEmu/com.imagine.BaseActivity
+E	NOODS	com.hydra.noods/com.hydra.noods.FileBrowser
+E	OPENBOR	org.openbor.engine/org.openbor.engine.GameActivity
+E	PANDA3DS	com.panda3ds.pandroid/com.panda3ds.pandroid.app.MainActivity
+E	PCE-EMU	com.PceEmu/com.imagine.BaseActivity
+E	PICO-8	io.wip.pico8/com.godot.game.GodotAppLauncher
+E	PIZZA-BOY-GBA	it.dbtecno.pizzaboygbapro/it.dbtecno.pizzaboygbapro.MainActivity	it.dbtecno.pizzaboygba/it.dbtecno.pizzaboygba.MainActivity
+E	PIZZA-BOY-GBC	it.dbtecno.pizzaboypro/it.dbtecno.pizzaboypro.MainActivity	it.dbtecno.pizzaboy/it.dbtecno.pizzaboy.MainActivity
+E	PIZZA-BOY-SC	it.dbtecno.pizzaboyscpro/it.dbtecno.pizzaboyscpro.MainActivity	it.dbtecno.pizzaboyscbasic/it.dbtecno.pizzaboyscbasic.MainActivity
+E	PLAY!	com.virtualapplications.play/com.virtualapplications.play.MainActivity
+E	PPSSPP	org.ppsspp.ppssppgold/org.ppsspp.ppsspp.PpssppActivity	org.ppsspp.ppsspp/org.ppsspp.ppsspp.PpssppActivity
+E	REAL3DOPLAYER	ru.vastness.altmer.real3doplayer/ru.vastness.altmer.real3doplayer.EmulatorActivity
+E	REDREAM	io.recompiled.redream/io.recompiled.redream.MainActivity
+E	RETROARCH	com.retroarch.aarch64/com.retroarch.browser.retroactivity.RetroActivityFuture	com.retroarch.ra32/com.retroarch.browser.retroactivity.RetroActivityFuture	com.retroarch/com.retroarch.browser.retroactivity.RetroActivityFuture
+E	RUFFLE	rs.ruffle/rs.ruffle.PlayerActivity
+E	SATURN-EMU	com.explusalpha.SaturnEmu/com.imagine.BaseActivity
+E	SCUMMVM	org.scummvm.scummvm.debug/org.scummvm.scummvm.SplashActivity	org.scummvm.scummvm/org.scummvm.scummvm.SplashActivity
+E	SEEDLESSDS	com.seedlessds.app/com.seedlessds.app.LaunchGame
+E	SKYEMU	com.sky.SkyEmu/com.sky.SkyEmu.EnhancedNativeActivity
+E	SKYLINE	skyline.emu/emu.skyline.EmulationActivity
+E	SNES9X-EXPLUS	com.explusalpha.Snes9xPlus/com.imagine.BaseActivity
+E	SPECCY	com.fms.speccy.deluxe/com.fms.emulib.TVActivity	com.fms.speccy/com.fms.emulib.TVActivity
+E	STARBOARD	org.force9.starboard/org.force9.starboard.ui.game.GameActivity
+E	SUPER3	com.izzy2lost.super3/com.izzy2lost.super3.MainActivity
+E	SWAN-EMU	com.explusalpha.SwanEmu/com.imagine.BaseActivity
+E	SWF-PLAYER	com.issess.flashplayerpro/com.issess.flashplayer.player.FlashPlayerActivity	com.issess.flashplayer/com.issess.flashplayer.player.FlashPlayerActivity
+E	VIRTUAL-VIRTUAL-BOY	com.simongellis.vvb/com.simongellis.vvb.MainActivity
+E	VISUAL-PINBALL	org.vpinball.vpinball_bgfx/org.vpinball.app.VPinballActivity	org.vpinball.app/org.vpinball.app.VpxLauncherActivity	org.vpinball.app.gl/org.vpinball.app.VPinballActivity
+E	VITA3K	org.vita3k.emulator/org.vita3k.emulator.Emulator	org.vita3k.emulator.ikhoeyZX/org.vita3k.emulator.Emulator
+E	WATERMELONDS	me.magnum.melondualds/me.magnum.melonds.ui.emulator.EmulatorActivity
+E	WINLATOR-CMOD	com.winlator.cmod/com.winlator.cmod.XServerDisplayActivity	com.winlator.vanilla/com.winlator.cmod.XServerDisplayActivity	com.ludashi.benchmark/com.winlator.cmod.XServerDisplayActivity	com.tencent.ig/com.winlator.cmod.XServerDisplayActivity
+E	WINLATOR-GLIBC	com.winlator/com.winlator.XServerDisplayActivity
+E	WINLATOR-PROOT	com.cmodded.winlator/com.winlator.XServerDisplayActivity
+E	WINNATIVE	com.winnative.cmod/com.winlator.cmod.runtime.display.XServerDisplayActivity	com.antutu.ABenchMark/com.winlator.cmod.runtime.display.XServerDisplayActivity	com.ludashi.benchmark/com.winlator.cmod.runtime.display.XServerDisplayActivity	com.tencent.ig/com.winlator.cmod.runtime.display.XServerDisplayActivity
+E	X1-BOX	com.izzy2lost.x1box/com.izzy2lost.x1box.LauncherActivity
+E	XENDROID	xendroid.compose/xendroid.compose.EmulatorHostActivity
+E	XENRA	Ali.Xanite.green/Ali.Xanite.LauncherActivity	Ali.Xanite/Ali.Xanite.LauncherActivity
+E	YABASANSHIRO-2	org.devmiyax.yabasanshioro2.pro/org.uoyabause.android.Yabause	org.devmiyax.yabasanshioro2/org.uoyabause.android.Yabause
+C	3do	Opera	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/opera_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	3do	Real3DOPlayer (Standalone)	%EMULATOR_REAL3DOPLAYER% %DATA%=%ROMSAF%
+C	adam	MAME4droid Current [Diskette] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/adam' -flop1 '%ROMRAW%'" %DATA%=adam
+C	adam	MAME4droid Current [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/adam' -cass1 '%ROMRAW%'" %DATA%=adam
+C	adam	MAME4droid Current [Cartridge] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/adam' -cart1 '%ROMRAW%'" %DATA%=adam
+C	adam	MAME4droid Current [Software list] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/adam' %BASENAME%" %DATA%=adam
+C	adam	ColEm (Standalone)	%EMULATOR_COLEM% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	amiga	PUAE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga	PUAE 2021	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae2021_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga	Amiberry	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/amiberry_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga1200	PUAE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga1200	PUAE 2021	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae2021_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga1200	Amiberry	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/amiberry_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga600	PUAE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga600	PUAE 2021	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae2021_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amiga600	Amiberry	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/amiberry_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amigacd32	PUAE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amigacd32	PUAE 2021	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae2021_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amigacd32	Amiberry	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/amiberry_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amstradcpc	Caprice32	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/cap32_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amstradcpc	CrocoDS	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/crocods_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	amstradcpc	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/amstradcpc' -flop1 '%ROMRAW%'" %DATA%=cpc6128
+C	apple2	AppleWin	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/applewin_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	apple2	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/apple2' -gameio joy -flop1 '%ROMRAW%'" %DATA%=apple2e
+C	apple2gs	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/apple2gs' -gameio joy -flop3 '%ROMRAW%'" %DATA%=apple2gs
+C	apple2gs	MAME4droid Current [Software list] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/apple2gs' -gameio joy %BASENAME%" %DATA%=apple2gs
+C	arcade	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	MAME 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	MAME 2003-Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	MAME 2003	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	MAME 2000	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2000_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	HBMAME	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/hbmame_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/arcade'" %DATA%=%ROMPROVIDER%
+C	arcade	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	arcade	NEO.emu (Standalone)	%EMULATOR_NEO-EMU% %DATA%=%ROMSAF%
+C	arcade	FinalBurn Neo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbneo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	FB Alpha 2012	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	Geolith	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geolith_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	arcade	DICE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dice_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	Supermodel	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/supermodel_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	SUPER3 (Standalone)	%EMULATOR_SUPER3% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	arcadia	AmiArcadia	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/amiarcadia_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcadia	DroidArcadia	%EMULATOR_DROIDARCADIA% %MIMETYPE%=application/zip %DATA%=%ROMPROVIDER%
+C	arcadia	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/arcadia' -cart '%ROMRAW%'" %DATA%=arcadia
+C	archimedes	MAME4droid Current [Model A440/1] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/archimedes' -flop1 '%ROMRAW%'" %DATA%=aa4401
+C	archimedes	MAME4droid Current [Model A3000] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/archimedes' -flop1 '%ROMRAW%'" %DATA%=aa3000
+C	archimedes	MAME4droid Current [Model A310] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/archimedes' -flop1 '%ROMRAW%'" %DATA%=aa310
+C	archimedes	MAME4droid Current [Model A540] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/archimedes' -flop1 '%ROMRAW%'" %DATA%=aa540
+C	arduboy	Arduous	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/arduous_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arduboy	Ardens	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/ardens_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	astrocde	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/astrocde' -cart '%ROMRAW%'" %DATA%=astrocde
+C	atari2600	Stella	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/stella_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari2600	Stella 2014	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/stella2014_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari2600	Stella 2023	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/stella2023_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari2600	Tia	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/tia_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari2600	2600.emu (Standalone)	%EMULATOR_2600-EMU% %DATA%=%ROMPROVIDER%
+C	atari5200	a5200	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/a5200_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari5200	Atari800	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/atari800_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari7800	ProSystem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/prosystem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atari7800	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/atari7800' -cart '%ROMRAW%'" %DATA%=a7800
+C	atari800	Atari800	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/atari800_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atarijaguar	Virtual Jaguar	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/virtualjaguar_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atarijaguar	IrataJaguar (Standalone)	%EMULATOR_IRATAJAGUAR% %DATA%=%ROMSAF%
+C	atarijaguar	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/atarijaguar' -cart '%ROMRAW%'" %DATA%=jaguar
+C	atarijaguarcd	Virtual Jaguar	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/virtualjaguar_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lynx	Handy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/handy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lynx	Beetle Lynx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_lynx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lynx	Gearlynx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearlynx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lynx	Holani	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/holani_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lynx	Lynx.emu (Standalone)	%EMULATOR_LYNX-EMU% %DATA%=%ROMPROVIDER%
+C	atarist	Hatari	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/hatari_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atarist	Hatari 2014	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/hatari2014_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atarixe	Atari800	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/atari800_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atomiswave	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	atomiswave	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	bbcmicro	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/bbcmicro' -autoboot_delay '2' -autoboot_command '*cat\n\n*exec !boot\n' -analogue acornjoy -flop1 '%ROMRAW%'" %DATA%=bbcb
+C	bbcmicro	b2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/b2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	c64	VICE x64sc Accurate	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vice_x64sc_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	c64	VICE x64 Fast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vice_x64_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	c64	VICE x64 SuperCPU	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vice_xscpu64_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	c64	VICE x128	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vice_x128_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	c64	C64.emu (Standalone)	%EMULATOR_C64-EMU% %DATA%=%ROMSAF%
+C	cdimono1	SAME CDi	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/same_cdi_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cdimono1	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/cdimono1' -cdrom '%ROMRAW%'" %DATA%=cdimono1
+C	cdtv	PUAE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cdtv	PUAE 2021	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/puae2021_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cdtv	Amiberry	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/amiberry_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	chailove	ChaiLove	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/chailove_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	channelf	FreeChaF	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/freechaf_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	channelf	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/channelf' -cart '%ROMRAW%'" %DATA%=channelf
+C	coco	MAME4droid Current [Cartridge] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/coco' -cart '%ROMRAW%'" %DATA%=coco
+C	coco	MAME4droid Current [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/coco' -autoboot_delay '2' -autoboot_command 'cloadm:exec\n' -cass '%ROMRAW%'" %DATA%=coco
+C	colecovision	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	colecovision	Gearcoleco	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearcoleco_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	colecovision	JollyCV	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/jollycv_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	colecovision	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	colecovision	MSX.emu (Standalone)	%EMULATOR_MSX-EMU% %DATA%=%ROMSAF%
+C	colecovision	ColEm (Standalone)	%EMULATOR_COLEM% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	consolearcade	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	consolearcade	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/consolearcade'" %DATA%=%ROMPROVIDER%
+C	consolearcade	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	consolearcade	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	consolearcade	Play! (Standalone)	%EMULATOR_PLAY!% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	consolearcade	aPS3e Game Serial (Standalone)	%EMULATOR_APS3E% %ACTION%=aenu.intent.action.APS3E %EXTRA_game_dir%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/aps3e/config/dev_hdd0/game/%INJECT%=%BASENAME%.ps3
+C	consolearcade	aPS3e Directory (Standalone)	%EMULATOR_APS3E% %ACTION%=aenu.intent.action.APS3E %EXTRA_game_dir%=%ROM%
+C	consolearcade	aPS3e ISO (Standalone)	%EMULATOR_APS3E% %ACTION%=aenu.intent.action.APS3E %EXTRA_iso_uri%=%ROMSAF%
+C	consolearcade	ARMSX3 Game Serial (Standalone)	%EMULATOR_ARMSX3% %ACTION%=android.intent.action.VIEW %EXTRA_title_id%=%INJECT%=%BASENAME%.ps3
+C	consolearcade	ARMSX3 Directory or ISO (Standalone)	%EMULATOR_ARMSX3% %EXTRA_path%=%ROM%
+C	consolearcade	EmuCoreC Directory or ISO (Standalone)	%EMULATOR_EMUCOREC% %EXTRA_gamePath%=%ROM%
+C	consolearcade	Dolphin	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dolphin_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	consolearcade	Dolphin (Standalone)	%EMULATOR_DOLPHIN% %ACTION%=android.intent.action.MAIN %CATEGORY%=android.intent.category.LEANBACK_LAUNCHER %EXTRA_AutoStartFile%=%ROMSAF%
+C	cps	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	MAME 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	MAME 2003-Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	MAME 2003	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	MAME 2000	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2000_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/cps'" %DATA%=%ROMPROVIDER%
+C	cps	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	cps	FinalBurn Neo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbneo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	FB Alpha 2012	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	FB Alpha 2012 CPS-1	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps1_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	FB Alpha 2012 CPS-2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps	FB Alpha 2012 CPS-3	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps3_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	MAME 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	MAME 2003-Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	MAME 2003	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	MAME 2000	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2000_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/cps1'" %DATA%=%ROMPROVIDER%
+C	cps1	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	cps1	FinalBurn Neo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbneo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	FB Alpha 2012	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps1	FB Alpha 2012 CPS-1	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps1_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	MAME 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	MAME 2003-Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	MAME 2003	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	MAME 2000	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2000_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/cps2'" %DATA%=%ROMPROVIDER%
+C	cps2	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	cps2	FinalBurn Neo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbneo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	FB Alpha 2012	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps2	FB Alpha 2012 CPS-2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	MAME 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	MAME 2003-Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	MAME 2003	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2003_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	MAME 2000	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mame2000_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/cps3'" %DATA%=%ROMPROVIDER%
+C	cps3	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	cps3	FinalBurn Neo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbneo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	FB Alpha 2012	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	cps3	FB Alpha 2012 CPS-3	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps3_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	crvision	JollyCV	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/jollycv_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	crvision	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/crvision' -cart '%ROMRAW%'" %DATA%=crvision
+C	daphne	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/daphne'" %DATA%=%ROMPROVIDER%
+C	daphne	DirkSimple	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dirksimple_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	doom	PrBoom	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/prboom_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	doom	Boom 3	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/boom3_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	doom	idTech4A++ (Standalone)	%EMULATOR_IDTECH4A++% %ACTIVITY_CLEAR_TASK% %EXTRA_game%=%INJECT%=%ROM% %EXTRA_command%=%INJECT%=%BASENAME%.commands
+C	pc	DOSBox-Pure	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dosbox_pure_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pc	DOSBox-Core	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dosbox_core_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pc	DOSBox-SVN	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dosbox_svn_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pc	VirtualXT	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/virtualxt_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	dragon32	MAME4droid Current Dragon 32 [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/dragon32' -autoboot_delay '4' -autoboot_command 'cloadm\"\"\n' -cass '%ROMRAW%'" %DATA%=dragon32
+C	dragon32	MAME4droid Current Dragon 32 [Cartridge] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/dragon32' -cart '%ROMRAW%'" %DATA%=dragon32
+C	dragon32	MAME4droid Current Dragon 64 [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/dragon32' -autoboot_delay '4' -autoboot_command 'cloadm\"\"\n' -cass '%ROMRAW%'" %DATA%=dragon64
+C	dragon32	MAME4droid Current Dragon 64 [Cartridge] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/dragon32' -cart '%ROMRAW%'" %DATA%=dragon64
+C	dreamcast	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	dreamcast	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	dreamcast	Redream (Standalone)	%EMULATOR_REDREAM% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	easyrpg	EasyRPG	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/easyrpg_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	electron	MAME4droid Current [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/electron' -autoboot_delay '2' -autoboot_command '*T.\nCH.\"\"\n' -cass1 '%ROMRAW%'" %DATA%=electron64
+C	electron	MAME4droid Current [Diskette DFS] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/electron' -exp plus1 -cart1 seds -autoboot_delay '2' -autoboot_command '*CAT\n\n\n\n\n\n*EXEC !BOOT\n' -flop1 '%ROMRAW%'" %DATA%=electron64
+C	electron	MAME4droid Current [Diskette ADFS] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/electron' -exp plus3 -exp:plus3:fdc:1 35dd -autoboot_delay '2' -autoboot_command '*CAT\n\n\n\n\n\n*RUN !BOOT\n' -flop1 '%ROMRAW%'" %DATA%=electron64
+C	epic	GameNative (Standalone)	%EMULATOR_GAMENATIVE% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRA_game_source%=EPIC %EXTRAINTEGER_app_id%=%INJECT%=%ROM%
+C	epic	WinNative (Standalone)	%EMULATOR_WINNATIVE% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	nes	Mesen	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nes	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nes	Nestopia UE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/nestopia_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nes	FCEUmm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fceumm_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nes	QuickNES	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/quicknes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nes	RustyNES	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/rustynes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nes	NES.emu (Standalone)	%EMULATOR_NES-EMU% %DATA%=%ROMPROVIDER%
+C	nes	iNES (Standalone)	%EMULATOR_INES% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	nes	Nesoid (Standalone)	%EMULATOR_NESOID% %ACTION%=android.intent.action.VIEW %DATA%=%ROM%
+C	arcade	FB Alpha 2012 Neo Geo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_neogeo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	FB Alpha 2012 CPS-1	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps1_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	FB Alpha 2012 CPS-2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	FB Alpha 2012 CPS-3	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbalpha2012_cps3_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	fds	Mesen	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	fds	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	fds	Nestopia UE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/nestopia_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	fds	FCEUmm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fceumm_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	fds	RustyNES	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/rustynes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	fds	NES.emu (Standalone)	%EMULATOR_NES-EMU% %DATA%=%ROMPROVIDER%
+C	fds	iNES (Standalone)	%EMULATOR_INES% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	fds	Nesoid (Standalone)	%EMULATOR_NESOID% %ACTION%=android.intent.action.VIEW %DATA%=%ROM%
+C	flash	Ruffle (Standalone)	%EMULATOR_RUFFLE% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	flash	SWF Player (Standalone)	%EMULATOR_SWF-PLAYER% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	fm7	MAME4droid Current [FM-7 Diskette] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fm7' -flop1 '%ROMRAW%'" %DATA%=fm7
+C	fm7	MAME4droid Current [FM-7 Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fm7' -autoboot_delay '5' -autoboot_command 'load\n\n\nrun\n' -cass1 '%ROMRAW%'" %DATA%=fm7
+C	fm7	MAME4droid Current [FM-7 Software list] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fm7' %BASENAME%" %DATA%=fm7
+C	fm7	MAME4droid Current [FM77AV Diskette] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fm7' -flop1 '%ROMRAW%'" %DATA%=fm77av
+C	fm7	MAME4droid Current [FM77AV Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fm7' -autoboot_delay '5' -autoboot_command 'load\n\n\nrun\n' -cass1 '%ROMRAW%'" %DATA%=fm77av
+C	fm7	MAME4droid Current [FM77AV Software list] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fm7' %BASENAME%" %DATA%=fm77av
+C	fmtowns	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/fmtowns' -cdrom '%ROMRAW%'" %DATA%=fmtownshr
+C	gamate	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/gamate' -cart '%ROMRAW%'" %DATA%=gamate
+C	gameandwatch	Multi (MESS)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamemess_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gameandwatch	MAME4droid Current Local Artwork (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-artpath '%ROMPATHRAW%/gameandwatch/artwork'" %DATA%=%ROMPROVIDER%
+C	gameandwatch	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	gameandwatch	Handheld Electronic (GW)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gw_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamecom	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/gamecom' -cartridge1 '%ROMRAW%'" %DATA%=gamecom
+C	gamegear	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	Gearsystem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearsystem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	SMS Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/smsplus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gamegear	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	gamegear	MasterGear (Standalone)	%EMULATOR_MASTERGEAR% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gb	Gambatte	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gambatte_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	SameBoy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/sameboy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	Gearboy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearboy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	TGB Dual	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/tgbdual_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	DoubleCherryGB	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/DoubleCherryGB_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	IroGB	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/irogb_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	Mesen-S	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen-s_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	bsnes	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	mGBA	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mgba_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	VBA-M	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vbam_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	SkyEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/skyemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gb	SkyEmu (Standalone)	%EMULATOR_SKYEMU% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	gb	GBC.emu (Standalone)	%EMULATOR_GBC-EMU% %DATA%=%ROMPROVIDER%
+C	gb	My OldBoy! (Standalone)	%EMULATOR_MY-OLDBOY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gb	Linkboy (Standalone)	%EMULATOR_LINKBOY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gb	Pizza Boy GBC (Standalone)	%EMULATOR_PIZZA-BOY-GBC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	gba	mGBA	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mgba_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	VBA-M	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vbam_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	VBA Next	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vba_next_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	gpSP	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gpsp_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	NooDS	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/noods_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	NooDS (Standalone)	%EMULATOR_NOODS% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_LaunchPath%=%ROM%
+C	gba	SkyEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/skyemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	SkyEmu (Standalone)	%EMULATOR_SKYEMU% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	gba	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gba	GBA.emu (Standalone)	%EMULATOR_GBA-EMU% %DATA%=%ROMPROVIDER%
+C	gba	My Boy! (Standalone)	%EMULATOR_MY-BOY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gba	Linkboy (Standalone)	%EMULATOR_LINKBOY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gba	Pizza Boy GBA (Standalone)	%EMULATOR_PIZZA-BOY-GBA% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	gbc	Gambatte	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gambatte_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	SameBoy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/sameboy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	Gearboy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearboy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	TGB Dual	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/tgbdual_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	DoubleCherryGB	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/DoubleCherryGB_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	IroGB	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/irogb_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	Mesen-S	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen-s_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	bsnes	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	mGBA	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mgba_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	VBA-M	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vbam_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	SkyEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/skyemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gbc	SkyEmu (Standalone)	%EMULATOR_SKYEMU% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	gbc	GBC.emu (Standalone)	%EMULATOR_GBC-EMU% %DATA%=%ROMPROVIDER%
+C	gbc	My OldBoy! (Standalone)	%EMULATOR_MY-OLDBOY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gbc	Linkboy (Standalone)	%EMULATOR_LINKBOY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	gbc	Pizza Boy GBC (Standalone)	%EMULATOR_PIZZA-BOY-GBC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	gc	Dolphin	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dolphin_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gc	Dolphin (Standalone)	%EMULATOR_DOLPHIN% %ACTION%=android.intent.action.MAIN %CATEGORY%=android.intent.category.LEANBACK_LAUNCHER %EXTRA_AutoStartFile%=%ROMSAF%
+C	gc	Dolphin MMJR (Standalone)	%EMULATOR_DOLPHIN-MMJR% %ACTION%=android.intent.action.VIEW %EXTRA_AutoStartFile%=%ROMSAF%
+C	gc	Dolphin MMJR2 (Standalone)	%EMULATOR_DOLPHIN-MMJR2% %ACTION%=android.intent.action.VIEW %EXTRA_AutoStartFile%=%ROMSAF%
+C	genesis	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	genesis	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	genesis	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	genesis	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	genesis	ClownMDEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/clownmdemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	genesis	MD.emu (Standalone)	%EMULATOR_MD-EMU% %DATA%=%ROMPROVIDER%
+C	genesis	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	gmaster	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/gmaster' -cart '%ROMRAW%'" %DATA%=gmaster
+C	gx4000	Caprice32	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/cap32_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gx4000	CrocoDS	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/crocods_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	gx4000	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/gx4000' -cart '%ROMRAW%'" %DATA%=gx4000
+C	intellivision	FreeIntv	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/freeintv_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	intellivision	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/intellivision' -cart '%ROMRAW%'" %DATA%=intv
+C	j2me	J2ME Loader (Standalone)	%EMULATOR_J2ME-LOADER% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMPROVIDER%
+C	j2me	JL-Mod (Standalone)	%EMULATOR_JL-MOD% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMPROVIDER%
+C	j2me	SquirrelJME	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/squirreljme_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	laserdisc	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/laserdisc'" %DATA%=%ROMPROVIDER%
+C	laserdisc	DirkSimple	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dirksimple_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lcdgames	Multi (MESS)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamemess_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lcdgames	MAME4droid Current Local Artwork (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-artpath '%ROMPATHRAW%/lcdgames/artwork'" %DATA%=%ROMPROVIDER%
+C	lcdgames	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	lcdgames	Handheld Electronic (GW)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gw_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lowresnx	LowRes NX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/lowresnx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	lutro	Lutro	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/lutro_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	macintosh	MAME4droid Current Mac SE Bootable (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/macintosh' -flop1 '%ROMRAW%'" %DATA%=macse
+C	macintosh	MAME4droid Current Mac SE Boot Disk (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/macintosh' -flop1 %GAMEDIRRAW%/boot.dsk -flop2 '%ROMRAW%'" %DATA%=macse
+C	macintosh	MAME4droid Current Mac Plus Bootable (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/macintosh' -flop1 '%ROMRAW%'" %DATA%=macplus
+C	macintosh	MAME4droid Current Mac Plus Boot Disk (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/macintosh' -flop1 %GAMEDIRRAW%/boot.dsk -flop2 '%ROMRAW%'" %DATA%=macplus
+C	macintosh	Mini vMac	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/minivmac_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	arcade	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/mame'" %DATA%=%ROMPROVIDER%
+C	mark3	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	SMS Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/smsplus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	Gearsystem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearsystem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mark3	MD.emu (Standalone)	%EMULATOR_MD-EMU% %DATA%=%ROMPROVIDER%
+C	mark3	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	mark3	MasterGear (Standalone)	%EMULATOR_MASTERGEAR% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	mastersystem	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	SMS Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/smsplus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	Gearsystem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearsystem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	mastersystem	MD.emu (Standalone)	%EMULATOR_MD-EMU% %DATA%=%ROMPROVIDER%
+C	mastersystem	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	mastersystem	MasterGear (Standalone)	%EMULATOR_MASTERGEAR% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	segacd	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	segacd	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	segacd	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	segacd	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	segacd	ClownMDEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/clownmdemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	segacd	MD.emu (Standalone)	%EMULATOR_MD-EMU% %DATA%=%ROMSAF%
+C	segacd	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	megacdjp	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megacdjp	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megacdjp	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megacdjp	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megacdjp	ClownMDEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/clownmdemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megacdjp	MD.emu (Standalone)	%EMULATOR_MD-EMU% %DATA%=%ROMSAF%
+C	megacdjp	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	megadrivejp	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megadrivejp	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megadrivejp	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megadrivejp	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megadrivejp	ClownMDEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/clownmdemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megadrivejp	MD.emu (Standalone)	%EMULATOR_MD-EMU% %DATA%=%ROMPROVIDER%
+C	megadrivejp	Pizza Boy SC (Standalone)	%EMULATOR_PIZZA-BOY-SC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_rom_uri%=%ROMSAF%
+C	megaduck	SameDuck	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/sameduck_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	megaduck	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/megaduck' -cart '%ROMRAW%'" %DATA%=megaduck
+C	mess	Multi (MESS)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamemess_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	model2	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	model2	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/model2'" %DATA%=%ROMPROVIDER%
+C	model3	Supermodel	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/supermodel_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	model3	SUPER3 (Standalone)	%EMULATOR_SUPER3% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	model3	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	model3	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/model3'" %DATA%=%ROMPROVIDER%
+C	moto	Theodore	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/theodore_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx	fMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fmsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx	fMSX (Standalone)	%EMULATOR_FMSX% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	msx	MSX.emu (Standalone)	%EMULATOR_MSX-EMU% %DATA%=%ROMSAF%
+C	msx1	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx1	fMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fmsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx1	fMSX (Standalone)	%EMULATOR_FMSX% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	msx1	MSX.emu (Standalone)	%EMULATOR_MSX-EMU% %DATA%=%ROMSAF%
+C	msx2	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx2	fMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fmsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msx2	fMSX (Standalone)	%EMULATOR_FMSX% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	msx2	MSX.emu (Standalone)	%EMULATOR_MSX-EMU% %DATA%=%ROMSAF%
+C	msxturbor	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	msxturbor	MSX.emu (Standalone)	%EMULATOR_MSX-EMU% %DATA%=%ROMSAF%
+C	multivision	Gearsystem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearsystem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	multivision	MasterGear (Standalone)	%EMULATOR_MASTERGEAR% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	3ds	Azahar	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/azahar_libretro.so %EXTRA_ROM%=%ROMSAF%
+C	3ds	Azahar (Standalone)	%EMULATOR_AZAHAR% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	3ds	AzaharPlus (Standalone)	%EMULATOR_AZAHARPLUS% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	3ds	Citra	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/citra_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	3ds	Citra 2018	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/citra2018_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	3ds	Citra (Standalone)	%EMULATOR_CITRA% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	3ds	Citra Canary (Standalone)	%EMULATOR_CITRA-CANARY% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	3ds	Citra MMJ (Standalone)	%EMULATOR_CITRA-MMJ% %EXTRA_GamePath%=%ROM%
+C	3ds	Mandarine (Standalone)	%EMULATOR_MANDARINE% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	3ds	Lime3DS (Standalone)	%EMULATOR_LIME3DS% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	3ds	Panda3DS (Standalone)	%EMULATOR_PANDA3DS% %DATA%=%ROMPROVIDER%
+C	n64	Mupen64Plus-Next	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mupen64plus_next_gles3_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	n64	M64Plus FZ (Standalone)	%EMULATOR_M64PLUS-FZ% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	n64	Mupen64Plus AE (Standalone)	%EMULATOR_MUPEN64PLUS-AE% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	n64	ParaLLEl N64	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/parallel_n64_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	n64dd	Mupen64Plus-Next	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mupen64plus_next_gles3_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	n64dd	M64Plus FZ (Standalone)	%EMULATOR_M64PLUS-FZ% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	n64dd	Mupen64Plus AE (Standalone)	%EMULATOR_MUPEN64PLUS-AE% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	n64dd	ParaLLEl N64	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/parallel_n64_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	naomi	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	naomi	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	naomi2	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	naomi2	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	naomigd	Flycast	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/flycast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	naomigd	Flycast (Standalone)	%EMULATOR_FLYCAST% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	nds	melonDS DS	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/melondsds_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nds	melonDS	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/melonds_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nds	melonDS (Standalone)	%EMULATOR_MELONDS% %ACTION%=me.magnum.melonds.LAUNCH_ROM %EXTRA_uri%=%ROMSAF%
+C	nds	melonDS Nightly (Standalone)	%EMULATOR_MELONDS-NIGHTLY% %ACTION%=me.magnum.melonds.nightly.LAUNCH_ROM %EXTRA_uri%=%ROMSAF%
+C	nds	WatermelonDS (Standalone)	%EMULATOR_WATERMELONDS% %ACTION%=me.magnum.melonds.LAUNCH_ROM %EXTRA_uri%=%ROMSAF%
+C	nds	SeedlessDS (Standalone)	%EMULATOR_SEEDLESSDS% %EXTRA_rom_path%=%ROM%
+C	nds	DeSmuME	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/desmume_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nds	DeSmuME 2015	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/desmume2015_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nds	NooDS	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/noods_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nds	NooDS (Standalone)	%EMULATOR_NOODS% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_LaunchPath%=%ROM%
+C	nds	DraStic (Standalone)	%EMULATOR_DRASTIC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	nds	SkyEmu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/skyemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	nds	SkyEmu (Standalone)	%EMULATOR_SKYEMU% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	neogeo	FinalBurn Neo	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fbneo_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeo	Geolith	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geolith_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeo	NEO.emu (Standalone)	%EMULATOR_NEO-EMU% %DATA%=%ROMSAF%
+C	neogeo	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeo	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/neogeo'" %DATA%=%ROMPROVIDER%
+C	neogeo	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	neogeocd	NeoCD	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/neocd_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeocd	Geolith	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geolith_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeocd	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/neogeocd' -cdrm '%ROMRAW%'" %DATA%=neocdz
+C	neogeocdjp	NeoCD	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/neocd_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeocdjp	Geolith	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geolith_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	neogeocdjp	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/neogeocdjp' -cdrm '%ROMRAW%'" %DATA%=neocdz
+C	ngage	EKA2L1 (Standalone)	%EMULATOR_EKA2L1% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	ngpc	Beetle NeoPop	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_ngp_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ngpc	RACE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/race_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ngpc	NGP.emu (Standalone)	%EMULATOR_NGP-EMU% %DATA%=%ROMPROVIDER%
+C	odyssey2	O2EM	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/o2em_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	odyssey2	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/odyssey2' -cart '%ROMRAW%'" %DATA%=odyssey2
+C	openbor	OpenBOR (Standalone)	%EMULATOR_OPENBOR% %ACTION%=android.intent.action.MAIN
+C	oric	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/oric' -autoboot_delay '4' -autoboot_command 'cload\"\"\n' -cass '%ROMRAW%'" %DATA%=oric1
+C	palm	O2EM	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pc88	QUASI88	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/quasi88_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pc98	Neko Project II Kai	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/np2kai_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pc98	Neko Project II	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/nekop2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcarcade	Winlator Cmod (Standalone)	%EMULATOR_WINLATOR-CMOD% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	pcarcade	Winlator Cmod Glibc (Standalone)	%EMULATOR_WINLATOR-GLIBC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	pcarcade	Winlator Cmod PRoot (Standalone)	%EMULATOR_WINLATOR-PROOT% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	pcarcade	WinNative (Standalone)	%EMULATOR_WINNATIVE% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	pcengine	Beetle PCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcengine	Beetle PCE FAST	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_fast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcengine	Beetle SuperGrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_supergrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcengine	Geargrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geargrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcengine	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcengine	PCE.emu (Standalone)	%EMULATOR_PCE-EMU% %DATA%=%ROMPROVIDER%
+C	pcenginecd	Beetle PCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcenginecd	Beetle PCE FAST	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_fast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcenginecd	Beetle SuperGrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_supergrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcenginecd	Geargrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geargrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcenginecd	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pcenginecd	PCE.emu (Standalone)	%EMULATOR_PCE-EMU% %DATA%=%ROMSAF%
+C	pcfx	Beetle PC-FX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pcfx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pico8	PICO-8 (Standalone)	%EMULATOR_PICO-8% %DATA%=%ROMSAF%
+C	pico8	Fake-08	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fake08_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pico8	Retro8	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/retro8_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pico8	Infinity (Standalone)	%EMULATOR_INFINITY% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	plus4	VICE xplus4	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vice_xplus4_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	pokemini	PokeMini	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/pokemini_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	ECWolf (Wolfenstein 3D)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/ecwolf_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	CannonBall (OutRun)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/cannonball_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	Craft (Minecraft)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/craft_libretro_android.so
+C	ports	Mr.Boom (Bomberman)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mrboom_libretro_android.so
+C	ports	NXEngine (Cave Story)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/nxengine_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	drs (Cave Story)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/doukutsu_rs_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	OpenLara (Tomb Raider)	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/openlara_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	Super Bros War	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/superbroswar_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ports	Starboard (Standalone)	%EMULATOR_STARBOARD% %EXTRA_port_file%=%ROM%
+C	ports	idTech4A++ (Standalone)	%EMULATOR_IDTECH4A++% %ACTIVITY_CLEAR_TASK% %EXTRA_game%=%INJECT%=%ROM% %EXTRA_command%=%INJECT%=%BASENAME%.commands
+C	ps2	PCEE2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/pcee2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ps2	LRPS2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/pcsx2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	ps2	NetherSX2 (Standalone)	%EMULATOR_NETHERSX2% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.MAIN %EXTRA_bootPath%=%ROMSAF%
+C	ps2	NetherSX2-Turnip (Standalone)	%EMULATOR_NETHERSX2-TURNIP% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.MAIN %EXTRA_bootPath%=%ROMSAF%
+C	ps2	NetherSX2-Turnip Classic (Standalone)	%EMULATOR_NETHERSX2-TURNIP-CLASSIC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.MAIN %EXTRA_bootPath%=%ROMSAF%
+C	ps2	ARMSX2 (Standalone)	%EMULATOR_ARMSX2% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	ps2	EmuCoreX (Standalone)	%EMULATOR_EMUCOREX% %ACTIVITY_CLEAR_TASK% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	ps2	Play! (Standalone)	%EMULATOR_PLAY!% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	ps3	aPS3e Game Serial (Standalone)	%EMULATOR_APS3E% %ACTION%=aenu.intent.action.APS3E %EXTRA_game_dir%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/aps3e/config/dev_hdd0/game/%INJECT%=%BASENAME%.ps3
+C	ps3	aPS3e Directory (Standalone)	%EMULATOR_APS3E% %ACTION%=aenu.intent.action.APS3E %EXTRA_game_dir%=%ROM%
+C	ps3	aPS3e ISO (Standalone)	%EMULATOR_APS3E% %ACTION%=aenu.intent.action.APS3E %EXTRA_iso_uri%=%ROMSAF%
+C	ps3	ARMSX3 Game Serial (Standalone)	%EMULATOR_ARMSX3% %ACTION%=android.intent.action.VIEW %EXTRA_title_id%=%INJECT%=%BASENAME%.ps3
+C	ps3	ARMSX3 Directory or ISO (Standalone)	%EMULATOR_ARMSX3% %EXTRA_path%=%ROM%
+C	ps3	EmuCoreC Directory or ISO (Standalone)	%EMULATOR_EMUCOREC% %EXTRA_gamePath%=%ROM%
+C	ps4	BachataS4 (Standalone)	%EMULATOR_BACHATAS4% %EXTRA_game_id%=%INJECT%=%BASENAME%.ps4
+C	psp	PPSSPP	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/ppsspp_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	psp	PPSSPP (Standalone)	%EMULATOR_PPSSPP% %ACTION%=android.intent.action.VIEW %CATEGORY%=android.intent.category.DEFAULT %DATA%=%ROMSAF%
+C	psvita	Vita3K (Standalone)	%EMULATOR_VITA3K% %EXTRAARRAY_AppStartParameters%=-r,%INJECT%=%BASENAME%.psvita
+C	psvita	EmuCoreV (Standalone)	%EMULATOR_EMUCOREV% %EXTRAARRAY_AppStartParameters%=-r,%INJECT%=%BASENAME%.psvita
+C	psx	Beetle PSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_psx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	psx	Beetle PSX HW	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_psx_hw_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	psx	PCSX ReARMed	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/pcsx_rearmed_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	psx	SwanStation	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/swanstation_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	psx	DuckStation (Standalone)	%EMULATOR_DUCKSTATION% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRABOOL_resumeState%=false %EXTRA_bootPath%=%ROMSAF%
+C	psx	ARMSX1 (Standalone)	%EMULATOR_ARMSX1% %DATA%=%ROMSAF%
+C	psx	ePSXe (Standalone)	%EMULATOR_EPSXE% %ACTION%=android.intent.action.MAIN %EXTRA_com.epsxe.ePSXe.isoName%=%ROM%
+C	psx	FPseNG (Standalone)	%EMULATOR_FPSE-NG% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	psx	FPse (Standalone)	%EMULATOR_FPSE% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	pv1000	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/pv1000' -cart '%ROMRAW%'" %DATA%=pv1000
+C	quake	TyrQuake	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/tyrquake_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	quake	vitaQuake 2	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vitaquake2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	quake	vitaQuake 2 [Rogue]	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vitaquake2-rogue_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	quake	vitaQuake 2 [Xatrix]	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vitaquake2-xatrix_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	quake	vitaQuake 2 [Zaero]	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vitaquake2-zaero_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	quake	idTech4A++ (Standalone)	%EMULATOR_IDTECH4A++% %ACTIVITY_CLEAR_TASK% %EXTRA_game%=%INJECT%=%ROM% %EXTRA_command%=%INJECT%=%BASENAME%.commands
+C	samcoupe	Speccy (Standalone)	%EMULATOR_SPECCY% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	satellaview	Snes9x - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	Snes9x 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	Snes9x 2005 Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2005_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	Snes9x EX+ (Standalone)	%EMULATOR_SNES9X-EXPLUS% %DATA%=%ROMSAF%
+C	satellaview	bsnes	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	bsnes-hd	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_hd_beta_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	bsnes-jg	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes-jg_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	bsnes-mercury Accuracy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_mercury_accuracy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	Mesen-S	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen-s_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	satellaview	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturn	Beetle Saturn	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_saturn_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturn	YabaSanshiro	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/yabasanshiro_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturn	Yaba Sanshiro 2 (Standalone)	%EMULATOR_YABASANSHIRO-2% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %EXTRA_org.uoyabause.android.FileNameUri%=%ROMSAF%
+C	saturn	Yabause	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/yabause_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturn	Saturn.emu (Standalone)	%EMULATOR_SATURN-EMU% %DATA%=%ROMSAF%
+C	saturnjp	Beetle Saturn	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_saturn_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturnjp	YabaSanshiro	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/yabasanshiro_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturnjp	Yaba Sanshiro 2 (Standalone)	%EMULATOR_YABASANSHIRO-2% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %EXTRA_org.uoyabause.android.FileNameUri%=%ROMSAF%
+C	saturnjp	Yabause	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/yabause_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	saturnjp	Saturn.emu (Standalone)	%EMULATOR_SATURN-EMU% %DATA%=%ROMSAF%
+C	scummvm	ScummVM	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/scummvm_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	scummvm	ScummVM (Standalone)	%EMULATOR_SCUMMVM% %ACTION%=android.intent.action.MAIN %CATEGORY%=android.intent.action.MAIN %DATA%=%INJECT%=%ROM%
+C	scv	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/scv' -cart '%ROMRAW%'" %DATA%=scv
+C	sega32x	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sega32x	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sega32xjp	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sega32xjp	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sega32xna	PicoDrive	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/picodrive_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sega32xna	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	Snes9x - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	Snes9x 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	Snes9x 2005 Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2005_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	Snes9x EX+ (Standalone)	%EMULATOR_SNES9X-EXPLUS% %DATA%=%ROMSAF%
+C	snes	bsnes	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	bsnes-hd	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_hd_beta_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	bsnes-jg	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes-jg_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	bsnes-mercury Accuracy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_mercury_accuracy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	Beetle Supafaust	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_supafaust_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	Mesen-S	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen-s_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snes	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sg1000	Genesis Plus GX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sg1000	Genesis Plus GX Wide	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/genesis_plus_gx_wide_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sg1000	Gearsystem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/gearsystem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sg1000	BlastEm	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/blastem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sg1000	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sg1000	MasterGear (Standalone)	%EMULATOR_MASTERGEAR% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	sgb	Mesen-S	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen-s_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sgb	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sgb	SameBoy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/sameboy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sgb	mGBA	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mgba_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	Snes9x - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	Snes9x 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	Snes9x 2005 Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2005_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	Snes9x EX+ (Standalone)	%EMULATOR_SNES9X-EXPLUS% %DATA%=%ROMSAF%
+C	snesna	bsnes	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	bsnes-hd	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_hd_beta_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	bsnes-jg	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes-jg_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	bsnes-mercury Accuracy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_mercury_accuracy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	Beetle Supafaust	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_supafaust_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	Mesen-S	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen-s_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	snesna	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	spectravideo	blueMSX	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bluemsx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	windows	GameNative (Standalone)	%EMULATOR_GAMENATIVE% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRA_game_source%=STEAM %EXTRAINTEGER_app_id%=%INJECT%=%ROM%
+C	windows	GameHub Lite (Standalone)	%EMULATOR_GAMEHUB-LITE% %ACTION%=gamehub.lite.LAUNCH_GAME %EXTRABOOL_autoStartGame%=true %EXTRA_steamAppId%=%INJECT%=%ROM% %EXTRA_localGameId%=%INJECT%=%ROM%
+C	windows	GameHub Lite Local (Standalone)	%EMULATOR_GAMEHUB-LITE% %ACTION%=gamehub.lite.LAUNCH_GAME %EXTRABOOL_autoStartGame%=true %EXTRA_localGameId%=%INJECT%=%ROM%
+C	windows	WinNative (Standalone)	%EMULATOR_WINNATIVE% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	stv	MAME - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mamearcade_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	stv	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/stv'" %DATA%=%ROMPROVIDER%
+C	stv	MAME4droid (Standalone)	%EMULATOR_MAME4DROID% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	sufami	Snes9x - Current	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sufami	Snes9x 2010	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2010_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sufami	Snes9x 2005 Plus	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/snes9x2005_plus_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sufami	Snes9x EX+ (Standalone)	%EMULATOR_SNES9X-EXPLUS% %DATA%=%ROMSAF%
+C	sufami	bsnes	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sufami	bsnes-hd	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_hd_beta_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sufami	bsnes-jg	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes-jg_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	sufami	bsnes-mercury Accuracy	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/bsnes_mercury_accuracy_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	supergrafx	Beetle SuperGrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_supergrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	supergrafx	Beetle PCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	supergrafx	Geargrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geargrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	supergrafx	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	supergrafx	PCE.emu (Standalone)	%EMULATOR_PCE-EMU% %DATA%=%ROMPROVIDER%
+C	supervision	Potator	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/potator_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	supervision	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/supervision' -cart '%ROMRAW%'" %DATA%=svision
+C	supracan	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/supracan' -cart '%ROMRAW%'" %DATA%=supracan
+C	switch	Eden (Standalone)	%EMULATOR_EDEN% %ACTION%=android.nfc.action.TECH_DISCOVERED %DATA%=%ROMPROVIDER%
+C	switch	Eden Nightly (Standalone)	%EMULATOR_EDEN-NIGHTLY% %ACTION%=android.nfc.action.TECH_DISCOVERED %DATA%=%ROMPROVIDER%
+C	switch	Kenji-NX (Standalone)	%EMULATOR_KENJI-NX% %ACTION%=org.kenjinx.android.LAUNCH_GAME %EXTRA_bootPath%=%ROMSAF%
+C	switch	Skyline (Standalone)	%EMULATOR_SKYLINE% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	symbian	EKA2L1 (Standalone)	%EMULATOR_EKA2L1% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	tanodragon	MAME4droid Current [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/dragon32' -autoboot_delay '4' -autoboot_command 'cloadm\"\"\n' -cass '%ROMRAW%'" %DATA%=tanodr64
+C	tanodragon	MAME4droid Current [Cartridge] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/dragon32' -cart '%ROMRAW%'" %DATA%=tanodr64
+C	tgcd	Beetle PCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	tgcd	Beetle PCE FAST	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_pce_fast_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	tgcd	Beetle SuperGrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_supergrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	tgcd	Geargrafx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/geargrafx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	tgcd	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	tgcd	PCE.emu (Standalone)	%EMULATOR_PCE-EMU% %DATA%=%ROMSAF%
+C	ti99	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/ti99' -ioport peb -ioport:peb:slot3 speechadapter -cart '%ROMRAW%'" %DATA%=ti99_4a
+C	tic80	TIC-80	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/tic80_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	to8	Theodore	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/theodore_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	triforce	Dolphin	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dolphin_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	triforce	Dolphin (Standalone)	%EMULATOR_DOLPHIN% %ACTION%=android.intent.action.MAIN %CATEGORY%=android.intent.category.LEANBACK_LAUNCHER %EXTRA_AutoStartFile%=%ROMSAF%
+C	typex	Winlator Cmod (Standalone)	%EMULATOR_WINLATOR-CMOD% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	typex	Winlator Cmod Glibc (Standalone)	%EMULATOR_WINLATOR-GLIBC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	typex	Winlator Cmod PRoot (Standalone)	%EMULATOR_WINLATOR-PROOT% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	typex	WinNative (Standalone)	%EMULATOR_WINNATIVE% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	uzebox	Uzem	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/uzem_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	vectrex	vecx	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vecx_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	vectrex	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/vectrex' -cart '%ROMRAW%'" %DATA%=vectrex
+C	vic20	VICE xvic	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vice_xvic_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	videopac	O2EM	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/o2em_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	videopac	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/videopac' -cart '%ROMRAW%'" %DATA%=videopac
+C	vircon32	Vircon32	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/vircon32_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	virtualboy	Beetle VB	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_vb_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	virtualboy	Virtual Virtual Boy (Standalone)	%EMULATOR_VIRTUAL-VIRTUAL-BOY% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMPROVIDER%
+C	vpinball	Visual Pinball (Standalone)	%EMULATOR_VISUAL-PINBALL% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %DATA%=%ROMSAF%
+C	vsmile	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/vsmile' -cart '%ROMRAW%'" %DATA%=vsmile
+C	vsmile	D.Smile (Standalone)	%EMULATOR_DSMILE% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	wasm4	WASM-4	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/wasm4_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	wii	Dolphin	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dolphin_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	wii	Dolphin (Standalone)	%EMULATOR_DOLPHIN% %ACTION%=android.intent.action.MAIN %CATEGORY%=android.intent.category.LEANBACK_LAUNCHER %EXTRA_AutoStartFile%=%ROMSAF%
+C	wii	Dolphin MMJR (Standalone)	%EMULATOR_DOLPHIN-MMJR% %ACTION%=android.intent.action.VIEW %EXTRA_AutoStartFile%=%ROMSAF%
+C	wii	Dolphin MMJR2 (Standalone)	%EMULATOR_DOLPHIN-MMJR2% %ACTION%=android.intent.action.VIEW %EXTRA_AutoStartFile%=%ROMSAF%
+C	wiiu	Cemu (Standalone)	%EMULATOR_CEMU% %DATA%=%ROMSAF%
+C	wiiu	Cemu	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/cemu_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	windows	Winlator Cmod (Standalone)	%EMULATOR_WINLATOR-CMOD% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	windows	Winlator Cmod Glibc (Standalone)	%EMULATOR_WINLATOR-GLIBC% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	windows	Winlator Cmod PRoot (Standalone)	%EMULATOR_WINLATOR-PROOT% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %EXTRA_shortcut_path%=%ROM%
+C	windows	GameNative Epic (Standalone)	%EMULATOR_GAMENATIVE% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRA_game_source%=EPIC %EXTRAINTEGER_app_id%=%INJECT%=%ROM%
+C	windows	GameNative GOG (Standalone)	%EMULATOR_GAMENATIVE% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRA_game_source%=GOG %EXTRAINTEGER_app_id%=%INJECT%=%ROM%
+C	windows	GameNative Amazon (Standalone)	%EMULATOR_GAMENATIVE% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRA_game_source%=AMAZON %EXTRAINTEGER_app_id%=%INJECT%=%ROM%
+C	windows	GameNative Custom Game (Standalone)	%EMULATOR_GAMENATIVE% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRA_game_source%=CUSTOM_GAME %EXTRAINTEGER_app_id%=%INJECT%=%ROM%
+C	windows	GameHub Lite (Standalone)	%EMULATOR_GAMEHUB-LITE% %ACTION%=gamehub.lite.LAUNCH_GAME %EXTRABOOL_autoStartGame%=true %EXTRA_steamAppId%=%INJECT%=%ROM%
+C	windows3x	DOSBox-Pure	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dosbox_pure_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	windows9x	DOSBox-Pure	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/dosbox_pure_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	wonderswan	Beetle Cygne	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mednafen_wswan_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	wonderswan	MesenCE	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mesen2_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	wonderswan	Swan.emu (Standalone)	%EMULATOR_SWAN-EMU% %DATA%=%ROMPROVIDER%
+C	x1	X Millennium	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/x1_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	x1	MAME4droid Current [Diskette] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/x1' -flop1 '%ROMRAW%'" %DATA%=x1
+C	x1	MAME4droid Current [Tape] (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/x1' -cass1 '%ROMRAW%'" %DATA%=x1
+C	x68000	PX68k	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/px68k_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	x68000	MAME4droid Current (Standalone)	%EMULATOR_MAME4DROID-CURRENT% %ACTION%=android.intent.action.VIEW %EXTRA_cli_params%="-rompath '%GAMEDIRRAW%;%ROMPATHRAW%/x68000' -flop1 '%ROMRAW%'" %DATA%=x68000
+C	xbox	X1 BOX (Standalone)	%EMULATOR_X1-BOX% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	xbox	hakuX (Standalone)	%EMULATOR_HAKUX% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
+C	xbox	Xenra (Standalone)	%EMULATOR_XENRA% %DATA%=%ROMSAF%
+C	xbox360	aX360e (Standalone)	%EMULATOR_AX360E% %ACTION%=aenu.intent.action.AX360E %EXTRA_game_uri%=%ROMSAF%
+C	xbox360	XenDroid (Standalone)	%EMULATOR_XENDROID% %DATA%=%ROMSAF%
+C	xbox360	Xenra (Standalone)	%EMULATOR_XENRA% %DATA%=%ROMSAF%
+C	zmachine	MojoZork	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/mojozork_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	zx81	EightyOne	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/81_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	zxspectrum	Fuse	%EMULATOR_RETROARCH% %EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%/files/retroarch.cfg %EXTRA_LIBRETRO%=%INTERNALDATA%/%ANDROIDPACKAGE%/cores/fuse_libretro_android.so %EXTRA_ROM%=%ROMSAF%
+C	zxspectrum	Speccy (Standalone)	%EMULATOR_SPECCY% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%
