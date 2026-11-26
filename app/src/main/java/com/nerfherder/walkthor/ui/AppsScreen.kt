@@ -11,6 +11,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.combinedClickable
@@ -309,8 +311,8 @@ internal fun AppIcon(app: InstalledApp, compact: Boolean, onOpen: () -> Unit, on
         Modifier
             // The top screen shows the app you touch or move to.
             .pointerInput(app.packageName) {
-                androidx.compose.foundation.gestures.awaitEachGesture {
-                    androidx.compose.foundation.gestures.awaitFirstDown(
+                awaitEachGesture {
+                    awaitFirstDown(
                         requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial,
                     )
                     AppsTop.current.value = app
