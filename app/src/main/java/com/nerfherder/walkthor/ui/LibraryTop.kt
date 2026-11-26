@@ -86,10 +86,7 @@ fun LibrarySpotlight(spot: LibrarySpot?) {
                 Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 70.dp, bottom = 40.dp)
-                    .width(210.dp)
-                    .fillMaxHeight(0.62f)
-                    .shadow(18.dp, RoundedCornerShape(10.dp))
-                    .clip(RoundedCornerShape(10.dp)),
+                    .size(220.dp),
             ) { GuideTile(book, spot.cover, Modifier.fillMaxSize()) }
         }
         Column(Modifier.align(Alignment.BottomStart).padding(start = 55.dp, bottom = 64.dp).fillMaxWidth(0.58f)) {
