@@ -198,8 +198,6 @@ object MemoryWatch {
         // While memory's critical, nothing goes through the system helper (each command is a load
         // of its own): restarts and Android's records are caught up on once it recovers.
         if (yielding) return
-        // The game kept as Android's app in front (a home app on the bottom screen takes it otherwise).
-        runCatching { FocusBack.check(c) }
         // How Android ranks the game against the bottom screen's apps: 15 s in, then every minute.
         val sinceStart = System.currentTimeMillis() - gameSince
         if (sinceStart >= 15_000L && System.currentTimeMillis() - ranksAt >= 60_000L) {
