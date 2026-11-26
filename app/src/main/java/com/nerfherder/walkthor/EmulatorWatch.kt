@@ -262,7 +262,6 @@ object EmulatorWatch {
             GameFocus.gameRunning.value = emulatorShowing.value
             if (emulatorShowing.value != was) {
                 runCatching { MemoryWatch.gameChanged(context, emulatorShowing.value) }
-                runCatching { HomeSwap.gameChanged(context, emulatorShowing.value) }
                 runCatching { Lean.gameChanged(context, emulatorShowing.value) }
             }
         }
@@ -303,7 +302,6 @@ object EmulatorWatch {
         gameCovered = false
         if (!was && emulatorShowing.value) {
             runCatching { MemoryWatch.gameChanged(c, true) }
-            runCatching { HomeSwap.gameChanged(c, true) }
         }
         SwipeGestureService.instance?.get()?.let { s -> runCatching { BottomOff.gameFront(s) } }
     }
@@ -336,7 +334,6 @@ object EmulatorWatch {
                         games.forEach { MemoryWatch.gameEndedUnseen(service, it) }
                         if (was && !emulatorShowing.value) {
                             runCatching { MemoryWatch.gameChanged(service, false) }
-                            runCatching { HomeSwap.gameGone(service) }
                         }
                         runCatching { BottomOff.gameFront(service) }
                     }

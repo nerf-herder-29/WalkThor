@@ -237,7 +237,7 @@ object MemoryWatch {
      * No longer sets anything. Writing ranks into /proc doesn't change whom the memory killer
      * picks: it goes by the ranks Android tells it directly (the logs showed WalkThor still "ranked
      * 100" when closed, right after being set to 50). What decides the game's rank is which screen
-     * Android counts as in front: see [FocusBack].
+     * Android counts as in front.
      */
     @Suppress("UNUSED_PARAMETER")
     private fun protect(c: Context, always: Boolean = false) = Unit

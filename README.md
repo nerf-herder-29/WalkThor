@@ -55,11 +55,6 @@ step that's done.
 - **Performance overlay** — while a game is in front, a small glass panel in a corner of either
   screen shows the frame rate with a graph of the last 30 seconds, and underneath, taking turns
   every 5 seconds, CPU speed and heat, GPU load and heat, battery draw and time left, and RAM.
-- **Pause your home app while you play** — Android's own launcher is home during a game and your
-  frontend (Cocoon or any other) is closed, so Android can't keep restarting it and squeezing the
-  game's memory. Android's launcher comes up after the game, which would rank it ahead of the game
-  for the memory killer, so WalkThor brings the game's window back to the front once the launcher
-  is up. Your frontend comes back after you're done.
 - **Updates** — in the library's list and one swipe left of the drawer's Home: WalkThor and each of
   your emulators, with the version you have, the newest release and what's new in it, and an Update
   button that downloads it and hands it to Android's installer. WalkThor knows where several

@@ -603,18 +603,6 @@ private fun SettingsScreen(
                     SettingLink("Choose emulators", "The apps that count as games. Tick any WalkThor doesn't know") { showEmulators = true }
                 }
                 SettingsNote("While one of these is in front, the drawer has its tabs along the top and play time counts.")
-                SettingsGroup("While you play") {
-                    val swapContext = androidx.compose.ui.platform.LocalContext.current
-                    var swapOn by remember { mutableStateOf(com.nerfherder.walkthor.HomeSwap.isOn(swapContext)) }
-                    val homeName = remember { com.nerfherder.walkthor.HomeSwap.pausable(swapContext) }
-                    SettingSwitch(
-                        "Pause your home app",
-                        (homeName ?: "Your home app") + " is closed while a game plays, with Android's own launcher as home meanwhile, and comes back after",
-                        checked = swapOn,
-                        divider = false,
-                    ) { swapOn = it; com.nerfherder.walkthor.HomeSwap.setOn(swapContext, it) }
-                }
-                SettingsNote("Android keeps whatever app is home running, restarting it whenever it's closed, and a frontend restarting over and over can push a game out of memory. Pausing it can stop those crashes. Your home app is back as soon as you leave the game (or close all apps); pressing Home mid-game shows Android's launcher. Android's launcher comes up after the game, which would rank it ahead of the game for the memory killer, so WalkThor brings the game's window back to the front once the launcher is up. Needs AYN's system helper (Force SELinux off).")
             }
             SettingsSection.GUIDES -> {
                 SettingsGroup("ROMs folder") {
