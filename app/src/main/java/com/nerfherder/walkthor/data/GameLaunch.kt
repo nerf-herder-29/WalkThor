@@ -127,6 +127,14 @@ object GameLaunch {
      * start it on (the top screen).
      */
     suspend fun start(c: Context, rom: Rom, gameDisplay: Display?): String? {
+        // A shortcut another app added (PokeDaisy's, say): Android opens it.
+        if (rom.system == PinnedShortcuts.SYSTEM) {
+            val options = gameDisplay?.let { ActivityOptions.makeBasic().setLaunchDisplayId(it.displayId).toBundle() }
+            val error = PinnedShortcuts.start(c, rom, options)
+            log(c, "${rom.id}: " + (error ?: "started the shortcut"))
+            if (error == null) GamePlays.started(c, rom)
+            return error
+        }
         val system = RomLibrary.system(rom.system)?.name ?: rom.system
         val uri = RomLibrary.get(c).document(rom)
         if (uri == null) {

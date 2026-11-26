@@ -218,7 +218,14 @@ class GameArt private constructor(private val context: Context) {
 
     /** The game's picture of this kind, as a link to load, or null. */
     fun picture(rom: Rom, kind: Kind): Uri? {
-        val pic = find(rom, kind) ?: return null
+        val pic = find(rom, kind) ?: run {
+            // A shortcut: its icon is its cover (and its picture up top).
+            if (rom.system == PinnedShortcuts.SYSTEM && kind != Kind.LOGO) {
+                val f = PinnedShortcuts.iconFile(context, rom.file)
+                if (f.exists()) return Uri.fromFile(f)
+            }
+            return null
+        }
         return when {
             pic.ref.startsWith("file:") -> Uri.fromFile(File(pic.ref.removePrefix("file:")))
             else -> _folder.value?.let { DocumentsContract.buildDocumentUriUsingTree(it, pic.ref.removePrefix("doc:")) }

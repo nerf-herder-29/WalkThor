@@ -422,7 +422,10 @@ fun FrontendScreen(
         if (Frontend.spotlight.value?.rom?.id != rom.id && Frontend.spotlight.value != null) kotlinx.coroutines.delay(140)
         Frontend.spotlight.value = Spotlight(
             rom = rom,
-            system = RomLibrary.system(rom.system)?.name ?: rom.system,
+            system = RomLibrary.system(rom.system)?.name
+                ?: if (rom.system == com.nerfherder.walkthor.data.PinnedShortcuts.SYSTEM) {
+                    com.nerfherder.walkthor.data.PinnedShortcuts.find(context, rom)?.appLabel ?: "Shortcut"
+                } else rom.system,
             hero = art.picture(rom, GameArt.Kind.HERO),
             cover = art.picture(rom, GameArt.Kind.COVER),
             logo = art.picture(rom, GameArt.Kind.LOGO),
@@ -579,6 +582,12 @@ fun FrontendScreen(
                         GamePlays.setHidden(context, rom, true)
                         Toast.makeText(context, "Hidden. Show it again in Settings → Guides → Games screen.", Toast.LENGTH_LONG).show()
                     }) { Text("Hide this game") }
+                    if (rom.system == com.nerfherder.walkthor.data.PinnedShortcuts.SYSTEM) {
+                        androidx.compose.material3.TextButton(onClick = {
+                            menuFor = null
+                            com.nerfherder.walkthor.data.PinnedShortcuts.remove(context, rom.file)
+                        }) { Text("Remove this shortcut") }
+                    }
                     listOf(
                         GameArt.Kind.COVER to "Choose its icon…",
                         GameArt.Kind.HERO to "Choose its hero picture…",

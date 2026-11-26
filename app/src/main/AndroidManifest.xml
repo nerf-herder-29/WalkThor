@@ -64,6 +64,18 @@
             android:noHistory="false"
             android:taskAffinity="com.nerfherder.walkthor.prompt"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <!-- Another app adding a shortcut to the home screen (when WalkThor is your home app). -->
+        <activity
+            android:name=".PinShortcutActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="com.nerfherder.walkthor.pin"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
         <!-- The top screen's spotlight while you choose a game on the bottom screen; also
              WalkThor's home screen, if you pick WalkThor as your home app. -->
         <activity
