@@ -551,7 +551,23 @@ object MemoryWatch {
     /** Adds a line to the memory log from elsewhere in WalkThor (the home app swap). */
     fun noteFrom(c: Context, text: String) = note(c.applicationContext, text)
 
+    /** The log on disk read in (once per process). */
+    @Volatile private var fileRead = false
+    @Volatile private var started = false
+
+    /** Reads what's already in the log, so a new line is added to it, not written over it. */
+    @Synchronized private fun readFile(c: Context) {
+        if (fileRead) return
+        fileRead = true
+        val old = runCatching { file(c).takeIf { it.exists() }?.readLines()?.takeLast(MAX_LINES) }.getOrNull().orEmpty()
+        old.asReversed().forEach { lines.addFirst(it) }
+        while (lines.size > MAX_LINES) lines.removeFirst()
+    }
+
     @Synchronized private fun note(c: Context, text: String) {
+        // Something can write before WalkThor's service has started (its black home screen, when
+        // Android starts WalkThor just to show it): the log so far first, or it'd be written over.
+        readFile(c)
         val line = "${time.format(Date())}  $text"
         lines.addLast(line)
         while (lines.size > MAX_LINES) lines.removeFirst()
@@ -564,8 +580,9 @@ object MemoryWatch {
     }
 
     @Synchronized private fun load(c: Context) {
-        if (lines.isNotEmpty()) return
-        runCatching { file(c).takeIf { it.exists() }?.readLines()?.takeLast(MAX_LINES)?.forEach { lines.addLast(it) } }
+        if (started) return
+        started = true
+        readFile(c)
         note(c, "WalkThor started")
         // Why it (and the home app) was last closed, once the system helper has been checked.
         Thread({
