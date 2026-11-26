@@ -36,24 +36,41 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.ceil
 import kotlin.math.exp
 import kotlin.math.hypot
-import kotlin.math.sqrt
 
 /**
- * Where each bubble sits in the cloud: a honeycomb, read left to right and top to bottom, a
- * little wider than tall. Positions are in "steps" (one step is the gap between neighbours).
+ * Where each bubble sits in the cloud: a honeycomb that winds out from the middle, ring by ring
+ * (the first one in the middle, the next six around it, and so on), so the cloud fills the
+ * screen in every direction. Positions are in "steps" (one step is the gap between neighbours).
  */
 object BubbleLayout {
-    fun columns(count: Int): Int = ceil(sqrt(count * 1.6)).toInt().coerceAtLeast(3)
+    private val cache = HashMap<Int, List<Offset>>()
 
-    fun position(i: Int, count: Int): Offset {
-        val cols = columns(count)
-        val row = i / cols
-        val col = i % cols
-        return Offset(col + if (row % 2 == 1) 0.5f else 0f, row * 0.866f)
+    private fun spiral(count: Int): List<Offset> = synchronized(cache) {
+        cache.getOrPut(count) {
+            val out = ArrayList<Offset>(count)
+            fun add(q: Int, r: Int) { if (out.size < count) out += Offset(q + r / 2f, r * 0.866f) }
+            add(0, 0)
+            // The six directions around a honeycomb cell, in axial coordinates.
+            val dirs = listOf(1 to 0, 1 to -1, 0 to -1, -1 to 0, -1 to 1, 0 to 1)
+            var ring = 1
+            while (out.size < count) {
+                var q = -ring
+                var r = ring // start bottom-left of the ring, then walk its six sides
+                for ((dq, dr) in dirs) {
+                    repeat(ring) {
+                        add(q, r)
+                        q += dq; r += dr
+                    }
+                }
+                ring++
+            }
+            out
+        }
     }
+
+    fun position(i: Int, count: Int): Offset = spiral(count.coerceAtLeast(1)).getOrElse(i) { Offset.Zero }
 
     /**
      * The bubble next to [from] in a direction ([dx], [dy] each -1, 0 or 1): the closest one
