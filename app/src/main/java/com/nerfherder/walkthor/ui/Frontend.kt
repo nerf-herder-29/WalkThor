@@ -315,7 +315,7 @@ fun FrontendScreen(
     val shown = remember(roms, shelf, query, plays) {
         val q = query.trim()
         val hidden = GamePlays.hidden(context)
-        val visible = roms.filter { it.id !in hidden }
+        val visible = roms.filter { it.id !in hidden && RomLibrary.isGame(it) }
         val base = when (shelf) {
             Shelf.All -> visible.sortedWith(compareBy({ Frontend.letter(it.title) }, { it.title.lowercase().removePrefix("the ") }))
             Shelf.Recent -> roms.filter { GamePlays.lastPlayed(context, it) > 0 }.sortedByDescending { GamePlays.lastPlayed(context, it) }

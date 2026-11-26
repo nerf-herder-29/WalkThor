@@ -152,7 +152,7 @@ class GameArt private constructor(private val context: Context) {
                     if (lower.substringAfterLast('.', "") !in PICTURES) continue
                     pictures++
                     if (examples.size < 3) examples += (path + name).joinToString("/")
-                    classify(path, lower.substringBeforeLast('.'))?.let { (system, kind, game, rank) ->
+                    classify(path, cleanName(lower.substringBeforeLast('.')))?.let { (system, kind, game, rank) ->
                         rows.add(listOf(system, kind.name, game, "doc:$cid", rank.toString()))
                     }
                 }
@@ -179,6 +179,15 @@ class GameArt private constructor(private val context: Context) {
             _scanning.value = null
         }
     }
+
+    /**
+     * The game's name in a picture's file name, without what the app that saved it added:
+     * Cocoon's "__cocoon_edit_11_a6abfb9d…" after each edit, or a long id on the end.
+     */
+    private fun cleanName(base: String): String = base
+        .replace(Regex("""__cocoon_edit_\d+_[0-9a-f]+$"""), "")
+        .replace(Regex("""[_-][0-9a-f]{24,}$"""), "")
+        .trim()
 
     private data class Placed(val system: String, val kind: Kind, val game: String, val rank: Int)
 
@@ -264,7 +273,7 @@ class GameArt private constructor(private val context: Context) {
      * system (or that their system has no pictures at all), so a mismatch is easy to see.
      */
     fun explain(roms: List<Rom>): String {
-        val missing = roms.filter { picture(it, Kind.COVER) == null }
+        val missing = roms.filter { RomLibrary.isGame(it) && picture(it, Kind.COVER) == null }
         if (missing.isEmpty()) return "Every game has a cover"
         val systems = index.entries.joinToString(", ") { (sys, kinds) -> "$sys ${kinds.values.sumOf { it.size }}" }
         val parts = missing.distinctBy { it.system }.take(4).map { r ->
@@ -372,7 +381,7 @@ class GameArt private constructor(private val context: Context) {
 
     companion object {
         /** Bumped when reading folders changes, so linked folders are read again. */
-        private const val FORMAT = 4
+        private const val FORMAT = 5
         private const val KEY_FORMAT = "format"
         private const val KEY_TREE = "tree"
         private const val KEY_SUMMARY = "summary"
