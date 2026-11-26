@@ -10,6 +10,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.nerfherder.walkthor.ui.Frontend
 import com.nerfherder.walkthor.ui.TopSpotlight
+import com.nerfherder.walkthor.ui.SettingsTop
+import com.nerfherder.walkthor.ui.SettingsExplainer
 import com.nerfherder.walkthor.ui.WalkThorTheme
 
 /**
@@ -37,7 +39,11 @@ class FrontendTopActivity : ComponentActivity() {
         setContent {
             WalkThorTheme {
                 val spot by Frontend.spotlight.collectAsState()
-                TopSpotlight(spot)
+                val settings by SettingsTop.section.collectAsState()
+                val setting by SettingsTop.current.collectAsState()
+                val open = settings
+                if (open != null) SettingsExplainer(open, setting, SettingsTop.titles.toList())
+                else TopSpotlight(spot)
             }
         }
     }
@@ -63,6 +69,8 @@ class FrontendTopActivity : ComponentActivity() {
     /** Buttons pressed while the top screen has the controller work the games below. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (Frontend.keyHandler?.invoke(event) == true) return true
+        // Otherwise (Settings, say) the bottom screen's WalkThor takes them.
+        Frontend.bottom?.get()?.takeIf { !it.isFinishing }?.let { if (it.dispatchKeyEvent(event)) return true }
         return super.dispatchKeyEvent(event)
     }
 

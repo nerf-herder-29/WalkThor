@@ -23,6 +23,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.HorizontalDivider
@@ -43,6 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 
 /** The sections of the settings screen, in the order of the list on its left. */
 enum class SettingsSection(val label: String) {
@@ -68,6 +76,25 @@ fun SettingsFrame(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val narrow = LocalConfiguration.current.screenWidthDp < 520
+    // The top screen follows the open section.
+    androidx.compose.runtime.LaunchedEffect(section) {
+        SettingsTop.section.value = section.label
+        SettingsTop.current.value = null
+    }
+    // With no game running, the top screen explains the setting you're on.
+    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+    val gameRunning by com.nerfherder.walkthor.GameFocus.gameRunning.collectAsState()
+    androidx.compose.runtime.DisposableEffect(activity, gameRunning) {
+        if (activity != null && !gameRunning) Frontend.showTop(activity, moveDown = false)
+        onDispose { }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            SettingsTop.section.value = null
+            SettingsTop.current.value = null
+            Frontend.hideTopSoon()
+        }
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -75,77 +102,27 @@ fun SettingsFrame(
             // Taps on empty space shouldn't fall through to the shelf underneath.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
-        Row(
-            Modifier.fillMaxWidth().height(if (narrow) 48.dp else 56.dp).padding(start = 8.dp, end = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.Text)
-            }
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "Settings",
-                fontFamily = DisplayFont,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = if (narrow) 18.sp else 20.sp,
-                color = BookColors.Text,
-                modifier = Modifier.weight(1f),
-            )
-            Text("WalkThor $version", color = BookColors.TextMuted, fontSize = 11.sp, maxLines = 1)
-        }
-        HorizontalDivider(color = BookColors.Hairline)
-        Row(Modifier.fillMaxSize()) {
-            Column(
-                Modifier
-                    .width(if (narrow) 118.dp else 165.dp)
-                    .fillMaxHeight()
-                    .padding(horizontal = if (narrow) 6.dp else 9.dp, vertical = 11.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                SettingsSection.entries.forEach { s ->
-                    val on = s == section
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (on) BookColors.SurfaceHigh else Color.Transparent)
-                            .clickable { onSection(s) }
-                            .padding(horizontal = 11.dp, vertical = if (narrow) 8.dp else 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            Modifier
-                                .width(2.dp)
-                                .height(14.dp)
-                                .background(if (on) BookColors.Text else Color.Transparent, RoundedCornerShape(1.dp)),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            s.label,
-                            fontSize = if (narrow) 13.sp else 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (on) BookColors.Text else BookColors.TextMuted,
-                            maxLines = 1,
-                        )
-                    }
+        // The sections as tabs, the way the tabs look during a game.
+        TabBarFrame(
+            overlay = false,
+            start = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = BookColors.TextMuted)
                 }
-                Spacer(Modifier.weight(1f))
-                Text(
-                    if (narrow) "Close" else "Close WalkThor",
-                    maxLines = 1,
-                    fontSize = 11.sp,
-                    color = BookColors.TextMuted.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable(onClick = onClose)
-                        .padding(horizontal = 11.dp, vertical = 8.dp),
-                )
-            }
-            Box(Modifier.width(1.dp).fillMaxHeight().background(BookColors.Hairline))
+            },
+            middle = { SettingsTabsRow(section, onSection, Modifier.weight(1f)) },
+            end = {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
+                }
+            },
+        )
+        HorizontalDivider(color = BookColors.Hairline)
+        androidx.compose.runtime.CompositionLocalProvider(LocalSettingsSection provides section.label) {
             Column(
                 Modifier
+                    .fillMaxWidth()
                     .weight(1f)
-                    .fillMaxHeight()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = if (narrow) 12.dp else 20.dp, vertical = 15.dp),
                 content = content,
@@ -160,14 +137,16 @@ fun SettingsGroup(title: String?, content: @Composable ColumnScope.() -> Unit) {
     if (title != null) {
         Text(title.uppercase(), style = EyebrowStyle, modifier = Modifier.padding(start = 2.dp, bottom = 7.dp))
     }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(11.dp))
-            .background(BookColors.Surface)
-            .border(1.dp, BookColors.Hairline, RoundedCornerShape(11.dp)),
-        content = content,
-    )
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsGroup provides title) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(11.dp))
+                .background(BookColors.Surface)
+                .border(1.dp, BookColors.Hairline, RoundedCornerShape(11.dp)),
+            content = content,
+        )
+    }
     Spacer(Modifier.height(13.dp))
 }
 
@@ -188,12 +167,34 @@ fun SettingRow(
     onClick: (() -> Unit)? = null,
     divider: Boolean = true,
     buttons: (@Composable RowScope.() -> Unit)? = null,
+    /** How it's set now, for the top screen ("On"). */
+    value: String? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     if (divider) HorizontalDivider(color = BookColors.Hairline.copy(alpha = 0.6f))
+    // The top screen explains whichever row you touch or move to.
+    val section = LocalSettingsSection.current
+    val group = LocalSettingsGroup.current
+    val info = SettingInfo(section, group, title, subtitle, value)
+    val latest = androidx.compose.runtime.rememberUpdatedState(info)
+    androidx.compose.runtime.DisposableEffect(title) {
+        SettingsTop.titles.add(title)
+        onDispose { SettingsTop.titles.remove(title) }
+    }
+    // Keep the top screen current when this row's value changes.
+    androidx.compose.runtime.LaunchedEffect(info) {
+        if (SettingsTop.current.value?.title == title) SettingsTop.pick(info)
+    }
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
+            .onFocusChanged { if (it.hasFocus) SettingsTop.pick(latest.value) }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    SettingsTop.pick(latest.value)
+                }
+            }
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         val stack = buttons != null && maxWidth < 380.dp
@@ -229,7 +230,7 @@ fun SettingRow(
 /** An on/off setting: the whole row toggles it. */
 @Composable
 fun SettingSwitch(title: String, subtitle: String? = null, checked: Boolean, divider: Boolean = true, onChange: (Boolean) -> Unit) {
-    SettingRow(title, subtitle, onClick = { onChange(!checked) }, divider = divider) {
+    SettingRow(title, subtitle, onClick = { onChange(!checked) }, divider = divider, value = if (checked) "On" else "Off") {
         Switch(
             checked = checked,
             onCheckedChange = onChange,
@@ -249,7 +250,7 @@ fun SettingSwitch(title: String, subtitle: String? = null, checked: Boolean, div
 /** A row that opens something: an optional value, then a chevron. */
 @Composable
 fun SettingLink(title: String, subtitle: String? = null, value: String? = null, divider: Boolean = true, onClick: () -> Unit) {
-    SettingRow(title, subtitle, onClick = onClick, divider = divider) {
+    SettingRow(title, subtitle, onClick = onClick, divider = divider, value = value) {
         if (value != null) Text(value, fontSize = 12.sp, color = BookColors.TextMuted, maxLines = 1)
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,

@@ -800,7 +800,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         )
     } else if (frontOn != false && allRoms.isNotEmpty() && !gameOn && !libraryFromGames) {
         // ---- no game running: your games, to start one (the chosen one big on the top screen) ----
-        DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTop() } }
+        DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTopSoon() } }
         com.nerfherder.walkthor.ui.FrontendScreen(
             roms = allRoms,
             books = books,

@@ -854,6 +854,24 @@ class StoreScreenshots {
         shot("41-frontend-top")
     }
 
+    @Test
+    @Config(qualifiers = "w960dp-h540dp-land-xhdpi")
+    fun settingsTop() {
+        content {
+            com.nerfherder.walkthor.ui.SettingsExplainer(
+                "Guides",
+                com.nerfherder.walkthor.ui.SettingInfo(
+                    "Guides", "Games screen", "Art folder",
+                    "Covers and pictures you already have: Cocoon’s data folder, ES-DE’s folder, or any folder with one folder per system",
+                    "2,140 pictures found. Covers for 288 of 312 games.",
+                ),
+                emptyList(),
+            )
+        }
+        settle()
+        shot("42-settings-top")
+    }
+
     private fun sampleRoms() {
         File(app.filesDir, "roms.tsv").writeText(
             listOf(

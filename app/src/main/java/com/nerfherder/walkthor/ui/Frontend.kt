@@ -130,12 +130,16 @@ object Frontend {
      * Puts the spotlight on the top screen (if it isn't there already). The covers belong on the
      * bottom screen: if WalkThor is on the top one, it moves down first.
      */
-    fun showTop(activity: Activity) {
+    /** The bottom screen's WalkThor, which gets the buttons pressed while the top screen has them. */
+    @Volatile var bottom: java.lang.ref.WeakReference<Activity>? = null
+
+    fun showTop(activity: Activity, moveDown: Boolean = true) {
         val onBottom = runCatching { DisplayHelper.isOnBottom(activity) }.getOrDefault(true)
         if (!onBottom) {
-            runCatching { DisplayHelper.moveToBottom(activity) }
+            if (moveDown) runCatching { DisplayHelper.moveToBottom(activity) }
             return
         }
+        bottom = java.lang.ref.WeakReference(activity)
         if (!topOn(activity)) return
         if (top?.get()?.isFinishing == false) return
         val display = runCatching { DisplayHelper.topDisplay(activity) }.getOrNull() ?: return
@@ -143,6 +147,13 @@ object Frontend {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(display.displayId).toBundle()
         runCatching { activity.startActivity(intent, options) }
+    }
+
+    /** Closes the top screen shortly, unless the games or Settings still want it by then. */
+    fun hideTopSoon() {
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (keyHandler == null && SettingsTop.section.value == null) hideTop()
+        }, 500)
     }
 
     fun hideTop() {
