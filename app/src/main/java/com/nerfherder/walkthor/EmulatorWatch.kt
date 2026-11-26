@@ -495,6 +495,8 @@ object PlayToday {
         val day = today()
         val before = if (p.getString("day", null) == day) p.getLong("ms", 0L) else 0L
         val total = before + ms.coerceAtLeast(0L)
+        // The game started from WalkThor's games, if that's what this was.
+        com.nerfherder.walkthor.data.GamePlays.addTime(c, ms)
         val e = p.edit().putString("day", day).putLong("ms", total).putLong("d$day", total)
         // Keep a week and a bit of days for Home's chart; drop older ones.
         val keep = (0..8).map { dayKey(it) }.toSet()

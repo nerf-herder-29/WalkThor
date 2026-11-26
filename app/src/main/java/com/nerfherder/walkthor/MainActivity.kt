@@ -86,6 +86,10 @@ class MainActivity : ComponentActivity(), WalkThorHost {
     private val romFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) onRomFolderPicked(this, lifecycleScope, uri)
     }
+    /** Your art folder: covers and pictures for your games. */
+    private val artFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) onArtFolderPicked(this, lifecycleScope, uri)
+    }
     // Mirror: Android's "start recording or casting?" prompt.
     private val captureConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val data = result.data
@@ -406,6 +410,7 @@ class MainActivity : ComponentActivity(), WalkThorHost {
     }
 
     override fun pickRomFolder() = romFolderPicker.launch(null)
+    override fun pickArtFolder() = artFolderPicker.launch(null)
 
     override fun swapScreen(bookId: String?) = DisplayHelper.moveToOtherScreen(this, bookId)
 
@@ -576,6 +581,16 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             }
         }
     }
+
+    // ---- your games (the frontend), with no game running ----
+    val frontOn by com.nerfherder.walkthor.ui.Frontend.enabled(context).collectAsState()
+    val romLibrary = remember { com.nerfherder.walkthor.data.RomLibrary.get(context) }
+    val allRoms by romLibrary.roms.collectAsState()
+    LaunchedEffect(Unit) { romLibrary.load() }
+    /** The library (guides, settings), reached from the games' WalkThor button. */
+    var libraryFromGames by rememberSaveable { mutableStateOf(false) }
+    // A game ended: back on your games.
+    LaunchedEffect(gameOn) { if (!gameOn) libraryFromGames = false }
 
     val current = openId
     if (gameOn && !libraryOpen) {
@@ -760,7 +775,20 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
     } else if (current != null) {
         Reader(current, onBack = { openId = null }, tabs = null)
+    } else if (frontOn != false && allRoms.isNotEmpty() && !gameOn && !libraryFromGames) {
+        // ---- no game running: your games, to start one (the chosen one big on the top screen) ----
+        DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTop() } }
+        com.nerfherder.walkthor.ui.FrontendScreen(
+            roms = allRoms,
+            books = books,
+            coverFile = library::coverFile,
+            onOpenGuide = { openId = it.id },
+            onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
+            onOpenLibrary = { libraryFromGames = true },
+        )
     } else {
+        val backToGames = frontOn != false && allRoms.isNotEmpty() && !gameOn
+        if (backToGames) BackHandler { libraryFromGames = false }
         LibraryScreen(
             books = books,
             alwaysBottom = alwaysBottom,
@@ -784,6 +812,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                 onLinkRoms = host::pickRomFolder,
                 onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
                 onBackToGame = if (gameOn) ({ libraryOpen = false }) else null,
+                onLinkArt = host::pickArtFolder,
+                onBackToGames = if (backToGames) ({ libraryFromGames = false }) else null,
             ),
         )
         if (gameOn) BackHandler { libraryOpen = false }

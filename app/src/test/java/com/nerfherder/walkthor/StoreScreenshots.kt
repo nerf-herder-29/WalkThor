@@ -819,6 +819,41 @@ class StoreScreenshots {
     }
 
     /** A made-up ROMs folder's games, as if it had been read. */
+    private fun frontendRoms(): List<com.nerfherder.walkthor.data.Rom> = listOf(
+        "Ember Hollow", "Neon Drift", "Skyward Keep", "Tidebound", "Iron Lantern", "Moss & Bone",
+        "Starfall Rally", "Glass Orchard", "Pale Signal", "Copper Tide", "Hollow Crown", "Quiet Engine",
+        "Velvet Comet", "Wild Arcana", "Arbor Line",
+    ).mapIndexed { i, t -> com.nerfherder.walkthor.data.Rom(listOf("gc", "gba", "switch", "ps2")[i % 4], "$t (USA).iso", t) }
+
+    @Test
+    fun frontendBottom() {
+        content {
+            com.nerfherder.walkthor.ui.FrontendScreen(
+                roms = frontendRoms(), books = shelf, coverFile = { null },
+                onOpenGuide = {}, onAddGuideFor = {}, onOpenLibrary = {},
+            )
+        }
+        settle()
+        shot("40-frontend-bottom")
+    }
+
+    @Test
+    @Config(qualifiers = "w960dp-h540dp-land-xhdpi")
+    fun frontendTop() {
+        val rom = frontendRoms()[0]
+        content {
+            com.nerfherder.walkthor.ui.TopSpotlight(
+                com.nerfherder.walkthor.ui.Spotlight(
+                    rom = rom, system = "Nintendo GameCube", hero = null, cover = null,
+                    description = "A lantern-keeper wakes beneath a burning forest and has one night to find the way out.",
+                    lastPlayed = "yesterday", playTime = "12 h 40 m", guide = "Lanterns of Emberfall - Complete Walkthrough", favorite = false,
+                ),
+            )
+        }
+        settle()
+        shot("41-frontend-top")
+    }
+
     private fun sampleRoms() {
         File(app.filesDir, "roms.tsv").writeText(
             listOf(

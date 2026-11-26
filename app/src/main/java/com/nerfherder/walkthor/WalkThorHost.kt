@@ -27,6 +27,7 @@ interface WalkThorHost {
     fun closeApp()
     fun pickGuide()
     fun pickRomFolder()
+    fun pickArtFolder()
     fun swapScreen(bookId: String?)
 }
 
@@ -44,6 +45,21 @@ internal fun onRomFolderPicked(context: Context, scope: CoroutineScope, uri: Uri
         } else {
             Toast.makeText(context, "Found $n games", Toast.LENGTH_SHORT).show()
         }
+    }
+}
+
+/** Your art folder was picked: read its pictures. */
+internal fun onArtFolderPicked(context: Context, scope: CoroutineScope, uri: Uri) {
+    scope.launch {
+        val art = com.nerfherder.walkthor.data.GameArt.get(context)
+        art.link(uri)
+        val roms = com.nerfherder.walkthor.data.RomLibrary.get(context).roms.value
+        val n = art.covered(roms)
+        Toast.makeText(
+            context,
+            if (n == 0) "No covers found for your games. Pick ES-DE’s folder or its downloaded_media folder." else "Found covers for $n games",
+            Toast.LENGTH_LONG,
+        ).show()
     }
 }
 

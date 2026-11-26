@@ -134,6 +134,28 @@ class RomLibrary private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * The game's file in your ROMs folder, as a link other apps can be given (an emulator opening
+     * it). Looks in each folder of its system, and one folder down for PC shortcuts.
+     */
+    suspend fun document(rom: Rom): Uri? = withContext(Background.dispatcher) {
+        val tree = _folder.value ?: return@withContext null
+        runCatching {
+            val root = DocumentsContract.getTreeDocumentId(tree)
+            for ((id, name, isDir) in children(tree, root)) {
+                if (!isDir || systemForFolder(name)?.key != rom.system) continue
+                val entries = children(tree, id)
+                entries.firstOrNull { it.second == rom.file }?.let { return@runCatching DocumentsContract.buildDocumentUriUsingTree(tree, it.first) }
+                for ((sub, _, dir) in entries) {
+                    if (!dir) continue
+                    runCatching { children(tree, sub) }.getOrNull()?.firstOrNull { !it.third && it.second == rom.file }
+                        ?.let { return@runCatching DocumentsContract.buildDocumentUriUsingTree(tree, it.first) }
+                }
+            }
+            null
+        }.getOrNull()
+    }
+
     /** The .pcgame, .steam and .steamappid shortcuts in a Windows folder and the folders just inside it. */
     private fun pcGames(tree: Uri, entries: List<Triple<String, String, Boolean>>): List<String> {
         fun isPc(name: String) = !name.startsWith(".") &&

@@ -122,6 +122,10 @@ class LibraryActions(
     val onAddGuideFor: (com.nerfherder.walkthor.data.LaunchedGame) -> Unit = {},
     /** Reached from the drawer during a game: back to its tabs. */
     val onBackToGame: (() -> Unit)? = null,
+    /** Pick a folder of game artwork (ES-DE's, or one laid out the same way). */
+    val onLinkArt: () -> Unit = {},
+    /** Reached from the games screen: back to it. */
+    val onBackToGames: (() -> Unit)? = null,
 )
 
 /**
@@ -177,12 +181,17 @@ fun LibraryScreen(
     Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
         Row(
-            Modifier.fillMaxWidth().padding(start = if (actions.onBackToGame != null) 6.dp else 20.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().padding(start = if (actions.onBackToGame != null || actions.onBackToGames != null) 6.dp else 20.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             actions.onBackToGame?.let { back ->
                 IconButton(onClick = back) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to the drawer", tint = BookColors.TextMuted)
+                }
+            }
+            if (actions.onBackToGame == null) actions.onBackToGames?.let { back ->
+                IconButton(onClick = back) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to your games", tint = BookColors.TextMuted)
                 }
             }
             Column(Modifier.weight(1f)) {
@@ -628,6 +637,45 @@ private fun SettingsScreen(
                     }
                 }
                 SettingsNote("WalkThor only reads the names in that folder, never the games themselves. Add a guide to a game from your library.")
+                val artLib = remember { com.nerfherder.walkthor.data.GameArt.get(context) }
+                val artFolder by artLib.folder.collectAsState()
+                val artScanning by artLib.scanning.collectAsState()
+                val artVersion by artLib.version.collectAsState()
+                LaunchedEffect(Unit) { artLib.load() }
+                val frontOn by com.nerfherder.walkthor.ui.Frontend.enabled(context).collectAsState()
+                var topOn by remember { mutableStateOf(com.nerfherder.walkthor.ui.Frontend.topOn(context)) }
+                SettingsGroup("Games screen") {
+                    SettingSwitch(
+                        "Open on your games",
+                        "With no game running, WalkThor shows your games as covers to start them from (Start or the WalkThor button for this screen)",
+                        checked = frontOn != false,
+                        divider = false,
+                    ) { com.nerfherder.walkthor.ui.Frontend.setEnabled(context, it) }
+                    SettingSwitch(
+                        "The chosen game on the top screen",
+                        "Its picture, title and play time, big, while you choose",
+                        checked = topOn,
+                    ) { com.nerfherder.walkthor.ui.Frontend.setTopOn(context, it); topOn = it }
+                    if (artFolder != null) {
+                        val covered = remember(roms, artVersion) { artLib.covered(roms) }
+                        SettingRow(
+                            "Art folder",
+                            artScanning ?: "Covers for $covered of ${roms.size} games",
+                            buttons = {
+                                PillButton("Rescan") { menuScope.launch { artLib.scan() } }
+                                PillButton("Change") { actions.onLinkArt() }
+                                PillButton("Unlink", quiet = true) { artLib.unlink() }
+                            },
+                        )
+                    } else {
+                        SettingRow(
+                            "Art folder",
+                            "Covers and pictures you already have: ES-DE’s folder (or its downloaded_media), one folder per system",
+                            buttons = { PillButton("Link…") { actions.onLinkArt() } },
+                        )
+                    }
+                }
+                SettingsNote("Games without a picture get a made-up cover. Pictures are matched by file name, the way ES-DE names them.")
             }
             SettingsSection.ABOUT -> {
                 SettingsGroup(null) {
