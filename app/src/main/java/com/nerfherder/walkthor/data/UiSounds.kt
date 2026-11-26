@@ -51,7 +51,7 @@ object UiSounds {
         runCatching {
             val p = ready(c)
             val id = ids[kind] ?: return
-            val vol = when (kind) { Kind.MOVE -> 0.09f; Kind.TAB -> 0.2f; Kind.PICK -> 0.22f; Kind.LAUNCH -> 0.32f }
+            val vol = when (kind) { Kind.MOVE -> 0.09f; Kind.TAB -> 0.1f; Kind.PICK -> 0.22f; Kind.LAUNCH -> 0.32f }
             p.play(id, vol, vol, 1, 0, 1f)
         }
     }
