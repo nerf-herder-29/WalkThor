@@ -35,6 +35,8 @@ class GameArt private constructor(private val context: Context) {
     private val prefs = context.getSharedPreferences("art", Context.MODE_PRIVATE)
     private val indexFile = File(context.filesDir, "art2.tsv")
     private val scrapedFile = File(context.filesDir, "art-scraped.tsv")
+    /** Pictures you chose yourself for a game: these win over everything. */
+    private val customFile = File(context.filesDir, "art-custom.tsv")
     private val descFile = File(context.filesDir, "art-desc.tsv")
 
     private val _folder = MutableStateFlow(prefs.getString(KEY_TREE, null)?.let(Uri::parse))
@@ -56,6 +58,7 @@ class GameArt private constructor(private val context: Context) {
     @Volatile private var descs: Map<String, Map<String, String>> = emptyMap()
     @Volatile private var folderRows: List<List<String>> = emptyList()
     @Volatile private var scrapedRows: List<List<String>> = emptyList()
+    @Volatile private var customRows: List<List<String>> = emptyList()
     @Volatile private var loaded = false
 
     private fun readRows(f: File) = runCatching { f.readLines() }.getOrDefault(emptyList())
@@ -66,6 +69,7 @@ class GameArt private constructor(private val context: Context) {
         loaded = true
         folderRows = readRows(indexFile)
         scrapedRows = readRows(scrapedFile)
+        customRows = readRows(customFile)
         descs = runCatching { descFile.readLines() }.getOrDefault(emptyList()).mapNotNull { line ->
             line.split('\t').takeIf { it.size == 3 }?.let { Triple(it[0], it[1], it[2].replace("\\n", "\n")) }
         }.groupBy({ it.first }, { it.second to it.third }).mapValues { it.value.toMap() }
@@ -83,7 +87,7 @@ class GameArt private constructor(private val context: Context) {
             val had = m[name]
             if (had == null || pic.rank < had.rank) m[name] = pic
         }
-        for (r in folderRows + scrapedRows) {
+        for (r in folderRows + scrapedRows + customRows) {
             val kind = runCatching { Kind.valueOf(r[1]) }.getOrNull() ?: continue
             val pic = Pic(r[3], r[4].toIntOrNull() ?: 99)
             put(exact, r[0], kind, r[2], pic)
@@ -304,6 +308,48 @@ class GameArt private constructor(private val context: Context) {
         val row = listOf(rom.system, kind.name, rom.file.substringBeforeLast('.').lowercase(), "file:${file.absolutePath}", "100")
         scrapedRows = scrapedRows + listOf(row)
         runCatching { scrapedFile.appendText((if (scrapedFile.length() > 0) "\n" else "") + row.joinToString("\t")) }
+    }
+
+    /**
+     * Your own picture of [kind] for [rom], copied from [source] into WalkThor's storage (so it
+     * stays even if the original moves). Returns false if it couldn't be read.
+     */
+    suspend fun setCustom(rom: Rom, kind: Kind, source: Uri): Boolean = withContext(Background.dispatcher) {
+        val name = rom.file.substringBeforeLast('.').lowercase()
+        val safe = name.replace(Regex("""[\\/:*?"<>|]"""), "_")
+        val dir = File(context.filesDir, "custom/${rom.system}/${kind.name}").apply { mkdirs() }
+        val to = File(dir, "$safe-${System.currentTimeMillis()}.img")
+        val ok = runCatching {
+            context.contentResolver.openInputStream(source)?.use { input -> to.outputStream().use { input.copyTo(it) } } != null && to.length() > 0
+        }.getOrDefault(false)
+        if (!ok) { to.delete(); return@withContext false }
+        synchronized(this@GameArt) {
+            // The one you chose before for this game and kind goes.
+            customRows.filter { it[0] == rom.system && it[1] == kind.name && it[2] == name }
+                .forEach { File(it[3].removePrefix("file:")).delete() }
+            customRows = customRows.filterNot { it[0] == rom.system && it[1] == kind.name && it[2] == name } +
+                listOf(listOf(rom.system, kind.name, name, "file:${to.absolutePath}", "-10"))
+            runCatching { customFile.writeText(customRows.joinToString("\n") { it.joinToString("\t") }) }
+        }
+        build()
+        true
+    }
+
+    /** Whether you chose any pictures for [rom]. */
+    fun hasCustom(rom: Rom): Boolean {
+        val name = rom.file.substringBeforeLast('.').lowercase()
+        return customRows.any { it[0] == rom.system && it[2] == name }
+    }
+
+    /** Forgets the pictures you chose for [rom] (its usual ones come back). */
+    fun clearCustom(rom: Rom) {
+        val name = rom.file.substringBeforeLast('.').lowercase()
+        synchronized(this) {
+            customRows.filter { it[0] == rom.system && it[2] == name }.forEach { File(it[3].removePrefix("file:")).delete() }
+            customRows = customRows.filterNot { it[0] == rom.system && it[2] == name }
+            runCatching { customFile.writeText(customRows.joinToString("\n") { it.joinToString("\t") }) }
+        }
+        build()
     }
 
     /** After a round of downloads: look pictures up again. */

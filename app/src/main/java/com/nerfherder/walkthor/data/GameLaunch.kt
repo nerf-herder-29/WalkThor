@@ -87,6 +87,35 @@ object GameLaunch {
         runCatching { c.packageManager.getApplicationLabel(c.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
 
     /** An installed app whose name says it plays the game's system. */
+    /** Every installed app whose name says it plays [system]. */
+    private fun generics(c: Context, all: List<String>, system: String): List<String> {
+        val words = RomLibrary.system(system)?.emulators.orEmpty()
+        if (words.isEmpty()) return emptyList()
+        return all.filter { pkg -> val l = label(c, pkg).lowercase(); words.any { it in l } }
+    }
+
+    /** An emulator you can pick for a system: [id] is "known:Eden" or "pkg:<package>". */
+    data class Choice(val id: String, val label: String)
+
+    /** The emulators WalkThor can start [system]'s games in, on this device. */
+    fun choices(c: Context, system: String): List<Choice> {
+        val all = installed(c)
+        val out = ArrayList<Choice>()
+        val knownPkgs = HashSet<String>()
+        KNOWN.filter { system in it.systems }.forEach { e ->
+            e.packages.firstNotNullOfOrNull { find(c, all, it) }?.let { pkg -> knownPkgs += pkg; out += Choice("known:${e.name}", e.name) }
+        }
+        generics(c, all, system).filter { it !in knownPkgs }.forEach { out += Choice("pkg:$it", label(c, it)) }
+        return out
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("launch", Context.MODE_PRIVATE)
+    /** Your emulator for [system], or null to let WalkThor pick. */
+    fun preferred(c: Context, system: String): String? = prefs(c).getString(system, null)
+    fun setPreferred(c: Context, system: String, id: String?) {
+        prefs(c).edit().apply { if (id == null) remove(system) else putString(system, id) }.apply()
+    }
+
     private fun generic(c: Context, all: List<String>, rom: Rom): String? {
         val words = RomLibrary.system(rom.system)?.emulators.orEmpty()
         if (words.isEmpty()) return null
@@ -105,19 +134,26 @@ object GameLaunch {
             return "Couldn't find ${rom.file} in your ROMs folder. Try Rescan in Settings → Guides."
         }
         val all = installed(c)
-        // (what it is, the intent) in the order to try.
-        val tries = ArrayList<Pair<String, Intent>>()
+        // (which emulator, what it is, the intent) in the order to try.
+        val tagged = ArrayList<Triple<String, String, Intent>>()
         val why = ArrayList<String>()
+        val knownPkgs = HashSet<String>()
         for (e in KNOWN.filter { rom.system in it.systems }) {
             val pkg = e.packages.firstNotNullOfOrNull { find(c, all, it) }
             if (pkg == null) { why += "${e.name} isn't installed"; continue }
+            knownPkgs += pkg
             val made = runCatching { e.intent(c, pkg, uri, rom) }
-            made.getOrNull()?.let { tries += e.name to it }
+            made.getOrNull()?.let { tagged += Triple("known:${e.name}", e.name, it) }
                 ?: why.add("${e.name}: couldn't set up the game (${made.exceptionOrNull()?.javaClass?.simpleName ?: "nothing to start"})")
             // Second try: hand it the file the ordinary way.
-            tries += "${e.name} (open file)" to Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri)
+            tagged += Triple("known:${e.name}", "${e.name} (open file)", Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri))
         }
-        generic(c, all, rom)?.let { pkg -> tries += label(c, pkg) to Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri) }
+        generics(c, all, rom.system).filter { it !in knownPkgs }.forEach { pkg ->
+            tagged += Triple("pkg:$pkg", label(c, pkg), Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri))
+        }
+        // The emulator you chose for this system (Settings → Emulators) goes first.
+        val chosen = preferred(c, rom.system)
+        val tries = tagged.sortedBy { if (it.first == chosen) 0 else 1 }.map { it.second to it.third }
         if (tries.isEmpty()) {
             log(c, "${rom.id}: no emulator. ${why.joinToString("; ")}")
             return "No emulator for $system found" + (why.firstOrNull()?.let { " ($it)" } ?: "")

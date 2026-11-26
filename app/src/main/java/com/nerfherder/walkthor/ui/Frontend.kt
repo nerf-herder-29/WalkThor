@@ -50,6 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -167,6 +169,17 @@ object Frontend {
         runCatching { activity.startActivity(intent, options) }
     }
 
+    /**
+     * Brings the top screen back if one of WalkThor's screens wants it and it's gone (closed by
+     * something else, such as closing apps from the drawer), with no game running.
+     */
+    fun ensureTop(activity: Activity) {
+        val wanted = keyHandler != null || SettingsTop.section.value != null || LibraryTop.active.value || AppsTop.active.value
+        if (!wanted || com.nerfherder.walkthor.GameFocus.gameRunning.value) return
+        if (top?.get()?.let { !it.isFinishing && !it.isDestroyed } == true) return
+        showTop(activity, moveDown = false)
+    }
+
     /** Closes the top screen shortly, unless the games or Settings still want it by then. */
     fun hideTopSoon() {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -238,16 +251,24 @@ fun PlaceholderArt(title: String, modifier: Modifier = Modifier, showTitle: Bool
 private fun Cover(rom: Rom, picture: Uri?, selected: Boolean, modifier: Modifier) {
     // Rounded squares, like the icons in your art folder.
     val shape = RoundedCornerShape(24.dp)
+    // A quick fade of the ring and a slight lift as the choice moves from game to game.
+    val ring by androidx.compose.animation.animateColorAsState(
+        if (selected) frontAccent() else Color.Transparent, androidx.compose.animation.core.tween(160), label = "ring",
+    )
+    val lift by androidx.compose.animation.core.animateFloatAsState(
+        if (selected) 1f else 0.95f, androidx.compose.animation.core.tween(160), label = "lift",
+    )
     Box(
         modifier
             .aspectRatio(1f, matchHeightConstraintsFirst = true)
-            .then(if (selected) Modifier.border(3.dp, frontAccent(), shape).padding(6.dp) else Modifier.padding(6.dp))
+            .graphicsLayer { scaleX = lift; scaleY = lift }
+            .border(3.dp, ring, shape).padding(6.dp)
             .shadow(6.dp, RoundedCornerShape(18.dp))
             .clip(RoundedCornerShape(18.dp)),
     ) {
         if (picture != null) {
             AsyncImage(
-                model = picture,
+                model = coil.request.ImageRequest.Builder(LocalContext.current).data(picture).crossfade(180).build(),
                 contentDescription = rom.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().background(BookColors.SurfaceHigh),
@@ -334,6 +355,18 @@ fun FrontendScreen(
     var launchError by remember { mutableStateOf<String?>(null) }
     /** The game whose options are open (X, or a long press). */
     var menuFor by remember { mutableStateOf<Rom?>(null) }
+    // Choosing your own icon, hero picture or logo for a game.
+    var picking by remember { mutableStateOf<Pair<Rom, GameArt.Kind>?>(null) }
+    val pickPicture = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri ->
+        val (rom, kind) = picking ?: return@rememberLauncherForActivityResult
+        picking = null
+        if (uri != null) scope.launch {
+            val ok = art.setCustom(rom, kind, uri)
+            if (!ok) Toast.makeText(context, "Couldn't read that picture", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     fun select(i: Int) {
         if (shown.isEmpty()) return
@@ -551,6 +584,22 @@ fun FrontendScreen(
                         GamePlays.setHidden(context, rom, true)
                         Toast.makeText(context, "Hidden. Show it again in Settings → Guides → Games screen.", Toast.LENGTH_LONG).show()
                     }) { Text("Hide this game") }
+                    listOf(
+                        GameArt.Kind.COVER to "Choose its icon…",
+                        GameArt.Kind.HERO to "Choose its hero picture…",
+                        GameArt.Kind.LOGO to "Choose its logo…",
+                    ).forEach { (kind, label) ->
+                        androidx.compose.material3.TextButton(onClick = {
+                            menuFor = null
+                            picking = rom to kind
+                            runCatching { pickPicture.launch("image/*") }
+                        }) { Text(label) }
+                    }
+                    if (art.hasCustom(rom)) {
+                        androidx.compose.material3.TextButton(onClick = { menuFor = null; art.clearCustom(rom) }) {
+                            Text("Go back to its usual pictures")
+                        }
+                    }
                     androidx.compose.material3.TextButton(onClick = { menuFor = null; choosingFor = rom }) {
                         Text(if (guideFor[rom.id] != null) "Change its guide" else "Add a guide")
                     }
@@ -605,6 +654,20 @@ private fun Pill(text: String, onClick: () -> Unit) {
  */
 @Composable
 fun TopSpotlight(spot: Spotlight?) {
+    // Moving from game to game fades the top screen across, quickly.
+    androidx.compose.animation.AnimatedContent(
+        targetState = spot,
+        transitionSpec = {
+            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) togetherWith
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(220))
+        },
+        contentKey = { it?.rom?.id },
+        label = "spotlight",
+    ) { s -> TopSpotlightBody(s) }
+}
+
+@Composable
+private fun TopSpotlightBody(spot: Spotlight?) {
     Box(Modifier.fillMaxSize().background(Color(0xFF0C0B0E))) {
         if (spot == null) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -619,7 +682,7 @@ fun TopSpotlight(spot: Spotlight?) {
         val picture = spot.hero ?: spot.cover
         if (picture != null) {
             AsyncImage(
-                model = picture,
+                model = coil.request.ImageRequest.Builder(LocalContext.current).data(picture).crossfade(180).build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -640,7 +703,7 @@ fun TopSpotlight(spot: Spotlight?) {
         // The game's logo, in the middle of its picture.
         if (logo != null) {
             AsyncImage(
-                model = logo,
+                model = coil.request.ImageRequest.Builder(LocalContext.current).data(logo).crossfade(180).build(),
                 contentDescription = spot.rom.title,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.5f).fillMaxHeight(0.38f),

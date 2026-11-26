@@ -609,6 +609,19 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         AutoDim.holdBright(homeHold, !gameOn && isHome)
         onDispose { AutoDim.holdBright(homeHold, false) }
     }
+    // With no game running, the top screen is kept up: if something closes it (closing apps from
+    // the drawer, say), it comes back within a couple of seconds.
+    val keepTopOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    LaunchedEffect(gameOn) {
+        if (gameOn) return@LaunchedEffect
+        val activity = context as? android.app.Activity ?: return@LaunchedEffect
+        keepTopOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (true) {
+                kotlinx.coroutines.delay(1_500L)
+                runCatching { com.nerfherder.walkthor.ui.Frontend.ensureTop(activity) }
+            }
+        }
+    }
     // A game ended: back on your games.
     LaunchedEffect(gameOn) { if (!gameOn) { libraryFromGames = false; appsFromGames = false } }
 

@@ -603,6 +603,42 @@ private fun SettingsScreen(
                 }
             }
             SettingsSection.EMULATORS -> {
+                // Which emulator each system's games start in, from the games screen.
+                val systems = remember(roms) { roms.map { it.system }.distinct().mapNotNull { com.nerfherder.walkthor.data.RomLibrary.system(it) }.sortedBy { it.name } }
+                if (systems.isNotEmpty()) {
+                    var picking by remember { mutableStateOf<com.nerfherder.walkthor.data.GameSystem?>(null) }
+                    var choiceVersion by remember { mutableStateOf(0) }
+                    SettingsGroup("Starting games") {
+                        systems.forEachIndexed { i, sys ->
+                            val options = remember(sys.key) { com.nerfherder.walkthor.data.GameLaunch.choices(context, sys.key) }
+                            val chosen = remember(sys.key, choiceVersion) { com.nerfherder.walkthor.data.GameLaunch.preferred(context, sys.key) }
+                            val now = options.firstOrNull { it.id == chosen }?.label
+                                ?: options.firstOrNull()?.label?.let { "$it (WalkThor’s pick)" }
+                                ?: "No emulator found"
+                            SettingLink(sys.name, now, value = null, divider = i > 0) { if (options.isNotEmpty()) picking = sys }
+                        }
+                    }
+                    picking?.let { sys ->
+                        val options = remember(sys.key) { com.nerfherder.walkthor.data.GameLaunch.choices(context, sys.key) }
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { picking = null },
+                            confirmButton = { androidx.compose.material3.TextButton(onClick = { picking = null }) { Text("Cancel") } },
+                            title = { Text("${sys.name} games start in") },
+                            text = {
+                                Column {
+                                    androidx.compose.material3.TextButton(onClick = {
+                                        com.nerfherder.walkthor.data.GameLaunch.setPreferred(context, sys.key, null); choiceVersion++; picking = null
+                                    }) { Text("Let WalkThor pick") }
+                                    options.forEach { o ->
+                                        androidx.compose.material3.TextButton(onClick = {
+                                            com.nerfherder.walkthor.data.GameLaunch.setPreferred(context, sys.key, o.id); choiceVersion++; picking = null
+                                        }) { Text(o.label) }
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
                 SettingsGroup("Emulators") {
                     SettingSwitch(
                         "Open when an emulator starts",
