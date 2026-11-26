@@ -90,30 +90,54 @@ object GameLaunch {
      * start it on (the top screen).
      */
     suspend fun start(c: Context, rom: Rom, gameDisplay: Display?): String? {
-        val uri = RomLibrary.get(c).document(rom) ?: return "Couldn't find ${rom.file} in your ROMs folder. Try Rescan."
-        val all = installed(c)
-        val tries = ArrayList<Intent>()
-        for (e in KNOWN.filter { rom.system in it.systems }) {
-            val pkg = e.packages.firstNotNullOfOrNull { find(c, all, it) } ?: continue
-            e.intent(c, pkg, uri, rom)?.let { tries += it }
+        val system = RomLibrary.system(rom.system)?.name ?: rom.system
+        val uri = RomLibrary.get(c).document(rom)
+        if (uri == null) {
+            log(c, "${rom.id}: not found in the ROMs folder")
+            return "Couldn't find ${rom.file} in your ROMs folder. Try Rescan in Settings → Guides."
         }
-        generic(c, all, rom)?.let { pkg -> tries += Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri) }
+        val all = installed(c)
+        // (what it is, the intent) in the order to try.
+        val tries = ArrayList<Pair<String, Intent>>()
+        val why = ArrayList<String>()
+        for (e in KNOWN.filter { rom.system in it.systems }) {
+            val pkg = e.packages.firstNotNullOfOrNull { find(c, all, it) }
+            if (pkg == null) { why += "${e.name} isn't installed"; continue }
+            val made = runCatching { e.intent(c, pkg, uri, rom) }
+            made.getOrNull()?.let { tries += e.name to it }
+                ?: why.add("${e.name}: couldn't set up the game (${made.exceptionOrNull()?.javaClass?.simpleName ?: "nothing to start"})")
+            // Second try: hand it the file the ordinary way.
+            tries += "${e.name} (open file)" to Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri)
+        }
+        generic(c, all, rom)?.let { pkg -> tries += label(c, pkg) to Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri) }
         if (tries.isEmpty()) {
-            val system = RomLibrary.system(rom.system)?.name ?: rom.system
-            return "No emulator for $system found"
+            log(c, "${rom.id}: no emulator. ${why.joinToString("; ")}")
+            return "No emulator for $system found" + (why.firstOrNull()?.let { " ($it)" } ?: "")
         }
         val options = gameDisplay?.let { ActivityOptions.makeBasic().setLaunchDisplayId(it.displayId).toBundle() }
-        for (intent in tries) {
+        for ((name, intent) in tries) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             // So the emulator may read the file even when the link travels in an extra.
             intent.clipData = ClipData.newRawUri(rom.title, uri)
-            if (intent.component == null && c.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) continue
-            val ok = runCatching { c.startActivity(intent, options) }.isSuccess
-            if (ok) {
+            if (intent.component == null && c.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) {
+                why += "$name: doesn't open files this way"
+                continue
+            }
+            val result = runCatching { c.startActivity(intent, options) }
+            if (result.isSuccess) {
+                log(c, "${rom.id}: started with $name (${intent.action}, ${intent.component?.flattenToShortString() ?: intent.`package`})")
                 GamePlays.started(c, rom)
                 return null
             }
+            val e = result.exceptionOrNull()
+            why += "$name: ${e?.javaClass?.simpleName}: ${e?.message?.take(120)}"
         }
-        return "Couldn't start ${rom.title}"
+        log(c, "${rom.id}: failed. ${why.joinToString("; ")}")
+        return "Couldn't start ${rom.title}. " + why.joinToString("\n")
+    }
+
+    /** Into the memory log, which goes along with game reports. */
+    private fun log(c: Context, text: String) {
+        runCatching { com.nerfherder.walkthor.MemoryWatch.noteFrom(c, "Launch: $text") }
     }
 }

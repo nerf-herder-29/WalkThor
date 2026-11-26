@@ -61,6 +61,24 @@ object DisplayHelper {
         return displays.minByOrNull { d -> d.mode.physicalWidth.toLong() * d.mode.physicalHeight }
     }
 
+    /** The top (game) screen: the biggest switched-on screen that isn't the bottom one. */
+    fun topDisplay(context: Context): Display? {
+        val bottom = bottomDisplay(context) ?: return null
+        return usableDisplays(context).filter { it.displayId != bottom.displayId }
+            .maxByOrNull { d -> d.mode.physicalWidth.toLong() * d.mode.physicalHeight }
+    }
+
+    /**
+     * Moves WalkThor to the bottom screen if it's on the top one (once: never if this copy was
+     * itself moved). Returns true if it's moving.
+     */
+    fun moveToBottom(activity: Activity): Boolean {
+        if (activity.intent.getBooleanExtra(EXTRA_RELAUNCHED, false)) return false
+        val bottom = bottomDisplay(activity) ?: return false
+        if (bottom.displayId == currentDisplayId(activity)) return false
+        return relaunch(activity, bottom.displayId, Intent(activity.intent), quiet = true)
+    }
+
     fun otherDisplay(activity: Activity): Display? {
         val current = currentDisplayId(activity)
         return usableDisplays(activity).firstOrNull { it.displayId != current }

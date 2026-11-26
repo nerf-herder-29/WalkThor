@@ -1,7 +1,6 @@
 package com.nerfherder.walkthor
 
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
@@ -14,26 +13,57 @@ import com.nerfherder.walkthor.ui.TopSpotlight
 import com.nerfherder.walkthor.ui.WalkThorTheme
 
 /**
- * The top screen while you choose a game on the bottom one: the chosen game, big. It never
- * takes the controller (that stays with the bottom screen), and it closes as soon as anything
- * covers it (a game starting), so it holds no memory while you play.
+ * The top screen while you choose a game on the bottom one: the chosen game, big. Buttons
+ * pressed while it has the controller go to the games on the bottom screen. It closes as soon
+ * as anything covers it (a game starting), so it holds no memory while you play.
+ *
+ * It's also WalkThor's home screen, for when you make WalkThor your home app: Home brings it
+ * back, with your games on the bottom screen.
  */
 class FrontendTopActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         Frontend.top = java.lang.ref.WeakReference(this)
+        // Back does nothing here (it's the home screen).
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {}
+        })
+        bringGames()
         setContent {
             WalkThorTheme {
                 val spot by Frontend.spotlight.collectAsState()
                 TopSpotlight(spot)
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        bringGames()
+    }
+
+    /** Opened as the home screen: make sure your games are up on the bottom screen. */
+    private fun bringGames() {
+        if (Frontend.keyHandler != null) return
+        val bottom = runCatching { DisplayHelper.bottomDisplay(this) }.getOrNull() ?: return
+        val intent = android.content.Intent(this, MainActivity::class.java)
+            .setAction(android.content.Intent.ACTION_MAIN)
+            .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(DisplayHelper.EXTRA_RELAUNCHED, true)
+        val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(bottom.displayId).toBundle()
+        runCatching { startActivity(intent, options) }
+    }
+
+    /** Buttons pressed while the top screen has the controller work the games below. */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (Frontend.keyHandler?.invoke(event) == true) return true
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onStop() {

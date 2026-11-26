@@ -123,11 +123,22 @@ object Frontend {
     /** The open top-screen spotlight, so it can be closed. */
     @Volatile var top: java.lang.ref.WeakReference<Activity>? = null
 
-    /** Puts the spotlight on the game screen (if it isn't there already). */
+    /** The games screen's buttons, so the top screen can pass on presses it gets. */
+    @Volatile var keyHandler: ((KeyEvent) -> Boolean)? = null
+
+    /**
+     * Puts the spotlight on the top screen (if it isn't there already). The covers belong on the
+     * bottom screen: if WalkThor is on the top one, it moves down first.
+     */
     fun showTop(activity: Activity) {
+        val onBottom = runCatching { DisplayHelper.isOnBottom(activity) }.getOrDefault(true)
+        if (!onBottom) {
+            runCatching { DisplayHelper.moveToBottom(activity) }
+            return
+        }
         if (!topOn(activity)) return
         if (top?.get()?.isFinishing == false) return
-        val display = runCatching { DisplayHelper.gameDisplay(activity) }.getOrNull() ?: return
+        val display = runCatching { DisplayHelper.topDisplay(activity) }.getOrNull() ?: return
         val intent = Intent(activity, com.nerfherder.walkthor.FrontendTopActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(display.displayId).toBundle()
@@ -285,6 +296,7 @@ fun FrontendScreen(
     val grid = rememberLazyGridState()
     val columns = 4
     var choosingFor by remember { mutableStateOf<Rom?>(null) }
+    var launchError by remember { mutableStateOf<String?>(null) }
 
     fun select(i: Int) {
         if (shown.isEmpty()) return
@@ -327,8 +339,8 @@ fun FrontendScreen(
     fun play(rom: Rom) {
         scope.launch {
             Toast.makeText(context, "Starting ${rom.title}…", Toast.LENGTH_SHORT).show()
-            val error = GameLaunch.start(context, rom, activity?.let { runCatching { DisplayHelper.gameDisplay(it) }.getOrNull() })
-            if (error != null) Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            val error = GameLaunch.start(context, rom, runCatching { DisplayHelper.topDisplay(context) }.getOrNull())
+            if (error != null) launchError = error
         }
     }
     fun guide(rom: Rom) {
@@ -345,6 +357,31 @@ fun FrontendScreen(
         scope.launch { grid.scrollToItem(0) }
     }
 
+    /** A button press, from either screen. */
+    fun onKey(k: KeyEvent): Boolean {
+        if (searching || choosingFor != null || launchError != null) return false
+        if (k.action != KeyEvent.ACTION_DOWN) return k.keyCode in HANDLED
+        val rom = shown.getOrNull(selected)
+        when (k.keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> select(selected - 1)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> select(selected + 1)
+            KeyEvent.KEYCODE_DPAD_UP -> select(selected - columns)
+            KeyEvent.KEYCODE_DPAD_DOWN -> select(selected + columns)
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
+            KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
+            KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let(::favorite)
+            KeyEvent.KEYCODE_BUTTON_L1 -> if (k.repeatCount == 0) moveShelf(-1)
+            KeyEvent.KEYCODE_BUTTON_R1 -> if (k.repeatCount == 0) moveShelf(1)
+            KeyEvent.KEYCODE_BUTTON_SELECT -> if (k.repeatCount == 0) searching = true
+            KeyEvent.KEYCODE_BUTTON_START -> if (k.repeatCount == 0) onOpenLibrary()
+            else -> return false
+        }
+        return true
+    }
+    // The top screen hands its presses over here.
+    androidx.compose.runtime.SideEffect { Frontend.keyHandler = ::onKey }
+    DisposableEffect(Unit) { onDispose { Frontend.keyHandler = null } }
+
     val focus = remember { FocusRequester() }
     LaunchedEffect(searching) { if (!searching) runCatching { focus.requestFocus() } }
     Box(
@@ -352,29 +389,7 @@ fun FrontendScreen(
             .fillMaxSize()
             .background(BookColors.Ink)
             .focusRequester(focus)
-            .onPreviewKeyEvent { e ->
-                if (searching) return@onPreviewKeyEvent false
-                val k = e.nativeKeyEvent
-                if (k.action != KeyEvent.ACTION_DOWN) {
-                    return@onPreviewKeyEvent k.keyCode in HANDLED
-                }
-                val rom = shown.getOrNull(selected)
-                when (k.keyCode) {
-                    KeyEvent.KEYCODE_DPAD_LEFT -> select(selected - 1)
-                    KeyEvent.KEYCODE_DPAD_RIGHT -> select(selected + 1)
-                    KeyEvent.KEYCODE_DPAD_UP -> select(selected - columns)
-                    KeyEvent.KEYCODE_DPAD_DOWN -> select(selected + columns)
-                    KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
-                    KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
-                    KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let(::favorite)
-                    KeyEvent.KEYCODE_BUTTON_L1 -> moveShelf(-1)
-                    KeyEvent.KEYCODE_BUTTON_R1 -> moveShelf(1)
-                    KeyEvent.KEYCODE_BUTTON_SELECT -> searching = true
-                    KeyEvent.KEYCODE_BUTTON_START -> onOpenLibrary()
-                    else -> return@onPreviewKeyEvent false
-                }
-                true
-            }
+            .onPreviewKeyEvent { e -> onKey(e.nativeKeyEvent) }
             .focusable(),
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -494,6 +509,14 @@ fun FrontendScreen(
         }
     }
 
+    launchError?.let { text ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { launchError = null },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { launchError = null }) { Text("OK") } },
+            title = { Text("Couldn’t start the game") },
+            text = { Text(text, fontSize = 13.sp) },
+        )
+    }
     choosingFor?.let { rom ->
         GuideChooserDialog(
             title = rom.title,
@@ -535,11 +558,13 @@ private fun Pill(text: String, onClick: () -> Unit) {
 fun TopSpotlight(spot: Spotlight?) {
     Box(Modifier.fillMaxSize().background(Color(0xFF0C0B0E))) {
         if (spot == null) {
-            Text(
-                "WalkThor",
-                color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 40.sp,
-                modifier = Modifier.align(Alignment.Center),
-            )
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("WalkThor", color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 40.sp)
+                Text(
+                    "Your games are on the bottom screen",
+                    color = BookColors.TextMuted, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
             return@Box
         }
         val picture = spot.hero ?: spot.cover

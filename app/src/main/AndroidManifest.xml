@@ -64,16 +64,24 @@
             android:noHistory="false"
             android:taskAffinity="com.nerfherder.walkthor.prompt"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-        <!-- The top screen's spotlight while you choose a game on the bottom screen. -->
+        <!-- The top screen's spotlight while you choose a game on the bottom screen; also
+             WalkThor's home screen, if you pick WalkThor as your home app. -->
         <activity
             android:name=".FrontendTopActivity"
-            android:exported="false"
+            android:exported="true"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:taskAffinity="com.nerfherder.walkthor.top"
             android:resizeableActivity="true"
+            android:stateNotNeeded="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode"
-            android:theme="@style/Theme.WalkThor" />
+            android:theme="@style/Theme.WalkThor">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".MainActivity"
             android:exported="true"
