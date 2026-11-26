@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -149,7 +150,7 @@ fun BubbleCloud(
     // Every bubble bobs a little, as if floating.
     val bob by androidx.compose.animation.core.rememberInfiniteTransition(label = "bob").animateFloat(
         0f, (2 * Math.PI).toFloat(),
-        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(7000, easing = androidx.compose.animation.core.LinearEasing)),
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween<Float>(7000, easing = androidx.compose.animation.core.LinearEasing)),
         label = "bob",
     )
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
