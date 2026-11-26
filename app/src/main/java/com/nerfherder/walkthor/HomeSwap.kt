@@ -141,6 +141,11 @@ object HomeSwap {
         }
         // Noted first, so that if anything stops part-way, it's put back.
         prefs(c).edit().putString(KEY_ORIGINAL, home.flattenToString()).putString(KEY_STOCK, stock.packageName).commit()
+        // WalkThor's black screen up on the bottom screen first, over your home app: when that's
+        // closed, there's no empty screen for Android to fill. (Android picks the bottom screen's
+        // home on its own, and on this device that's always its own launcher, so being home isn't
+        // enough to be what shows there.)
+        if (stock == own) showGameHome(c)
         AynSystem.shellLines("cmd package set-home-activity --user 0 ${stock.flattenToString()}; am force-stop ${home.packageName}")
         val now = currentHome(c)
         if (now?.packageName == stock.packageName) {
@@ -224,6 +229,24 @@ object HomeSwap {
                 }
             }
         }
+    }
+
+    /** Opens WalkThor's black screen on the bottom screen, and waits a moment for it to be up. Not on the main thread. */
+    private fun showGameHome(c: Context) {
+        val bottom = runCatching { DisplayHelper.bottomDisplay(c)?.displayId }.getOrNull() ?: return
+        // A game drawn on both screens has the bottom screen itself.
+        if (runCatching { EmulatorWatch.bothScreensGameShowing(c) }.getOrDefault(false)) return
+        val started = java.util.concurrent.CountDownLatch(1)
+        main.post {
+            runCatching {
+                val intent = Intent(c, GameHomeActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                c.startActivity(intent, ActivityOptions.makeCustomAnimation(c, 0, 0).setLaunchDisplayId(bottom).toBundle())
+            }.onFailure { MemoryWatch.noteFrom(c, "Home app: couldn't open WalkThor's black screen on the bottom screen (${it.javaClass.simpleName})") }
+            started.countDown()
+        }
+        started.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        Thread.sleep(600)
     }
 
     /** WalkThor's stand-in home screen. */

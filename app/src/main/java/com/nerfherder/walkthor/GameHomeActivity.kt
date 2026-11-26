@@ -28,6 +28,7 @@ class GameHomeActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(View(this).apply { setBackgroundColor(Color.BLACK) })
+        MemoryWatch.noteFrom(this, "WalkThor's black screen is up on " + (if (display?.displayId == DisplayHelper.bottomDisplay(this)?.displayId) "the bottom screen" else "screen ${display?.displayId}"))
         @Suppress("DEPRECATION") overridePendingTransition(0, 0)
     }
 
