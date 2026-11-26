@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.nerfherder.walkthor.data.LaunchedGame
 import com.nerfherder.walkthor.data.Book
 import com.nerfherder.walkthor.ui.GuideIntro
@@ -589,8 +590,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     LaunchedEffect(Unit) { romLibrary.load() }
     /** The library (guides, settings), reached from the games' WalkThor button. */
     var libraryFromGames by rememberSaveable { mutableStateOf(false) }
+    var appsFromGames by rememberSaveable { mutableStateOf(false) }
     // A game ended: back on your games.
-    LaunchedEffect(gameOn) { if (!gameOn) libraryFromGames = false }
+    LaunchedEffect(gameOn) { if (!gameOn) { libraryFromGames = false; appsFromGames = false } }
 
     val current = openId
     if (gameOn && !libraryOpen) {
@@ -775,6 +777,27 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         }
     } else if (current != null) {
         Reader(current, onBack = { openId = null }, tabs = null)
+    } else if (appsFromGames && !gameOn) {
+        BackHandler { appsFromGames = false }
+        com.nerfherder.walkthor.ui.AppsScreen(
+            topBar = {
+                androidx.compose.foundation.layout.Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.IconButton(onClick = { appsFromGames = false }) {
+                        androidx.compose.material3.Icon(
+                            androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to your games", tint = BookColors.TextMuted,
+                        )
+                    }
+                    androidx.compose.material3.Text(
+                        "Apps", color = BookColors.Text, fontSize = androidx.compose.ui.unit.TextUnit(17f, androidx.compose.ui.unit.TextUnitType.Sp),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    )
+                }
+            },
+        )
     } else if (frontOn != false && allRoms.isNotEmpty() && !gameOn && !libraryFromGames) {
         // ---- no game running: your games, to start one (the chosen one big on the top screen) ----
         DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTop() } }
@@ -785,6 +808,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             onOpenGuide = { openId = it.id },
             onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
             onOpenLibrary = { libraryFromGames = true },
+            onOpenApps = { appsFromGames = true },
         )
     } else {
         val backToGames = frontOn != false && allRoms.isNotEmpty() && !gameOn

@@ -1,0 +1,227 @@
+package com.nerfherder.walkthor.data
+
+import android.content.Context
+import android.net.Uri
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * Downloads covers and screenshots for games that have none, from sources that need no account:
+ *  - the libretro thumbnail collection (most cartridge and disc systems), matched by the game's
+ *    file name, or failing that its title;
+ *  - Steam, for PC games whose shortcut holds a Steam id.
+ * Pictures are kept in WalkThor's own storage; nothing is written to your folders.
+ */
+object ArtScraper {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var job: Job? = null
+
+    private val _progress = MutableStateFlow<String?>(null)
+    /** "Downloading 12 of 80…", or null when idle. */
+    val progress: StateFlow<String?> = _progress.asStateFlow()
+    private val _result = MutableStateFlow<String?>(null)
+    /** What the last run did. */
+    val result: StateFlow<String?> = _result.asStateFlow()
+
+    private const val LIBRETRO = "https://thumbnails.libretro.com"
+
+    /** WalkThor's systems → the libretro collection's names for them. */
+    private val LIBRETRO_SYSTEMS = mapOf(
+        "gb" to "Nintendo - Game Boy",
+        "gbc" to "Nintendo - Game Boy Color",
+        "gba" to "Nintendo - Game Boy Advance",
+        "nds" to "Nintendo - Nintendo DS",
+        "3ds" to "Nintendo - Nintendo 3DS",
+        "nes" to "Nintendo - Nintendo Entertainment System",
+        "snes" to "Nintendo - Super Nintendo Entertainment System",
+        "n64" to "Nintendo - Nintendo 64",
+        "virtualboy" to "Nintendo - Virtual Boy",
+        "gc" to "Nintendo - GameCube",
+        "wii" to "Nintendo - Wii",
+        "wiiu" to "Nintendo - Wii U",
+        "psx" to "Sony - PlayStation",
+        "ps2" to "Sony - PlayStation 2",
+        "psp" to "Sony - PlayStation Portable",
+        "psvita" to "Sony - PlayStation Vita",
+        "ps3" to "Sony - PlayStation 3",
+        "dreamcast" to "Sega - Dreamcast",
+        "saturn" to "Sega - Saturn",
+        "genesis" to "Sega - Mega Drive - Genesis",
+        "segacd" to "Sega - Mega-CD - Sega CD",
+        "sega32x" to "Sega - 32X",
+        "mastersystem" to "Sega - Master System - Mark III",
+        "gamegear" to "Sega - Game Gear",
+        "pcengine" to "NEC - PC Engine - TurboGrafx 16",
+        "neogeo" to "SNK - Neo Geo",
+        "ngpc" to "SNK - Neo Geo Pocket Color",
+        "atari2600" to "Atari - 2600",
+        "lynx" to "Atari - Lynx",
+        "wonderswan" to "Bandai - WonderSwan Color",
+        "xbox" to "Microsoft - Xbox",
+        "arcade" to "MAME",
+        "pc" to "DOS",
+    )
+
+    fun running() = job?.isActive == true
+
+    fun stop() {
+        job?.cancel()
+        job = null
+        _progress.value = null
+    }
+
+    /** Downloads what's missing for [roms]. Screenshots too, if [heroes]. */
+    fun start(context: Context, roms: List<Rom>, heroes: Boolean) {
+        if (running()) return
+        val c = context.applicationContext
+        job = scope.launch {
+            val art = GameArt.get(c)
+            art.load()
+            val wanted = roms.filter { !art.has(it, GameArt.Kind.COVER) || (heroes && !art.has(it, GameArt.Kind.HERO)) }
+            var covers = 0
+            var shots = 0
+            var none = 0
+            var done = 0
+            val listings = HashMap<String, Map<String, String>?>()
+            val gate = Semaphore(4)
+            try {
+                wanted.chunked(16).forEach { batch ->
+                    if (!isActive) return@forEach
+                    batch.map { rom ->
+                        async {
+                            gate.withPermit {
+                                val got = runCatching { fetch(c, art, rom, heroes, listings) }.getOrDefault(0 to 0)
+                                synchronized(this@ArtScraper) {
+                                    covers += got.first
+                                    shots += got.second
+                                    if (got.first == 0 && !art.has(rom, GameArt.Kind.COVER)) none++
+                                    done++
+                                    _progress.value = "Downloading pictures: $done of ${wanted.size}…"
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                    art.refresh()
+                }
+            } finally {
+                art.refresh()
+                _progress.value = null
+                _result.value = when {
+                    wanted.isEmpty() -> "Every game already has its pictures."
+                    else -> "Downloaded $covers covers" + (if (heroes) " and $shots screenshots" else "") +
+                        (if (none > 0) ". $none games have no cover online (Switch games and PC games without a Steam id aren't in the free collections)." else ".")
+                }
+            }
+        }
+    }
+
+    /** (covers, screenshots) downloaded for [rom]. */
+    private suspend fun fetch(c: Context, art: GameArt, rom: Rom, heroes: Boolean, listings: HashMap<String, Map<String, String>?>): Pair<Int, Int> {
+        val dir = File(art.scrapedDir(), rom.system)
+        val base = rom.file.substringBeforeLast('.')
+        val safe = base.replace(Regex("""[\\/:*?"<>|]"""), "_")
+        var covers = 0
+        var shots = 0
+        if (rom.system == "windows") {
+            val id = steamId(c, rom) ?: return 0 to 0
+            if (!art.has(rom, GameArt.Kind.COVER)) {
+                val f = File(dir, "COVER/$safe.jpg")
+                if (download(listOf(
+                        "https://cdn.cloudflare.steamstatic.com/steam/apps/$id/library_600x900.jpg",
+                        "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$id/library_600x900.jpg",
+                    ), f)) { art.addScraped(rom, GameArt.Kind.COVER, f); covers++ }
+            }
+            if (heroes && !art.has(rom, GameArt.Kind.HERO)) {
+                val f = File(dir, "HERO/$safe.jpg")
+                if (download(listOf(
+                        "https://cdn.cloudflare.steamstatic.com/steam/apps/$id/library_hero.jpg",
+                        "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$id/library_hero.jpg",
+                    ), f)) { art.addScraped(rom, GameArt.Kind.HERO, f); shots++ }
+            }
+            return covers to shots
+        }
+        val system = LIBRETRO_SYSTEMS[rom.system] ?: return 0 to 0
+        suspend fun one(kind: GameArt.Kind, folder: String): Boolean {
+            if (art.has(rom, kind)) return false
+            val f = File(dir, "${kind.name}/$safe.png")
+            // Its exact name first (most ROM sets use the same names as the collection)…
+            val exact = base.replace(Regex("""[&*/:`<>?\\|"]"""), "_")
+            if (download(listOf("$LIBRETRO/${Uri.encode(system)}/$folder/${Uri.encode(exact)}.png"), f)) {
+                art.addScraped(rom, kind, f); return true
+            }
+            // …then the closest title in the collection's list.
+            val key = "$system/$folder"
+            val list = synchronized(listings) { listings[key] } ?: listing(system, folder).also { synchronized(listings) { listings[key] = it } }
+            val name = list[rom.title.lowercase()] ?: return false
+            if (download(listOf("$LIBRETRO/${Uri.encode(system)}/$folder/${Uri.encode(name)}"), f)) {
+                art.addScraped(rom, kind, f); return true
+            }
+            return false
+        }
+        if (one(GameArt.Kind.COVER, "Named_Boxarts")) covers++
+        if (heroes && (one(GameArt.Kind.HERO, "Named_Snaps") || one(GameArt.Kind.HERO, "Named_Titles"))) shots++
+        return covers to shots
+    }
+
+    /** The collection's files for a system: tidied title → file name, preferring USA releases. */
+    private fun listing(system: String, folder: String): Map<String, String> {
+        val html = runCatching {
+            val conn = URL("$LIBRETRO/${Uri.encode(system)}/$folder/").openConnection() as HttpURLConnection
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 30_000
+            conn.setRequestProperty("User-Agent", "WalkThor")
+            conn.inputStream.use { it.readBytes().decodeToString() }
+        }.getOrNull() ?: return emptyMap()
+        val out = HashMap<String, String>()
+        Regex("""href="([^"]+\.png)"""").findAll(html).forEach { m ->
+            val file = Uri.decode(m.groupValues[1]).substringAfterLast('/')
+            val title = RomLibrary.tidy(file).lowercase()
+            val had = out[title]
+            if (had == null || ("(USA" in file && "(USA" !in had)) out[title] = file
+        }
+        return out
+    }
+
+    private fun download(urls: List<String>, to: File): Boolean {
+        for (url in urls) {
+            val ok = runCatching {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 15_000
+                conn.readTimeout = 30_000
+                conn.instanceFollowRedirects = true
+                conn.setRequestProperty("User-Agent", "WalkThor")
+                if (conn.responseCode != 200 || conn.contentType?.startsWith("image") != true) {
+                    conn.disconnect(); return@runCatching false
+                }
+                to.parentFile?.mkdirs()
+                val tmp = File(to.path + ".part")
+                conn.inputStream.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+                tmp.length() > 0 && tmp.renameTo(to)
+            }.getOrDefault(false)
+            if (ok) return true
+        }
+        return false
+    }
+
+    /** The Steam id in a PC game's shortcut file, if it has one. */
+    private suspend fun steamId(c: Context, rom: Rom): String? {
+        if (!rom.file.endsWith(".steam", true) && !rom.file.endsWith(".steamappid", true)) return null
+        val uri = RomLibrary.get(c).document(rom) ?: return null
+        val text = runCatching { c.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } }.getOrNull()
+        return text?.let { Regex("""\d+""").find(it)?.value }
+    }
+}

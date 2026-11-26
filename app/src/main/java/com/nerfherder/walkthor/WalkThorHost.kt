@@ -57,7 +57,7 @@ internal fun onArtFolderPicked(context: Context, scope: CoroutineScope, uri: Uri
         val n = art.covered(roms)
         Toast.makeText(
             context,
-            if (n == 0) "No covers found for your games. Pick ES-DE’s folder or its downloaded_media folder." else "Found covers for $n games",
+            if (n == 0) "No covers matched your games. ${art.lastScan ?: ""}" else "Found covers for $n games",
             Toast.LENGTH_LONG,
         ).show()
     }

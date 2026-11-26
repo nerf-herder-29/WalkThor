@@ -656,11 +656,11 @@ private fun SettingsScreen(
                         "Its picture, title and play time, big, while you choose",
                         checked = topOn,
                     ) { com.nerfherder.walkthor.ui.Frontend.setTopOn(context, it); topOn = it }
+                    val covered = remember(roms, artVersion) { artLib.covered(roms) }
                     if (artFolder != null) {
-                        val covered = remember(roms, artVersion) { artLib.covered(roms) }
                         SettingRow(
                             "Art folder",
-                            artScanning ?: "Covers for $covered of ${roms.size} games",
+                            artScanning ?: (artLib.lastScan ?: "Read") + ". Covers for $covered of ${roms.size} games.",
                             buttons = {
                                 PillButton("Rescan") { menuScope.launch { artLib.scan() } }
                                 PillButton("Change") { actions.onLinkArt() }
@@ -670,12 +670,26 @@ private fun SettingsScreen(
                     } else {
                         SettingRow(
                             "Art folder",
-                            "Covers and pictures you already have: ES-DE’s folder (or its downloaded_media), one folder per system",
+                            "Covers and pictures you already have: Cocoon’s data folder, ES-DE’s folder, or any folder with one folder per system",
                             buttons = { PillButton("Link…") { actions.onLinkArt() } },
                         )
                     }
+                    val scraping by com.nerfherder.walkthor.data.ArtScraper.progress.collectAsState()
+                    val scraped by com.nerfherder.walkthor.data.ArtScraper.result.collectAsState()
+                    SettingRow(
+                        "Download missing pictures",
+                        scraping ?: scraped ?: "Covers and screenshots for games that have none, from the free libretro collection (and Steam for PC games). Kept on this device.",
+                        buttons = {
+                            if (scraping != null) {
+                                PillButton("Stop") { com.nerfherder.walkthor.data.ArtScraper.stop() }
+                            } else {
+                                PillButton("Download") { com.nerfherder.walkthor.data.ArtScraper.start(context, roms, heroes = true) }
+                                if (artLib.scrapedCount > 0) PillButton("Delete downloads", quiet = true) { artLib.clearScraped() }
+                            }
+                        },
+                    )
                 }
-                SettingsNote("Games without a picture get a made-up cover. Pictures are matched by file name, the way ES-DE names them.")
+                SettingsNote("Games without a picture get a made-up cover. Pictures are matched to games by name, from the folders they sit in (a system folder, a covers or screenshots folder) or a folder named after the game.")
             }
             SettingsSection.ABOUT -> {
                 SettingsGroup(null) {

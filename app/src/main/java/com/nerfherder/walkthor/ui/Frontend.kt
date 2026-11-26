@@ -250,6 +250,8 @@ fun FrontendScreen(
     onOpenGuide: (Book) -> Unit,
     onAddGuideFor: (com.nerfherder.walkthor.data.LaunchedGame) -> Unit,
     onOpenLibrary: () -> Unit,
+    /** Your other apps (for when WalkThor is the home app). */
+    onOpenApps: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -425,6 +427,8 @@ fun FrontendScreen(
                     }
                     Spacer(Modifier.weight(1f))
                     Pill("Search") { searching = true }
+                    Spacer(Modifier.width(8.dp))
+                    Pill("Apps") { onOpenApps() }
                     Spacer(Modifier.width(8.dp))
                     Pill("WalkThor") { onOpenLibrary() }
                 }

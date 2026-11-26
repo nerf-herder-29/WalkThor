@@ -34,8 +34,13 @@ object GameLaunch {
                 .setComponent(ComponentName(pkg, "org.yuzu.yuzu_emu.activities.EmulationActivity"))
                 .setData(uri)
         },
-        Emulator("ARMSX2", setOf("ps2"), listOf("com.armsx2", "com.armsx2*", "*armsx2*")) { _, pkg, uri, _ ->
-            Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri)
+        // ARMSX2's package is come.nanodata.armsx2; its game screen moved from the old PCSX2 port's
+        // classes to com.armsx2.* in newer builds. Opening its splash screen with a game does nothing.
+        Emulator("ARMSX2", setOf("ps2"), listOf("come.nanodata.armsx2", "com.armsx2", "*armsx2*")) { c, pkg, uri, _ ->
+            val activity = listOf("com.armsx2.Main", "com.armsx2.MainActivity", "kr.co.iefriends.pcsx2.MainActivity")
+                .firstOrNull { exists(c, pkg, it) } ?: return@Emulator null
+            Intent(Intent.ACTION_VIEW).setClassName(pkg, activity).setData(uri)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         },
         Emulator("Dolphin", setOf("gc", "wii"), listOf("org.dolphinemu.dolphinemu", "org.dolphinemu.*", "*dolphin*")) { c, pkg, uri, _ ->
             val start = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.LEANBACK_LAUNCHER").setPackage(pkg)
@@ -55,6 +60,9 @@ object GameLaunch {
             Intent(Intent.ACTION_VIEW).setComponent(ComponentName(pkg, "com.pokedaisy.app.LaunchActivity")).setData(uri)
         },
     )
+
+    private fun exists(c: Context, pkg: String, cls: String): Boolean =
+        runCatching { c.packageManager.getActivityInfo(ComponentName(pkg, cls), 0) }.isSuccess
 
     private fun installed(c: Context): List<String> =
         c.packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
@@ -122,6 +130,11 @@ object GameLaunch {
             if (intent.component == null && c.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) {
                 why += "$name: doesn't open files this way"
                 continue
+            }
+            // The whole ROMs folder too, for games in several files (.cue and .bin, other discs).
+            val target = intent.component?.packageName ?: intent.`package`
+            RomLibrary.get(c).folder.value?.let { tree ->
+                if (target != null) runCatching { c.grantUriPermission(target, tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION) }
             }
             val result = runCatching { c.startActivity(intent, options) }
             if (result.isSuccess) {
