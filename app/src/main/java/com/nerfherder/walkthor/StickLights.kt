@@ -25,6 +25,9 @@ object StickLights {
     /** For store screenshots only. */
     internal var demo = false
 
+    /** Bumped whenever the colour changes, so the screens that use it as their accent follow. */
+    val changed = kotlinx.coroutines.flow.MutableStateFlow(0)
+
     /**
      * The colours offered, as the lights should show them: AYN's own teal first, then the rest;
      * 0 = off. The lights glow brightly even at low levels, so these are pure colours (a screen
@@ -123,12 +126,14 @@ object StickLights {
         // The nearest of WalkThor's colours, so its swatch (how it's shown on screen) is used.
         val adopted = if (ayn == 0) 0 else COLORS.filter { it != 0 }.firstOrNull { (it and 0xFFFFFF) == (ayn and 0xFFFFFF) } ?: (ayn or 0xFF000000.toInt())
         prefs(c).edit().putInt("color", adopted).apply()
+        changed.value++
         log("AYN's lights changed to ${String.format("#%06X", ayn and 0xFFFFFF)}: WalkThor follows")
     }
 
     fun setColor(c: Context, color: Int) {
         changedAt = android.os.SystemClock.elapsedRealtime()
         prefs(c).edit().putInt("color", color).apply()
+        changed.value++
         apply(c, syncAyn = true)
     }
 

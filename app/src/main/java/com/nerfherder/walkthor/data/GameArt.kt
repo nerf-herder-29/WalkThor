@@ -70,6 +70,8 @@ class GameArt private constructor(private val context: Context) {
             line.split('\t').takeIf { it.size == 3 }?.let { Triple(it[0], it[1], it[2].replace("\\n", "\n")) }
         }.groupBy({ it.first }, { it.second to it.third }).mapValues { it.value.toMap() }
         build()
+        // WalkThor got better at reading art folders since this one was read: read it again.
+        if (_folder.value != null && prefs.getInt(KEY_FORMAT, 0) < FORMAT) scan()
     }
 
     /** Rows: system, kind, lowercase name, reference ("doc:id" or "file:path"), rank (lower wins). */
@@ -166,10 +168,12 @@ class GameArt private constructor(private val context: Context) {
                 KEY_SUMMARY,
                 "$pictures pictures found, ${rows.size} placed by system" +
                     (if (examples.isNotEmpty()) ". For example: ${examples.joinToString(", ")}" else ""),
-            ).apply()
+            ).putInt(KEY_FORMAT, FORMAT).apply()
+            note("Art folder read: ${prefs.getString(KEY_SUMMARY, "")}")
         } catch (e: Exception) {
             // Folder moved or access lost: keep what we had, and say so.
             prefs.edit().putString(KEY_SUMMARY, "Couldn't read the folder (${e.javaClass.simpleName}: ${e.message?.take(80)})").apply()
+            note("Art folder: ${prefs.getString(KEY_SUMMARY, "")}")
         } finally {
             _scanning.value = null
         }
@@ -310,7 +314,13 @@ class GameArt private constructor(private val context: Context) {
         return out
     }
 
+    /** Into the memory log, which goes along with game reports. */
+    private fun note(text: String) = runCatching { com.nerfherder.walkthor.MemoryWatch.noteFrom(context, text) }
+
     companion object {
+        /** Bumped when reading folders changes, so linked folders are read again. */
+        private const val FORMAT = 3
+        private const val KEY_FORMAT = "format"
         private const val KEY_TREE = "tree"
         private const val KEY_SUMMARY = "summary"
         private val PICTURES = setOf("png", "jpg", "jpeg", "webp", "gif", "bmp")

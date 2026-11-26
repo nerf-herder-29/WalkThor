@@ -121,12 +121,12 @@ object ArtScraper {
             } finally {
                 art.refresh()
                 _progress.value = null
-                _result.value = when {
+                _result.value = (when {
                     wanted.isEmpty() -> "Every game already has its pictures."
                     else -> "Downloaded $covers covers" + (if (heroes) " and $shots screenshots" else "") +
                         (if (none > 0) ". $none games have no cover online (Switch games and PC games without a Steam id aren't in the free collections)." else ".") +
                         (if (covers + shots == 0) firstMiss?.let { " First problem: $it" } ?: "" else "")
-                }
+                }).also { runCatching { com.nerfherder.walkthor.MemoryWatch.noteFrom(c, "Art download: $it") } }
             }
         }
     }

@@ -42,9 +42,14 @@ class FrontendTopActivity : ComponentActivity() {
                 val spot by Frontend.spotlight.collectAsState()
                 val settings by SettingsTop.section.collectAsState()
                 val setting by SettingsTop.current.collectAsState()
+                val library by com.nerfherder.walkthor.ui.LibraryTop.active.collectAsState()
+                val libraryGame by com.nerfherder.walkthor.ui.LibraryTop.current.collectAsState()
                 val open = settings
-                if (open != null) SettingsExplainer(open, setting, SettingsTop.titles.toList())
-                else TopSpotlight(spot)
+                when {
+                    open != null -> SettingsExplainer(open, setting, SettingsTop.titles.toList())
+                    library -> com.nerfherder.walkthor.ui.LibrarySpotlight(libraryGame)
+                    else -> TopSpotlight(spot)
+                }
             }
         }
     }

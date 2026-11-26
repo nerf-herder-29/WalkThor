@@ -239,7 +239,7 @@ fun SettingsExplainer(section: String, info: SettingInfo?, titles: List<String>)
                 }
                 info.value?.let {
                     Text(
-                        "Now: $it", color = FrontAccent, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                        "Now: $it", color = frontAccent(), fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(top = 26.dp),
                     )
                 }

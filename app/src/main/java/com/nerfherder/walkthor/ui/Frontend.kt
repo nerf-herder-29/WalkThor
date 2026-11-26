@@ -81,8 +81,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** The frontend's highlight colour (the ring around the chosen cover). */
-val FrontAccent = Color(0xFF2BE0D8)
+/** The highlight colour (the ring around the chosen cover): your stick lights' colour, or AYN's teal. */
+@Composable
+fun frontAccent(): Color {
+    val context = LocalContext.current
+    val bump by com.nerfherder.walkthor.StickLights.changed.collectAsState()
+    return remember(bump) {
+        val c = runCatching { com.nerfherder.walkthor.StickLights.color(context) }.getOrDefault(0)
+        if (c == 0) Color(0xFF2BE0D8) else Color(com.nerfherder.walkthor.StickLights.swatch(c) or 0xFF000000.toInt())
+    }
+}
 
 /** What the top screen shows: the game chosen on the bottom screen. */
 data class Spotlight(
@@ -152,7 +160,7 @@ object Frontend {
     /** Closes the top screen shortly, unless the games or Settings still want it by then. */
     fun hideTopSoon() {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            if (keyHandler == null && SettingsTop.section.value == null) hideTop()
+            if (keyHandler == null && SettingsTop.section.value == null && !LibraryTop.active.value) hideTop()
         }, 500)
     }
 
@@ -222,7 +230,7 @@ private fun Cover(rom: Rom, picture: Uri?, selected: Boolean, modifier: Modifier
     Box(
         modifier
             .aspectRatio(0.75f)
-            .then(if (selected) Modifier.border(3.dp, FrontAccent, shape).padding(5.dp) else Modifier.padding(5.dp))
+            .then(if (selected) Modifier.border(3.dp, frontAccent(), shape).padding(5.dp) else Modifier.padding(5.dp))
             .shadow(6.dp, RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp)),
     ) {
@@ -491,7 +499,7 @@ fun FrontendScreen(
                         letters.forEach { c ->
                             Text(
                                 c.toString(),
-                                color = if (c == at) FrontAccent else Color(0xFF5D5850),
+                                color = if (c == at) frontAccent() else Color(0xFF5D5850),
                                 fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.clickable {
                                     val i = shown.indexOfFirst { Frontend.letter(it.title) == c }
@@ -584,7 +592,7 @@ fun TopSpotlight(spot: Spotlight?) {
         ClockLine(Modifier.align(Alignment.TopStart).padding(start = 55.dp, top = 40.dp))
         Column(Modifier.align(Alignment.BottomStart).padding(start = 55.dp, bottom = 56.dp).fillMaxWidth(0.55f)) {
             val eyebrow = listOfNotNull(spot.system, spot.lastPlayed?.let { "last played $it" }).joinToString(" · ").uppercase()
-            Text(eyebrow, color = FrontAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp)
+            Text(eyebrow, color = frontAccent(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp)
             Text(
                 spot.rom.title + if (spot.favorite) "  ★" else "",
                 color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold,

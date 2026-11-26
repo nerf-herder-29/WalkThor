@@ -66,6 +66,8 @@ import com.nerfherder.walkthor.data.Rom
 import com.nerfherder.walkthor.data.RomLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.nerfherder.walkthor.data.GamePlays
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -172,6 +174,11 @@ private fun RailItem(label: String, count: Int, on: Boolean, narrow: Boolean, ba
     }
 }
 
+private val LIBRARY_KEYS = setOf(
+    android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_BUTTON_A,
+    android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER, android.view.KeyEvent.KEYCODE_BUTTON_Y,
+)
+
 /** The colour for a game's guide: your stick lights' colour, or the usual light text when they're off. */
 @Composable
 private fun guideAccent(): Color {
@@ -205,6 +212,56 @@ fun GamesList(roms: List<Rom>, books: List<Book>, showSystem: Boolean, actions: 
     }
     // Typing needs WalkThor's window to take focus for a moment (it gives it back after).
     DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.GameFocus.wantFocus.value = false } }
+
+    // ---- both screens: the game you're on, with its guide, big on the top screen ----
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val libActive by LibraryTop.active.collectAsState()
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    val selected = shown.firstOrNull { it.id == selectedId }
+        ?: shown.maxByOrNull { GamePlays.lastPlayed(context, it) }?.takeIf { GamePlays.lastPlayed(context, it) > 0 }
+        ?: shown.firstOrNull { guideFor[it.id] != null }
+        ?: shown.firstOrNull()
+    val activity = context as? android.app.Activity
+    val gameRunning by com.nerfherder.walkthor.GameFocus.gameRunning.collectAsState()
+    DisposableEffect(activity, gameRunning) {
+        val on = activity != null && !gameRunning
+        LibraryTop.active.value = on
+        if (on) Frontend.showTop(activity!!, moveDown = false)
+        onDispose {
+            LibraryTop.active.value = false
+            Frontend.hideTopSoon()
+        }
+    }
+    LaunchedEffect(selected?.id, guideFor[selected?.id]) {
+        LibraryTop.current.value = selected?.let { r -> LibrarySpot(r, guideFor[r.id], guideFor[r.id]?.let(actions.coverFile)) }
+    }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun selectAt(i: Int) {
+        val r = shown.getOrNull(i.coerceIn(0, (shown.size - 1).coerceAtLeast(0))) ?: return
+        selectedId = r.id
+        val n = shown.indexOf(r)
+        val visible = listState.layoutInfo.visibleItemsInfo
+        if (visible.none { it.index == n } || visible.firstOrNull()?.index == n || visible.lastOrNull()?.index == n) {
+            scope.launch { listState.animateScrollToItem((n - 2).coerceAtLeast(0)) }
+        }
+    }
+    // Buttons pressed while the top screen has the controller.
+    fun onKey(k: android.view.KeyEvent): Boolean {
+        if (choosingFor != null) return false
+        if (k.action != android.view.KeyEvent.ACTION_DOWN) return k.keyCode in LIBRARY_KEYS
+        val i = shown.indexOf(selected)
+        when (k.keyCode) {
+            android.view.KeyEvent.KEYCODE_DPAD_UP -> selectAt(i - 1)
+            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> selectAt(i + 1)
+            android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER ->
+                if (k.repeatCount == 0) selected?.let { r -> guideFor[r.id]?.let { actions.onOpen(it) } ?: run { choosingFor = r } }
+            android.view.KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) selected?.let { choosingFor = it }
+            else -> return false
+        }
+        return true
+    }
+    androidx.compose.runtime.SideEffect { if (activity != null && !gameRunning) Frontend.keyHandler = ::onKey }
+    DisposableEffect(Unit) { onDispose { Frontend.keyHandler = null } }
     Column(Modifier.fillMaxSize()) {
         SearchBox(
             query, { query = it },
@@ -229,12 +286,15 @@ fun GamesList(roms: List<Rom>, books: List<Book>, showSystem: Boolean, actions: 
         }
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth(),
+            state = listState,
             contentPadding = PaddingValues(start = 14.dp, end = 18.dp, bottom = 20.dp),
         ) {
             items(shown, key = { it.id }) { rom ->
                 GameRow(
                     rom = rom,
                     guide = guideFor[rom.id],
+                    selected = libActive && rom.id == selected?.id,
+                    onPress = { selectedId = rom.id },
                     showSystem = showSystem,
                     onOpen = { actions.onOpen(it) },
                     onChoose = { choosingFor = rom },
@@ -260,15 +320,35 @@ fun GamesList(roms: List<Rom>, books: List<Book>, showSystem: Boolean, actions: 
 private fun GameRow(
     rom: Rom,
     guide: Book?,
+    /** The game shown on the top screen. */
+    selected: Boolean = false,
+    onPress: () -> Unit = {},
     showSystem: Boolean,
     onOpen: (Book) -> Unit,
     onChoose: () -> Unit,
     onRemove: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    Column {
+    val ring = frontAccent()
+    Column(
+        Modifier
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    onPress()
+                }
+            }
+            .onFocusChanged { if (it.hasFocus) onPress() },
+    ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(vertical = 7.dp),
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (selected) Modifier.clip(RoundedCornerShape(10.dp)).background(BookColors.SurfaceHigh.copy(alpha = 0.6f))
+                        .border(2.dp, ring, RoundedCornerShape(10.dp)).padding(horizontal = 8.dp)
+                    else Modifier,
+                )
+                .heightIn(min = 52.dp).padding(vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f).padding(end = 12.dp)) {

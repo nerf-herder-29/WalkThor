@@ -872,6 +872,19 @@ class StoreScreenshots {
         shot("42-settings-top")
     }
 
+    @Test
+    @Config(qualifiers = "w960dp-h540dp-land-xhdpi")
+    fun libraryTop() {
+        val rom = frontendRoms()[0]
+        content {
+            com.nerfherder.walkthor.ui.LibrarySpotlight(
+                com.nerfherder.walkthor.ui.LibrarySpot(rom, shelf.first().copy(lastPage = 41, pageCount = 98), null),
+            )
+        }
+        settle()
+        shot("43-library-top")
+    }
+
     private fun sampleRoms() {
         File(app.filesDir, "roms.tsv").writeText(
             listOf(
