@@ -127,7 +127,7 @@ object Frontend {
     fun showTop(activity: Activity) {
         if (!topOn(activity)) return
         if (top?.get()?.isFinishing == false) return
-        val display = DisplayHelper.gameDisplay(activity) ?: return
+        val display = runCatching { DisplayHelper.gameDisplay(activity) }.getOrNull() ?: return
         val intent = Intent(activity, com.nerfherder.walkthor.FrontendTopActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(display.displayId).toBundle()
@@ -327,7 +327,7 @@ fun FrontendScreen(
     fun play(rom: Rom) {
         scope.launch {
             Toast.makeText(context, "Starting ${rom.title}…", Toast.LENGTH_SHORT).show()
-            val error = GameLaunch.start(context, rom, activity?.let { DisplayHelper.gameDisplay(it) })
+            val error = GameLaunch.start(context, rom, activity?.let { runCatching { DisplayHelper.gameDisplay(it) }.getOrNull() })
             if (error != null) Toast.makeText(context, error, Toast.LENGTH_LONG).show()
         }
     }
