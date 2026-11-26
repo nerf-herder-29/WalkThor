@@ -789,9 +789,69 @@ private fun SettingsScreen(
                     )
                     val scraping by com.nerfherder.walkthor.data.ArtScraper.progress.collectAsState()
                     val scraped by com.nerfherder.walkthor.data.ArtScraper.result.collectAsState()
+                    // SteamGridDB and ScreenScraper, with your keys.
+                    var editAccounts by remember { mutableStateOf(false) }
+                    var accountsVersion by remember { mutableStateOf(0) }
+                    val accountsText = remember(accountsVersion) {
+                        val a = com.nerfherder.walkthor.data.ArtAccounts
+                        listOfNotNull(
+                            "SteamGridDB".takeIf { a.hasSteamGridDb(context) },
+                            "ScreenScraper".takeIf { a.hasScreenScraper(context) },
+                        ).joinToString(" and ").ifEmpty { null }
+                    }
+                    SettingRow(
+                        "Art site accounts",
+                        accountsText?.let { "Using $it for icons, heroes and logos" }
+                            ?: "A free SteamGridDB key finds square icons, heroes and logos for every game, Switch and PC too",
+                        buttons = { PillButton(if (accountsText == null) "Add…" else "Change…") { editAccounts = true } },
+                    )
+                    if (editAccounts) {
+                        val a = com.nerfherder.walkthor.data.ArtAccounts
+                        var sgdb by remember { mutableStateOf(a.sgdbKey(context)) }
+                        var ssUser by remember { mutableStateOf(a.ssUser(context)) }
+                        var ssPass by remember { mutableStateOf(a.ssPassword(context)) }
+                        var devId by remember { mutableStateOf(a.ssDevIdOwn(context)) }
+                        var devPass by remember { mutableStateOf(a.ssDevPasswordOwn(context)) }
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { editAccounts = false },
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    a.save(context, sgdb, ssUser, ssPass, devId, devPass)
+                                    accountsVersion++
+                                    editAccounts = false
+                                }) { Text("Save") }
+                            },
+                            dismissButton = { androidx.compose.material3.TextButton(onClick = { editAccounts = false }) { Text("Cancel") } },
+                            title = { Text("Art site accounts") },
+                            text = {
+                                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("SteamGridDB: make a free account, then copy your API key from steamgriddb.com/profile/preferences/api.", fontSize = 13.sp)
+                                    androidx.compose.material3.OutlinedTextField(sgdb, { sgdb = it }, label = { Text("SteamGridDB API key") }, singleLine = true)
+                                    Text(
+                                        "ScreenScraper (screenscraper.fr): your own account is optional, and raises how many games a day it answers." +
+                                            if (a.builtInScreenScraper) "" else " This copy of WalkThor has no developer login of its own, so add yours too.",
+                                        fontSize = 13.sp,
+                                    )
+                                    androidx.compose.material3.OutlinedTextField(ssUser, { ssUser = it }, label = { Text("ScreenScraper username") }, singleLine = true)
+                                    androidx.compose.material3.OutlinedTextField(
+                                        ssPass, { ssPass = it }, label = { Text("ScreenScraper password") }, singleLine = true,
+                                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                    )
+                                    if (!a.builtInScreenScraper || devId.isNotEmpty()) {
+                                        androidx.compose.material3.OutlinedTextField(devId, { devId = it }, label = { Text("Developer id (optional)") }, singleLine = true)
+                                        androidx.compose.material3.OutlinedTextField(
+                                            devPass, { devPass = it }, label = { Text("Developer password (optional)") }, singleLine = true,
+                                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                        )
+                                    }
+                                    Text("Kept on this device only.", fontSize = 12.sp, color = BookColors.TextMuted)
+                                }
+                            },
+                        )
+                    }
                     SettingRow(
                         "Download missing pictures",
-                        scraping ?: scraped ?: "Covers and screenshots for games that have none, from the free libretro collection (and Steam for PC games). Kept on this device.",
+                        scraping ?: scraped ?: "Icons, heroes and logos for games that have none: from your art site accounts first, then the free libretro collection (and Steam for PC games). Kept on this device.",
                         buttons = {
                             if (scraping != null) {
                                 PillButton("Stop") { com.nerfherder.walkthor.data.ArtScraper.stop() }

@@ -91,9 +91,19 @@ object ArtScraper {
         job = scope.launch {
             val art = GameArt.get(c)
             art.load()
-            val wanted = roms.filter { !art.has(it, GameArt.Kind.COVER) || (heroes && !art.has(it, GameArt.Kind.HERO)) }
+            val accounts = ArtAccounts.hasSteamGridDb(c) || ArtAccounts.hasScreenScraper(c)
+            // With an account, logos too (the free collections have none).
+            val kinds = buildSet {
+                add(GameArt.Kind.COVER)
+                if (heroes) add(GameArt.Kind.HERO)
+                if (accounts) add(GameArt.Kind.LOGO)
+            }
+            val wanted = roms.filter { RomLibrary.isGame(it) && it.system != PinnedShortcuts.SYSTEM && kinds.any { k -> !art.has(it, k) } }
             var covers = 0
             var shots = 0
+            var logos = 0
+            sgdbStop = null
+            ssStop = null
             var none = 0
             var done = 0
             val listings = HashMap<String, Map<String, String>?>()
@@ -105,10 +115,13 @@ object ArtScraper {
                     batch.map { rom ->
                         async {
                             gate.withPermit {
+                                // The sites with your accounts first (icons, heroes, logos), then the free ones.
+                                val fromAccounts = if (accounts) runCatching { fetchAccounts(c, art, rom, kinds) }.getOrDefault(emptyMap()) else emptyMap()
                                 val got = runCatching { fetch(c, art, rom, heroes, listings) }.getOrDefault(0 to 0)
                                 synchronized(this@ArtScraper) {
-                                    covers += got.first
-                                    shots += got.second
+                                    covers += got.first + (fromAccounts[GameArt.Kind.COVER] ?: 0)
+                                    shots += got.second + (fromAccounts[GameArt.Kind.HERO] ?: 0)
+                                    logos += fromAccounts[GameArt.Kind.LOGO] ?: 0
                                     if (got.first == 0 && !art.has(rom, GameArt.Kind.COVER)) none++
                                     done++
                                     _progress.value = "Downloading pictures: $done of ${wanted.size}…"
@@ -123,12 +136,47 @@ object ArtScraper {
                 _progress.value = null
                 _result.value = (when {
                     wanted.isEmpty() -> "Every game already has its pictures."
-                    else -> "Downloaded $covers covers" + (if (heroes) " and $shots screenshots" else "") +
-                        (if (none > 0) ". $none games have no cover online (Switch games and PC games without a Steam id aren't in the free collections)." else ".") +
+                    else -> "Downloaded $covers icons" + (if (heroes) ", $shots heroes" else "") + (if (accounts) " and $logos logos" else "") +
+                        (if (none > 0) ". $none games still have no icon" + (if (!accounts) " (a SteamGridDB key finds Switch and PC games)." else ".") else ".") +
+                        listOfNotNull(sgdbStop, ssStop).joinToString("") { " $it." } +
                         (if (covers + shots == 0) firstMiss?.let { " First problem: $it" } ?: "" else "")
                 }).also { runCatching { com.nerfherder.walkthor.MemoryWatch.noteFrom(c, "Art download: $it") } }
             }
         }
+    }
+
+    @Volatile private var sgdbStop: String? = null
+    @Volatile private var ssStop: String? = null
+    /** ScreenScraper allows only so many requests at once. */
+    private val ssGate = Semaphore(1)
+
+    /** What came from SteamGridDB and ScreenScraper for [rom]: kind → how many (0 or 1). */
+    private suspend fun fetchAccounts(c: Context, art: GameArt, rom: Rom, kinds: Set<GameArt.Kind>): Map<GameArt.Kind, Int> {
+        val got = HashMap<GameArt.Kind, Int>()
+        fun missing() = kinds.filter { !art.has(rom, it) }.toSet()
+        val dir = File(art.scrapedDir(), rom.system)
+        val safe = rom.file.substringBeforeLast('.').replace(Regex("""[\\/:*?"<>|]"""), "_")
+        fun take(links: Map<GameArt.Kind, String>) {
+            for ((kind, url) in links) {
+                if (art.has(rom, kind)) continue
+                val ext = url.substringAfterLast('.', "png").substringBefore('?').lowercase().takeIf { it.length in 3..4 } ?: "png"
+                val f = File(dir, "${kind.name}/$safe.$ext")
+                if (download(listOf(url), f)) { art.addScraped(rom, kind, f); got[kind] = 1 }
+            }
+            art.refresh()
+        }
+        if (sgdbStop == null && ArtAccounts.hasSteamGridDb(c) && missing().isNotEmpty()) {
+            try {
+                val steam = if (rom.system == "windows") steamId(c, rom) else null
+                take(ArtAccounts.steamGridDb(c, rom, steam, missing()))
+            } catch (e: ArtAccounts.Stop) { sgdbStop = e.message }
+        }
+        if (ssStop == null && ArtAccounts.hasScreenScraper(c) && missing().isNotEmpty()) {
+            try {
+                ssGate.withPermit { take(ArtAccounts.screenScraper(c, rom, missing())) }
+            } catch (e: ArtAccounts.Stop) { ssStop = e.message }
+        }
+        return got
     }
 
     /** (covers, screenshots) downloaded for [rom]. */

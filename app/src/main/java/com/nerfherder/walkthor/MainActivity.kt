@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -685,7 +686,27 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                 )
 
     val current = openId
-    if (gameOn && !libraryOpen) {
+    // During a game, the bottom screen's WalkThor is plain black (tap it for Home and the tabs),
+    // unless you have the drawer come up when a game starts, or the game uses both screens.
+    val drawerOnStart by EmulatorWatch.on.collectAsState()
+    var blackRevealed by remember(gameOn) { mutableStateOf(false) }
+    val bothScreens = remember(gameOn, emulatorShowing, session) {
+        gameOn && runCatching { EmulatorWatch.bothScreensGameShowing(context) }.getOrDefault(false)
+    }
+    val blackDuringGame = host is MainActivity && gameOn && !libraryOpen && !drawerOnStart && !bothScreens && !blackRevealed &&
+        openId == null
+
+    if (blackDuringGame) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black)
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                ) { blackRevealed = true },
+        )
+    } else if (gameOn && !libraryOpen) {
         // ---- a game is in front: Home and the other tabs, along the top ----
         // (Only Home dims while these are up.)
         DisposableEffect(Unit) {
