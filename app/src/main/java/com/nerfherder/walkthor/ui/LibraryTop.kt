@@ -148,3 +148,61 @@ private fun TopHint(key: String, label: String) {
         Text(label, color = BookColors.TextMuted, fontSize = 13.sp)
     }
 }
+
+/** Apps across both screens: the top screen shows the app you're on. */
+object AppsTop {
+    /** Whether the Apps screen is up (from your games, with no game running). */
+    val active = MutableStateFlow(false)
+    val current = MutableStateFlow<InstalledApp?>(null)
+}
+
+/**
+ * The top screen while Apps is open: laid out like Settings' top screen, with the app you're on
+ * (its icon and name, big) and what you can do with it.
+ */
+@Composable
+fun AppsExplainer(app: InstalledApp?, count: Int) {
+    Box(Modifier.fillMaxSize().background(Color(0xFF0C0B0E))) {
+        Column(Modifier.fillMaxSize().padding(start = 55.dp, end = 55.dp, top = 40.dp, bottom = 40.dp)) {
+            Text(
+                listOfNotNull("Apps", app?.label).joinToString("  ›  "),
+                color = BookColors.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(36.dp))
+            if (app == null) {
+                Text("Apps", color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 56.sp)
+                Text(
+                    if (count > 0) "$count apps. Touch one or move to it to see it here." else "Touch an app or move to it to see it here.",
+                    color = Color(0xFFCFC8BC), fontSize = 22.sp, modifier = Modifier.padding(top = 22.dp),
+                )
+                Spacer(Modifier.weight(1f))
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val icon = app.icon
+                    if (icon != null) {
+                        androidx.compose.foundation.Image(icon, contentDescription = null, modifier = Modifier.size(110.dp))
+                    } else {
+                        Box(Modifier.size(110.dp).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(26.dp)))
+                    }
+                    Spacer(Modifier.width(30.dp))
+                    Text(
+                        app.label,
+                        color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold,
+                        fontSize = if (app.label.length > 24) 44.sp else 56.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    "Tap it to open it on the bottom screen. Hold it to open it on the top screen instead, pin it to the top of Apps, or see Android's info for it.",
+                    color = Color(0xFFCFC8BC), fontSize = 22.sp, lineHeight = 32.sp,
+                    modifier = Modifier.padding(top = 30.dp).fillMaxWidth(0.8f),
+                )
+                Spacer(Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    TopHint("A", "Open")
+                    TopHint("B", "Back")
+                }
+            }
+        }
+    }
+}

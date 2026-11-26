@@ -111,11 +111,8 @@ fun SettingsFrame(
                 }
             },
             middle = { SettingsTabsRow(section, onSection, Modifier.weight(1f)) },
-            end = {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
-                }
-            },
+            // No close button: closing WalkThor from here left the screens in a bad state.
+            end = {},
         )
         HorizontalDivider(color = BookColors.Hairline)
         androidx.compose.runtime.CompositionLocalProvider(LocalSettingsSection provides section.label) {

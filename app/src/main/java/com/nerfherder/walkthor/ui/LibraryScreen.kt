@@ -232,9 +232,6 @@ fun LibraryScreen(
                     Text("Add guide", fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                 }
             }
-            IconButton(onClick = actions.onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = BookColors.TextMuted)
-            }
             IconButton(onClick = { settingsOpen = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = BookColors.TextMuted)
             }
@@ -695,6 +692,8 @@ private fun SettingsScreen(
                         SettingRow(
                             "Art folder",
                             artScanning ?: (artLib.lastScan ?: "Read") + ". Covers for $covered of ${roms.size} games.",
+                            // In full on the top screen: why games are missing covers.
+                            value = remember(roms, artVersion) { artLib.explain(roms) },
                             buttons = {
                                 PillButton("Rescan") { menuScope.launch { artLib.scan() } }
                                 PillButton("Change") { actions.onLinkArt() }

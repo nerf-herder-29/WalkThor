@@ -170,6 +170,7 @@ class GameArt private constructor(private val context: Context) {
                     (if (examples.isNotEmpty()) ". For example: ${examples.joinToString(", ")}" else ""),
             ).putInt(KEY_FORMAT, FORMAT).apply()
             note("Art folder read: ${prefs.getString(KEY_SUMMARY, "")}")
+            runCatching { note("Art matching: " + explain(RomLibrary.get(context).roms.value)) }
         } catch (e: Exception) {
             // Folder moved or access lost: keep what we had, and say so.
             prefs.edit().putString(KEY_SUMMARY, "Couldn't read the folder (${e.javaClass.simpleName}: ${e.message?.take(80)})").apply()
@@ -256,6 +257,27 @@ class GameArt private constructor(private val context: Context) {
         val found = best.takeIf { bestScore >= 0.8f && bestScore - next >= 0.05f }
         if (found != null) guesses[key] = found else misses.add(key)
         return found
+    }
+
+    /**
+     * Why games have no cover, in a line: for a few of them, the closest picture name in their
+     * system (or that their system has no pictures at all), so a mismatch is easy to see.
+     */
+    fun explain(roms: List<Rom>): String {
+        val missing = roms.filter { picture(it, Kind.COVER) == null }
+        if (missing.isEmpty()) return "Every game has a cover"
+        val systems = index.entries.joinToString(", ") { (sys, kinds) -> "$sys ${kinds.values.sumOf { it.size }}" }
+        val parts = missing.distinctBy { it.system }.take(4).map { r ->
+            val names = index[r.system]?.get(Kind.COVER)?.keys
+            if (names.isNullOrEmpty()) "${r.title} (${r.system}): no ${r.system} icons found"
+            else {
+                val want = Matcher.words(r.title).toSet()
+                val best = names.maxByOrNull { Matcher.closeness(want, Matcher.words(it).toSet()) }
+                "${r.title} (${r.system}, file “${r.file}”): closest icon “$best”"
+            }
+        }
+        return "${missing.size} of ${roms.size} games have no cover. Pictures by system: ${systems.ifEmpty { "none" }}. " +
+            parts.joinToString("; ")
     }
 
     /** Whether the game already has this kind of picture (so it isn't downloaded again). */

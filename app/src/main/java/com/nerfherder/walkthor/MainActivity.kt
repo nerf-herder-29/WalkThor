@@ -597,6 +597,18 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     /** The library (guides, settings), reached from the games' WalkThor button. */
     var libraryFromGames by rememberSaveable { mutableStateOf(false) }
     var appsFromGames by rememberSaveable { mutableStateOf(false) }
+    // As your home app, WalkThor's screens don't dim while no game is running.
+    val homeHold = remember { Any() }
+    DisposableEffect(gameOn) {
+        val isHome = runCatching {
+            context.packageManager.resolveActivity(
+                android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME),
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+            )?.activityInfo?.packageName == context.packageName
+        }.getOrDefault(false)
+        AutoDim.holdBright(homeHold, !gameOn && isHome)
+        onDispose { AutoDim.holdBright(homeHold, false) }
+    }
     // A game ended: back on your games.
     LaunchedEffect(gameOn) { if (!gameOn) { libraryFromGames = false; appsFromGames = false } }
 
@@ -785,6 +797,17 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         Reader(current, onBack = { openId = null }, tabs = null)
     } else if (appsFromGames && !gameOn) {
         BackHandler { appsFromGames = false }
+        // The top screen shows the app you're on, the way Settings' does.
+        val appsActivity = context as? android.app.Activity
+        DisposableEffect(Unit) {
+            com.nerfherder.walkthor.ui.AppsTop.current.value = null
+            com.nerfherder.walkthor.ui.AppsTop.active.value = true
+            appsActivity?.let { com.nerfherder.walkthor.ui.Frontend.showTop(it, moveDown = false) }
+            onDispose {
+                com.nerfherder.walkthor.ui.AppsTop.active.value = false
+                com.nerfherder.walkthor.ui.Frontend.hideTopSoon()
+            }
+        }
         com.nerfherder.walkthor.ui.AppsScreen(
             topBar = {
                 androidx.compose.foundation.layout.Row(

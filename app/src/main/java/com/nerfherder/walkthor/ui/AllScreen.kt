@@ -619,7 +619,6 @@ fun MultiMenu(onClose: () -> Unit) {
                 text = { Text("Arrange panels…") },
                 onClick = { open = false; AllLayout.choosing.value = true },
             )
-            androidx.compose.material3.DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; onClose() })
         }
     }
 }

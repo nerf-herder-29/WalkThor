@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
@@ -82,14 +82,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** The highlight colour (the ring around the chosen cover): your stick lights' colour, or AYN's teal. */
+/** The highlight colour (the ring around the chosen cover): your stick lights' colour, or white when they're off. */
 @Composable
 fun frontAccent(): Color {
     val context = LocalContext.current
     val bump by com.nerfherder.walkthor.StickLights.changed.collectAsState()
     return remember(bump) {
         val c = runCatching { com.nerfherder.walkthor.StickLights.color(context) }.getOrDefault(0)
-        if (c == 0) Color(0xFF2BE0D8) else Color(com.nerfherder.walkthor.StickLights.swatch(c) or 0xFF000000.toInt())
+        val dark = runCatching { com.nerfherder.walkthor.StickLights.level(context) <= 0.01f }.getOrDefault(false) ||
+            // Switched off on AYN's side.
+            runCatching {
+                android.provider.Settings.System.getString(context.contentResolver, "joystick_light_enabled")
+                    ?.split(",")?.all { it.trim() == "0" } == true
+            }.getOrDefault(false)
+        // Lights off (or turned all the way down): plain white.
+        if (c == 0 || dark) Color(0xFFF5F5FA) else Color(com.nerfherder.walkthor.StickLights.swatch(c) or 0xFF000000.toInt())
     }
 }
 
@@ -163,7 +170,7 @@ object Frontend {
     /** Closes the top screen shortly, unless the games or Settings still want it by then. */
     fun hideTopSoon() {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            if (keyHandler == null && SettingsTop.section.value == null && !LibraryTop.active.value) hideTop()
+            if (keyHandler == null && SettingsTop.section.value == null && !LibraryTop.active.value && !AppsTop.active.value) hideTop()
         }, 500)
     }
 
@@ -233,7 +240,7 @@ private fun Cover(rom: Rom, picture: Uri?, selected: Boolean, modifier: Modifier
     val shape = RoundedCornerShape(24.dp)
     Box(
         modifier
-            .aspectRatio(1f)
+            .aspectRatio(1f, matchHeightConstraintsFirst = true)
             .then(if (selected) Modifier.border(3.dp, frontAccent(), shape).padding(6.dp) else Modifier.padding(6.dp))
             .shadow(6.dp, RoundedCornerShape(18.dp))
             .clip(RoundedCornerShape(18.dp)),
@@ -321,7 +328,8 @@ fun FrontendScreen(
     var selectedId by remember { mutableStateOf<String?>(null) }
     val selected = shown.indexOfFirst { it.id == selectedId }.takeIf { it >= 0 } ?: 0
     val grid = rememberLazyGridState()
-    val columns = 4
+    /** Rows of icons; the games run left to right in columns of this many. */
+    val rows = 3
     var choosingFor by remember { mutableStateOf<Rom?>(null) }
     var launchError by remember { mutableStateOf<String?>(null) }
     /** The game whose options are open (X, or a long press). */
@@ -336,7 +344,7 @@ fun FrontendScreen(
             val visible = info.visibleItemsInfo
             val first = visible.firstOrNull()?.index ?: 0
             val last = visible.lastOrNull()?.index ?: 0
-            if (n < first + columns || n > last - columns) grid.animateScrollToItem((n - columns).coerceAtLeast(0) / columns * columns)
+            if (n < first + rows || n > last - rows) grid.animateScrollToItem(((n / rows) - 1).coerceAtLeast(0) * rows)
         }
     }
 
@@ -393,10 +401,11 @@ fun FrontendScreen(
         if (k.action != KeyEvent.ACTION_DOWN) return k.keyCode in HANDLED
         val rom = shown.getOrNull(selected)
         when (k.keyCode) {
-            KeyEvent.KEYCODE_DPAD_LEFT -> select(selected - 1)
-            KeyEvent.KEYCODE_DPAD_RIGHT -> select(selected + 1)
-            KeyEvent.KEYCODE_DPAD_UP -> select(selected - columns)
-            KeyEvent.KEYCODE_DPAD_DOWN -> select(selected + columns)
+            // Left and right go along the columns, up and down within one.
+            KeyEvent.KEYCODE_DPAD_LEFT -> select(selected - rows)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> select(selected + rows)
+            KeyEvent.KEYCODE_DPAD_UP -> if (selected % rows > 0) select(selected - 1)
+            KeyEvent.KEYCODE_DPAD_DOWN -> if (selected % rows < rows - 1) select(selected + 1)
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
             KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let { menuFor = it }
@@ -467,7 +476,7 @@ fun FrontendScreen(
                     Pill("Settings") { onOpenLibrary() }
                 }
             }
-            Row(Modifier.weight(1f).fillMaxWidth()) {
+            Column(Modifier.weight(1f).fillMaxWidth()) {
                 if (shown.isEmpty()) {
                     Column(Modifier.weight(1f)) {
                     Text(
@@ -484,13 +493,13 @@ fun FrontendScreen(
                     if (roms.isEmpty()) Box(Modifier.padding(start = 16.dp)) { Pill("Link ROMs folder…") { onLinkRoms() } }
                     }
                 } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
+                    LazyHorizontalGrid(
+                        rows = GridCells.Fixed(rows),
                         state = grid,
-                        contentPadding = PaddingValues(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                     ) {
                         itemsIndexed(shown, key = { _, r -> r.id }) { i, rom ->
                             val picture = remember(rom.id, artVersion) { art.picture(rom, GameArt.Kind.COVER) }
@@ -508,19 +517,19 @@ fun FrontendScreen(
                 if (shown.size > 12 && shelf != Shelf.Recent) {
                     val letters = remember(shown) { shown.map { Frontend.letter(it.title) }.distinct() }
                     val at = shown.getOrNull(selected)?.let { Frontend.letter(it.title) }
-                    Column(
-                        Modifier.fillMaxHeight().width(24.dp).padding(vertical = 6.dp),
-                        verticalArrangement = Arrangement.SpaceEvenly,
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    Row(
+                        Modifier.fillMaxWidth().height(26.dp).padding(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         letters.forEach { c ->
                             Text(
                                 c.toString(),
                                 color = if (c == at) frontAccent() else Color(0xFF5D5850),
-                                fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.clickable {
                                     val i = shown.indexOfFirst { Frontend.letter(it.title) == c }
-                                    if (i >= 0) { selectedId = shown[i].id; scope.launch { grid.scrollToItem(i / columns * columns) } }
+                                    if (i >= 0) { selectedId = shown[i].id; scope.launch { grid.scrollToItem(i / rows * rows) } }
                                 },
                             )
                         }

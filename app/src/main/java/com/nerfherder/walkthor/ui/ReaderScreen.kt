@@ -636,7 +636,6 @@ private fun ReaderMenu(
             if (onSwapScreen != null) {
                 DropdownMenuItem(text = { Text("Move to other screen") }, onClick = { open = false; onSwapScreen() })
             }
-            DropdownMenuItem(text = { Text("Close WalkThor") }, onClick = { open = false; onClose() })
         }
     }
 }

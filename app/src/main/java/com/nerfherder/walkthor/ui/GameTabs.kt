@@ -437,13 +437,8 @@ fun GameTabBar(
             }
         },
         middle = { GameTabsRow(selected, onSelect, Modifier.weight(1f)) },
-        end = trailing ?: {
-            if (onClose != null) {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close WalkThor", tint = tint)
-                }
-            }
-        },
+        // No close button (closing WalkThor from here broke things): the slot stays for the tabs' size.
+        end = trailing ?: {},
     )
 }
 

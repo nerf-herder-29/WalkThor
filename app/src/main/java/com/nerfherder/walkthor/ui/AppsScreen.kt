@@ -11,6 +11,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -305,6 +307,16 @@ internal fun AppIcon(app: InstalledApp, compact: Boolean, onOpen: () -> Unit, on
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Column(
         Modifier
+            // The top screen shows the app you touch or move to.
+            .pointerInput(app.packageName) {
+                androidx.compose.foundation.gestures.awaitEachGesture {
+                    androidx.compose.foundation.gestures.awaitFirstDown(
+                        requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial,
+                    )
+                    AppsTop.current.value = app
+                }
+            }
+            .onFocusChanged { if (it.hasFocus) AppsTop.current.value = app }
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
