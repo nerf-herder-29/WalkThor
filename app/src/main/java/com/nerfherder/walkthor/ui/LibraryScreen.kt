@@ -767,8 +767,6 @@ private fun SettingsScreen(
                             }
                         },
                     )
-                    val scraping by com.nerfherder.walkthor.data.ArtScraper.progress.collectAsState()
-                    val scraped by com.nerfherder.walkthor.data.ArtScraper.result.collectAsState()
                 }
                 SettingsNote("Pictures for your games (icons, heroes, logos) are on the Artwork tab.")
             }
@@ -799,6 +797,8 @@ private fun SettingsScreen(
                             buttons = { PillButton("Link…") { actions.onLinkArt() } },
                         )
                     }
+                    val scraping by com.nerfherder.walkthor.data.ArtScraper.progress.collectAsState()
+                    val scraped by com.nerfherder.walkthor.data.ArtScraper.result.collectAsState()
                     // SteamGridDB and ScreenScraper, with your keys.
                     var editAccounts by remember { mutableStateOf(false) }
                     var accountsVersion by remember { mutableStateOf(0) }
