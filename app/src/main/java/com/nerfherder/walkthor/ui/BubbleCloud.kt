@@ -127,6 +127,8 @@ fun BubbleCloud(
     item: @Composable (index: Int) -> Unit,
 ) {
     val density = LocalDensity.current
+    val appContext = androidx.compose.ui.platform.LocalContext.current
+    val labelFont = remember { com.nerfherder.walkthor.WalkThorFont.get(appContext, 700) }
     val stepPx = with(density) { step.toPx() }
     val scope = rememberCoroutineScope()
     // Where the middle of the screen is, in the cloud (in steps).
@@ -236,7 +238,8 @@ fun BubbleCloud(
                                     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                                         color = if (sysColor.luminance() > 0.55f) android.graphics.Color.BLACK else android.graphics.Color.WHITE
                                         textSize = 7.dp.toPx()
-                                        isFakeBoldText = true
+                                        // Space Grotesk, as everywhere else in WalkThor.
+                                        typeface = labelFont
                                         letterSpacing = 0.08f
                                     }
                                     // The path runs right to left along the bottom, so the words read upright.
