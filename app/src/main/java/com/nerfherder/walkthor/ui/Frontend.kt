@@ -397,13 +397,6 @@ fun FrontendScreen(
         if (shown.isEmpty()) return
         val n = i.coerceIn(0, shown.lastIndex)
         selectedId = shown[n].id
-        scope.launch {
-            val info = grid.layoutInfo
-            val visible = info.visibleItemsInfo
-            val first = visible.firstOrNull()?.index ?: 0
-            val last = visible.lastOrNull()?.index ?: 0
-            if (n < first + rows || n > last - rows) grid.animateScrollToItem(((n / rows) - 1).coerceAtLeast(0) * rows)
-        }
     }
 
     // The guide that goes with each game is worked out off the main thread.
@@ -455,7 +448,6 @@ fun FrontendScreen(
     fun moveShelf(by: Int) {
         shelfIndex = (shelfIndex + by + shelves.size) % shelves.size
         selectedId = null
-        scope.launch { grid.scrollToItem(0) }
     }
 
     /** A button press, from either screen. */
@@ -465,10 +457,11 @@ fun FrontendScreen(
         val rom = shown.getOrNull(selected)
         when (k.keyCode) {
             // Left and right go along the columns, up and down within one.
-            KeyEvent.KEYCODE_DPAD_LEFT -> select(selected - rows)
-            KeyEvent.KEYCODE_DPAD_RIGHT -> select(selected + rows)
-            KeyEvent.KEYCODE_DPAD_UP -> if (selected % rows > 0) select(selected - 1)
-            KeyEvent.KEYCODE_DPAD_DOWN -> if (selected % rows < rows - 1) select(selected + 1)
+            // The D-pad moves to the neighbouring bubble that way.
+            KeyEvent.KEYCODE_DPAD_LEFT -> BubbleLayout.neighbor(selected, shown.size, -1, 0)?.let(::select)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> BubbleLayout.neighbor(selected, shown.size, 1, 0)?.let(::select)
+            KeyEvent.KEYCODE_DPAD_UP -> BubbleLayout.neighbor(selected, shown.size, 0, -1)?.let(::select)
+            KeyEvent.KEYCODE_DPAD_DOWN -> BubbleLayout.neighbor(selected, shown.size, 0, 1)?.let(::select)
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
             KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let { menuFor = it }
@@ -546,22 +539,42 @@ fun FrontendScreen(
                     if (roms.isEmpty()) Box(Modifier.padding(start = 16.dp)) { Pill("Link ROMs folder…") { onLinkRoms() } }
                     }
                 } else {
-                    LazyHorizontalGrid(
-                        rows = GridCells.Fixed(rows),
-                        state = grid,
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                    ) {
-                        itemsIndexed(shown, key = { _, r -> r.id }) { i, rom ->
+                    // Your games as a cloud of round bubbles: the chosen one big in the middle.
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        val ring = frontAccent()
+                        BubbleCloud(
+                            count = shown.size,
+                            selected = selected,
+                            onSelect = { select(it) },
+                            onActivate = { shown.getOrNull(it)?.let(::play) },
+                            onLongPress = { i -> shown.getOrNull(i)?.let { menuFor = it } },
+                            ring = ring,
+                        ) { i ->
+                            val rom = shown[i]
                             val picture = remember(rom.id, artVersion) { art.picture(rom, GameArt.Kind.COVER) }
-                            Cover(
-                                rom, picture, selected = i == selected,
-                                modifier = Modifier.combinedClickable(
-                                    onClick = { if (i == selected) play(rom) else select(i) },
-                                    onLongClick = { select(i); menuFor = rom },
-                                ),
+                            if (picture != null) {
+                                AsyncImage(
+                                    model = coil.request.ImageRequest.Builder(LocalContext.current).data(picture).crossfade(180).build(),
+                                    contentDescription = rom.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().background(BookColors.SurfaceHigh),
+                                )
+                            } else {
+                                PlaceholderArt(rom.title, Modifier.fillMaxSize(), showTitle = false)
+                            }
+                        }
+                        // The chosen game's name, under the cloud.
+                        shown.getOrNull(selected)?.let { rom ->
+                            Text(
+                                rom.title,
+                                color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC07080B))))
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                         }
                     }

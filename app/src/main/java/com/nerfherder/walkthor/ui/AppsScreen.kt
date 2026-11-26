@@ -11,6 +11,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -210,6 +212,74 @@ fun AppsScreen(
         if (all == null) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("Loading your apps…", color = BookColors.TextMuted)
+            }
+        } else if (askWhere) {
+            // ---- the Apps tab: your apps as a cloud of round bubbles (pinned ones first) ----
+            val byPkg = remember(all) { all.associateBy { it.packageName } }
+            val list = remember(all, pinnedIds) {
+                val pins = pinnedIds.mapNotNull { byPkg[it] }
+                pins + all.filter { it.packageName !in pinnedIds }
+            }
+            var selectedPkg by remember { mutableStateOf<String?>(null) }
+            val selected = list.indexOfFirst { it.packageName == selectedPkg }.takeIf { it >= 0 } ?: 0
+            LaunchedEffect(selected, list) { AppsTop.current.value = list.getOrNull(selected) }
+            fun select(i: Int) { list.getOrNull(i)?.let { selectedPkg = it.packageName } }
+            fun onKey(k: android.view.KeyEvent): Boolean {
+                if (whereFor != null || menuFor != null) return false
+                val keys = setOf(
+                    android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT, android.view.KeyEvent.KEYCODE_DPAD_UP,
+                    android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                    android.view.KeyEvent.KEYCODE_ENTER, android.view.KeyEvent.KEYCODE_BUTTON_X,
+                )
+                if (k.action != android.view.KeyEvent.ACTION_DOWN) return k.keyCode in keys
+                when (k.keyCode) {
+                    android.view.KeyEvent.KEYCODE_DPAD_LEFT -> BubbleLayout.neighbor(selected, list.size, -1, 0)?.let(::select)
+                    android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> BubbleLayout.neighbor(selected, list.size, 1, 0)?.let(::select)
+                    android.view.KeyEvent.KEYCODE_DPAD_UP -> BubbleLayout.neighbor(selected, list.size, 0, -1)?.let(::select)
+                    android.view.KeyEvent.KEYCODE_DPAD_DOWN -> BubbleLayout.neighbor(selected, list.size, 0, 1)?.let(::select)
+                    android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER ->
+                        if (k.repeatCount == 0) whereFor = list.getOrNull(selected)
+                    android.view.KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) menuFor = list.getOrNull(selected)
+                    else -> return false
+                }
+                return true
+            }
+            // Presses while the top screen has the controller come here too.
+            androidx.compose.runtime.SideEffect { Frontend.keyHandler = ::onKey }
+            DisposableEffect(Unit) { onDispose { if (Frontend.keyHandler != null) Frontend.keyHandler = null } }
+            val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+            LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+                    .onPreviewKeyEvent { onKey(it.nativeKeyEvent) }
+                    .focusable(),
+            ) {
+                BubbleCloud(
+                    count = list.size,
+                    selected = selected,
+                    onSelect = ::select,
+                    onActivate = { whereFor = list.getOrNull(it) },
+                    onLongPress = { menuFor = list.getOrNull(it) },
+                    ring = frontAccent(),
+                ) { i ->
+                    val app = list[i]
+                    Box(Modifier.fillMaxSize().background(Color(0xFF1E1C22)), contentAlignment = Alignment.Center) {
+                        app.icon?.let { androidx.compose.foundation.Image(it, contentDescription = app.label, modifier = Modifier.fillMaxSize(0.78f)) }
+                    }
+                }
+                list.getOrNull(selected)?.let { app ->
+                    Text(
+                        app.label,
+                        color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                        maxLines = 1, textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC07080B))))
+                            .padding(horizontal = 24.dp, vertical = 10.dp),
+                    )
+                }
             }
         } else {
             val byPkg = remember(all) { all.associateBy { it.packageName } }
