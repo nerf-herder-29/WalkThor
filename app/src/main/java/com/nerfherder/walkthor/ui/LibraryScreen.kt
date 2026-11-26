@@ -732,26 +732,6 @@ private fun SettingsScreen(
                         "Its picture, title and play time, big, while you choose",
                         checked = topOn,
                     ) { com.nerfherder.walkthor.ui.Frontend.setTopOn(context, it); topOn = it }
-                    val covered = remember(roms, artVersion) { artLib.covered(roms) }
-                    if (artFolder != null) {
-                        SettingRow(
-                            "Art folder",
-                            artScanning ?: (artLib.lastScan ?: "Read") + ". Covers for $covered of ${roms.size} games.",
-                            // In full on the top screen: why games are missing covers.
-                            value = remember(roms, artVersion) { artLib.explain(roms) },
-                            buttons = {
-                                PillButton("Rescan") { menuScope.launch { artLib.scan() } }
-                                PillButton("Change") { actions.onLinkArt() }
-                                PillButton("Unlink", quiet = true) { artLib.unlink() }
-                            },
-                        )
-                    } else {
-                        SettingRow(
-                            "Art folder",
-                            "Covers and pictures you already have: Cocoon’s data folder, ES-DE’s folder, or any folder with one folder per system",
-                            buttons = { PillButton("Link…") { actions.onLinkArt() } },
-                        )
-                    }
                     // Background music on your games.
                     val music = com.nerfherder.walkthor.data.MenuMusic
                     LaunchedEffect(Unit) { music.load(context) }
@@ -789,6 +769,36 @@ private fun SettingsScreen(
                     )
                     val scraping by com.nerfherder.walkthor.data.ArtScraper.progress.collectAsState()
                     val scraped by com.nerfherder.walkthor.data.ArtScraper.result.collectAsState()
+                }
+                SettingsNote("Pictures for your games (icons, heroes, logos) are on the Artwork tab.")
+            }
+            SettingsSection.ARTWORK -> {
+                val artLib = remember { com.nerfherder.walkthor.data.GameArt.get(context) }
+                val artFolder by artLib.folder.collectAsState()
+                val artScanning by artLib.scanning.collectAsState()
+                val artVersion by artLib.version.collectAsState()
+                LaunchedEffect(Unit) { artLib.load() }
+                SettingsGroup("Artwork") {
+                    val covered = remember(roms, artVersion) { artLib.covered(roms) }
+                    if (artFolder != null) {
+                        SettingRow(
+                            "Art folder",
+                            artScanning ?: (artLib.lastScan ?: "Read") + ". Covers for $covered of ${roms.size} games.",
+                            // In full on the top screen: why games are missing covers.
+                            value = remember(roms, artVersion) { artLib.explain(roms) },
+                            buttons = {
+                                PillButton("Rescan") { menuScope.launch { artLib.scan() } }
+                                PillButton("Change") { actions.onLinkArt() }
+                                PillButton("Unlink", quiet = true) { artLib.unlink() }
+                            },
+                        )
+                    } else {
+                        SettingRow(
+                            "Art folder",
+                            "Covers and pictures you already have: Cocoon’s data folder, ES-DE’s folder, or any folder with one folder per system",
+                            buttons = { PillButton("Link…") { actions.onLinkArt() } },
+                        )
+                    }
                     // SteamGridDB and ScreenScraper, with your keys.
                     var editAccounts by remember { mutableStateOf(false) }
                     var accountsVersion by remember { mutableStateOf(0) }

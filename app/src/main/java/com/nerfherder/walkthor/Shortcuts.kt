@@ -214,12 +214,23 @@ object Shortcuts {
         }
     }
 
+    /** Whether WalkThor is Android's home app. */
+    fun isHomeApp(c: android.content.Context): Boolean = runCatching {
+        c.packageManager.resolveActivity(
+            android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME),
+            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.packageName == c.packageName
+    }.getOrDefault(false)
+
     // ---- doing it ----
 
     /** [t] was pressed: does what it's set to, with a rumble. Call on the main thread. */
     fun fire(service: SwipeGestureService, t: Trigger) {
         val a = get(service, t)
         if (a == Action.NOTHING || a == Action.AYN_DRAWER) return
+        // With WalkThor as the home app, your games and the black bottom screen take the drawer's
+        // place, so "Open the drawer" does nothing (it used to close the home screen itself).
+        if (a == Action.DRAWER && isHomeApp(service)) { AynButton.note("${t.label} → nothing (WalkThor is the home app)"); return }
         AynButton.note("${t.label} → ${a.label}")
         rumble(service)
         runCatching { perform(service, a) }

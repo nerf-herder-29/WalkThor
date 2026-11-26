@@ -278,6 +278,16 @@ fun SectionIcon(section: SettingsSection, tint: Color, modifier: Modifier = Modi
                 }
                 drawPath(p, tint, style = stroke)
             }
+            SettingsSection.ARTWORK -> {
+                // A picture: a frame with a hill and a sun.
+                drawRoundRect(tint, Offset(s * 0.06f, s * 0.14f), Size(s * 0.88f, s * 0.72f), CornerRadius(s * 0.1f), style = stroke)
+                val hill = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(s * 0.14f, s * 0.76f); lineTo(s * 0.4f, s * 0.46f); lineTo(s * 0.58f, s * 0.64f)
+                    lineTo(s * 0.68f, s * 0.54f); lineTo(s * 0.86f, s * 0.76f)
+                }
+                drawPath(hill, tint, style = stroke)
+                drawCircle(tint, radius = s * 0.07f, center = Offset(s * 0.7f, s * 0.32f), style = stroke)
+            }
             SettingsSection.ABOUT -> {
                 // An "i" in a circle.
                 drawCircle(tint, radius = s * 0.44f, style = stroke)

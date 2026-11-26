@@ -139,7 +139,7 @@ object GameLaunch {
         val uri = RomLibrary.get(c).document(rom)
         if (uri == null) {
             log(c, "${rom.id}: not found in the ROMs folder")
-            return "Couldn't find ${rom.file} in your ROMs folder. Try Rescan in Settings → Guides."
+            return "Couldn't find ${rom.file} in your ROMs folder. Try Rescan on the Library tab."
         }
         val all = installed(c)
         // (which emulator, what it is, the intent) in the order to try.

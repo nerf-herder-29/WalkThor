@@ -60,7 +60,10 @@ enum class SettingsSection(val label: String) {
     SHORTCUTS("Shortcuts"),
     SCREEN("Screen"),
     EMULATORS("Emulators"),
-    GUIDES("Guides"),
+    /** Your games: the ROMs folder, the games screen, hidden games, music. */
+    GUIDES("Library"),
+    /** Your games' pictures: the art folder, art sites, downloads. */
+    ARTWORK("Artwork"),
     ABOUT("About"),
 }
 

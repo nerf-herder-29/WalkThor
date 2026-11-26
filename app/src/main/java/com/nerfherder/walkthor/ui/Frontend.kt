@@ -580,7 +580,7 @@ fun FrontendScreen(
                     androidx.compose.material3.TextButton(onClick = {
                         menuFor = null
                         GamePlays.setHidden(context, rom, true)
-                        Toast.makeText(context, "Hidden. Show it again in Settings → Guides → Games screen.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Hidden. Show it again on the Library tab.", Toast.LENGTH_LONG).show()
                     }) { Text("Hide this game") }
                     if (rom.system == com.nerfherder.walkthor.data.PinnedShortcuts.SYSTEM) {
                         androidx.compose.material3.TextButton(onClick = {
