@@ -57,6 +57,29 @@
         android:theme="@style/Theme.WalkThor">
 
         <!-- Shows Android's prompts and pickers for the drawer (only an app screen can), then closes. -->
+        <!-- WalkThor's stand-in home screen while your home app is paused for a game (HomeSwap).
+             Disabled except then. Not singleTask: Android needs a separate one per screen. -->
+        <activity
+            android:name=".GameHomeActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:resizeableActivity="true"
+            android:taskAffinity="com.nerfherder.walkthor.gamehome"
+            android:label="WalkThor (while playing)"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.SECONDARY_HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".PromptActivity"
             android:exported="false"

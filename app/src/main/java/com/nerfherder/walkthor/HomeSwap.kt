@@ -108,7 +108,11 @@ object HomeSwap {
     /** WalkThor (re)started: if it left your home app paused and no game is playing, it comes back. */
     fun recover(c: Context) {
         val app = c.applicationContext
-        if (prefs(app).getString(KEY_ORIGINAL, null) == null) return
+        if (prefs(app).getString(KEY_ORIGINAL, null) == null) {
+            // Nothing paused: WalkThor's stand-in home screen shouldn't be on (or home).
+            worker.execute { runCatching { if (currentHome(app)?.packageName != app.packageName) enableGameHome(app, false) } }
+            return
+        }
         gameChanged(app, EmulatorWatch.emulatorShowing.value)
     }
 
@@ -121,11 +125,17 @@ object HomeSwap {
             prefs(c).edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).commit()
         }
         if (isSystem(c, home.packageName)) return // Android's own already: nothing to do
-        val stock = stockLauncher(c) ?: run {
-            MemoryWatch.noteFrom(c, "Home app: couldn't find Android's own launcher to use while playing")
+        // WalkThor's own stand-in already home (left from a pause that wasn't undone): not yours to pause.
+        if (home.packageName == c.packageName) return
+        // WalkThor's own black home screen stands in (it hands the game's top spot straight back);
+        // Android's launcher if that can't be switched on.
+        val own = gameHome(c)
+        val stock = if (enableGameHome(c, true)) own else (stockLauncher(c) ?: run {
+            MemoryWatch.noteFrom(c, "Home app: couldn't find a home screen to use while playing")
             return
-        }
+        })
         if (!AynSystem.available()) {
+            enableGameHome(c, false)
             MemoryWatch.noteFrom(c, "Home app: AYN's system helper isn't available, so ${label(c, home.packageName)} stays home")
             return
         }
@@ -134,11 +144,14 @@ object HomeSwap {
         AynSystem.shellLines("cmd package set-home-activity --user 0 ${stock.flattenToString()}; am force-stop ${home.packageName}")
         val now = currentHome(c)
         if (now?.packageName == stock.packageName) {
-            MemoryWatch.noteFrom(c, "Home app: ${label(c, home.packageName)} paused for the game (${label(c, stock.packageName)} is home meanwhile)")
-            // Android starts its launcher on the bottom screen now, which takes the game's top spot: put it back.
-            runCatching { FocusBack.afterPause(c) }
+            MemoryWatch.noteFrom(c, "Home app: ${label(c, home.packageName)} paused for the game (" +
+                (if (stock == own) "WalkThor's black home screen" else label(c, stock.packageName)) + " is home meanwhile)")
+            // Android's launcher on the bottom screen takes the game's top spot: taps put it back.
+            // (WalkThor's own home screen hands it back itself, the moment it gets it.)
+            if (stock != own) runCatching { FocusBack.afterPause(c) }
         } else {
             prefs(c).edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).commit()
+            enableGameHome(c, false)
             MemoryWatch.noteFrom(c, "Home app: Android didn't take the switch, so ${label(c, home.packageName)} stays home")
         }
     }
@@ -194,6 +207,9 @@ object HomeSwap {
             AynSystem.shellLines("cmd package set-home-activity --user 0 ${original.flattenToString()}")
         }
         p.edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).commit()
+        // WalkThor's stand-in home screen off again (a moment later, once yours has come up),
+        // unless a new game has paused things again meanwhile.
+        main.postDelayed({ if (!pausedNow(c)) worker.execute { enableGameHome(c, false) } }, 3_000L)
         if (!installed) return
         MemoryWatch.noteFrom(c, "Home app: ${label(c, original.packageName)} is home again ($why)")
         // Where Android's launcher is showing now, yours takes its place.
@@ -209,6 +225,16 @@ object HomeSwap {
             }
         }
     }
+
+    /** WalkThor's stand-in home screen. */
+    private fun gameHome(c: Context) = ComponentName(c, GameHomeActivity::class.java)
+
+    /** Switches WalkThor's stand-in home screen on or off (off, it isn't offered as a home app). True if it took. */
+    private fun enableGameHome(c: Context, on: Boolean): Boolean = runCatching {
+        val state = if (on) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        c.packageManager.setComponentEnabledSetting(gameHome(c), state, PackageManager.DONT_KILL_APP)
+        true
+    }.getOrDefault(false)
 
     private val homeIntent get() = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
 
