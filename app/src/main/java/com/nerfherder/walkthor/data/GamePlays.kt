@@ -59,6 +59,22 @@ object GamePlays {
         return on
     }
 
+    private const val KEY_HIDDEN = "hidden"
+
+    /** Games you've hidden from the games screen. */
+    fun hidden(c: Context): Set<String> = prefs(c).getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
+    fun setHidden(c: Context, rom: Rom, hide: Boolean) = setHidden(c, rom.id, hide)
+    fun setHidden(c: Context, id: String, hide: Boolean) {
+        val now = hidden(c).toMutableSet()
+        if (hide) now.add(id) else now.remove(id)
+        prefs(c).edit().putStringSet(KEY_HIDDEN, now).apply()
+        _changed.value++
+    }
+    fun showAll(c: Context) {
+        prefs(c).edit().remove(KEY_HIDDEN).apply()
+        _changed.value++
+    }
+
     /** "12 h 40 m", "35 m", or null for none. */
     fun timeText(ms: Long): String? {
         val mins = ms / 60_000L

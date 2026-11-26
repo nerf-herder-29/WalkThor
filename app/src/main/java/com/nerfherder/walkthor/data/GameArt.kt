@@ -222,16 +222,47 @@ class GameArt private constructor(private val context: Context) {
         }
         for (k in kinds) {
             val files = index[rom.system]?.get(k)
-            (files?.get(name) ?: files?.get(alt) ?: loose[rom.system]?.get(k)?.get(tidy))?.let { return it }
+            (files?.get(name) ?: files?.get(alt) ?: loose[rom.system]?.get(k)?.get(tidy) ?: closest(rom, k))?.let { return it }
         }
         return null
+    }
+
+    /** Remembered word matches ("pokemon emerald" ↔ "Pokémon - Emerald Version"), per game and kind. */
+    private val guesses = java.util.concurrent.ConcurrentHashMap<String, Pic>()
+    private val misses = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
+
+    /** Each picture's name as words, worked out once per system and kind. */
+    private val wordCache = java.util.concurrent.ConcurrentHashMap<String, List<Pair<Set<String>, Pic>>>()
+    private fun wordsOf(system: String, kind: Kind): List<Pair<Set<String>, Pic>>? {
+        val files = loose[system]?.get(kind) ?: return null
+        return wordCache.getOrPut("${_version.value}|$system|$kind") { files.map { (n, pic) -> Matcher.words(n).toSet() to pic } }
+    }
+
+    /** The picture whose name is clearly the game's, when no name matches exactly. */
+    private fun closest(rom: Rom, kind: Kind): Pic? {
+        val key = "${_version.value}|${rom.id}|$kind"
+        guesses[key]?.let { return it }
+        if (key in misses) return null
+        val files = wordsOf(rom.system, kind) ?: return null
+        val want = Matcher.words(rom.title).toSet()
+        var best: Pic? = null
+        var bestScore = 0f
+        var next = 0f
+        if (want.isNotEmpty()) for ((words, pic) in files) {
+            val score = Matcher.closeness(want, words)
+            if (score > bestScore) { if (best != pic) next = bestScore; bestScore = score; best = pic }
+            else if (score > next && pic != best) next = score
+        }
+        val found = best.takeIf { bestScore >= 0.8f && bestScore - next >= 0.05f }
+        if (found != null) guesses[key] = found else misses.add(key)
+        return found
     }
 
     /** Whether the game already has this kind of picture (so it isn't downloaded again). */
     fun has(rom: Rom, kind: Kind): Boolean {
         val files = index[rom.system]?.get(kind) ?: return false
         return files.containsKey(rom.file.substringBeforeLast('.').lowercase()) || files.containsKey(rom.file.lowercase()) ||
-            loose[rom.system]?.get(kind)?.containsKey(rom.title.lowercase()) == true
+            loose[rom.system]?.get(kind)?.containsKey(rom.title.lowercase()) == true || closest(rom, kind) != null
     }
 
     /** Where downloaded pictures go. */
@@ -319,13 +350,13 @@ class GameArt private constructor(private val context: Context) {
 
     companion object {
         /** Bumped when reading folders changes, so linked folders are read again. */
-        private const val FORMAT = 3
+        private const val FORMAT = 4
         private const val KEY_FORMAT = "format"
         private const val KEY_TREE = "tree"
         private const val KEY_SUMMARY = "summary"
         private val PICTURES = setOf("png", "jpg", "jpeg", "webp", "gif", "bmp")
         /** Folders with nothing to find in them. */
-        private val SKIP = setOf("videos", "video", "manuals", "themes", "theme", "sounds", "music", "backups", "backup", "cache", "logs", "saves", "states", "bios")
+        private val SKIP = setOf("videos", "video", "manuals", "themes", "theme", "sounds", "music", "backups", "backup", "logs", "saves", "states", "bios")
 
         /** The system a folder is for: "gba", but also "Nintendo - Game Boy Advance" or "SonyPlayStation2". */
         fun systemFor(folder: String): GameSystem? {

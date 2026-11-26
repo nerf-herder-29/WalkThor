@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,6 +99,8 @@ data class Spotlight(
     val system: String,
     val hero: Uri?,
     val cover: Uri?,
+    /** The game's logo, shown in the middle of the top screen. */
+    val logo: Uri? = null,
     val description: String?,
     val lastPlayed: String?,
     val playTime: String?,
@@ -226,13 +229,14 @@ fun PlaceholderArt(title: String, modifier: Modifier = Modifier, showTitle: Bool
 /** A game's cover: its picture from your art folder, or a made-up one. */
 @Composable
 private fun Cover(rom: Rom, picture: Uri?, selected: Boolean, modifier: Modifier) {
-    val shape = RoundedCornerShape(10.dp)
+    // Rounded squares, like the icons in your art folder.
+    val shape = RoundedCornerShape(24.dp)
     Box(
         modifier
-            .aspectRatio(0.75f)
-            .then(if (selected) Modifier.border(3.dp, frontAccent(), shape).padding(5.dp) else Modifier.padding(5.dp))
-            .shadow(6.dp, RoundedCornerShape(8.dp))
-            .clip(RoundedCornerShape(8.dp)),
+            .aspectRatio(1f)
+            .then(if (selected) Modifier.border(3.dp, frontAccent(), shape).padding(6.dp) else Modifier.padding(6.dp))
+            .shadow(6.dp, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp)),
     ) {
         if (picture != null) {
             AsyncImage(
@@ -261,6 +265,7 @@ private sealed class Shelf(val label: String) {
  * Y for its guide, X to make it a favorite, L1 and R1 to go through All, Recent, Favorites and
  * each system, Select to search.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun FrontendScreen(
     roms: List<Rom>,
@@ -271,6 +276,8 @@ fun FrontendScreen(
     onOpenLibrary: () -> Unit,
     /** Your other apps (for when WalkThor is the home app). */
     onOpenApps: () -> Unit = {},
+    /** No ROMs folder yet: link one. */
+    onLinkRoms: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -300,8 +307,10 @@ fun FrontendScreen(
     var query by remember { mutableStateOf("") }
     val shown = remember(roms, shelf, query, plays) {
         val q = query.trim()
+        val hidden = GamePlays.hidden(context)
+        val visible = roms.filter { it.id !in hidden }
         val base = when (shelf) {
-            Shelf.All -> roms.sortedWith(compareBy({ Frontend.letter(it.title) }, { it.title.lowercase().removePrefix("the ") }))
+            Shelf.All -> visible.sortedWith(compareBy({ Frontend.letter(it.title) }, { it.title.lowercase().removePrefix("the ") }))
             Shelf.Recent -> roms.filter { GamePlays.lastPlayed(context, it) > 0 }.sortedByDescending { GamePlays.lastPlayed(context, it) }
             Shelf.Favorites -> GamePlays.favorites(context).let { f -> roms.filter { it.id in f }.sortedBy { it.title.lowercase() } }
             is Shelf.System -> roms.filter { it.system == shelf.key }.sortedBy { it.title.lowercase() }
@@ -315,6 +324,8 @@ fun FrontendScreen(
     val columns = 4
     var choosingFor by remember { mutableStateOf<Rom?>(null) }
     var launchError by remember { mutableStateOf<String?>(null) }
+    /** The game whose options are open (X, or a long press). */
+    var menuFor by remember { mutableStateOf<Rom?>(null) }
 
     fun select(i: Int) {
         if (shown.isEmpty()) return
@@ -346,6 +357,7 @@ fun FrontendScreen(
             system = RomLibrary.system(rom.system)?.name ?: rom.system,
             hero = art.picture(rom, GameArt.Kind.HERO),
             cover = art.picture(rom, GameArt.Kind.COVER),
+            logo = art.picture(rom, GameArt.Kind.LOGO),
             description = art.description(rom),
             lastPlayed = GamePlays.whenText(GamePlays.lastPlayed(context, rom)),
             playTime = GamePlays.timeText(GamePlays.playTime(context, rom)),
@@ -377,7 +389,7 @@ fun FrontendScreen(
 
     /** A button press, from either screen. */
     fun onKey(k: KeyEvent): Boolean {
-        if (searching || choosingFor != null || launchError != null) return false
+        if (searching || choosingFor != null || launchError != null || menuFor != null) return false
         if (k.action != KeyEvent.ACTION_DOWN) return k.keyCode in HANDLED
         val rom = shown.getOrNull(selected)
         when (k.keyCode) {
@@ -387,7 +399,7 @@ fun FrontendScreen(
             KeyEvent.KEYCODE_DPAD_DOWN -> select(selected + columns)
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
-            KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let(::favorite)
+            KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let { menuFor = it }
             // L1 / R1: the previous or next letter.
             KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
                 val at = rom?.let { Frontend.letter(it.title) }
@@ -452,21 +464,25 @@ fun FrontendScreen(
                     Spacer(Modifier.width(8.dp))
                     Pill("Apps") { onOpenApps() }
                     Spacer(Modifier.width(8.dp))
-                    Pill("WalkThor") { onOpenLibrary() }
+                    Pill("Settings") { onOpenLibrary() }
                 }
             }
             Row(Modifier.weight(1f).fillMaxWidth()) {
                 if (shown.isEmpty()) {
+                    Column(Modifier.weight(1f)) {
                     Text(
                         when {
                             query.isNotBlank() -> "No games match “${query.trim()}”."
+                            roms.isEmpty() -> "Link your ROMs folder (one folder per system) to see your games here."
                             shelf == Shelf.Favorites -> "No favorites yet. Press X on a game to add it."
                             shelf == Shelf.Recent -> "Games you start here show up here."
                             else -> "No games here."
                         },
                         color = BookColors.TextMuted, fontSize = 13.sp,
-                        modifier = Modifier.weight(1f).padding(18.dp),
+                        modifier = Modifier.padding(18.dp),
                     )
+                    if (roms.isEmpty()) Box(Modifier.padding(start = 16.dp)) { Pill("Link ROMs folder…") { onLinkRoms() } }
+                    }
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
@@ -480,9 +496,10 @@ fun FrontendScreen(
                             val picture = remember(rom.id, artVersion) { art.picture(rom, GameArt.Kind.COVER) }
                             Cover(
                                 rom, picture, selected = i == selected,
-                                modifier = Modifier.clickable {
-                                    if (i == selected) play(rom) else select(i)
-                                },
+                                modifier = Modifier.combinedClickable(
+                                    onClick = { if (i == selected) play(rom) else select(i) },
+                                    onLongClick = { select(i); menuFor = rom },
+                                ),
                             )
                         }
                     }
@@ -513,6 +530,25 @@ fun FrontendScreen(
         }
     }
 
+    menuFor?.let { rom ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { menuFor = null },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { menuFor = null }) { Text("Cancel") } },
+            title = { Text(rom.title) },
+            text = {
+                Column {
+                    androidx.compose.material3.TextButton(onClick = {
+                        menuFor = null
+                        GamePlays.setHidden(context, rom, true)
+                        Toast.makeText(context, "Hidden. Show it again in Settings → Guides → Games screen.", Toast.LENGTH_LONG).show()
+                    }) { Text("Hide this game") }
+                    androidx.compose.material3.TextButton(onClick = { menuFor = null; choosingFor = rom }) {
+                        Text(if (guideFor[rom.id] != null) "Change its guide" else "Add a guide")
+                    }
+                }
+            },
+        )
+    }
     launchError?.let { text ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { launchError = null },
@@ -582,19 +618,32 @@ fun TopSpotlight(spot: Spotlight?) {
         } else {
             PlaceholderArt(spot.rom.title, Modifier.fillMaxSize(), showTitle = false, big = true)
         }
-        // Dark to the left and along the bottom, so the words read over any picture.
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(0f to Color(0xEB08080A), 0.45f to Color(0x8C08080A), 0.75f to Color.Transparent),
-            ),
-        )
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color(0xE608080A))))
+        val logo = spot.logo
+        if (logo == null) {
+            // Dark to the left and along the bottom, so the words read over any picture.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.horizontalGradient(0f to Color(0xEB08080A), 0.45f to Color(0x8C08080A), 0.75f to Color.Transparent),
+                ),
+            )
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color(0xE608080A))))
+        // The game's logo, in the middle of its picture.
+        if (logo != null) {
+            AsyncImage(
+                model = logo,
+                contentDescription = spot.rom.title,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.5f).fillMaxHeight(0.38f),
+            )
+        }
         ClockLine(Modifier.align(Alignment.TopStart).padding(start = 55.dp, top = 40.dp))
         Column(Modifier.align(Alignment.BottomStart).padding(start = 55.dp, bottom = 56.dp).fillMaxWidth(0.55f)) {
             val eyebrow = listOfNotNull(spot.system, spot.lastPlayed?.let { "last played $it" }).joinToString(" · ").uppercase()
             Text(eyebrow, color = frontAccent(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp)
-            Text(
-                spot.rom.title + if (spot.favorite) "  ★" else "",
+            // With a logo in the middle, the title isn't written out again.
+            if (logo == null) Text(
+                spot.rom.title,
                 color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold,
                 fontSize = if (spot.rom.title.length > 22) 44.sp else 64.sp,
                 lineHeight = if (spot.rom.title.length > 22) 46.sp else 62.sp,
@@ -602,7 +651,8 @@ fun TopSpotlight(spot: Spotlight?) {
                 modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
             )
             val facts = listOfNotNull(spot.playTime?.let { "$it played" }, spot.guide?.let { "Guide: $it" }).joinToString(" · ")
-            spot.description?.let {
+            if (logo != null) Spacer(Modifier.height(8.dp))
+            spot.description?.takeIf { logo == null }?.let {
                 Text(it, color = Color(0xFFCFC8BC), fontSize = 15.sp, lineHeight = 21.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             if (facts.isNotEmpty()) {
@@ -615,7 +665,7 @@ fun TopSpotlight(spot: Spotlight?) {
         ) {
             Hint("A", "Play")
             Hint("Y", if (spot.guide != null) "Guide" else "Add a guide")
-            Hint("X", if (spot.favorite) "Unfavorite" else "Favorite")
+            Hint("X", "Options")
         }
     }
 }

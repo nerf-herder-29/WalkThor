@@ -804,7 +804,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                 }
             },
         )
-    } else if (frontOn != false && allRoms.isNotEmpty() && !gameOn && !libraryFromGames) {
+    } else if (!gameOn && !libraryFromGames) {
         // ---- no game running: your games, to start one (the chosen one big on the top screen) ----
         DisposableEffect(Unit) { onDispose { com.nerfherder.walkthor.ui.Frontend.hideTopSoon() } }
         com.nerfherder.walkthor.ui.FrontendScreen(
@@ -815,11 +815,15 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
             onAddGuideFor = { game -> linkImportTo = game; host.pickGuide() },
             onOpenLibrary = { libraryFromGames = true },
             onOpenApps = { appsFromGames = true },
+            onLinkRoms = host::pickRomFolder,
         )
     } else {
-        val backToGames = frontOn != false && allRoms.isNotEmpty() && !gameOn
+        // With no game running there's no list of guides: your games, and Settings.
+        val backToGames = !gameOn
         if (backToGames) BackHandler { libraryFromGames = false }
         LibraryScreen(
+            startInSettings = if (backToGames) com.nerfherder.walkthor.ui.SettingsSection.GENERAL else null,
+            settingsOnly = backToGames,
             books = books,
             alwaysBottom = alwaysBottom,
             swipeToOpen = swipeOn,

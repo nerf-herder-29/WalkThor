@@ -142,6 +142,8 @@ fun LibraryScreen(
     previewRoms: List<com.nerfherder.walkthor.data.Rom>? = null,
     previewSection: String? = null,
     startInSettings: SettingsSection? = null,
+    /** Only Settings (no game list under it): leaving Settings leaves this screen. */
+    settingsOnly: Boolean = false,
 ) {
     var explainSwipe by remember { mutableStateOf(false) }
     var showDisclosure by remember { mutableStateOf(false) }
@@ -178,7 +180,7 @@ fun LibraryScreen(
     // Very narrow: the time and battery move to a bottom bar (as in the reader) to give the title room.
     val statusAtBottom = LocalConfiguration.current.screenWidthDp < 480
     Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
+    if (!settingsOnly) Column(Modifier.fillMaxSize().background(BookColors.Ink)) {
         // ---- header -----------------------------------------------------------------------
         Row(
             Modifier.fillMaxWidth().padding(start = if (actions.onBackToGame != null || actions.onBackToGames != null) 6.dp else 20.dp, end = 8.dp, top = 12.dp, bottom = 6.dp),
@@ -309,7 +311,10 @@ fun LibraryScreen(
                 else if (!com.nerfherder.walkthor.EmulatorWatch.hasConsent(context)) showEmulatorDisclosure = true
                 else turnOnEmulators()
             },
-            onDismiss = { settingsOpen = false },
+            onDismiss = {
+                val back = actions.onBackToGames
+                if (settingsOnly && back != null) back() else settingsOpen = false
+            },
         )
     }
     }
@@ -645,12 +650,41 @@ private fun SettingsScreen(
                 val frontOn by com.nerfherder.walkthor.ui.Frontend.enabled(context).collectAsState()
                 var topOn by remember { mutableStateOf(com.nerfherder.walkthor.ui.Frontend.topOn(context)) }
                 SettingsGroup("Games screen") {
-                    SettingSwitch(
-                        "Open on your games",
-                        "With no game running, WalkThor shows your games as covers to start them from (Start or the WalkThor button for this screen)",
-                        checked = frontOn != false,
+                    val hiddenIds = remember(artVersion, com.nerfherder.walkthor.data.GamePlays.changed.collectAsState().value) {
+                        com.nerfherder.walkthor.data.GamePlays.hidden(context)
+                    }
+                    var showHidden by remember { mutableStateOf(false) }
+                    SettingRow(
+                        "Hidden games",
+                        if (hiddenIds.isEmpty()) "None. Press X on a game (or hold it) to hide it" else "${hiddenIds.size} hidden from your games",
                         divider = false,
-                    ) { com.nerfherder.walkthor.ui.Frontend.setEnabled(context, it) }
+                        buttons = if (hiddenIds.isEmpty()) null else ({ PillButton("Show…") { showHidden = true } }),
+                    )
+                    if (showHidden) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showHidden = false },
+                            confirmButton = { androidx.compose.material3.TextButton(onClick = { showHidden = false }) { Text("Done") } },
+                            dismissButton = {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    com.nerfherder.walkthor.data.GamePlays.showAll(context); showHidden = false
+                                }) { Text("Show all") }
+                            },
+                            title = { Text("Hidden games") },
+                            text = {
+                                Column(Modifier.verticalScroll(rememberScrollState())) {
+                                    hiddenIds.sorted().forEach { id ->
+                                        val name = roms.firstOrNull { it.id == id }?.title ?: id.substringAfter('/')
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(name, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                            androidx.compose.material3.TextButton(onClick = {
+                                                com.nerfherder.walkthor.data.GamePlays.setHidden(context, id, false)
+                                            }) { Text("Show") }
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    }
                     SettingSwitch(
                         "The chosen game on the top screen",
                         "Its picture, title and play time, big, while you choose",
