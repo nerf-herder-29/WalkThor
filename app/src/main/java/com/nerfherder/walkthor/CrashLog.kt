@@ -160,6 +160,7 @@ private object Guard {
             var helperChecked = 0L
             var helper = false
             var ticks = 0
+            val gameNoted = mutableSetOf<Int>()
             status(c, "running, no game in front")
             while (true) {
                 try { Thread.sleep(1_000) } catch (_: InterruptedException) { return@Thread }
@@ -190,6 +191,13 @@ private object Guard {
                     val changed = ranks.filter { it.before != it.after }
                     if (changed.isNotEmpty()) note(c, "kept " + changed.joinToString(" and ") { "${name(c, it.pkg)} (${it.before} → ${it.after})" })
                     val gameRanks = rows.filter { it.kind == 'G' }
+                    // The game put first: noted once for each game process (Android ranks it back often).
+                    rows.filter { it.kind == 'G' && it.before != it.after && it.pid !in gameNoted }.let { firsts ->
+                        if (firsts.isNotEmpty()) {
+                            gameNoted += firsts.map { it.pid }
+                            note(c, "put the game first: " + firsts.joinToString(", ") { "${it.before} → ${it.after}" })
+                        }
+                    }
                     if (ticks % 3 == 0 || changed.isNotEmpty()) status(c,
                         "protecting during the game: " + (ranks.distinctBy { it.pkg }.joinToString { "${name(c, it.pkg)} ${it.after}" }.ifEmpty { "found none of the apps" }) +
                             (if (gameRanks.isNotEmpty()) "; the game " + gameRanks.joinToString { "${it.before}→${it.after}" } else ""))

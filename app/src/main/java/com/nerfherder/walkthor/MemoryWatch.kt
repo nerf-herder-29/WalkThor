@@ -279,7 +279,7 @@ object MemoryWatch {
         val ps = OomRanks.procs(pkgs) ?: run { ranksProblem(c, "the helper didn't answer"); return }
         val ranks = OomRanks.adj(ps.map { it.pid })
         val procs = ps.mapNotNull { p -> ranks[p.pid]?.let { p.name to it } }.distinct().sortedBy { it.second }
-        if (procs.isEmpty()) { ranksProblem(c, "found ${ps.size} of the apps' processes, but no ranks came back"); return }
+        if (procs.isEmpty()) { ranksProblem(c, "found ${ps.size} of the apps' processes, but no ranks came back: ${OomRanks.lastOddReply}"); return }
         fun name(proc: String): String {
             val pkg = proc.substringBefore(':')
             val part = proc.substringAfter(':', "")

@@ -33,11 +33,26 @@ internal object OomRanks {
         }
     }
 
-    /** The ranks of [pids] (any that have gone are left out). */
+    /** What the last rank read got back, when it couldn't be understood (for the memory log). */
+    @Volatile var lastOddReply: String? = null
+
+    /**
+     * The ranks of [pids] (any that have gone are left out). Each read as its own "echo pid N; cat
+     * /proc/N/oom_score_adj", the plainest form there is.
+     */
     fun adj(pids: Collection<Int>): Map<Int, Int> {
         if (pids.isEmpty()) return emptyMap()
-        val out = AynSystem.shellLines("grep -H . " + pids.distinct().joinToString(" ") { "/proc/$it/oom_score_adj" }) ?: return emptyMap()
-        return out.mapNotNull { l -> ADJ_LINE.find(l)?.let { m -> m.groupValues[1].toInt() to m.groupValues[2].toInt() } }.toMap()
+        val out = AynSystem.shellLines(pids.distinct().joinToString("; ") { "echo pid $it; cat /proc/$it/oom_score_adj" }) ?: return emptyMap()
+        val map = linkedMapOf<Int, Int>()
+        var current: Int? = null
+        for (line in out) {
+            val t = line.trim()
+            if (t.startsWith("pid ")) { current = t.removePrefix("pid ").trim().toIntOrNull(); continue }
+            val v = t.toIntOrNull()
+            if (v != null && current != null) { map[current] = v; current = null }
+        }
+        lastOddReply = if (map.isEmpty()) out.take(3).joinToString(" | ").take(160).ifEmpty { "nothing" } else null
+        return map
     }
 
     /**
