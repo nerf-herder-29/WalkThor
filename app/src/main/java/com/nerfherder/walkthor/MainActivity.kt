@@ -628,8 +628,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
     LaunchedEffect(Unit) { romLibrary.load() }
     // Shortcuts other apps added to the home screen join your games.
     LaunchedEffect(Unit) { com.nerfherder.walkthor.data.PinnedShortcuts.load(context) }
-    val pinned by com.nerfherder.walkthor.data.PinnedShortcuts.all.collectAsState()
-    val gamesAndShortcuts = remember(allRoms, pinned) { allRoms + com.nerfherder.walkthor.data.PinnedShortcuts.asRoms(pinned) }
+    val pinnedShortcuts by com.nerfherder.walkthor.data.PinnedShortcuts.all.collectAsState()
+    val gamesAndShortcuts = remember(allRoms, pinnedShortcuts) { allRoms + com.nerfherder.walkthor.data.PinnedShortcuts.asRoms(pinnedShortcuts) }
     /** The library (guides, settings), reached from the games' WalkThor button. */
     var mainTab by remember { mutableStateOf<com.nerfherder.walkthor.ui.MainTab>(com.nerfherder.walkthor.ui.MainTab.Games) }
     var searchRequests by remember { mutableStateOf(0) }
