@@ -614,7 +614,7 @@ private fun SettingsScreen(
                         divider = false,
                     ) { swapOn = it; com.nerfherder.walkthor.HomeSwap.setOn(swapContext, it) }
                 }
-                SettingsNote("Android keeps whatever app is home running, restarting it whenever it's closed, and a frontend restarting over and over can push a game out of memory. Pausing it can stop those crashes. Your home app is back as soon as you leave the game (or close all apps); pressing Home mid-game shows Android's launcher. While the game plays, WalkThor taps the top edge of the game's screen now and then to keep the game as Android's “app in front”, so it's the last thing closed for memory. Needs AYN's system helper (Force SELinux off).")
+                SettingsNote("Android keeps whatever app is home running, restarting it whenever it's closed, and a frontend restarting over and over can push a game out of memory. Pausing it can stop those crashes. Your home app is back as soon as you leave the game (or close all apps); pressing Home mid-game shows Android's launcher. Android's launcher comes up after the game, which would rank it ahead of the game for the memory killer, so WalkThor brings the game's window back to the front once the launcher is up. Needs AYN's system helper (Force SELinux off).")
             }
             SettingsSection.GUIDES -> {
                 SettingsGroup("ROMs folder") {

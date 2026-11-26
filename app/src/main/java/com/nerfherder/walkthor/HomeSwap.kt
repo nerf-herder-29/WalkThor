@@ -140,7 +140,7 @@ object HomeSwap {
         val now = currentHome(c)
         if (now?.packageName == stock.packageName) {
             MemoryWatch.noteFrom(c, "Home app: ${label(c, home.packageName)} paused for the game (${label(c, stock.packageName)} is home meanwhile)")
-            // Android's launcher on the bottom screen takes the game's top spot: taps put it back.
+            // Android's launcher comes up after the game and outranks it: the game's brought back in front.
             runCatching { FocusBack.afterPause(c) }
         } else {
             prefs(c).edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).remove(KEY_GAME).commit()
@@ -177,7 +177,9 @@ object HomeSwap {
         // WalkThor was closed along with the game (it's only just started again): it never saw the
         // game leave, so the game report is taken now.
         val pausedFor = prefs(c).getString(KEY_GAME, null)
-        val justStarted = android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime() < 60_000L
+        // (Only if this WalkThor never saw the game: just after an update it has, and reports it itself.)
+        val justStarted = android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime() < 60_000L &&
+            MemoryWatch.gameStartedAt() == 0L
         restore(c, "no game in front")
         if (justStarted && pausedFor != null) {
             MemoryWatch.noteFrom(c, "The game closed while WalkThor was closed too: saving its report now")
