@@ -86,10 +86,7 @@ Everything else stays on your device.
   bottom screen's apps (your home app, the app in front there, and WalkThor) are closed by Android
   and start again, with Android's reason. It's kept in a small file in WalkThor's own storage
   (the last few hundred lines), shown in About, Diagnostics, and shared only if you press Share log.
-  While a game is in front, WalkThor also ranks your home app and itself just below the game for
-  Android's memory killer, through the system helper, so they're closed only after everything
-  else. WalkThor's small second process (Keeper) keeps doing this once a second while a game is in
-  front, even while WalkThor itself has been closed, and notes what it changed in that same log.
+  WalkThor doesn't change how Android ranks apps for its memory killer.
 
 - **A game report after each game, kept on the device.** A couple of seconds after a game closes,
   WalkThor reads the device's own records of how it ended through the system helper: Android's
@@ -97,9 +94,8 @@ Everything else stays on your device.
   crashing, the crash log, the kernel's log lines about memory and the graphics driver, and memory
   figures. These can name other apps on the device. The report is kept in WalkThor's own storage
   (the last three) and leaves the device only if you press Share game report.
-  When memory gets critical during a game, WalkThor and Keeper stop protecting them, so Android
-  closes the bottom screen's apps before the game, and start again once memory recovers. Each time WalkThor starts, it reads Android's records of why the home app and WalkThor
-  were last closed (and the memory killer's own log lines about them) into that same log.
+  Each time WalkThor starts, it reads Android's records of why the home app and WalkThor were last
+  closed (and the memory killer's own log lines about them) into the memory log.
 
 - **Updates: release pages only, and only when you look.** When you open Updates (at most every few
   hours) or tap Check now, WalkThor asks each release page it knows (GitHub, a Forgejo or Gitea
