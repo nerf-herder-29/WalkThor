@@ -264,9 +264,9 @@ class RomLibrary private constructor(private val context: Context) {
         fun system(key: String): GameSystem? = SYSTEMS.firstOrNull { it.key == key }
 
         /** Emulator files kept beside the games (a "firmware" or "keys" folder), not games. */
-        private val NOT_GAMES = setOf("firmware", "keys", "prod", "title", "bios", "dlc", "dlcs", "update", "updates", "saves", "nand", "sdmc", "shaders")
-        fun isGame(rom: Rom): Boolean = rom.file.substringBeforeLast('.').lowercase().trim() !in NOT_GAMES &&
-            rom.file.lowercase() !in NOT_GAMES
+        private val EMULATOR_FILES = setOf("firmware", "keys", "prod", "title", "bios", "dlc", "dlcs", "update", "updates", "saves", "nand", "sdmc", "shaders")
+        fun isGame(rom: Rom): Boolean = rom.file.substringBeforeLast('.').lowercase().trim() !in EMULATOR_FILES &&
+            rom.file.lowercase() !in EMULATOR_FILES
 
         /** The game in [roms] whose name [text] clearly is (a close match, well ahead of the next best). */
         fun matchName(text: String, roms: List<Rom>): Rom? {
