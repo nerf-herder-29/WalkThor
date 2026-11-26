@@ -6,12 +6,13 @@ import android.media.SoundPool
 import com.nerfherder.walkthor.R
 
 /**
- * The games screen's little sounds: a soft tap as you move between bubbles, a two-note chime when
- * you pick something (a tab, a menu), and a rising chord when a game starts. Quiet, played as
- * game sounds so the volume buttons set them, and they can be turned off on the Library tab.
+ * The games screen's little sounds ("Whisper"): a low, round tap as you move between bubbles, a
+ * soft rising pair of notes for a new tab, one soft note when you pick something (an app, a
+ * game's options), and a slow, gentle swell when a game starts. Quiet, played as game sounds so
+ * the volume buttons set them, and they can be turned off on the Library tab.
  */
 object UiSounds {
-    enum class Kind { MOVE, PICK, LAUNCH }
+    enum class Kind { MOVE, TAB, PICK, LAUNCH }
 
     private var pool: SoundPool? = null
     private val ids = HashMap<Kind, Int>()
@@ -29,6 +30,7 @@ object UiSounds {
             .build()
         val app = c.applicationContext
         ids[Kind.MOVE] = p.load(app, R.raw.ui_tick, 1)
+        ids[Kind.TAB] = p.load(app, R.raw.ui_tab, 1)
         ids[Kind.PICK] = p.load(app, R.raw.ui_select, 1)
         ids[Kind.LAUNCH] = p.load(app, R.raw.ui_launch, 1)
         pool = p
@@ -49,7 +51,7 @@ object UiSounds {
         runCatching {
             val p = ready(c)
             val id = ids[kind] ?: return
-            val vol = when (kind) { Kind.MOVE -> 0.16f; Kind.PICK -> 0.3f; Kind.LAUNCH -> 0.55f }
+            val vol = when (kind) { Kind.MOVE -> 0.09f; Kind.TAB -> 0.2f; Kind.PICK -> 0.22f; Kind.LAUNCH -> 0.32f }
             p.play(id, vol, vol, 1, 0, 1f)
         }
     }
