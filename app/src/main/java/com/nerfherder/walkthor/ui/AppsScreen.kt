@@ -155,7 +155,7 @@ object AppCatalog {
         val target = if (here) {
             AppState.activityDisplayId ?: activity?.let { DisplayHelper.currentDisplayId(it) }
         } else {
-            activity?.let { DisplayHelper.gameDisplay(it)?.displayId }
+            activity?.let { DisplayHelper.gameDisplay(it)?.displayId } ?: DisplayHelper.topDisplay(context)?.displayId
         }
         if (here) {
             Revive.closedOnPurpose(context)
@@ -184,6 +184,8 @@ object AppCatalog {
 @Composable
 fun AppsScreen(
     topBar: (@Composable () -> Unit)? = null,
+    /** A tap asks which screen to open the app on (with no game running). */
+    askWhere: Boolean = false,
     /** Fixed apps for screenshots. */
     preview: List<InstalledApp>? = null,
 ) {
@@ -200,6 +202,8 @@ fun AppsScreen(
     val pinnedIds by AppCatalog.pinned.collectAsState()
     var query by remember { mutableStateOf("") }
     var menuFor by remember { mutableStateOf<InstalledApp?>(null) }
+    /** The app you tapped, while you pick which screen it opens on. */
+    var whereFor by remember { mutableStateOf<InstalledApp?>(null) }
 
     Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
@@ -246,7 +250,7 @@ fun AppsScreen(
                         }
                     } else {
                         items(pinnedApps, key = { "pin:" + it.packageName }) { app ->
-                            AppIcon(app, compact, onOpen = { AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
+                            AppIcon(app, compact, onOpen = { if (askWhere) whereFor = app else AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
                         }
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -257,7 +261,7 @@ fun AppsScreen(
                     }
                 }
                 items(shown, key = { it.packageName }) { app ->
-                    AppIcon(app, compact, onOpen = { AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
+                    AppIcon(app, compact, onOpen = { if (askWhere) whereFor = app else AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(8.dp)) }
             }
@@ -271,6 +275,23 @@ fun AppsScreen(
         }
     }
 
+    whereFor?.let { app ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { whereFor = null },
+            title = { androidx.compose.material3.Text("Open ${app.label} on") },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    androidx.compose.material3.TextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = false) }) {
+                        androidx.compose.material3.Text("The top screen")
+                    }
+                    androidx.compose.material3.TextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = true) }) {
+                        androidx.compose.material3.Text("The bottom screen")
+                    }
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { whereFor = null }) { androidx.compose.material3.Text("Cancel") } },
+        )
+    }
     menuFor?.let { app ->
         val isPinned = app.packageName in pinnedIds
         AppMenu(

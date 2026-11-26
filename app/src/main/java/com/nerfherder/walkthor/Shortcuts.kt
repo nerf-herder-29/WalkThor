@@ -230,7 +230,20 @@ object Shortcuts {
         if (a == Action.NOTHING || a == Action.AYN_DRAWER) return
         // With WalkThor as the home app, your games and the black bottom screen take the drawer's
         // place, so "Open the drawer" does nothing (it used to close the home screen itself).
-        if (a == Action.DRAWER && isHomeApp(service)) { AynButton.note("${t.label} → nothing (WalkThor is the home app)"); return }
+        if (a == Action.DRAWER && isHomeApp(service)) {
+            // With WalkThor as the home app: during a game, nothing (the bottom screen is WalkThor's
+            // already); otherwise WalkThor's drawer slides up over the games, or away.
+            if (GameFocus.gameRunning.value) { AynButton.note("${t.label} → nothing during a game (WalkThor is the home app)"); return }
+            rumble(service)
+            val bottom = DisplayHelper.bottomDisplay(service)?.displayId ?: return
+            if (Drawer.shown.value) {
+                Drawer.hide()
+                ScreenMessage.show("Drawer put away", 1_200)
+            } else if (Drawer.show(service, bottom, opened = true)) {
+                AynButton.note("${t.label} → drawer opened over the games")
+            }
+            return
+        }
         AynButton.note("${t.label} → ${a.label}")
         rumble(service)
         runCatching { perform(service, a) }

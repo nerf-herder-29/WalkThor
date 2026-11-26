@@ -193,7 +193,7 @@ fun AppsExplainer(app: InstalledApp?, count: Int) {
                     )
                 }
                 Text(
-                    "Tap it to open it on the bottom screen. Hold it to open it on the top screen instead, pin it to the top of Apps, or see Android's info for it.",
+                    "Tap it (or press A) to choose the top or bottom screen for it. Hold it to pin it to the top of Apps or see Android's info for it.",
                     color = Color(0xFFCFC8BC), fontSize = 22.sp, lineHeight = 32.sp,
                     modifier = Modifier.padding(top = 30.dp).fillMaxWidth(0.8f),
                 )

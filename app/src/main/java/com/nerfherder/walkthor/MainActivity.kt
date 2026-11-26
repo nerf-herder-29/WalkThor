@@ -706,8 +706,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                     indication = null,
                 ) { blackRevealed = true },
         )
-    } else if (gameOn && !libraryOpen) {
-        // ---- a game is in front: Home and the other tabs, along the top ----
+    } else if ((gameOn || host !is MainActivity) && !libraryOpen) {
+        // ---- a game is in front (or this is the drawer): Home and the other tabs, along the top ----
         // (Only Home dims while these are up.)
         DisposableEffect(Unit) {
             val holder = Any()
@@ -953,7 +953,7 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                                 com.nerfherder.walkthor.ui.Frontend.hideTopSoon()
                             }
                         }
-                        com.nerfherder.walkthor.ui.AppsScreen()
+                        com.nerfherder.walkthor.ui.AppsScreen(askWhere = true)
                     }
                     is com.nerfherder.walkthor.ui.MainTab.Settings -> LibraryScreen(
                         startInSettings = tab.section,
