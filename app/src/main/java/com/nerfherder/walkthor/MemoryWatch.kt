@@ -198,6 +198,8 @@ object MemoryWatch {
         // While memory's critical, nothing goes through the system helper (each command is a load
         // of its own): restarts and Android's records are caught up on once it recovers.
         if (yielding) return
+        // The game kept as Android's app in front (a home app on the bottom screen takes it otherwise).
+        runCatching { FocusBack.check(c) }
         // How Android ranks the game against the bottom screen's apps: 15 s in, then every minute.
         val sinceStart = System.currentTimeMillis() - gameSince
         if (sinceStart >= 15_000L && System.currentTimeMillis() - ranksAt >= 60_000L) {
@@ -503,6 +505,9 @@ object MemoryWatch {
         val d = Regex("description=([^\\n]*)").find(out)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
         if (r == null) "" else " (Android: ${r.lowercase().replace('_', ' ')}${d?.let { ", $it" } ?: ""})"
     }.getOrDefault("")
+
+    /** An app's name for the log. */
+    fun labelOf(c: Context, pkg: String) = label(c, pkg)
 
     private fun label(c: Context, pkg: String): String = when (pkg) {
         c.packageName -> "WalkThor"

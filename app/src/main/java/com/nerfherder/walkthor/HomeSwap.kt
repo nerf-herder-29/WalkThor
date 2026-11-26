@@ -135,6 +135,8 @@ object HomeSwap {
         val now = currentHome(c)
         if (now?.packageName == stock.packageName) {
             MemoryWatch.noteFrom(c, "Home app: ${label(c, home.packageName)} paused for the game (${label(c, stock.packageName)} is home meanwhile)")
+            // Android starts its launcher on the bottom screen now, which takes the game's top spot: put it back.
+            runCatching { FocusBack.afterPause(c) }
         } else {
             prefs(c).edit().remove(KEY_ORIGINAL).remove(KEY_STOCK).commit()
             MemoryWatch.noteFrom(c, "Home app: Android didn't take the switch, so ${label(c, home.packageName)} stays home")
