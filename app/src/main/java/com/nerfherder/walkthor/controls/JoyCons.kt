@@ -87,44 +87,104 @@ object JoyCons {
         return if (reached) out else null
     }
 
-    /** The made-up controller's name, as Android shows it. */
+    /** WalkThor's own controller's name, if the Thor's couldn't be found to feed. */
     const val JOINED_NAME = "WalkThor Joy-Cons"
 
-    /** Whether the joined controller is there now. */
-    fun joined(): Boolean = InputDevice.getDeviceIds().any { InputDevice.getDevice(it)?.name == JOINED_NAME }
+    /** Whether the Joy-Cons are joined (feeding the Thor's controller) right now, as far as WalkThor knows. */
+    val active = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** Why the last join didn't work, for the Controllers tab. */
+    val problem = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
-    /**
-     * While the Joy-Cons are joined, WalkThor ignores the two separate Joy-Cons themselves
-     * (each press would otherwise count twice: from the Joy-Con and from the joined controller).
-     */
-    fun ignore(e: android.view.InputEvent): Boolean {
-        val name = e.device?.name ?: return false
-        if (!name.startsWith("Nintendo Switch") || !name.contains("Joy-Con")) return false
-        return joined()
+    fun joined(): Boolean = active.value
+
+    private fun isJoyCon(name: String) = name.startsWith("Nintendo Switch") && name.contains("Joy-Con")
+
+    /** Both a left and a right Joy-Con are connected. */
+    fun pairConnected(): Boolean {
+        val names = InputDevice.getDeviceIds().mapNotNull { InputDevice.getDevice(it)?.name }
+        return names.any { isJoyCon(it) && "Left" in it } && names.any { isJoyCon(it) && "Right" in it }
     }
 
     /**
-     * Joins the connected left and right Joy-Cons into one controller. Null when it started,
-     * else why not. Not on the main thread.
+     * While the Joy-Cons are joined, WalkThor ignores the two separate Joy-Cons themselves
+     * (each press would otherwise count twice: from the Joy-Con and from the Thor's controller).
+     */
+    fun ignore(e: android.view.InputEvent): Boolean {
+        if (!active.value) return false
+        val name = e.device?.name ?: return false
+        return isJoyCon(name)
+    }
+
+    /**
+     * Joins the connected left and right Joy-Cons: from then on they work as the Thor's own
+     * controller. Null when it worked, else why not. Not on the main thread.
      */
     fun join(c: Context): String? {
         val lines = com.nerfherder.walkthor.AynSystem.shellLines(
             "for h in /sys/class/hidraw/*; do echo \$h \$(grep -h HID_ID \$h/device/uevent); done",
-        ) ?: return "the Thor’s system helper couldn’t be reached"
+        ) ?: return fail("the Thor’s system helper couldn’t be reached")
         fun find(product: String) = lines.firstOrNull { it.contains("0000057E:0000$product", ignoreCase = true) }
             ?.substringBefore(' ')?.substringAfterLast('/')?.let { "/dev/$it" }
-        val left = find("2006") ?: return "the left Joy-Con isn’t connected"
-        val right = find("2007") ?: return "the right Joy-Con isn’t connected"
-        if (!com.nerfherder.walkthor.AynSystem.joinJoyCons(c, left, right)) return "the joining couldn’t start"
-        // Wait for the joined controller to appear.
-        repeat(35) {
-            Thread.sleep(150)
-            if (joined()) return null
+        val left = find("2006") ?: return fail("the left Joy-Con isn’t connected")
+        val right = find("2007") ?: return fail("the right Joy-Con isn’t connected")
+        if (!com.nerfherder.walkthor.AynSystem.joinJoyCons(c, left, right)) return fail("the joining couldn’t start")
+        // Wait for it to say it's working.
+        var log: String? = null
+        repeat(12) {
+            Thread.sleep(400)
+            log = com.nerfherder.walkthor.AynSystem.joyConsLog()
+            if (log?.contains("OK driving") == true || log?.contains("OK made") == true) {
+                active.value = true
+                problem.value = null
+                com.nerfherder.walkthor.MemoryWatch.noteFrom(c, "Joy-Cons joined: " + log!!.take(300))
+                return null
+            }
+            if (log?.contains("ERR") == true) return fail(log!!.take(300))
         }
-        return "the joined controller didn’t appear (${com.nerfherder.walkthor.AynSystem.joyConsLog()?.take(160) ?: "no word from it"})"
+        return fail("no word that it’s working (${log?.take(200) ?: "nothing"})")
     }
 
-    fun separate() = com.nerfherder.walkthor.AynSystem.separateJoyCons()
+    private fun fail(why: String): String { problem.value = why; return why }
+
+    fun separate() {
+        com.nerfherder.walkthor.AynSystem.separateJoyCons()
+        active.value = false
+    }
+
+    // ---- joining by itself ----
+
+    private fun prefs(c: Context) = c.getSharedPreferences("controllers", Context.MODE_PRIVATE)
+    fun autoJoin(c: Context) = prefs(c).getBoolean("autoJoin", true)
+    fun setAutoJoin(c: Context, on: Boolean) {
+        prefs(c).edit().putBoolean("autoJoin", on).apply()
+        if (on) maybeJoin(c)
+    }
+
+    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "WalkThor Joy-Cons").apply { isDaemon = true } }
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var watching = false
+
+    /** Joins the Joy-Cons by itself whenever both connect (if that's on), and notices them going. */
+    fun watch(c: Context) {
+        if (watching) return
+        watching = true
+        val app = c.applicationContext
+        val im = app.getSystemService(InputManager::class.java) ?: return
+        im.registerInputDeviceListener(object : InputManager.InputDeviceListener {
+            override fun onInputDeviceAdded(id: Int) { main.removeCallbacksAndMessages(this@JoyCons); main.postDelayed({ maybeJoin(app) }, 1500) }
+            override fun onInputDeviceRemoved(id: Int) {
+                // Both gone: the joining program ends by itself.
+                if (InputDevice.getDeviceIds().none { InputDevice.getDevice(it)?.name?.let(::isJoyCon) == true }) active.value = false
+            }
+            override fun onInputDeviceChanged(id: Int) {}
+        }, main)
+        main.postDelayed({ maybeJoin(app) }, 3000)
+    }
+
+    private fun maybeJoin(c: Context) {
+        if (active.value || !autoJoin(c) || !pairConnected()) return
+        worker.execute { if (!active.value && pairConnected()) join(c) }
+    }
 
     /** Everything above as text, to read or share. */
     fun report(c: Context, probe: List<String>?): String = buildString {

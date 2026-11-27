@@ -391,6 +391,13 @@ fun SectionIcon(section: SettingsSection, tint: Color, modifier: Modifier = Modi
                 drawPath(hill, tint, style = stroke)
                 drawCircle(tint, radius = s * 0.07f, center = Offset(s * 0.7f, s * 0.32f), style = stroke)
             }
+            SettingsSection.CONTROLLERS -> {
+                // Two Joy-Cons side by side, a stick on the left one and a button on the right.
+                drawRoundRect(tint, Offset(s * 0.12f, s * 0.08f), Size(s * 0.34f, s * 0.84f), CornerRadius(s * 0.17f), style = stroke)
+                drawRoundRect(tint, Offset(s * 0.54f, s * 0.08f), Size(s * 0.34f, s * 0.84f), CornerRadius(s * 0.17f), style = stroke)
+                drawCircle(tint, radius = s * 0.07f, center = Offset(s * 0.29f, s * 0.34f), style = stroke)
+                drawCircle(tint, radius = w * 0.9f, center = Offset(s * 0.71f, s * 0.6f))
+            }
             SettingsSection.ABOUT -> {
                 // An "i" in a circle.
                 drawCircle(tint, radius = s * 0.44f, style = stroke)

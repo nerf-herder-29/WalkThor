@@ -56,6 +56,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 
 /** The sections of the settings screen, in the order of the list on its left. */
 enum class SettingsSection(val label: String) {
+    /** Joy-Cons as the Thor's controller, pairing, what's connected. */
+    CONTROLLERS("Controllers"),
     GENERAL("General"),
     SHORTCUTS("Shortcuts"),
     SCREEN("Screen"),

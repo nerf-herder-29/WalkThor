@@ -113,6 +113,8 @@ class MainActivity : ComponentActivity(), WalkThorHost {
     override fun onCreate(savedInstanceState: Bundle?) {
         openedAt = android.os.SystemClock.elapsedRealtime()
         super.onCreate(savedInstanceState)
+        // Joy-Cons join by themselves when both connect (Settings › Controllers).
+        com.nerfherder.walkthor.controls.JoyCons.watch(this)
         CrashLog.install(this)
         installImageLoader()
         DisplayHelper.init(this)

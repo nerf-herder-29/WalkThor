@@ -6,31 +6,157 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Run as `app_process` by the Thor's system helper (as root): joins a left and a right Joy-Con
- * into one controller, "WalkThor Joy-Cons".
+ * Run as `app_process` by the Thor's system helper (as root): makes a left and a right Joy-Con
+ * work as the Thor's own controller.
  *
  * It reads each Joy-Con's raw reports (/dev/hidrawN, which Nintendo's controller driver keeps in
- * full mode, so both sticks are analog) and presents one gamepad through Linux's virtual-device
- * file (/dev/uhid). Android sees that as a real controller: A/B/X/Y, L/R, ZL/ZR, Minus/Plus,
- * Home, both stick clicks, a D-pad and two sticks. It ends by itself when either Joy-Con goes,
- * or when WalkThor stops it.
+ * full mode, so both sticks are analog) and feeds their presses into the Thor's built-in
+ * controller ("Odin Controller") as if they came from it. Every emulator already set up for the
+ * Thor then just works, and the Joy-Con's Home button is the Thor's Back button (so WalkThor's
+ * and AYN's shortcuts work). Buttons go by position: the bottom face button is the Thor's
+ * bottom one, and so on.
  *
+ * If the Thor's controller can't be found, it makes a controller of its own instead,
+ * "WalkThor Joy-Cons", through Linux's virtual-device file (/dev/uhid).
+ *
+ * Ends by itself when both Joy-Cons have gone, or when WalkThor stops it.
  * `JoyConJoinTool <left hidraw> <right hidraw>`.
  */
 object JoyConJoinTool {
+    // Linux input event types and codes.
+    private const val EV_SYN = 0; private const val EV_KEY = 1; private const val EV_ABS = 3
+    private const val BTN_SOUTH = 0x130; private const val BTN_EAST = 0x131
+    private const val BTN_NORTH = 0x133; private const val BTN_WEST = 0x134
+    private const val BTN_TL = 0x136; private const val BTN_TR = 0x137
+    private const val BTN_TL2 = 0x138; private const val BTN_TR2 = 0x139
+    private const val BTN_SELECT = 0x13a; private const val BTN_START = 0x13b
+    private const val BTN_THUMBL = 0x13d; private const val BTN_THUMBR = 0x13e
+    private const val KEY_BACK = 158
+    private const val ABS_X = 0; private const val ABS_Y = 1; private const val ABS_Z = 2; private const val ABS_RZ = 5
+    private const val ABS_GAS = 9; private const val ABS_BRAKE = 10
+    private const val ABS_HAT0X = 16; private const val ABS_HAT0Y = 17
+
+    /** What both Joy-Cons are doing now. */
+    private class Pad {
+        var right = 0; var left = 0; var shared = 0
+        var lx = 0f; var ly = 0f; var rx = 0f; var ry = 0f
+    }
+    private val pad = Pad()
+    private val lock = Object()
+
+    private interface Sink { fun send(p: Pad) }
+
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val left = args.getOrNull(0) ?: run { say("ERR usage"); System.exit(0); return }
+        val right = args.getOrNull(1) ?: run { say("ERR usage"); System.exit(0); return }
+        say("starting: left $left, right $right")
+        var cleanup: (() -> Unit)? = null
+        try {
+            val thor = thorController()
+            val sink: Sink = if (thor != null) {
+                say("OK driving the Thor's controller (${thor.first})")
+                thor.second
+            } else {
+                val (s, close) = ownController()
+                cleanup = close
+                say("OK made WalkThor Joy-Cons (the Thor's controller wasn't found)")
+                s
+            }
+            val l = Thread { runCatching { read(left, true, sink) }.onFailure { say("ERR left: ${it.javaClass.simpleName} ${it.message}") }; say("left stopped") }.apply { isDaemon = true; start() }
+            val r = Thread { runCatching { read(right, false, sink) }.onFailure { say("ERR right: ${it.javaClass.simpleName} ${it.message}") }; say("right stopped") }.apply { isDaemon = true; start() }
+            // Until both Joy-Cons have gone (or this is stopped).
+            while (l.isAlive || r.isAlive) Thread.sleep(500)
+        } catch (t: Throwable) {
+            say("ERR ${t.javaClass.simpleName} ${t.message}")
+        } finally {
+            runCatching { cleanup?.invoke() }
+            System.out.flush()
+            System.exit(0)
+        }
+    }
+
+    private fun say(s: String) { println(s); System.out.flush() }
+
+    // ---- the Thor's own controller ----
+
+    /** The Thor's built-in controller's event file, ready to feed; null if it isn't there. */
+    private fun thorController(): Pair<String, Sink>? {
+        val node = runCatching {
+            val text = File("/proc/bus/input/devices").readText()
+            text.split("\n\n").firstOrNull { "Name=\"Odin Controller\"" in it }
+                ?.let { Regex("Handlers=[^\\n]*?(event\\d+)").find(it)?.groupValues?.get(1) }
+        }.getOrNull() ?: return null
+        val path = "/dev/input/$node"
+        // Each axis's range, from Android's own getevent.
+        val ranges = HashMap<Int, IntArray>()
+        runCatching {
+            val p = ProcessBuilder("getevent", "-p", path).redirectErrorStream(true).start()
+            val text = p.inputStream.bufferedReader().readText()
+            p.waitFor()
+            // Lines like "0000  : value 0, min -32768, max 32767, fuzz 16, flat 128, resolution 0".
+            Regex("""([0-9a-fA-F]{4})\s*:\s*value -?\d+, min (-?\d+), max (-?\d+)""").findAll(text).forEach { m ->
+                ranges[m.groupValues[1].toInt(16)] = intArrayOf(m.groupValues[2].toInt(), m.groupValues[3].toInt())
+            }
+        }
+        say("its axes: " + ranges.entries.sortedBy { it.key }.joinToString(" ") { "${it.key}:${it.value[0]}..${it.value[1]}" })
+        val out = runCatching { java.io.FileOutputStream(path) }.getOrElse { say("ERR opening $path: ${it.message}"); return null }
+        val last = HashMap<Long, Int>()
+        val sink = object : Sink {
+            override fun send(p: Pad) {
+                val events = ArrayList<IntArray>()
+                fun key(code: Int, on: Boolean) {
+                    val k = (EV_KEY.toLong() shl 16) or code.toLong()
+                    val v = if (on) 1 else 0
+                    if (last[k] != v) { last[k] = v; events += intArrayOf(EV_KEY, code, v) }
+                }
+                fun abs(code: Int, f: Float) {
+                    val r = ranges[code] ?: return
+                    val v = ((r[0] + r[1]) / 2f + f * (r[1] - r[0]) / 2f).toInt().coerceIn(r[0], r[1])
+                    val k = (EV_ABS.toLong() shl 16) or code.toLong()
+                    if (last[k] != v) { last[k] = v; events += intArrayOf(EV_ABS, code, v) }
+                }
+                // Face buttons by position (Joy-Con labels: A right, B bottom, X top, Y left).
+                key(BTN_EAST, p.right and 0x08 != 0)
+                key(BTN_SOUTH, p.right and 0x04 != 0)
+                key(BTN_NORTH, p.right and 0x02 != 0)
+                key(BTN_WEST, p.right and 0x01 != 0)
+                key(BTN_TR, p.right and 0x40 != 0)
+                key(BTN_TR2, p.right and 0x80 != 0)
+                key(BTN_TL, p.left and 0x40 != 0)
+                key(BTN_TL2, p.left and 0x80 != 0)
+                // The triggers are analog on the Thor: fully in or fully out.
+                abs(ABS_GAS, if (p.right and 0x80 != 0) 1f else -1f)
+                abs(ABS_BRAKE, if (p.left and 0x80 != 0) 1f else -1f)
+                key(BTN_SELECT, p.shared and 0x01 != 0)
+                key(BTN_START, p.shared and 0x02 != 0)
+                key(BTN_THUMBR, p.shared and 0x04 != 0)
+                key(BTN_THUMBL, p.shared and 0x08 != 0)
+                // Home is the Thor's Back button.
+                key(KEY_BACK, p.shared and 0x10 != 0)
+                val up = p.left and 0x02 != 0; val down = p.left and 0x01 != 0
+                val rightD = p.left and 0x04 != 0; val leftD = p.left and 0x08 != 0
+                abs(ABS_HAT0X, if (rightD) 1f else if (leftD) -1f else 0f)
+                abs(ABS_HAT0Y, if (down) 1f else if (up) -1f else 0f)
+                abs(ABS_X, p.lx); abs(ABS_Y, p.ly); abs(ABS_Z, p.rx); abs(ABS_RZ, p.ry)
+                if (events.isEmpty()) return
+                val b = ByteBuffer.allocate(24 * (events.size + 1)).order(ByteOrder.LITTLE_ENDIAN)
+                for (e in events + listOf(intArrayOf(EV_SYN, 0, 0))) {
+                    b.putLong(0); b.putLong(0); b.putShort(e[0].toShort()); b.putShort(e[1].toShort()); b.putInt(e[2])
+                }
+                out.write(b.array())
+            }
+        }
+        return path to sink
+    }
+
+    // ---- a controller of WalkThor's own (when the Thor's can't be found) ----
+
     private const val UHID_DESTROY = 1
     private const val UHID_CREATE2 = 11
     private const val UHID_INPUT2 = 12
-    private const val BUS_BLUETOOTH = 5
 
-    /** pid.codes' test vendor and product: not Nintendo's, so Android treats it as a plain gamepad. */
-    private const val VENDOR = 0x1209
-    private const val PRODUCT = 0x4a43
-
-    /**
-     * A gamepad: 16 buttons (in Linux's gamepad order: A, B, C, X, Y, Z, L1, R1, L2, R2, Select,
-     * Start, Mode, left stick, right stick, spare), a hat for the D-pad, then X, Y, Z and Rz.
-     */
+    /** 16 buttons (A, B, C, X, Y, Z, L1, R1, L2, R2, Select, Start, Mode, stick clicks, spare), a hat, X, Y, Z, Rz. */
     private val DESCRIPTOR = byteArrayOf(
         0x05, 0x01, 0x09, 0x05, 0xA1.toByte(), 0x01,
         0x05, 0x09, 0x19, 0x01, 0x29, 0x10, 0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95.toByte(), 0x10, 0x81.toByte(), 0x02,
@@ -42,77 +168,53 @@ object JoyConJoinTool {
         0xC0.toByte(),
     )
 
-    // Buttons, as bits of the report's first two bytes.
-    private const val B_A = 0; private const val B_B = 1; private const val B_X = 3; private const val B_Y = 4
-    private const val B_L = 6; private const val B_R = 7; private const val B_ZL = 8; private const val B_ZR = 9
-    private const val B_MINUS = 10; private const val B_PLUS = 11; private const val B_HOME = 12
-    private const val B_LSTICK = 13; private const val B_RSTICK = 14
-
-    @Volatile private var leftButtons = 0
-    @Volatile private var rightButtons = 0
-    @Volatile private var shared = 0
-    @Volatile private var lx = 128; @Volatile private var ly = 128
-    @Volatile private var rx = 128; @Volatile private var ry = 128
-    private val lock = Object()
-
-    @JvmStatic
-    fun main(args: Array<String>) {
-        val left = args.getOrNull(0) ?: run { println("ERR usage"); System.exit(0); return }
-        val right = args.getOrNull(1) ?: run { println("ERR usage"); System.exit(0); return }
-        say("starting: left $left, right $right")
-        // Read and write: the kernel also sends the device's owner messages, which are read and dropped.
-        val out = try { java.io.RandomAccessFile("/dev/uhid", "rw") } catch (t: Throwable) { say("ERR opening /dev/uhid: ${t.message}"); System.exit(0); return }
-        try {
-            out.write(create())
-            say("controller made")
-            Thread { drain(out) }.apply { isDaemon = true; start() }
-            val l = Thread { runCatching { read(left, isLeft = true, out) }.onFailure { say("ERR left: ${it.javaClass.simpleName} ${it.message}") }; say("left stopped") }.apply { isDaemon = true; start() }
-            val r = Thread { runCatching { read(right, isLeft = false, out) }.onFailure { say("ERR right: ${it.javaClass.simpleName} ${it.message}") }; say("right stopped") }.apply { isDaemon = true; start() }
-            say("OK")
-            // Until both Joy-Cons have gone (or this is stopped).
-            while (l.isAlive || r.isAlive) Thread.sleep(500)
-        } catch (t: Throwable) {
-            say("ERR ${t.javaClass.simpleName} ${t.message}")
-        } finally {
+    private fun ownController(): Pair<Sink, () -> Unit> {
+        val out = java.io.RandomAccessFile("/dev/uhid", "rw")
+        val c = ByteBuffer.allocate(4 + 128 + 64 + 64 + 2 + 2 + 4 + 4 + 4 + 4 + 4096).order(ByteOrder.LITTLE_ENDIAN)
+        c.putInt(UHID_CREATE2)
+        fun fixed(s: String, n: Int) { val bytes = s.toByteArray().take(n - 1); bytes.forEach { c.put(it) }; repeat(n - bytes.size) { c.put(0) } }
+        fixed("WalkThor Joy-Cons", 128); fixed("walkthor/joycons", 64); fixed("", 64)
+        c.putShort(DESCRIPTOR.size.toShort()); c.putShort(5); c.putInt(0x1209); c.putInt(0x4a43); c.putInt(1); c.putInt(0)
+        c.put(DESCRIPTOR)
+        out.write(c.array())
+        // The kernel also sends the device's owner messages: read and dropped.
+        Thread { runCatching { val buf = ByteArray(4380); while (out.read(buf) >= 0) Unit } }.apply { isDaemon = true; start() }
+        val sink = object : Sink {
+            override fun send(p: Pad) {
+                var bits = 0
+                fun on(cond: Boolean, bit: Int) { if (cond) bits = bits or (1 shl bit) }
+                on(p.right and 0x08 != 0, 1); on(p.right and 0x04 != 0, 0); on(p.right and 0x02 != 0, 3); on(p.right and 0x01 != 0, 4)
+                on(p.right and 0x40 != 0, 7); on(p.right and 0x80 != 0, 9); on(p.left and 0x40 != 0, 6); on(p.left and 0x80 != 0, 8)
+                on(p.shared and 0x01 != 0, 10); on(p.shared and 0x02 != 0, 11); on(p.shared and 0x10 != 0, 12)
+                on(p.shared and 0x08 != 0, 13); on(p.shared and 0x04 != 0, 14)
+                val up = p.left and 0x02 != 0; val down = p.left and 0x01 != 0
+                val rightD = p.left and 0x04 != 0; val leftD = p.left and 0x08 != 0
+                val hat = when {
+                    up && rightD -> 1; rightD && down -> 3; down && leftD -> 5; leftD && up -> 7
+                    up -> 0; rightD -> 2; down -> 4; leftD -> 6; else -> 8
+                }
+                fun b(f: Float) = (128 + f * 127).toInt().coerceIn(0, 255).toByte()
+                val data = byteArrayOf((bits and 0xFF).toByte(), ((bits shr 8) and 0xFF).toByte(), hat.toByte(), b(p.lx), b(p.ly), b(p.rx), b(p.ry))
+                val r = ByteBuffer.allocate(4 + 2 + data.size).order(ByteOrder.LITTLE_ENDIAN)
+                r.putInt(UHID_INPUT2); r.putShort(data.size.toShort()); r.put(data)
+                out.write(r.array())
+            }
+        }
+        val close = {
             runCatching { out.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(UHID_DESTROY).array()) }
             runCatching { out.close() }
-            System.out.flush()
-            System.exit(0)
+            Unit
         }
+        return sink to close
     }
 
-    private fun say(s: String) { println(s); System.out.flush() }
+    // ---- reading the Joy-Cons ----
 
-    /** Nothing to do with what the kernel sends back (start, open, close): keeps its queue empty. */
-    private fun drain(out: java.io.RandomAccessFile) {
-        runCatching {
-            val buf = ByteArray(4380)
-            while (true) if (out.read(buf) < 0) break
-        }
-    }
-
-    private fun create(): ByteArray {
-        val b = ByteBuffer.allocate(4 + 128 + 64 + 64 + 2 + 2 + 4 + 4 + 4 + 4 + 4096).order(ByteOrder.LITTLE_ENDIAN)
-        b.putInt(UHID_CREATE2)
-        fun fixed(s: String, n: Int) { val bytes = s.toByteArray(); b.put(bytes, 0, minOf(bytes.size, n - 1)); repeat(n - minOf(bytes.size, n - 1)) { b.put(0) } }
-        fixed("WalkThor Joy-Cons", 128)
-        fixed("walkthor/joycons", 64)
-        fixed("", 64)
-        b.putShort(DESCRIPTOR.size.toShort())
-        b.putShort(BUS_BLUETOOTH.toShort())
-        b.putInt(VENDOR)
-        b.putInt(PRODUCT)
-        b.putInt(1)
-        b.putInt(0)
-        b.put(DESCRIPTOR)
-        return b.array()
-    }
-
-    /** Reads one Joy-Con's full-mode reports (0x30) and updates its half of the controller. */
-    private fun read(path: String, isLeft: Boolean, out: java.io.RandomAccessFile) {
+    /** Reads one Joy-Con's full-mode reports (0x30) and updates its half of the pad. */
+    private fun read(path: String, isLeft: Boolean, sink: Sink) {
         val buf = ByteArray(64)
         var cx = -1; var cy = -1
-        // Where the stick sits at rest (taken from the first reports) and how far it goes.
+        // How far the stick goes from where it rests (measured from the first report).
         val range = 1350f
         FileInputStream(File(path)).use { input ->
             while (true) {
@@ -126,65 +228,26 @@ object JoyConJoinTool {
                 val sx = (buf[o].toInt() and 0xFF) or ((buf[o + 1].toInt() and 0x0F) shl 8)
                 val sy = ((buf[o + 1].toInt() and 0xFF) shr 4) or ((buf[o + 2].toInt() and 0xFF) shl 4)
                 if (cx < 0) { cx = sx; cy = sy; say("${if (isLeft) "left" else "right"} reading (stick rests at $sx, $sy)") }
-                fun axis(v: Int, c: Int, flip: Boolean): Int {
-                    var f = (v - c) / range
+                fun axis(v: Int, c: Int, flip: Boolean): Float {
+                    var f = ((v - c) / range).coerceIn(-1f, 1f)
                     if (kotlin.math.abs(f) < 0.08f) f = 0f
-                    if (flip) f = -f
-                    return (128 + f * 127).toInt().coerceIn(0, 255)
+                    return if (flip) -f else f
                 }
                 synchronized(lock) {
                     if (isLeft) {
-                        leftButtons = b5
-                        lx = axis(sx, cx, false); ly = axis(sy, cy, true)
+                        pad.left = b5
+                        pad.lx = axis(sx, cx, false); pad.ly = axis(sy, cy, true)
+                        // Minus, the left stick click and Capture come from the left.
+                        pad.shared = (pad.shared and 0b0001_0110) or (b4 and 0b0010_1001)
                     } else {
-                        rightButtons = b3
-                        rx = axis(sx, cx, false); ry = axis(sy, cy, true)
+                        pad.right = b3
+                        pad.rx = axis(sx, cx, false); pad.ry = axis(sy, cy, true)
+                        // Plus, the right stick click and Home come from the right.
+                        pad.shared = (pad.shared and 0b0010_1001) or (b4 and 0b0001_0110)
                     }
-                    // Minus and the left stick click come from the left; Plus, Home and the right stick click from the right.
-                    shared = if (isLeft) (shared and 0b0001_0110) or (b4 and 0b0010_1001)
-                    else (shared and 0b0010_1001) or (b4 and 0b0001_0110)
-                    runCatching { out.write(report()) }
+                    runCatching { sink.send(pad) }
                 }
             }
         }
-    }
-
-    private fun report(): ByteArray {
-        var bits = 0
-        fun on(cond: Boolean, bit: Int) { if (cond) bits = bits or (1 shl bit) }
-        // Right Joy-Con: Y, X, B, A, SR, SL, R, ZR.
-        on(rightButtons and 0x08 != 0, B_A)
-        on(rightButtons and 0x04 != 0, B_B)
-        on(rightButtons and 0x02 != 0, B_X)
-        on(rightButtons and 0x01 != 0, B_Y)
-        on(rightButtons and 0x40 != 0, B_R)
-        on(rightButtons and 0x80 != 0, B_ZR)
-        // Left Joy-Con: Down, Up, Right, Left, SR, SL, L, ZL.
-        on(leftButtons and 0x40 != 0, B_L)
-        on(leftButtons and 0x80 != 0, B_ZL)
-        // Shared: Minus, Plus, right stick, left stick, Home, Capture.
-        on(shared and 0x01 != 0, B_MINUS)
-        on(shared and 0x02 != 0, B_PLUS)
-        on(shared and 0x04 != 0, B_RSTICK)
-        on(shared and 0x08 != 0, B_LSTICK)
-        on(shared and 0x10 != 0, B_HOME)
-        val up = leftButtons and 0x02 != 0
-        val down = leftButtons and 0x01 != 0
-        val rightD = leftButtons and 0x04 != 0
-        val leftD = leftButtons and 0x08 != 0
-        // The hat: 0 up, then clockwise to 7; 8 for none.
-        val hat = when {
-            up && rightD -> 1; rightD && down -> 3; down && leftD -> 5; leftD && up -> 7
-            up -> 0; rightD -> 2; down -> 4; leftD -> 6; else -> 8
-        }
-        val data = byteArrayOf(
-            (bits and 0xFF).toByte(), ((bits shr 8) and 0xFF).toByte(), hat.toByte(),
-            lx.toByte(), ly.toByte(), rx.toByte(), ry.toByte(),
-        )
-        val b = ByteBuffer.allocate(4 + 2 + data.size).order(ByteOrder.LITTLE_ENDIAN)
-        b.putInt(UHID_INPUT2)
-        b.putShort(data.size.toShort())
-        b.put(data)
-        return b.array()
     }
 }
