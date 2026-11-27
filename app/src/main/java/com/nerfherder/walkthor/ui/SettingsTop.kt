@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,7 +120,7 @@ fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifi
                     .weight(item.label.length.coerceAtLeast(5) + 3f)
                     .fillMaxHeight()
                     .onGloballyPositioned { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() }
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) },
+                    .focusProperties { canFocus = false }.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -198,7 +199,7 @@ private fun ScrollingTabsRow(items: List<TabItem>, selected: Int, onSelect: (Int
                         .fillMaxHeight()
                         .widthIn(min = 64.dp)
                         .onGloballyPositioned { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() }
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
+                        .focusProperties { canFocus = false }.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
                         .padding(horizontal = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,

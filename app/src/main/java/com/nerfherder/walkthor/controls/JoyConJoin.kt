@@ -115,12 +115,11 @@ object JoyConJoinTool {
                     val k = (EV_ABS.toLong() shl 16) or code.toLong()
                     if (last[k] != v) { last[k] = v; events += intArrayOf(EV_ABS, code, v) }
                 }
-                // Face buttons by their letters, the Nintendo way, as the Thor itself sends them
-                // (its A, on the right, is Linux's "A"; its X, on top, is Linux's "Y").
+                // Face buttons by their letters, the Nintendo way, as the Thor itself sends them.
                 key(BTN_SOUTH, p.right and 0x08 != 0) // A
                 key(BTN_EAST, p.right and 0x04 != 0) // B
-                key(BTN_WEST, p.right and 0x02 != 0) // X
-                key(BTN_NORTH, p.right and 0x01 != 0) // Y
+                key(BTN_NORTH, p.right and 0x02 != 0) // X
+                key(BTN_WEST, p.right and 0x01 != 0) // Y
                 key(BTN_TR, p.right and 0x40 != 0)
                 key(BTN_TR2, p.right and 0x80 != 0)
                 key(BTN_TL, p.left and 0x40 != 0)
@@ -183,7 +182,7 @@ object JoyConJoinTool {
             override fun send(p: Pad) {
                 var bits = 0
                 fun on(cond: Boolean, bit: Int) { if (cond) bits = bits or (1 shl bit) }
-                on(p.right and 0x08 != 0, 0); on(p.right and 0x04 != 0, 1); on(p.right and 0x02 != 0, 4); on(p.right and 0x01 != 0, 3)
+                on(p.right and 0x08 != 0, 0); on(p.right and 0x04 != 0, 1); on(p.right and 0x02 != 0, 3); on(p.right and 0x01 != 0, 4)
                 on(p.right and 0x40 != 0, 7); on(p.right and 0x80 != 0, 9); on(p.left and 0x40 != 0, 6); on(p.left and 0x80 != 0, 8)
                 on(p.shared and 0x01 != 0, 10); on(p.shared and 0x02 != 0, 11); on(p.shared and 0x10 != 0, 12)
                 on(p.shared and 0x08 != 0, 13); on(p.shared and 0x04 != 0, 14)

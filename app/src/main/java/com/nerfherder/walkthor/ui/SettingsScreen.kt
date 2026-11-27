@@ -136,6 +136,9 @@ fun SettingsFrame(
                     .fillMaxWidth()
                     .weight(1f)
                     .focusRequester(first)
+                    // Whether the controller is anywhere among the settings (not row by row, which
+                    // briefly reads "nowhere" while moving between rows).
+                    .onFocusChanged { MainTabs.rowFocused = it.hasFocus }
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = if (narrow) 12.dp else 20.dp, vertical = 15.dp),
                 content = content,
@@ -205,7 +208,6 @@ fun SettingRow(
             .fillMaxWidth()
             .onFocusChanged {
                 focused = it.hasFocus
-                MainTabs.rowFocused = it.hasFocus
                 if (it.hasFocus) SettingsTop.pick(latest.value)
             }
             // Where the controller is.
@@ -253,9 +255,10 @@ fun SettingRow(
 @Composable
 fun SettingSwitch(title: String, subtitle: String? = null, checked: Boolean, divider: Boolean = true, onChange: (Boolean) -> Unit) {
     SettingRow(title, subtitle, onClick = { onChange(!checked) }, divider = divider, value = if (checked) "On" else "Off") {
+        // Shows the setting; the row is what the controller lands on and toggles.
         Switch(
             checked = checked,
-            onCheckedChange = onChange,
+            onCheckedChange = null,
             modifier = Modifier.scale(0.8f),
             colors = SwitchDefaults.colors(
                 checkedTrackColor = BookColors.Text,

@@ -462,9 +462,10 @@ class MainActivity : ComponentActivity(), WalkThorHost {
             )
             val first = com.nerfherder.walkthor.ui.MainTabs.focusFirst
             if (dpad && first != null && !com.nerfherder.walkthor.ui.MainTabs.rowFocused) {
-                if (event.action == KeyEvent.ACTION_DOWN) first()
                 AutoDim.interact()
-                return true
+                if (event.action != KeyEvent.ACTION_DOWN) return true
+                // If there was nothing to land on, the press goes on as usual.
+                if (first()) return true
             }
             // A picks whatever the controller is on (Android's own "select" key), on every tab.
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
