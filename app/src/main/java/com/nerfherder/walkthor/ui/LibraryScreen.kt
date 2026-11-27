@@ -455,6 +455,11 @@ private fun SettingsScreen(
                         checked = lightsOn && hasLights,
                     ) { if (hasLights) { lightsOn = it; com.nerfherder.walkthor.StickLights.setOn(context, it) } }
                 }
+                SettingsGroup("Controllers") {
+                    var showPads by remember { mutableStateOf(false) }
+                    SettingLink("Connected controllers", "See what’s connected, which controller a press came from, and check Joy-Con support", divider = false) { showPads = true }
+                    if (showPads) ControllersDialog { showPads = false }
+                }
                 SettingsGroup("Notifications") {
                     var bottomNotes by remember { mutableStateOf(com.nerfherder.walkthor.BottomNotifications.enabled(context)) }
                     // Notification access is given in Android's settings: checked again on coming back.
