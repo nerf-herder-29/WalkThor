@@ -854,7 +854,7 @@ private fun Hint(key: String, label: String) {
 
 /** The time and battery, kept up to date. */
 @Composable
-private fun ClockLine(modifier: Modifier) {
+internal fun ClockLine(modifier: Modifier) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     DisposableEffect(Unit) {

@@ -733,6 +733,8 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                 ?: com.nerfherder.walkthor.data.LaunchedGame("Game", null, null, 0L)
         }
         val lastGuide = books.firstOrNull { it.id == lastOpened }
+        /** The game you started from WalkThor, if it's the one playing: Home is then just that game. */
+        val launchedHome = remember(front?.pkg, front?.at) { launchedRom(context) }
         val selectedTab = if (current != null) GameTab.GUIDE else gameTab
         fun selectTab(tab: GameTab) {
             AutoDim.wake()
@@ -871,9 +873,13 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                         AutoDim.showingNowPlaying(holder, true)
                         onDispose { AutoDim.showingNowPlaying(holder, false) }
                     }
-                    // Kept at Home's own shape (the tab bar takes some height), so it looks
-                    // exactly as it does without a game, just a little smaller.
-                    val homeBox: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
+                    if (launchedHome != null) {
+                        // A game you started from WalkThor: just the game, like the top screen's spotlight.
+                        com.nerfherder.walkthor.ui.GameHome(launchedHome, emulator = front?.name, bar = bar)
+                    } else Column(Modifier.fillMaxSize()) {
+                        bar()
+                        // Kept at Home's own shape (the tab bar takes some height), so it looks
+                        // exactly as it does without a game, just a little smaller.
                         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                           Box(Modifier.fillMaxHeight().aspectRatio(620f / 540f, matchHeightConstraintsFirst = true)) {
                             com.nerfherder.walkthor.ui.HomeScreen(
@@ -885,22 +891,12 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                           }
                         }
                     }
-                    // A game you started from WalkThor: Home over its hero picture, with its logo.
-                    val launched = remember(front?.pkg, front?.at) { launchedRom(context) }
-                    if (launched != null) {
-                        com.nerfherder.walkthor.ui.GameHome(launched, bar = bar, home = homeBox)
-                    } else {
-                        Column(Modifier.fillMaxSize()) {
-                            bar()
-                            homeBox()
-                        }
-                    }
                 }
             }
           }
           // On the tabs (not Home, which has its own dock, nor Apps or a guide): swipe up from the
           // bottom edge for your apps.
-          if (gameTab != GameTab.HOME && gameTab != GameTab.APPS && current == null) {
+          if ((gameTab != GameTab.HOME || launchedHome != null) && gameTab != GameTab.APPS && current == null) {
               com.nerfherder.walkthor.ui.ShelfPullUp(
                   onOpenApp = { pkg -> com.nerfherder.walkthor.ui.AppCatalog.open(context, pkg, here = true) },
                   onAllApps = { selectTab(GameTab.APPS) },
