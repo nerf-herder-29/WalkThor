@@ -65,13 +65,27 @@ object JoyCons {
      * driver, the raw controller files, and whether a made-up controller could be added. Fixed
      * commands only. Not on the main thread. Null when the system helper can't be reached.
      */
-    fun probe(): List<String>? = com.nerfherder.walkthor.AynSystem.shellLines(
-        "echo '## who'; id; getenforce; " +
-            "echo '## virtual controller files'; ls -l /dev/uhid /dev/uinput; " +
-            "echo '## raw controller files'; for h in /sys/class/hidraw/hidraw*; do echo \"\$h \$(grep -h HID_NAME \$h/device/uevent) \$(grep -h HID_ID \$h/device/uevent)\"; done; " +
-            "echo '## drivers'; ls /sys/bus/hid/drivers; grep -i nintendo /proc/modules; " +
-            "echo '## input devices'; grep -i -B1 -A8 'nintendo\\|joy-con\\|057e' /proc/bus/input/devices",
-    )
+    fun probe(): List<String>? {
+        // One short command at a time: AYN's helper cuts off long ones.
+        val steps = listOf(
+            "who" to "id; getenforce",
+            "virtual controller files" to "ls -l /dev/uhid /dev/uinput",
+            "drivers" to "ls /sys/bus/hid/drivers",
+            "modules" to "grep -i -E 'nintendo|uhid|uinput' /proc/modules",
+            "raw controller files" to "for h in /sys/class/hidraw/*; do echo \$h; grep -h -E 'HID_NAME|HID_ID' \$h/device/uevent; done",
+            "input devices" to "grep -i -B1 -A8 -E 'nintendo|joy-con|057e|odin' /proc/bus/input/devices",
+            "input handlers" to "ls -l /dev/input",
+        )
+        val out = ArrayList<String>()
+        var reached = false
+        for ((title, cmd) in steps) {
+            out += "## $title"
+            val lines = com.nerfherder.walkthor.AynSystem.shellLines(cmd)
+            if (lines == null) out += "(not run: ${com.nerfherder.walkthor.AynSystem.problem ?: "the helper isn't usable"})"
+            else { reached = true; if (lines.isEmpty()) out += "(nothing)" else out += lines.take(80) }
+        }
+        return if (reached) out else null
+    }
 
     /** Everything above as text, to read or share. */
     fun report(c: Context, probe: List<String>?): String = buildString {
