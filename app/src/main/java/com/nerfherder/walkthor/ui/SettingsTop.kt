@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,6 +83,8 @@ class TabItem(val label: String, val icon: @Composable (Color) -> Unit)
  */
 @Composable
 fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    // Many tabs: each keeps a comfortable size and the row scrolls, keeping the open one in view.
+    if (items.size > 8) { ScrollingTabsRow(items, selected, onSelect, modifier); return }
     val narrow = LocalConfiguration.current.screenWidthDp < 480 || items.size > 6
     val bounds = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
     val indicator = remember { Animatable(Float.NaN) }
@@ -134,6 +139,86 @@ fun TabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifi
     }
 }
 
+/** [TabsRow] for many tabs: full-size tabs in a row that scrolls, with soft fades at an edge that has more. */
+@Composable
+private fun ScrollingTabsRow(items: List<TabItem>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
+    val bounds = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
+    val indicator = remember { Animatable(Float.NaN) }
+    val scroll = androidx.compose.foundation.rememberScrollState()
+    val target = bounds[selected]?.let { (x, w) -> x + w / 2 }
+    LaunchedEffect(target) {
+        if (target == null) return@LaunchedEffect
+        if (indicator.value.isNaN()) indicator.snapTo(target)
+        else indicator.animateTo(target, spring(dampingRatio = 0.82f, stiffness = 420f))
+    }
+    // Bring the open tab into the middle of the row.
+    LaunchedEffect(selected, bounds[selected], scroll.viewportSize) {
+        val (x, w) = bounds[selected] ?: return@LaunchedEffect
+        val to = (x + w / 2 - scroll.viewportSize / 2f).toInt().coerceIn(0, scroll.maxValue)
+        scroll.animateScrollTo(to)
+    }
+    val fade = 22.dp
+    Box(
+        modifier.fillMaxHeight()
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                val f = fade.toPx()
+                if (scroll.value > 0) drawRect(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color.Transparent, f / size.width to Color.Black),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                )
+                if (scroll.value < scroll.maxValue) drawRect(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(1f - f / size.width to Color.Black, 1f to Color.Transparent),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                )
+            },
+    ) {
+        Row(
+            Modifier
+                .fillMaxHeight()
+                .horizontalScroll(scroll)
+                .padding(vertical = 6.dp)
+                .drawWithContent {
+                    drawContent()
+                    val cx = indicator.value
+                    if (!cx.isNaN()) {
+                        val half = 14.dp.toPx()
+                        val y = size.height - 2.dp.toPx()
+                        drawLine(Color(0xFFF5F5FA), Offset(cx - half, y), Offset(cx + half, y), 3.dp.toPx(), StrokeCap.Round)
+                    }
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            items.forEachIndexed { i, item ->
+                val on = i == selected
+                val tint = if (on) BookColors.Text else Color.White.copy(alpha = 0.55f)
+                Column(
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(min = 64.dp)
+                        .onGloballyPositioned { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() }
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
+                        .padding(horizontal = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    item.icon(tint)
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        item.label,
+                        color = tint,
+                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** The settings sections as tabs (Settings during a game). */
 @Composable
 fun SettingsTabsRow(selected: SettingsSection, onSelect: (SettingsSection) -> Unit, modifier: Modifier = Modifier) {
@@ -145,13 +230,15 @@ fun SettingsTabsRow(selected: SettingsSection, onSelect: (SettingsSection) -> Un
 sealed class MainTab(val label: String) {
     data object Games : MainTab("Games")
     data object Apps : MainTab("Apps")
+    /** Your emulators' updates (also in the drawer). */
+    data object Updates : MainTab("Updates")
     class Settings(val section: SettingsSection) : MainTab(section.label) {
         override fun equals(other: Any?) = other is Settings && other.section == section
         override fun hashCode() = section.hashCode()
     }
     companion object {
         // Lazily: the tabs are subclasses, not yet made while this class is first being set up.
-        val all: List<MainTab> by lazy { listOf(Games, Apps) + SettingsSection.entries.map { Settings(it) } }
+        val all: List<MainTab> by lazy { listOf(Games, Apps, Updates) + SettingsSection.entries.map { Settings(it) } }
         fun byName(name: String?): MainTab = all.firstOrNull { it.label == name } ?: Games
     }
 }
@@ -174,6 +261,7 @@ fun MainTabBar(selected: MainTab, onSelect: (MainTab) -> Unit, onSearch: (() -> 
                 when (t) {
                     MainTab.Games -> GamesIcon(c)
                     MainTab.Apps -> AppsIcon(c)
+                    MainTab.Updates -> UpdatesIcon(c)
                     is MainTab.Settings -> SectionIcon(t.section, c)
                 }
             }
@@ -209,6 +297,21 @@ private fun GamesIcon(tint: Color) {
             moveTo(s * 0.42f, s * 0.34f); lineTo(s * 0.66f, s * 0.5f); lineTo(s * 0.42f, s * 0.66f); close()
         }
         drawPath(p, tint)
+    }
+}
+
+/** An arrow down into a tray: updates. */
+@Composable
+private fun UpdatesIcon(tint: Color) {
+    Canvas(Modifier.size(20.dp)) {
+        val s = size.width
+        val st = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round)
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(s * 0.5f, s * 0.1f); lineTo(s * 0.5f, s * 0.62f)
+            moveTo(s * 0.3f, s * 0.43f); lineTo(s * 0.5f, s * 0.63f); lineTo(s * 0.7f, s * 0.43f)
+            moveTo(s * 0.12f, s * 0.6f); lineTo(s * 0.12f, s * 0.88f); lineTo(s * 0.88f, s * 0.88f); lineTo(s * 0.88f, s * 0.6f)
+        }
+        drawPath(p, tint, style = st)
     }
 }
 

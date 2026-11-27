@@ -48,9 +48,11 @@ class FrontendTopActivity : ComponentActivity() {
                 val apps by com.nerfherder.walkthor.ui.AppsTop.active.collectAsState()
                 val app by com.nerfherder.walkthor.ui.AppsTop.current.collectAsState()
                 val appCount by com.nerfherder.walkthor.ui.AppCatalog.apps.collectAsState()
+                val updates by com.nerfherder.walkthor.ui.UpdatesTop.active.collectAsState()
                 when {
                     open != null -> SettingsExplainer(open, setting, SettingsTop.titles.toList())
                     apps -> com.nerfherder.walkthor.ui.AppsExplainer(app, appCount?.size ?: 0)
+                    updates -> com.nerfherder.walkthor.ui.UpdatesExplainer()
                     library -> com.nerfherder.walkthor.ui.LibrarySpotlight(libraryGame)
                     else -> TopSpotlight(spot)
                 }

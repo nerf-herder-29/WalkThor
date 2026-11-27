@@ -396,3 +396,73 @@ private fun openPlay(context: android.content.Context, pkg: String) {
         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store/apps/details?id=$pkg")).addFlags(flags))
     }
 }
+
+/** The Updates tab is open with no game running: the top screen sums up your emulators' updates. */
+object UpdatesTop {
+    val active = kotlinx.coroutines.flow.MutableStateFlow(false)
+}
+
+/** The top screen while the Updates tab is open: what's waiting, then every emulator at a glance. */
+@Composable
+fun UpdatesExplainer() {
+    val entries by Updates.entries.collectAsState()
+    val checking by Updates.checking.collectAsState()
+    val checkedAt by Updates.checkedAt.collectAsState()
+    val offline by Updates.offline.collectAsState()
+    val waiting = Updates.waiting(entries)
+    val accent = accentColor()
+    Box(Modifier.fillMaxSize().background(Color(0xFF0C0B0E))) {
+        Column(Modifier.fillMaxSize().padding(start = 55.dp, end = 55.dp, top = 40.dp, bottom = 40.dp)) {
+            Text(
+                when {
+                    checking -> "Checking…"
+                    offline -> "Offline"
+                    checkedAt == 0L -> "Not checked yet"
+                    else -> "Checked " + ago(checkedAt)
+                },
+                color = BookColors.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(28.dp))
+            Text("Updates", color = Color.White, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 56.sp)
+            Text(
+                when {
+                    entries.isEmpty() -> "Your emulators show here once WalkThor has looked for them."
+                    waiting == 0 -> "Everything is up to date."
+                    waiting == 1 -> "1 update is waiting."
+                    else -> "$waiting updates are waiting."
+                },
+                color = if (waiting > 0) accent else Color(0xFFCFC8BC), fontSize = 22.sp, modifier = Modifier.padding(top = 14.dp),
+            )
+            Spacer(Modifier.height(26.dp))
+            // Waiting ones first, then the rest, two columns.
+            val shown = entries.sortedBy { if (it.state == State.UPDATE) 0 else 1 }.take(12)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                shown.chunked(2).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+                        pair.forEach { e ->
+                            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(9.dp).clip(CircleShape).background(if (e.state == State.UPDATE) accent else Color.White.copy(alpha = 0.18f)))
+                                Spacer(Modifier.width(12.dp))
+                                Text(e.name, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                                val v = when (e.state) {
+                                    State.UPDATE -> listOfNotNull(e.installed, e.latest).joinToString(" → ")
+                                    State.UP_TO_DATE -> e.installed ?: "Up to date"
+                                    else -> e.installed ?: ""
+                                }
+                                if (v.isNotEmpty()) Text(
+                                    "  $v", color = BookColors.TextMuted, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                "Tap a card on the bottom screen for its release notes and to install it.",
+                color = BookColors.TextMuted, fontSize = 16.sp,
+            )
+        }
+    }
+}

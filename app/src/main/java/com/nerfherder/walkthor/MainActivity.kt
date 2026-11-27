@@ -976,6 +976,20 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                         }
                         com.nerfherder.walkthor.ui.AppsScreen(askWhere = true)
                     }
+                    com.nerfherder.walkthor.ui.MainTab.Updates -> {
+                        BackHandler { mainTab = com.nerfherder.walkthor.ui.MainTab.Games }
+                        // The top screen sums up what's waiting.
+                        val updatesActivity = context as? android.app.Activity
+                        DisposableEffect(Unit) {
+                            com.nerfherder.walkthor.ui.UpdatesTop.active.value = true
+                            updatesActivity?.let { com.nerfherder.walkthor.ui.Frontend.showTop(it, moveDown = false) }
+                            onDispose {
+                                com.nerfherder.walkthor.ui.UpdatesTop.active.value = false
+                                com.nerfherder.walkthor.ui.Frontend.hideTopSoon()
+                            }
+                        }
+                        com.nerfherder.walkthor.ui.UpdatesScreen(header = false)
+                    }
                     is com.nerfherder.walkthor.ui.MainTab.Settings -> LibraryScreen(
                         startInSettings = tab.section,
                         settingsOnly = true,

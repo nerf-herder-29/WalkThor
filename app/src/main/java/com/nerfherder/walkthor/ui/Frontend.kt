@@ -202,7 +202,7 @@ object Frontend {
     /** Closes the top screen shortly, unless the games or Settings still want it by then. */
     fun hideTopSoon() {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            if (keyHandler == null && SettingsTop.section.value == null && !LibraryTop.active.value && !AppsTop.active.value) hideTop()
+            if (keyHandler == null && SettingsTop.section.value == null && !LibraryTop.active.value && !AppsTop.active.value && !UpdatesTop.active.value) hideTop()
         }, 500)
     }
 
