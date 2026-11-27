@@ -77,6 +77,28 @@ object AynSystem {
         return text.lines().map { it.trimEnd() }.filter { it.isNotEmpty() }
     }
 
+    /**
+     * Starts joining the Joy-Cons whose raw files are [left] and [right] (/dev/hidrawN) into one
+     * controller ([com.nerfherder.walkthor.controls.JoyConJoinTool]), in the background. Not on the main thread.
+     */
+    fun joinJoyCons(context: Context, left: String, right: String): Boolean {
+        val raw = Regex("^/dev/hidraw\\d+$")
+        if (!raw.matches(left) || !raw.matches(right)) return false
+        val apk = context.applicationInfo.sourceDir
+        if ("'" in apk) return false
+        run("pkill -f JoyConJoinTool")
+        return run(
+            "(CLASSPATH='$apk' setsid app_process /system/bin ${com.nerfherder.walkthor.controls.JoyConJoinTool::class.java.name} $left $right " +
+                "</dev/null >$OUT_DIR/joycons.log 2>&1 &)",
+        ) != null
+    }
+
+    /** Stops joining the Joy-Cons (they go back to being two controllers). Not on the main thread. */
+    fun separateJoyCons() { run("pkill -f JoyConJoinTool") }
+
+    /** What the joining program last said ("OK", or why it stopped), for the Controllers screen. */
+    fun joyConsLog(): String? = runCatching { java.io.File("$OUT_DIR/joycons.log").readText().trim() }.getOrNull()
+
     /** WalkThor's own files folder (the helper, as the system, can write there; WalkThor can read). */
     private val OUT_DIR = "/data/data/${BuildConfig.APPLICATION_ID}/files"
     private val outSeq = java.util.concurrent.atomic.AtomicInteger()

@@ -87,6 +87,45 @@ object JoyCons {
         return if (reached) out else null
     }
 
+    /** The made-up controller's name, as Android shows it. */
+    const val JOINED_NAME = "WalkThor Joy-Cons"
+
+    /** Whether the joined controller is there now. */
+    fun joined(): Boolean = InputDevice.getDeviceIds().any { InputDevice.getDevice(it)?.name == JOINED_NAME }
+
+    /**
+     * While the Joy-Cons are joined, WalkThor ignores the two separate Joy-Cons themselves
+     * (each press would otherwise count twice: from the Joy-Con and from the joined controller).
+     */
+    fun ignore(e: android.view.InputEvent): Boolean {
+        val name = e.device?.name ?: return false
+        if (!name.startsWith("Nintendo Switch") || !name.contains("Joy-Con")) return false
+        return joined()
+    }
+
+    /**
+     * Joins the connected left and right Joy-Cons into one controller. Null when it started,
+     * else why not. Not on the main thread.
+     */
+    fun join(c: Context): String? {
+        val lines = com.nerfherder.walkthor.AynSystem.shellLines(
+            "for h in /sys/class/hidraw/*; do echo \$h \$(grep -h HID_ID \$h/device/uevent); done",
+        ) ?: return "the Thor’s system helper couldn’t be reached"
+        fun find(product: String) = lines.firstOrNull { it.contains("0000057E:0000$product", ignoreCase = true) }
+            ?.substringBefore(' ')?.substringAfterLast('/')?.let { "/dev/$it" }
+        val left = find("2006") ?: return "the left Joy-Con isn’t connected"
+        val right = find("2007") ?: return "the right Joy-Con isn’t connected"
+        if (!com.nerfherder.walkthor.AynSystem.joinJoyCons(c, left, right)) return "the joining couldn’t start"
+        // Wait for the joined controller to appear.
+        repeat(20) {
+            Thread.sleep(150)
+            if (joined()) return null
+        }
+        return "the joined controller didn’t appear (${com.nerfherder.walkthor.AynSystem.joyConsLog()?.take(160) ?: "no word from it"})"
+    }
+
+    fun separate() = com.nerfherder.walkthor.AynSystem.separateJoyCons()
+
     /** Everything above as text, to read or share. */
     fun report(c: Context, probe: List<String>?): String = buildString {
         appendLine("WalkThor controller check, ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date())}")

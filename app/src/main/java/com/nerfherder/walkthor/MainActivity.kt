@@ -440,11 +440,14 @@ class MainActivity : ComponentActivity(), WalkThorHost {
 
     /** The right stick looks around the bubble cloud. */
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (com.nerfherder.walkthor.controls.JoyCons.ignore(event)) return true
         com.nerfherder.walkthor.ui.CloudLook.onMotion(event)
         return super.dispatchGenericMotionEvent(event)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Joined Joy-Cons: only the joined controller counts here, not each Joy-Con as well.
+        if (com.nerfherder.walkthor.controls.JoyCons.ignore(event)) return true
         // L1 and R1 move along the tabs with no game running (the guide reader keeps its own).
         if (!KeyBus.readerActive && com.nerfherder.walkthor.ui.MainTabs.shoulder?.invoke(event) == true) {
             AutoDim.interact()

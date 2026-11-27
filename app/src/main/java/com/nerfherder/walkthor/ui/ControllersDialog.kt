@@ -51,6 +51,12 @@ fun ControllersDialog(onDismiss: () -> Unit) {
     var lastPress by remember { mutableStateOf<String?>(null) }
     var report by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
+    var joined by remember { mutableStateOf(JoyCons.joined()) }
+    var joining by remember { mutableStateOf(false) }
+    var joinProblem by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pads) { joined = JoyCons.joined() }
+    val hasLeft = pads.any { it.nintendo == "Left Joy-Con" }
+    val hasRight = pads.any { it.nintendo == "Right Joy-Con" }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
@@ -96,8 +102,36 @@ fun ControllersDialog(onDismiss: () -> Unit) {
                     lastPress?.let { "Last press: $it" } ?: "Press a button on any controller to see which one it is.",
                     fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp),
                 )
+                // Joining a left and a right Joy-Con into one controller.
+                Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF1B1920)).padding(10.dp)) {
+                    Text("Joy-Cons as one controller (experimental)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(
+                        when {
+                            joined -> "Joined: emulators see “WalkThor Joy-Cons”. Choose it as Player 1 in each emulator’s controller settings."
+                            joining -> "Joining…"
+                            hasLeft && hasRight -> "Both Joy-Cons are connected. Hold them still for a moment while they join (their sticks are measured at rest)."
+                            else -> "Connect both a left and a right Joy-Con first."
+                        },
+                        fontSize = 12.sp, color = BookColors.TextMuted, modifier = Modifier.padding(top = 2.dp),
+                    )
+                    joinProblem?.let { Text("Couldn’t join: $it", fontSize = 12.sp, color = Color(0xFFE57373), modifier = Modifier.padding(top = 4.dp)) }
+                    TextButton(
+                        enabled = !joining && (joined || (hasLeft && hasRight)),
+                        onClick = {
+                            joining = true
+                            joinProblem = null
+                            scope.launch {
+                                if (joined) withContext(Dispatchers.IO) { JoyCons.separate(); Thread.sleep(400) }
+                                else joinProblem = withContext(Dispatchers.IO) { JoyCons.join(context) }
+                                joined = JoyCons.joined()
+                                pads = JoyCons.pads(context)
+                                joining = false
+                            }
+                        },
+                    ) { Text(if (joined) "Separate them" else "Join them") }
+                }
                 Text(
-                    "To use two Joy-Cons as one controller: pair each in Android’s Bluetooth settings (hold the small sync button on the rail until the lights run), then run the check below and share it. It tells WalkThor how this Thor sees them.",
+                    "To pair a Joy-Con, hold the small sync button on its rail until the lights run, then choose it in Android’s Bluetooth settings. If joining doesn’t work, run the check below and share it.",
                     fontSize = 12.sp, color = BookColors.TextMuted, modifier = Modifier.padding(top = 10.dp),
                 )
                 report?.let {
