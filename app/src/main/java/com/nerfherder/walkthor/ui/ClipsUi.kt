@@ -328,10 +328,10 @@ internal fun ClipViewer(clip: Clips.Clip, onDismiss: () -> Unit) {
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(clip.takenAt)) + " · " + duration(clip.durationMs),
                     color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { play(context, clip) }) { Text("Play") }
-                TextButton(onClick = { share(context, clip) }) { Text("Share") }
-                TextButton(onClick = { Clips.delete(context, clip); onDismiss() }) { Text("Delete", color = BookColors.TextMuted) }
-                TextButton(onClick = onDismiss) { Text("Close") }
+                FocusTextButton(onClick = { play(context, clip) }) { Text("Play") }
+                FocusTextButton(onClick = { share(context, clip) }) { Text("Share") }
+                FocusTextButton(onClick = { Clips.delete(context, clip); onDismiss() }) { Text("Delete", color = BookColors.TextMuted) }
+                FocusTextButton(onClick = onDismiss) { Text("Close") }
             }
         }
     }

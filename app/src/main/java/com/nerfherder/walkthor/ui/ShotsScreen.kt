@@ -511,9 +511,9 @@ private fun ShotViewer(s: Shots.Shot, onDismiss: () -> Unit) {
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(s.takenAt)),
                     color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { Shots.share(context, s) }) { Text("Share") }
-                TextButton(onClick = { Shots.delete(context, s); onDismiss() }) { Text("Delete", color = BookColors.TextMuted) }
-                TextButton(onClick = onDismiss) { Text("Close") }
+                FocusTextButton(onClick = { Shots.share(context, s) }) { Text("Share") }
+                FocusTextButton(onClick = { Shots.delete(context, s); onDismiss() }) { Text("Delete", color = BookColors.TextMuted) }
+                FocusTextButton(onClick = onDismiss) { Text("Close") }
             }
         }
     }

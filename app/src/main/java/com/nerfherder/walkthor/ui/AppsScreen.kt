@@ -375,22 +375,22 @@ fun AppsScreen(
             title = { androidx.compose.material3.Text("Open ${app.label} on") },
             text = {
                 androidx.compose.foundation.layout.Column {
-                    androidx.compose.material3.TextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = false) }) {
+                    FocusTextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = false) }) {
                         androidx.compose.material3.Text("The top screen")
                     }
-                    androidx.compose.material3.TextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = true) }) {
+                    FocusTextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = true) }) {
                         androidx.compose.material3.Text("The bottom screen")
                     }
                     // Or settle it for every app (change it back in Settings › Screen).
-                    androidx.compose.material3.TextButton(onClick = {
+                    FocusTextButton(onClick = {
                         whereFor = null; AppsWhere.set(context, AppsWhere.TOP); AppCatalog.open(context, app.packageName, here = false)
                     }) { androidx.compose.material3.Text("Always the top screen") }
-                    androidx.compose.material3.TextButton(onClick = {
+                    FocusTextButton(onClick = {
                         whereFor = null; AppsWhere.set(context, AppsWhere.BOTTOM); AppCatalog.open(context, app.packageName, here = true)
                     }) { androidx.compose.material3.Text("Always the bottom screen") }
                 }
             },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { whereFor = null }) { androidx.compose.material3.Text("Cancel") } },
+            confirmButton = { FocusTextButton(onClick = { whereFor = null }) { androidx.compose.material3.Text("Cancel") } },
         )
     }
     menuFor?.let { app ->
@@ -522,7 +522,7 @@ private fun AppMenu(
 
 @Composable
 private fun MenuRow(text: String, onClick: () -> Unit, muted: Boolean = false) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Column(Modifier.fillMaxWidth().pressWithA(onClick = onClick).clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
         Text(
             text,

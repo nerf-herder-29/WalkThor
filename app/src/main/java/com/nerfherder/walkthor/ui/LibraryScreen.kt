@@ -257,7 +257,7 @@ fun LibraryScreen(
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { startSwipeSetup() }) { Text("Set up") }
+                FocusTextButton(onClick = { startSwipeSetup() }) { Text("Set up") }
             }
         }
         HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
@@ -381,12 +381,12 @@ fun LibraryScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { explainSwipe = false; actions.onGrantSwipePermission() }) { Text("Open settings") }
+                FocusTextButton(onClick = { explainSwipe = false; actions.onGrantSwipePermission() }) { Text("Open settings") }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { actions.onOpenAppInfo() }) { Text("App info") }
-                    TextButton(onClick = { explainSwipe = false }) { Text("Later") }
+                    FocusTextButton(onClick = { actions.onOpenAppInfo() }) { Text("App info") }
+                    FocusTextButton(onClick = { explainSwipe = false }) { Text("Later") }
                 }
             },
         )
@@ -560,7 +560,7 @@ private fun SettingsScreen(
                                 }
                             }
                         },
-                        confirmButton = { TextButton(onClick = { pickFor = null }) { Text("Cancel") } },
+                        confirmButton = { FocusTextButton(onClick = { pickFor = null }) { Text("Cancel") } },
                     )
                 }
             }
@@ -642,15 +642,15 @@ private fun SettingsScreen(
                         val options = remember(sys.key) { com.nerfherder.walkthor.data.GameLaunch.choices(context, sys.key) }
                         androidx.compose.material3.AlertDialog(
                             onDismissRequest = { picking = null },
-                            confirmButton = { androidx.compose.material3.TextButton(onClick = { picking = null }) { Text("Cancel") } },
+                            confirmButton = { FocusTextButton(onClick = { picking = null }) { Text("Cancel") } },
                             title = { Text("${sys.name} games start in") },
                             text = {
                                 Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                                    androidx.compose.material3.TextButton(onClick = {
+                                    FocusTextButton(onClick = {
                                         com.nerfherder.walkthor.data.GameLaunch.setPreferred(context, sys.key, null); choiceVersion++; picking = null
                                     }) { Text("Let WalkThor pick") }
                                     options.forEach { o ->
-                                        androidx.compose.material3.TextButton(onClick = {
+                                        FocusTextButton(onClick = {
                                             com.nerfherder.walkthor.data.GameLaunch.setPreferred(context, sys.key, o.id); choiceVersion++; picking = null
                                         }) { Text(o.label) }
                                     }
@@ -710,9 +710,9 @@ private fun SettingsScreen(
                     if (showHidden) {
                         androidx.compose.material3.AlertDialog(
                             onDismissRequest = { showHidden = false },
-                            confirmButton = { androidx.compose.material3.TextButton(onClick = { showHidden = false }) { Text("Done") } },
+                            confirmButton = { FocusTextButton(onClick = { showHidden = false }) { Text("Done") } },
                             dismissButton = {
-                                androidx.compose.material3.TextButton(onClick = {
+                                FocusTextButton(onClick = {
                                     com.nerfherder.walkthor.data.GamePlays.showAll(context); showHidden = false
                                 }) { Text("Show all") }
                             },
@@ -723,7 +723,7 @@ private fun SettingsScreen(
                                         val name = roms.firstOrNull { it.id == id }?.title ?: id.substringAfter('/')
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(name, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                            androidx.compose.material3.TextButton(onClick = {
+                                            FocusTextButton(onClick = {
                                                 com.nerfherder.walkthor.data.GamePlays.setHidden(context, id, false)
                                             }) { Text("Show") }
                                         }
@@ -842,13 +842,13 @@ private fun SettingsScreen(
                         androidx.compose.material3.AlertDialog(
                             onDismissRequest = { editAccounts = false },
                             confirmButton = {
-                                androidx.compose.material3.TextButton(onClick = {
+                                FocusTextButton(onClick = {
                                     a.save(context, sgdb, ssUser, ssPass, devId, devPass)
                                     accountsVersion++
                                     editAccounts = false
                                 }) { Text("Save") }
                             },
-                            dismissButton = { androidx.compose.material3.TextButton(onClick = { editAccounts = false }) { Text("Cancel") } },
+                            dismissButton = { FocusTextButton(onClick = { editAccounts = false }) { Text("Cancel") } },
                             title = { Text("Art site accounts") },
                             text = {
                                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -968,7 +968,7 @@ private fun SettingsScreen(
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { pickDim = false }) { Text("Close") } },
+            confirmButton = { FocusTextButton(onClick = { pickDim = false }) { Text("Close") } },
         )
     }
 }
@@ -1006,7 +1006,7 @@ private fun EmptyShelf(onImport: () -> Unit, romsLinked: Boolean, onLinkRoms: ()
                 ) { Text("Add guide", fontWeight = FontWeight.SemiBold) }
             }
         }
-        TextButton(onClick = onSetupGuide, modifier = Modifier.padding(top = 6.dp)) { Text("How to set up WalkThor") }
+        FocusTextButton(onClick = onSetupGuide, modifier = Modifier.padding(top = 6.dp)) { Text("How to set up WalkThor") }
     }
 }
 
@@ -1066,8 +1066,8 @@ private fun ShelfItem(book: Book, actions: LibraryActions) {
             onDismissRequest = { renaming = false },
             title = { Text("Rename guide") },
             text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true) },
-            confirmButton = { TextButton(onClick = { renaming = false; actions.onRename(book, text) }) { Text("Save") } },
-            dismissButton = { TextButton(onClick = { renaming = false }) { Text("Cancel") } },
+            confirmButton = { FocusTextButton(onClick = { renaming = false; actions.onRename(book, text) }) { Text("Save") } },
+            dismissButton = { FocusTextButton(onClick = { renaming = false }) { Text("Cancel") } },
         )
     }
     if (confirmDelete) {
@@ -1075,8 +1075,8 @@ private fun ShelfItem(book: Book, actions: LibraryActions) {
             onDismissRequest = { confirmDelete = false },
             title = { Text("Remove “${book.title}”?") },
             text = { Text("WalkThor's copy of this guide will be deleted. Your original file isn't touched.") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; actions.onDelete(book) }) { Text("Remove") } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            confirmButton = { FocusTextButton(onClick = { confirmDelete = false; actions.onDelete(book) }) { Text("Remove") } },
+            dismissButton = { FocusTextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
     }
 }
@@ -1184,14 +1184,14 @@ fun ImportDialogs(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+            dismissButton = { FocusTextButton(onClick = onCancel) { Text("Cancel") } },
         )
         is ImportState.Failed -> AlertDialog(
             onDismissRequest = onDismissError,
             containerColor = BookColors.Surface,
             title = { Text(failedTitle, fontFamily = DisplayFont) },
             text = { Text(state.message, color = BookColors.TextMuted) },
-            confirmButton = { TextButton(onClick = onDismissError) { Text("OK") } },
+            confirmButton = { FocusTextButton(onClick = onDismissError) { Text("OK") } },
         )
         null -> Unit
     }

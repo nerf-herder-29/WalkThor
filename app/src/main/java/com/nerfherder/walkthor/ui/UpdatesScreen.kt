@@ -32,6 +32,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,7 +80,7 @@ fun UpdatesScreen(header: Boolean, modifier: Modifier = Modifier) {
     var settingPage by remember { mutableStateOf<Updates.Entry?>(null) }
     val accent = accentColor()
 
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().onFocusChanged { if (!header) MainTabs.rowFocused = it.hasFocus }) {
     Column(Modifier.fillMaxSize()) {
         val when_ = when {
             checking -> "Checking…"
@@ -92,7 +99,13 @@ fun UpdatesScreen(header: Boolean, modifier: Modifier = Modifier) {
         } else {
             Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("$when_ · " + if (waiting == 0) "all up to date" else "$waiting update" + (if (waiting == 1) "" else "s"), color = BookColors.TextMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                PillButton(if (checking) "Checking…" else "Check now") { if (!checking) Updates.check(context) }
+                // On the Updates tab, the first D-pad press lands here.
+                val first = remember { androidx.compose.ui.focus.FocusRequester() }
+                androidx.compose.runtime.DisposableEffect(Unit) {
+                    MainTabs.focusFirst = { runCatching { first.requestFocus() }.isSuccess }
+                    onDispose { MainTabs.focusFirst = null; MainTabs.rowFocused = false }
+                }
+                PillButton(if (checking) "Checking…" else "Check now", modifier = Modifier.focusRequester(first)) { if (!checking) Updates.check(context) }
             }
         }
         if (offline) {
@@ -134,20 +147,33 @@ fun UpdatesScreen(header: Boolean, modifier: Modifier = Modifier) {
 /** A dimmed backdrop over the page; tapping it closes [onClose]. */
 @Composable
 private fun Scrim(onClose: () -> Unit, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
-    val none = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    // A tap on the backdrop closes; the controller can't land on it (only on the panel's buttons).
     Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable(interactionSource = none, indication = null, onClick = onClose),
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f))
+            .pointerInput(Unit) { detectTapGestures { onClose() } },
         contentAlignment = Alignment.Center,
-        content = content,
-    )
+    ) {
+        // The controller stays inside the panel while it's open, starting on its first button.
+        val first = remember { androidx.compose.ui.focus.FocusRequester() }
+        LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { first.requestFocus() } }
+        CompositionLocalProvider(LocalPanelFirst provides first) {
+            Box(
+                @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+                Modifier.focusProperties { exit = { androidx.compose.ui.focus.FocusRequester.Cancel } }.focusGroup(),
+                content = content,
+            )
+        }
+    }
 }
 
 /** Taps inside a panel stay there (rather than closing it). */
 @Composable
 private fun Modifier.keepTaps(): Modifier {
-    val none = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    return this.clickable(interactionSource = none, indication = null) {}
+    return this.pointerInput(Unit) { detectTapGestures { } }
 }
+
+/** The panel's first button, for the controller to start on. */
+private val LocalPanelFirst = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.ui.focus.FocusRequester?> { null }
 
 /** One emulator's newest release: what's new, its page, and Update. */
 @Composable
@@ -180,7 +206,7 @@ private fun DetailsPanel(e: Updates.Entry, offline: Boolean, accent: Color, onCl
                         color = BookColors.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
-                CardButton("Close", BookColors.Text) { onClose() }
+                CardButton("Close", BookColors.Text, modifier = LocalPanelFirst.current?.let { Modifier.focusRequester(it) } ?: Modifier) { onClose() }
             }
             Spacer(Modifier.height(14.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(BookColors.Hairline))
@@ -233,7 +259,7 @@ private fun PagePanel(e: Updates.Entry, onClose: () -> Unit) {
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Spacer(Modifier.weight(1f))
-                CardButton("Cancel", BookColors.TextMuted) { onClose() }
+                CardButton("Cancel", BookColors.TextMuted, modifier = LocalPanelFirst.current?.let { Modifier.focusRequester(it) } ?: Modifier) { onClose() }
                 CardButton(if (text.isBlank()) "Clear" else "Save", BookColors.Text, enabled = valid) { Updates.setPage(context, e.pkg, text); onClose() }
             }
         }
@@ -337,13 +363,13 @@ private fun UpdateCard(e: Updates.Entry, progress: Float?, offline: Boolean, acc
 }
 
 @Composable
-private fun CardButton(text: String, color: Color, enabled: Boolean = true, onClick: () -> Unit) {
+private fun CardButton(text: String, color: Color, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         text,
         color = if (enabled) color else BookColors.Brass,
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(BookColors.SurfaceHigh)
             .clickable(enabled = enabled, onClick = onClick)

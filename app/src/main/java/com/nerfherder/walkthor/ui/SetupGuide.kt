@@ -150,7 +150,7 @@ fun SetupGuideDialog(
                 Bullet("WalkThor only goes online for one thing: downloading the speech model the first time you turn on Captions.")
             }
             Row(Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss, modifier = if (compact) Modifier.height(36.dp) else Modifier) { Text("Close") }
+                FocusTextButton(onClick = onDismiss, modifier = if (compact) Modifier.height(36.dp) else Modifier) { Text("Close") }
             }
         }
     }

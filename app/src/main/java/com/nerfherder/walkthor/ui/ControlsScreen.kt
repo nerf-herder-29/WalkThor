@@ -203,7 +203,7 @@ fun ControlsScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
                 ) { Text("Agree", fontWeight = FontWeight.SemiBold) }
             },
-            dismissButton = { TextButton(onClick = onBack) { Text("Not now", color = BookColors.TextMuted) } },
+            dismissButton = { FocusTextButton(onClick = onBack) { Text("Not now", color = BookColors.TextMuted) } },
         )
     }
 }

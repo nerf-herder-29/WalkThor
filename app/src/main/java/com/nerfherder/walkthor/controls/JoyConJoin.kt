@@ -13,8 +13,7 @@ import java.nio.ByteOrder
  * full mode, so both sticks are analog) and feeds their presses into the Thor's built-in
  * controller ("Odin Controller") as if they came from it. Every emulator already set up for the
  * Thor then just works, and the Joy-Con's Home button is the Thor's Back button (so WalkThor's
- * and AYN's shortcuts work). Buttons go by position: the bottom face button is the Thor's
- * bottom one, and so on.
+ * and AYN's shortcuts work). A, B, X and Y are the Thor's A, B, X and Y (the Nintendo layout).
  *
  * If the Thor's controller can't be found, it makes a controller of its own instead,
  * "WalkThor Joy-Cons", through Linux's virtual-device file (/dev/uhid).
@@ -116,11 +115,12 @@ object JoyConJoinTool {
                     val k = (EV_ABS.toLong() shl 16) or code.toLong()
                     if (last[k] != v) { last[k] = v; events += intArrayOf(EV_ABS, code, v) }
                 }
-                // Face buttons by position (Joy-Con labels: A right, B bottom, X top, Y left).
-                key(BTN_EAST, p.right and 0x08 != 0)
-                key(BTN_SOUTH, p.right and 0x04 != 0)
-                key(BTN_NORTH, p.right and 0x02 != 0)
-                key(BTN_WEST, p.right and 0x01 != 0)
+                // Face buttons by their letters, the Nintendo way, as the Thor itself sends them
+                // (its A, on the right, is Linux's "A"; its X, on top, is Linux's "Y").
+                key(BTN_SOUTH, p.right and 0x08 != 0) // A
+                key(BTN_EAST, p.right and 0x04 != 0) // B
+                key(BTN_WEST, p.right and 0x02 != 0) // X
+                key(BTN_NORTH, p.right and 0x01 != 0) // Y
                 key(BTN_TR, p.right and 0x40 != 0)
                 key(BTN_TR2, p.right and 0x80 != 0)
                 key(BTN_TL, p.left and 0x40 != 0)
@@ -183,7 +183,7 @@ object JoyConJoinTool {
             override fun send(p: Pad) {
                 var bits = 0
                 fun on(cond: Boolean, bit: Int) { if (cond) bits = bits or (1 shl bit) }
-                on(p.right and 0x08 != 0, 1); on(p.right and 0x04 != 0, 0); on(p.right and 0x02 != 0, 3); on(p.right and 0x01 != 0, 4)
+                on(p.right and 0x08 != 0, 0); on(p.right and 0x04 != 0, 1); on(p.right and 0x02 != 0, 4); on(p.right and 0x01 != 0, 3)
                 on(p.right and 0x40 != 0, 7); on(p.right and 0x80 != 0, 9); on(p.left and 0x40 != 0, 6); on(p.left and 0x80 != 0, 8)
                 on(p.shared and 0x01 != 0, 10); on(p.shared and 0x02 != 0, 11); on(p.shared and 0x10 != 0, 12)
                 on(p.shared and 0x08 != 0, 13); on(p.shared and 0x04 != 0, 14)

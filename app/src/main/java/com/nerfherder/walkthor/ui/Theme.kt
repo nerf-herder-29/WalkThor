@@ -17,6 +17,12 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onKeyEvent
+import kotlinx.coroutines.launch
 
 /**
  * Modern dark chrome with antique accents: true-black (OLED) backgrounds, a single brass accent,
@@ -156,5 +162,91 @@ val EyebrowStyle: TextStyle get() = TextStyle(
 fun WalkThorTheme(content: @Composable () -> Unit) {
     val f = AppFont.family
     val typography = androidx.compose.runtime.remember(f) { typographyFor(f) }
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    // Where the controller is, everywhere: a ring in the accent colour around whatever is focused.
+    PadIndication.ring = frontAccent()
+    MaterialTheme(colorScheme = scheme, typography = typography) {
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.LocalIndication provides PadIndication, content = content)
+    }
+}
+
+/**
+ * How anything you can press shows it's been reached with the controller (a ring in the accent
+ * colour) or is being pressed (a soft light), in place of the touch ripple.
+ */
+object PadIndication : androidx.compose.foundation.IndicationNodeFactory {
+    @Volatile var ring: Color = Color.White
+
+    override fun create(interactionSource: androidx.compose.foundation.interaction.InteractionSource): androidx.compose.ui.node.DelegatableNode =
+        Node(interactionSource)
+
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 7
+
+    private class Node(private val source: androidx.compose.foundation.interaction.InteractionSource) :
+        androidx.compose.ui.Modifier.Node(), androidx.compose.ui.node.DrawModifierNode {
+        private var focused = false
+        private var pressed = false
+
+        override fun onAttach() {
+            coroutineScope.launch {
+                source.interactions.collect { i ->
+                    when (i) {
+                        is androidx.compose.foundation.interaction.FocusInteraction.Focus -> focused = true
+                        is androidx.compose.foundation.interaction.FocusInteraction.Unfocus -> focused = false
+                        is androidx.compose.foundation.interaction.PressInteraction.Press -> pressed = true
+                        is androidx.compose.foundation.interaction.PressInteraction.Release,
+                        is androidx.compose.foundation.interaction.PressInteraction.Cancel -> pressed = false
+                    }
+                    androidx.compose.ui.node.invalidateDraw(this@Node)
+                }
+            }
+        }
+
+        override fun androidx.compose.ui.graphics.drawscope.ContentDrawScope.draw() {
+            drawContent()
+            if (pressed) drawRect(Color.White.copy(alpha = 0.08f))
+            if (focused) {
+                val w = 2.5.dp.toPx()
+                val r = minOf(size.height / 2f, 18.dp.toPx())
+                drawRoundRect(
+                    ring,
+                    topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
+                    size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(w),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A presses this when the controller is on it. For dialogs and menus, which are windows of their
+ * own where A isn't turned into Android's "select" key.
+ */
+fun Modifier.pressWithA(enabled: Boolean = true, onClick: () -> Unit): Modifier = this.onKeyEvent { e ->
+    val k = e.nativeKeyEvent
+    if (k.keyCode != android.view.KeyEvent.KEYCODE_BUTTON_A || !enabled) return@onKeyEvent false
+    if (k.action == android.view.KeyEvent.ACTION_UP) onClick()
+    true
+}
+
+/** A text button (in dialogs and menus) whose ring shows when the controller is on it. */
+@Composable
+fun FocusTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
+) {
+    var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.material3.TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .onFocusChanged { focused = it.hasFocus }
+            .pressWithA(enabled, onClick)
+            .border(2.dp, if (focused) frontAccent() else Color.Transparent, androidx.compose.foundation.shape.RoundedCornerShape(50)),
+        content = content,
+    )
 }

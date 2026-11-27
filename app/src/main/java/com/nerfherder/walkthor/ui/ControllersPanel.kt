@@ -93,7 +93,7 @@ fun ColumnScope.ControllersPanel() {
             ) { auto = it; JoyCons.setAutoJoin(context, it) }
             problem?.let { if (!active) SettingsNote("Last try didn’t work: $it") }
         }
-        SettingsNote("Buttons go by where they sit: the bottom face button is the Thor’s bottom one. Capture, motion and rumble aren’t passed on yet.")
+        SettingsNote("A, B, X and Y are the Thor’s A, B, X and Y, the Nintendo layout. Capture, motion and rumble aren’t passed on yet.")
 
         BluetoothGroup()
 

@@ -732,8 +732,8 @@ private fun ArrangePanelsDialog(current: PanelShape, currentOrder: List<GameTab>
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (slots.any { it == null }) Text("Fill every space to save.", color = BookColors.TextMuted, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
-                androidx.compose.material3.TextButton(onClick = { onDone(null) }) { Text("Cancel", color = BookColors.TextMuted) }
-                androidx.compose.material3.TextButton(
+                FocusTextButton(onClick = { onDone(null) }) { Text("Cancel", color = BookColors.TextMuted) }
+                FocusTextButton(
                     enabled = slots.none { it == null },
                     onClick = { onDone(shape to slots.filterNotNull()) },
                 ) { Text("Done", color = if (slots.none { it == null }) BookColors.Text else BookColors.TextMuted) }

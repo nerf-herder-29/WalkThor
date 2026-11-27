@@ -466,8 +466,8 @@ class MainActivity : ComponentActivity(), WalkThorHost {
                 AutoDim.interact()
                 return true
             }
-            // A picks the row the controller is on (Android's own "select" key).
-            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A && first != null) {
+            // A picks whatever the controller is on (Android's own "select" key), on every tab.
+            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
                 AutoDim.interact()
                 return super.dispatchKeyEvent(
                     KeyEvent(

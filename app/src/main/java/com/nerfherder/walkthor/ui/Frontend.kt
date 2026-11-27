@@ -359,6 +359,10 @@ fun FrontendScreen(
     var shelfIndex by remember { mutableStateOf(0) }
     val shelf = shelves[shelfIndex.coerceIn(0, shelves.lastIndex)]
     var searching by remember { mutableStateOf(false) }
+    /** B cleared a search (its release is taken too, so it isn't also Back). */
+    var bTaken by remember { mutableStateOf(false) }
+    // B (Back) leaves the search box, keeping what you typed.
+    androidx.activity.compose.BackHandler(enabled = searching) { searching = false }
     var query by remember { mutableStateOf("") }
     val shown = remember(roms, shelf, query, plays) {
         val q = query.trim()
@@ -481,6 +485,12 @@ fun FrontendScreen(
     /** A button press, from either screen. */
     fun onKey(k: KeyEvent): Boolean {
         if (searching || choosingFor != null || launchError != null || menuFor != null || emulatorFor != null) return false
+        // B with a search showing clears it (otherwise B is Back as usual).
+        if (k.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+            if (k.action == KeyEvent.ACTION_DOWN && query.isNotBlank()) { query = ""; bTaken = true; return true }
+            if (k.action == KeyEvent.ACTION_UP && bTaken) { bTaken = false; return true }
+            return false
+        }
         if (k.action != KeyEvent.ACTION_DOWN) return k.keyCode in HANDLED
         val rom = shown.getOrNull(selected)
         when (k.keyCode) {
@@ -490,7 +500,14 @@ fun FrontendScreen(
             KeyEvent.KEYCODE_DPAD_RIGHT -> BubbleLayout.neighbor(selected, shown.size, 1, 0)?.let(::select)
             KeyEvent.KEYCODE_DPAD_UP -> BubbleLayout.neighbor(selected, shown.size, 0, -1)?.let(::select)
             KeyEvent.KEYCODE_DPAD_DOWN -> BubbleLayout.neighbor(selected, shown.size, 0, 1)?.let(::select)
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) rom?.let(::play)
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (k.repeatCount == 0) {
+                when {
+                    rom != null -> play(rom)
+                    // Nothing to play: A does what the screen offers (clear the search, or link your ROMs).
+                    query.isNotBlank() -> query = ""
+                    roms.isEmpty() -> onLinkRoms()
+                }
+            }
             KeyEvent.KEYCODE_BUTTON_Y -> if (k.repeatCount == 0) rom?.let(::guide)
             KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) rom?.let {
                 com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
@@ -625,17 +642,17 @@ fun FrontendScreen(
     menuFor?.let { rom ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { menuFor = null },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { menuFor = null }) { Text("Cancel") } },
+            confirmButton = { FocusTextButton(onClick = { menuFor = null }) { Text("Cancel") } },
             title = { Text(rom.title) },
             text = {
                 Column {
-                    androidx.compose.material3.TextButton(onClick = {
+                    FocusTextButton(onClick = {
                         menuFor = null
                         GamePlays.setHidden(context, rom, true)
                         Toast.makeText(context, "Hidden. Show it again on the Library tab.", Toast.LENGTH_LONG).show()
                     }) { Text("Hide this game") }
                     if (rom.system == com.nerfherder.walkthor.data.PinnedShortcuts.SYSTEM) {
-                        androidx.compose.material3.TextButton(onClick = {
+                        FocusTextButton(onClick = {
                             menuFor = null
                             com.nerfherder.walkthor.data.PinnedShortcuts.remove(context, rom.file)
                         }) { Text("Remove this shortcut") }
@@ -645,23 +662,23 @@ fun FrontendScreen(
                         GameArt.Kind.HERO to "Choose its hero picture…",
                         GameArt.Kind.LOGO to "Choose its logo…",
                     ).forEach { (kind, label) ->
-                        androidx.compose.material3.TextButton(onClick = {
+                        FocusTextButton(onClick = {
                             menuFor = null
                             picking = rom to kind
                             runCatching { pickPicture.launch("image/*") }
                         }) { Text(label) }
                     }
                     if (art.hasCustom(rom)) {
-                        androidx.compose.material3.TextButton(onClick = { menuFor = null; art.clearCustom(rom) }) {
+                        FocusTextButton(onClick = { menuFor = null; art.clearCustom(rom) }) {
                             Text("Go back to its usual pictures")
                         }
                     }
-                    androidx.compose.material3.TextButton(onClick = { menuFor = null; choosingFor = rom }) {
+                    FocusTextButton(onClick = { menuFor = null; choosingFor = rom }) {
                         Text(if (guideFor[rom.id] != null) "Change its guide" else "Add a guide")
                     }
                     if (rom.system != com.nerfherder.walkthor.data.PinnedShortcuts.SYSTEM) {
                         val now = remember(rom.id) { com.nerfherder.walkthor.data.GameLaunch.emulatorName(context, rom) }
-                        androidx.compose.material3.TextButton(onClick = { menuFor = null; emulatorFor = rom }) {
+                        FocusTextButton(onClick = { menuFor = null; emulatorFor = rom }) {
                             Text("Start it in…" + (now?.let { " ($it)" } ?: ""))
                         }
                     }
@@ -675,16 +692,16 @@ fun FrontendScreen(
         val systemName = RomLibrary.system(rom.system)?.name ?: "this system’s"
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { emulatorFor = null },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { emulatorFor = null }) { Text("Cancel") } },
+            confirmButton = { FocusTextButton(onClick = { emulatorFor = null }) { Text("Cancel") } },
             title = { Text("Start ${rom.title} in") },
             text = {
                 Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                     if (options.isEmpty()) Text("No emulator for it is installed.", fontSize = 13.sp)
-                    androidx.compose.material3.TextButton(onClick = {
+                    FocusTextButton(onClick = {
                         com.nerfherder.walkthor.data.GameLaunch.setPreferredFor(context, rom, null); emulatorFor = null
                     }) { Text((if (mine == null) "✓ " else "") + "The same as other $systemName games") }
                     options.forEach { o ->
-                        androidx.compose.material3.TextButton(onClick = {
+                        FocusTextButton(onClick = {
                             com.nerfherder.walkthor.data.GameLaunch.setPreferredFor(context, rom, o.id); emulatorFor = null
                         }) { Text((if (mine == o.id) "✓ " else "") + o.label) }
                     }
@@ -695,7 +712,7 @@ fun FrontendScreen(
     launchError?.let { text ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { launchError = null },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { launchError = null }) { Text("OK") } },
+            confirmButton = { FocusTextButton(onClick = { launchError = null }) { Text("OK") } },
             title = { Text("Couldn’t start the game") },
             text = { Text(text, fontSize = 13.sp) },
         )

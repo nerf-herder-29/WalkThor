@@ -354,9 +354,9 @@ fun MirrorScreen(
             }
             if (ready) {
                 if (editing) {
-                    TextButton(onClick = { keepShape = false; draft = floatArrayOf(0f, 0f, 1f, 1f) }) { Text("Whole screen", color = BookColors.TextMuted) }
+                    FocusTextButton(onClick = { keepShape = false; draft = floatArrayOf(0f, 0f, 1f, 1f) }) { Text("Whole screen", color = BookColors.TextMuted) }
                     if (areas.isNotEmpty()) {
-                        TextButton(onClick = { editingIndex = null }) { Text("Cancel", color = BookColors.TextMuted) }
+                        FocusTextButton(onClick = { editingIndex = null }) { Text("Cancel", color = BookColors.TextMuted) }
                     }
                     Button(
                         onClick = {

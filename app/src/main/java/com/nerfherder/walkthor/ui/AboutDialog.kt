@@ -112,7 +112,7 @@ fun SwipeDisclosureDialog(onAgree: () -> Unit, onDecline: () -> Unit, onDismiss:
                 border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
             ) { Text("Agree & continue", fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDecline) { Text("No thanks", color = BookColors.TextMuted) } },
+        dismissButton = { FocusTextButton(onClick = onDecline) { Text("No thanks", color = BookColors.TextMuted) } },
     )
 }
 
@@ -159,7 +159,7 @@ fun EmulatorDisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 border = androidx.compose.foundation.BorderStroke(1.dp, BookColors.ButtonEdge),
             ) { Text("Turn on", fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now", color = BookColors.TextMuted) } },
+        dismissButton = { FocusTextButton(onClick = onDismiss) { Text("Not now", color = BookColors.TextMuted) } },
     )
 }
 
@@ -217,8 +217,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                             ". The report stays on this device; share it if you'd like to report the problem."
                     )
                     Row {
-                        TextButton(onClick = { com.nerfherder.walkthor.CrashLog.share(context) }) { Text("Share report") }
-                        TextButton(onClick = { com.nerfherder.walkthor.CrashLog.clear(context); crash = null }) {
+                        FocusTextButton(onClick = { com.nerfherder.walkthor.CrashLog.share(context) }) { Text("Share report") }
+                        FocusTextButton(onClick = { com.nerfherder.walkthor.CrashLog.clear(context); crash = null }) {
                             Text("Delete", color = BookColors.TextMuted)
                         }
                     }
@@ -247,7 +247,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         testNote = if (ok) describe(com.nerfherder.walkthor.BottomNotifications.sendTest(context))
                         else "Not allowed, so the test can't go through Android"
                     }
-                    TextButton(onClick = {
+                    FocusTextButton(onClick = {
                         val t = com.nerfherder.walkthor.BottomNotifications.sendTest(context)
                         if (t == com.nerfherder.walkthor.BottomNotifications.Test.NEEDS_PERMISSION && android.os.Build.VERSION.SDK_INT >= 33)
                             askPost.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -270,8 +270,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     Body("Everything WalkThor and AYN did to the stick lights since WalkThor started (kept in memory only). Close and open the lid, or change colours, then share it.")
                     lightsLog.takeLast(12).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
                     Row {
-                        TextButton(onClick = { lightsLog = com.nerfherder.walkthor.StickLights.logged() }) { Text("Refresh") }
-                        TextButton(onClick = {
+                        FocusTextButton(onClick = { lightsLog = com.nerfherder.walkthor.StickLights.logged() }) { Text("Refresh") }
+                        FocusTextButton(onClick = {
                             Thread({
                                 val text = (com.nerfherder.walkthor.StickLights.probe(context) + "" + com.nerfherder.walkthor.StickLights.logged()).joinToString("\n")
                                 val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
@@ -292,14 +292,14 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Body("Keeper (keeps the bottom screen's apps protected while WalkThor is closed): ${com.nerfherder.walkthor.MemoryWatch.keeperStatus(context)}")
                 memLog.takeLast(14).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
                 Row {
-                    TextButton(onClick = { memLog = com.nerfherder.walkthor.MemoryWatch.logged() }) { Text("Refresh") }
-                    TextButton(onClick = { Thread({ com.nerfherder.walkthor.MemoryWatch.share(context) }, "WalkThor memory share").start() }) { Text("Share log") }
-                    TextButton(onClick = { com.nerfherder.walkthor.MemoryWatch.clear(context); memLog = emptyList() }) { Text("Clear", color = BookColors.TextMuted) }
+                    FocusTextButton(onClick = { memLog = com.nerfherder.walkthor.MemoryWatch.logged() }) { Text("Refresh") }
+                    FocusTextButton(onClick = { Thread({ com.nerfherder.walkthor.MemoryWatch.share(context) }, "WalkThor memory share").start() }) { Text("Share log") }
+                    FocusTextButton(onClick = { com.nerfherder.walkthor.MemoryWatch.clear(context); memLog = emptyList() }) { Text("Clear", color = BookColors.TextMuted) }
                 }
                 // How the last game ended, from the device's own records (saved after each game).
                 if (com.nerfherder.walkthor.GameReport.exists(context)) {
                     Body("After each game, WalkThor saves the device's own records of how it ended: what Android's memory killer, the kernel and the emulator reported. Share it after a crash.")
-                    TextButton(onClick = { Thread({ com.nerfherder.walkthor.GameReport.share(context) }, "WalkThor game report share").start() }) { Text("Share game report") }
+                    FocusTextButton(onClick = { Thread({ com.nerfherder.walkthor.GameReport.share(context) }, "WalkThor game report share").start() }) { Text("Share game report") }
                 }
                 // If the drawer couldn't open, why (WalkThor opened as an app instead).
                 com.nerfherder.walkthor.Drawer.problem.collectAsState().value?.let { Body(it) }
@@ -309,8 +309,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     Text("Recent closes", color = BookColors.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
                     closes.take(8).forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp)) }
                     Row {
-                        TextButton(onClick = { com.nerfherder.walkthor.ExitHistory.share(context) }) { Text("Share recent closes") }
-                        TextButton(onClick = { com.nerfherder.walkthor.ExitHistory.clear(context); closes = emptyList() }) {
+                        FocusTextButton(onClick = { com.nerfherder.walkthor.ExitHistory.share(context) }) { Text("Share recent closes") }
+                        FocusTextButton(onClick = { com.nerfherder.walkthor.ExitHistory.clear(context); closes = emptyList() }) {
                             Text("Clear", color = BookColors.TextMuted)
                         }
                     }
@@ -330,10 +330,10 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 val aynLog by com.nerfherder.walkthor.AynButton.log.collectAsState()
                 aynLog.forEach { Text(it, color = BookColors.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp)) }
                 Row {
-                    TextButton(onClick = { if (testing) com.nerfherder.walkthor.ButtonTest.stop() else com.nerfherder.walkthor.ButtonTest.start() }) {
+                    FocusTextButton(onClick = { if (testing) com.nerfherder.walkthor.ButtonTest.stop() else com.nerfherder.walkthor.ButtonTest.start() }) {
                         Text(if (testing) "Stop button test" else "Start button test")
                     }
-                    if (!testing && (testSeen.isNotEmpty() || aynLog.isNotEmpty())) TextButton(onClick = {
+                    if (!testing && (testSeen.isNotEmpty() || aynLog.isNotEmpty())) FocusTextButton(onClick = {
                         val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
                             .putExtra(android.content.Intent.EXTRA_TEXT, com.nerfherder.walkthor.ButtonTest.report())
                         runCatching { context.startActivity(android.content.Intent.createChooser(send, "Share button test").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -345,7 +345,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         "top priority, and how often WalkThor is drawing. Only needed if a game seems slower with " +
                         "WalkThor open."
                 )
-                TextButton(onClick = { com.nerfherder.walkthor.PerfCheck.setEnabled(context, !perfOn) }) {
+                FocusTextButton(onClick = { com.nerfherder.walkthor.PerfCheck.setEnabled(context, !perfOn) }) {
                     Text(if (perfOn) "Turn off performance check" else "Turn on performance check")
                 }
 
@@ -370,11 +370,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
             }
             HorizontalDivider(color = BookColors.Hairline, modifier = Modifier.padding(vertical = 8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = { open("$REPO/blob/main/PRIVACY.md") }) { Text("Privacy policy") }
-                TextButton(onClick = { open("$REPO/blob/main/THIRD_PARTY_NOTICES.md") }) { Text("Licences") }
-                TextButton(onClick = { open(REPO) }) { Text("Source") }
+                FocusTextButton(onClick = { open("$REPO/blob/main/PRIVACY.md") }) { Text("Privacy policy") }
+                FocusTextButton(onClick = { open("$REPO/blob/main/THIRD_PARTY_NOTICES.md") }) { Text("Licences") }
+                FocusTextButton(onClick = { open(REPO) }) { Text("Source") }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
+                FocusTextButton(onClick = onDismiss) { Text("Close", color = BookColors.TextMuted) }
             }
         }
     }

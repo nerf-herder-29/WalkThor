@@ -114,7 +114,7 @@ fun EmulatorsDialog(onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { FocusTextButton(onClick = onDismiss) { Text("Done") } },
     )
 }
 

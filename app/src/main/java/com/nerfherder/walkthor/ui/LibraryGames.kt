@@ -451,8 +451,8 @@ fun GuideChooserDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onAddFile) { Text("Add a file…") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { FocusTextButton(onClick = onAddFile) { Text("Add a file…") } },
+        dismissButton = { FocusTextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 

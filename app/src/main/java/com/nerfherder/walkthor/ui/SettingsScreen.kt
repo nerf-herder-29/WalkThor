@@ -216,7 +216,8 @@ fun SettingRow(
                     SettingsTop.pick(latest.value)
                 }
             }
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            // (The row's own ring shows where the controller is, so no second one from the press effect.)
+            .then(if (onClick != null) Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onClick) else Modifier),
     ) {
         val stack = buttons != null && maxWidth < 380.dp
         Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.Center) {
@@ -284,14 +285,14 @@ fun SettingLink(title: String, subtitle: String? = null, value: String? = null, 
 
 /** A small rounded button inside a row; [quiet] for the less common choice (Unlink). */
 @Composable
-fun PillButton(text: String, quiet: Boolean = false, onClick: () -> Unit) {
+fun PillButton(text: String, quiet: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         text,
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium,
         color = if (quiet) BookColors.TextMuted else BookColors.Text,
         maxLines = 1,
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(if (quiet) Color.Transparent else BookColors.SurfaceHigh)
             .clickable(onClick = onClick)
