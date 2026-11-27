@@ -12,6 +12,7 @@ license shown, except Space Grotesk, which is included as fixed-weight instances
 | [Vosk](https://github.com/alphacep/vosk-api) (vosk-android) | Captions: offline speech recognition | Apache License 2.0 |
 | [JNA](https://github.com/java-native-access/jna) | Lets Vosk's native code run on Android | Apache License 2.0 (dual-licensed with LGPL 2.1; used under Apache 2.0) |
 | [Vosk small English model](https://alphacephei.com/vosk/models) (vosk-model-small-en-us-0.15) | Captions' speech model, downloaded only when you ask | Apache License 2.0 |
+| [ES-DE](https://gitlab.com/es-de/emulationstation-de) Android launch rules (`es_find_rules.xml`, `es_systems.xml`) | Which emulators can start each system's games, and how; converted to `app/src/main/assets/launch/es-de.tsv` by `tools/es-de-rules.py` (copyright notice in `assets/launch/es-de-LICENSE.txt`) | MIT License |
 | [HiddenApiBypass](https://github.com/LSPosed/AndroidHiddenApiBypass) (LSPosed) | Reaching the Thor's built-in system helper, for the bottom screen's brightness | Apache License 2.0 |
 | [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | The app's typeface (bundled as fixed-weight instances) | SIL Open Font License 1.1 ([full text](licenses/SpaceGrotesk-OFL.txt)) |
 

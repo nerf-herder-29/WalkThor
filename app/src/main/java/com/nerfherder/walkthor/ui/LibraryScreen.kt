@@ -346,11 +346,20 @@ fun LibraryScreen(
                 hasGuides = books.isNotEmpty(),
                 romsLinked = roms.isNotEmpty(),
                 swipeReady = swipeToOpen && !swipeNeedsPermission,
+                homeApp = remember { com.nerfherder.walkthor.Shortcuts.isHomeApp(context) },
+                artLinked = com.nerfherder.walkthor.data.GameArt.get(context).folder.collectAsState().value != null,
             ),
             onAddGuide = actions.onImport,
             onLinkRoms = { showSetup = false; actions.onLinkRoms() },
             onSetUpSwipe = { showSetup = false; startSwipeSetup() },
             onDismiss = { showSetup = false },
+            onSetHome = {
+                showSetup = false
+                runCatching {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            },
+            onLinkArt = { showSetup = false; actions.onLinkArt() },
         )
     }
 

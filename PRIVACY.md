@@ -1,9 +1,10 @@
 # WalkThor privacy policy
 
-_Last updated: November 16, 2026_
+_Last updated: November 27, 2026_
 
-**WalkThor does not collect or share any data.** It has no analytics and no ads. It goes online
-for one thing only: downloading a speech model for Captions, once, if you ask it to (see below).
+**WalkThor does not collect or share any data.** It has no accounts, analytics or ads. It goes
+online only to check emulators' release pages for updates, to download pictures of your games when
+you ask it to, and to download a speech model for Captions, once, if you ask it to (all below).
 Everything else stays on your device.
 
 ## What WalkThor reads, and why
@@ -99,11 +100,36 @@ Everything else stays on your device.
 
 - **Updates: release pages only, and only when you look.** When you open Updates (at most every few
   hours) or tap Check now, WalkThor asks each release page it knows (GitHub, a Forgejo or Gitea
-  site you gave it, or Dolphin's download site for Dolphin) for its newest release. Those sites see an ordinary request from your device, as
+  site you gave it, or the download sites Dolphin and PokeDaisy publish on) for its newest release. Those sites see an ordinary request from your device, as
   a browser visit would; nothing about you or your apps is sent. An update you tap is downloaded from
   that page, checked to be the same app signed by the same developer, and handed to Android's
   installer, which asks you before installing. Which emulators you have and their versions stay on
   the device.
+
+- **Pictures of your games, only when you ask.** With an art folder linked, WalkThor reads the names
+  of the pictures in it to match them to your games. When you press *Download missing pictures*
+  (Settings › Artwork), it asks the libretro thumbnail collection, and SteamGridDB or ScreenScraper if
+  you've given WalkThor your own key or login for them, for pictures of the games that have none,
+  sending each game's title and system (and, to ScreenScraper, its file name). Your key and
+  login are stored on the device and sent only to that site. The pictures are kept in WalkThor's own
+  storage.
+
+- **Music and sounds.** WalkThor plays its own built-in tracks, or the music in a folder you link
+  (it reads only the folder's file names and the files it plays). It checks whether another app is
+  already playing music, so as not to play over it. Nothing is recorded or sent.
+
+- **Starting games and play time.** When you start a game, WalkThor hands it to the emulator you
+  chose, and notes when you played it and for how long, on the device. When WalkThor is your home
+  app, emulators can add game shortcuts to it; WalkThor keeps the shortcut's name and icon, on the
+  device.
+
+- **Controllers and Joy-Cons, only when you use them.** The Controllers tab lists the controllers
+  Android knows about, and, when you look for controllers to pair, asks Android to look for Bluetooth controllers
+  nearby (Android asks your permission to find nearby devices; WalkThor never asks for your
+  location). With a pair of Joy-Cons joined, a small WalkThor program runs through the Thor's system
+  helper: it reads the two Joy-Cons' button and stick reports and passes them on as the Thor's own
+  controller, and stops when either Joy-Con disconnects. Nothing is recorded, stored or sent; a
+  short log of the joining (not of your presses) is kept in WalkThor's own storage for *Check*.
 
 - **The trackpad, only while it's on.** With *Trackpad on / off* (a shortcut), WalkThor covers the
   bottom screen with its trackpad and, as you use it, touches the top screen for you where its
