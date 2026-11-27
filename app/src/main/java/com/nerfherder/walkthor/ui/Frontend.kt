@@ -509,7 +509,11 @@ fun FrontendScreen(
     androidx.compose.runtime.SideEffect { Frontend.keyHandler = ::onKey }
     DisposableEffect(Unit) { onDispose { Frontend.keyHandler = null } }
 
-    LaunchedEffect(searchRequests) { if (searchRequests > 0) searching = true }
+    // Only a press of the search button since this screen came up (coming back to Games isn't one).
+    var searchesSeen by remember { mutableStateOf(searchRequests) }
+    LaunchedEffect(searchRequests) {
+        if (searchRequests > searchesSeen) { searchesSeen = searchRequests; searching = true }
+    }
     val focus = remember { FocusRequester() }
     LaunchedEffect(searching) { if (!searching) runCatching { focus.requestFocus() } }
     Box(

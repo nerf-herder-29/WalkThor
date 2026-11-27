@@ -188,6 +188,7 @@ object GameLaunch {
         val chosen = preferredFor(c, rom) ?: preferred(c, rom.system)
         val tries = tagged.sortedBy { if (it.first == chosen) 0 else 1 }.map { it.second to it.third }
         if (tries.isEmpty()) {
+            shortcutFor(c, rom)?.let { twin -> return startTwin(c, rom, twin, gameDisplay, why) }
             log(c, "${rom.id}: no emulator. ${why.joinToString("; ")}")
             return "No emulator for $system found" + (why.firstOrNull()?.let { " ($it)" } ?: "")
         }
@@ -214,8 +215,31 @@ object GameLaunch {
             val e = result.exceptionOrNull()
             why += "$name: ${e?.javaClass?.simpleName}: ${e?.message?.take(120)}"
         }
+        // An emulator that only starts games from its own home-screen shortcuts (Banana Native, say):
+        // the shortcut you added for this game.
+        shortcutFor(c, rom)?.let { twin -> return startTwin(c, rom, twin, gameDisplay, why) }
         log(c, "${rom.id}: failed. ${why.joinToString("; ")}")
         return "Couldn't start ${rom.title}. " + why.joinToString("\n")
+    }
+
+    /** A home-screen shortcut you added from an emulator for the same game as [rom], if there is one. */
+    private fun shortcutFor(c: Context, rom: Rom): Rom? {
+        if (rom.system == PinnedShortcuts.SYSTEM) return null
+        val shortcuts = PinnedShortcuts.asRoms(PinnedShortcuts.all.value)
+        return RomLibrary.matchName(rom.title, shortcuts)
+    }
+
+    /** Starts [rom] through its shortcut [twin]; play time and the game's guide still go with [rom]. */
+    private fun startTwin(c: Context, rom: Rom, twin: Rom, gameDisplay: Display?, why: List<String>): String? {
+        val options = gameDisplay?.let { ActivityOptions.makeBasic().setLaunchDisplayId(it.displayId).toBundle() }
+        val error = PinnedShortcuts.start(c, twin, options)
+        if (error == null) {
+            log(c, "${rom.id}: started its home-screen shortcut (${twin.title})")
+            GamePlays.started(c, rom, PinnedShortcuts.appOf(c, twin))
+            return null
+        }
+        log(c, "${rom.id}: failed. ${why.joinToString("; ")}; its shortcut: $error")
+        return "Couldn't start ${rom.title}. $error"
     }
 
     /** Into the memory log, which goes along with game reports. */
