@@ -97,7 +97,8 @@ object AynSystem {
     fun separateJoyCons() { run("pkill -f JoyConJoinTool") }
 
     /** What the joining program last said ("OK", or why it stopped), for the Controllers screen. */
-    fun joyConsLog(): String? = runCatching { java.io.File("$OUT_DIR/joycons.log").readText().trim() }.getOrNull()
+    fun joyConsLog(): String? = shellLines("cat $OUT_DIR/joycons.log; echo running: \$(pgrep -f JoyConJoinTool | head -1)")
+        ?.joinToString(" / ")?.ifBlank { null }
 
     /** WalkThor's own files folder (the helper, as the system, can write there; WalkThor can read). */
     private val OUT_DIR = "/data/data/${BuildConfig.APPLICATION_ID}/files"

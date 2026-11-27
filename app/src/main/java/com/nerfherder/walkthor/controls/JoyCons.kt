@@ -117,7 +117,7 @@ object JoyCons {
         val right = find("2007") ?: return "the right Joy-Con isn’t connected"
         if (!com.nerfherder.walkthor.AynSystem.joinJoyCons(c, left, right)) return "the joining couldn’t start"
         // Wait for the joined controller to appear.
-        repeat(20) {
+        repeat(35) {
             Thread.sleep(150)
             if (joined()) return null
         }

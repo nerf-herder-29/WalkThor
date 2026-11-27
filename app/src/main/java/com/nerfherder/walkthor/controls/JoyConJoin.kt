@@ -59,19 +59,20 @@ object JoyConJoinTool {
     fun main(args: Array<String>) {
         val left = args.getOrNull(0) ?: run { println("ERR usage"); System.exit(0); return }
         val right = args.getOrNull(1) ?: run { println("ERR usage"); System.exit(0); return }
+        say("starting: left $left, right $right")
         // Read and write: the kernel also sends the device's owner messages, which are read and dropped.
-        val out = try { java.io.RandomAccessFile("/dev/uhid", "rw") } catch (t: Throwable) { println("ERR uhid ${t.message}"); System.exit(0); return }
+        val out = try { java.io.RandomAccessFile("/dev/uhid", "rw") } catch (t: Throwable) { say("ERR opening /dev/uhid: ${t.message}"); System.exit(0); return }
         try {
             out.write(create())
+            say("controller made")
             Thread { drain(out) }.apply { isDaemon = true; start() }
-            val l = Thread { read(left, isLeft = true, out) }.apply { isDaemon = true; start() }
-            val r = Thread { read(right, isLeft = false, out) }.apply { isDaemon = true; start() }
-            println("OK")
-            System.out.flush()
-            // Until either Joy-Con goes (or this is stopped).
-            while (l.isAlive && r.isAlive) Thread.sleep(500)
+            val l = Thread { runCatching { read(left, isLeft = true, out) }.onFailure { say("ERR left: ${it.javaClass.simpleName} ${it.message}") }; say("left stopped") }.apply { isDaemon = true; start() }
+            val r = Thread { runCatching { read(right, isLeft = false, out) }.onFailure { say("ERR right: ${it.javaClass.simpleName} ${it.message}") }; say("right stopped") }.apply { isDaemon = true; start() }
+            say("OK")
+            // Until both Joy-Cons have gone (or this is stopped).
+            while (l.isAlive || r.isAlive) Thread.sleep(500)
         } catch (t: Throwable) {
-            println("ERR ${t.javaClass.simpleName} ${t.message}")
+            say("ERR ${t.javaClass.simpleName} ${t.message}")
         } finally {
             runCatching { out.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(UHID_DESTROY).array()) }
             runCatching { out.close() }
@@ -79,6 +80,8 @@ object JoyConJoinTool {
             System.exit(0)
         }
     }
+
+    private fun say(s: String) { println(s); System.out.flush() }
 
     /** Nothing to do with what the kernel sends back (start, open, close): keeps its queue empty. */
     private fun drain(out: java.io.RandomAccessFile) {
@@ -122,7 +125,7 @@ object JoyConJoinTool {
                 val o = if (isLeft) 6 else 9
                 val sx = (buf[o].toInt() and 0xFF) or ((buf[o + 1].toInt() and 0x0F) shl 8)
                 val sy = ((buf[o + 1].toInt() and 0xFF) shr 4) or ((buf[o + 2].toInt() and 0xFF) shl 4)
-                if (cx < 0) { cx = sx; cy = sy }
+                if (cx < 0) { cx = sx; cy = sy; say("${if (isLeft) "left" else "right"} reading (stick rests at $sx, $sy)") }
                 fun axis(v: Int, c: Int, flip: Boolean): Int {
                     var f = (v - c) / range
                     if (kotlin.math.abs(f) < 0.08f) f = 0f
