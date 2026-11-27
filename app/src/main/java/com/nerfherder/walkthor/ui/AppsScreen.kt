@@ -206,6 +206,17 @@ fun AppsScreen(
     var menuFor by remember { mutableStateOf<InstalledApp?>(null) }
     /** The app you tapped, while you pick which screen it opens on. */
     var whereFor by remember { mutableStateOf<InstalledApp?>(null) }
+    val where by AppsWhere.choice.collectAsState()
+    LaunchedEffect(Unit) { AppsWhere.load(context) }
+    /** Opens [app] on the screen you always use, or asks which. */
+    fun openOrAsk(app: InstalledApp?) {
+        app ?: return
+        when (where) {
+            AppsWhere.TOP -> AppCatalog.open(context, app.packageName, here = false)
+            AppsWhere.BOTTOM -> AppCatalog.open(context, app.packageName, here = true)
+            else -> whereFor = app
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(backdropOr(BookColors.Ink))) {
         topBar?.invoke()
@@ -245,7 +256,7 @@ fun AppsScreen(
                     android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER ->
                         if (k.repeatCount == 0) {
                             com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
-                            whereFor = list.getOrNull(selected)
+                            openOrAsk(list.getOrNull(selected))
                         }
                     android.view.KeyEvent.KEYCODE_BUTTON_X -> if (k.repeatCount == 0) menuFor = list.getOrNull(selected)
                     else -> return false
@@ -271,7 +282,7 @@ fun AppsScreen(
                     onSelect = ::select,
                     onActivate = {
                         com.nerfherder.walkthor.data.UiSounds.play(context, com.nerfherder.walkthor.data.UiSounds.Kind.PICK)
-                        whereFor = list.getOrNull(it)
+                        openOrAsk(list.getOrNull(it))
                     },
                     onLongPress = { menuFor = list.getOrNull(it) },
                     ring = frontAccent(),
@@ -333,7 +344,7 @@ fun AppsScreen(
                         }
                     } else {
                         items(pinnedApps, key = { "pin:" + it.packageName }) { app ->
-                            AppIcon(app, compact, onOpen = { if (askWhere) whereFor = app else AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
+                            AppIcon(app, compact, onOpen = { if (askWhere) openOrAsk(app) else AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
                         }
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -344,7 +355,7 @@ fun AppsScreen(
                     }
                 }
                 items(shown, key = { it.packageName }) { app ->
-                    AppIcon(app, compact, onOpen = { if (askWhere) whereFor = app else AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
+                    AppIcon(app, compact, onOpen = { if (askWhere) openOrAsk(app) else AppCatalog.open(context, app.packageName, here = true) }, onHold = { menuFor = app })
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(8.dp)) }
             }
@@ -370,6 +381,13 @@ fun AppsScreen(
                     androidx.compose.material3.TextButton(onClick = { whereFor = null; AppCatalog.open(context, app.packageName, here = true) }) {
                         androidx.compose.material3.Text("The bottom screen")
                     }
+                    // Or settle it for every app (change it back in Settings › Screen).
+                    androidx.compose.material3.TextButton(onClick = {
+                        whereFor = null; AppsWhere.set(context, AppsWhere.TOP); AppCatalog.open(context, app.packageName, here = false)
+                    }) { androidx.compose.material3.Text("Always the top screen") }
+                    androidx.compose.material3.TextButton(onClick = {
+                        whereFor = null; AppsWhere.set(context, AppsWhere.BOTTOM); AppCatalog.open(context, app.packageName, here = true)
+                    }) { androidx.compose.material3.Text("Always the bottom screen") }
                 }
             },
             confirmButton = { androidx.compose.material3.TextButton(onClick = { whereFor = null }) { androidx.compose.material3.Text("Cancel") } },
@@ -513,4 +531,16 @@ private fun MenuRow(text: String, onClick: () -> Unit, muted: Boolean = false) {
             modifier = Modifier.padding(vertical = 13.dp, horizontal = 4.dp),
         )
     }
+}
+
+/** Which screen the Apps tab opens apps on: asked each time, or always the same one. */
+object AppsWhere {
+    const val ASK = "ask"
+    const val TOP = "top"
+    const val BOTTOM = "bottom"
+    val choice = kotlinx.coroutines.flow.MutableStateFlow(ASK)
+    private fun prefs(c: android.content.Context) = c.getSharedPreferences("apps", android.content.Context.MODE_PRIVATE)
+    fun load(c: android.content.Context) { choice.value = prefs(c).getString("where", ASK) ?: ASK }
+    fun set(c: android.content.Context, v: String) { prefs(c).edit().putString("where", v).apply(); choice.value = v }
+    fun label(v: String) = when (v) { TOP -> "Top screen"; BOTTOM -> "Bottom screen"; else -> "Ask each time" }
 }

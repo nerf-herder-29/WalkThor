@@ -565,6 +565,21 @@ private fun SettingsScreen(
                 }
             }
             SettingsSection.SCREEN -> {
+                SettingsGroup("Apps") {
+                    LaunchedEffect(Unit) { AppsWhere.load(context) }
+                    val appsWhere by AppsWhere.choice.collectAsState()
+                    SettingRow(
+                        "Open apps on",
+                        "Which screen an app opens on from the Apps tab",
+                        value = AppsWhere.label(appsWhere),
+                        divider = false,
+                        buttons = {
+                            listOf("Ask" to AppsWhere.ASK, "Top" to AppsWhere.TOP, "Bottom" to AppsWhere.BOTTOM).forEach { (label, v) ->
+                                PillButton(label, quiet = appsWhere != v) { AppsWhere.set(context, v) }
+                            }
+                        },
+                    )
+                }
                 SettingsGroup("Bottom screen") {
                     SettingLink("Auto-dim", "Home dims after this long while you play", value = AutoDim.label(dimDelay), divider = false) { pickDim = true }
                     var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }

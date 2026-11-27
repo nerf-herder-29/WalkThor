@@ -53,8 +53,12 @@ object Updates {
     const val DOLPHIN_PAGE = "https://dolphin-emu.org"
     private const val PLAY = "com.android.vending"
 
+    /** PokeDaisy moved its releases off GitHub to its own site (from 1.6.2.2). */
+    const val POKEDAISY_PAGE = "https://pokedaisy.com"
+
     /** Emulators WalkThor knows the release pages of, by a word in their name or package. */
     private val KNOWN = listOf(
+        "pokedaisy" to POKEDAISY_PAGE,
         "azahar" to "https://github.com/azahar-emu/azahar",
         "borked3ds" to "https://github.com/Borked3DS/Borked3DS",
         "melonds" to "https://github.com/rafaelvcaetano/melonDS-android",
@@ -147,10 +151,13 @@ object Updates {
         val u = runCatching { Uri.parse(url.trim().let { if ("://" in it) it else "https://$it" }) }.getOrNull() ?: return null
         val host = u.host ?: return null
         if (host.removePrefix("www.").removePrefix("dl.").equals("dolphin-emu.org", true)) return DOLPHIN_PAGE
+        // PokeDaisy's site, or its old GitHub page (from before it moved).
+        if (host.removePrefix("www.").equals("pokedaisy.com", true)) return POKEDAISY_PAGE
         val parts = u.pathSegments.filter { it.isNotBlank() }
         if (parts.size < 2) return null
         // Dolphin's GitHub has its code but no releases: its own site is where they are.
         if (host.equals("github.com", true) && parts[0].equals("dolphin-emu", true) && parts[1].equals("dolphin", true)) return DOLPHIN_PAGE
+        if (parts.take(2).any { it.contains("pokedaisy", ignoreCase = true) }) return POKEDAISY_PAGE
         return "https://$host/${parts[0]}/${parts[1].removeSuffix(".git")}"
     }
 
@@ -230,6 +237,7 @@ object Updates {
     /** The newest (non-pre-release) release on [page], from its site's API. */
     private fun fetchLatest(page: String): Fetch {
         if (page == DOLPHIN_PAGE) return fetchDolphin()
+        if (page == POKEDAISY_PAGE) return fetchPokeDaisy()
         val u = Uri.parse(page)
         val parts = u.pathSegments
         if (parts.size < 2) return Fetch.NotFound
@@ -277,7 +285,59 @@ object Updates {
     }
 
     /** Where to see [page]'s releases in a browser. */
-    fun releasesUrl(page: String) = if (page == DOLPHIN_PAGE) "https://dolphin-emu.org/download/" else "$page/releases"
+    fun releasesUrl(page: String) = when (page) {
+        DOLPHIN_PAGE -> "https://dolphin-emu.org/download/"
+        POKEDAISY_PAGE -> "https://pokedaisy.com/releases/"
+        else -> "$page/releases"
+    }
+
+    /**
+     * PokeDaisy's newest release, from its releases page on pokedaisy.com: the first app download
+     * there (pokedaisy.com/dl/v1.6.2.2/PokeDaisy-1.6.2.2.apk) and the first date (26 NOV 2026).
+     */
+    private fun fetchPokeDaisy(): Fetch = try {
+        val conn = (URL("https://pokedaisy.com/releases/").openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10_000; readTimeout = 15_000
+            setRequestProperty("User-Agent", "WalkThor")
+        }
+        when (val code = conn.responseCode) {
+            in 200..299 -> {
+                val html = conn.inputStream.bufferedReader().use { it.readText() }
+                val apk = Regex("""(?:https://pokedaisy\.com)?/dl/(v?[0-9][0-9A-Za-z.\-]*)/([^"'\s<>]+\.apk)""").find(html)
+                if (apk == null) Fetch.NotFound else {
+                    val tag = apk.groupValues[1].let { if (it.startsWith("v")) it else "v$it" }
+                    val url = "https://pokedaisy.com/dl/${apk.groupValues[1]}/${apk.groupValues[2]}"
+                    val published = Regex("""\b(\d{1,2}) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]* (\d{4})\b""", RegexOption.IGNORE_CASE)
+                        .find(html)?.let { m ->
+                            runCatching {
+                                val month = listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+                                    .indexOf(m.groupValues[2].uppercase()) + 1
+                                java.time.LocalDate.of(m.groupValues[3].toInt(), month, m.groupValues[1].toInt())
+                                    .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+                            }.getOrNull()
+                        } ?: 0L
+                    val size = runCatching {
+                        (URL(url).openConnection() as HttpURLConnection).run {
+                            requestMethod = "HEAD"; connectTimeout = 10_000; readTimeout = 15_000
+                            setRequestProperty("User-Agent", "WalkThor"); instanceFollowRedirects = true
+                            if (responseCode in 200..299) contentLengthLong.coerceAtLeast(0L) else 0L
+                        }
+                    }.getOrDefault(0L)
+                    Fetch.Found(
+                        tag,
+                        "PokeDaisy ${tag.removePrefix("v")}. PokeDaisy lists what changed on its releases page (pokedaisy.com/releases); tap Release page to read it.",
+                        published, url, size,
+                    )
+                }
+            }
+            404 -> Fetch.NotFound
+            403, 429 -> Fetch.Failed("pokedaisy.com asked to wait a while (too many checks)")
+            else -> Fetch.Failed("pokedaisy.com answered $code")
+        }
+    } catch (e: java.net.UnknownHostException) { Fetch.Offline
+    } catch (e: java.net.ConnectException) { Fetch.Offline
+    } catch (e: java.net.SocketTimeoutException) { Fetch.Offline
+    } catch (e: Throwable) { Fetch.Failed(e.javaClass.simpleName) }
 
     /**
      * Dolphin's newest release: the highest release tag in its code on GitHub (2609a, 2603a...),
