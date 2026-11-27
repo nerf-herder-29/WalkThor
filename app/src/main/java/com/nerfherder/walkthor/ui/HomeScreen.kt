@@ -117,7 +117,7 @@ fun HomeScreen(
         return
     }
     BoxWithConstraints(
-        Modifier.fillMaxSize().background(Color.Black)
+        Modifier.fillMaxSize().background(backdropOr(Color.Black))
             // Taps on empty space stay here (nothing underneath reacts).
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
@@ -353,7 +353,7 @@ private fun Dials(roomy: Boolean, sliders: Boolean, oneLine: Boolean = false) {
     val needsTop = target != ScreenControls.Target.BOTTOM && !canTop
     val lightColor = if (color == 0) Color.White.copy(alpha = 0.3f) else Color(StickLights.swatch(color))
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF0D0B0E))
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (LocalBackdrop.current) Color(0xD90D0B0E) else Color(0xFF0D0B0E))
             .border(1.dp, Color(0xFF1F1C20), RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

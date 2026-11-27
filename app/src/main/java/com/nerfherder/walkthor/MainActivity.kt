@@ -871,10 +871,9 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                         AutoDim.showingNowPlaying(holder, true)
                         onDispose { AutoDim.showingNowPlaying(holder, false) }
                     }
-                    Column(Modifier.fillMaxSize()) {
-                        bar()
-                        // Kept at Home's own shape (the tab bar takes some height), so it looks
-                        // exactly as it does without a game, just a little smaller.
+                    // Kept at Home's own shape (the tab bar takes some height), so it looks
+                    // exactly as it does without a game, just a little smaller.
+                    val homeBox: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
                         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                           Box(Modifier.fillMaxHeight().aspectRatio(620f / 540f, matchHeightConstraintsFirst = true)) {
                             com.nerfherder.walkthor.ui.HomeScreen(
@@ -884,6 +883,16 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                                 },
                             )
                           }
+                        }
+                    }
+                    // A game you started from WalkThor: Home over its hero picture, with its logo.
+                    val launched = remember(front?.pkg, front?.at) { launchedRom(context) }
+                    if (launched != null) {
+                        com.nerfherder.walkthor.ui.GameHome(launched, bar = bar, home = homeBox)
+                    } else {
+                        Column(Modifier.fillMaxSize()) {
+                            bar()
+                            homeBox()
                         }
                     }
                 }
