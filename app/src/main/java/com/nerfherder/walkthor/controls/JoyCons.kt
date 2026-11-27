@@ -101,7 +101,7 @@ object JoyCons {
 
     /** Both a left and a right Joy-Con are connected. */
     fun pairConnected(): Boolean {
-        val names = InputDevice.getDeviceIds().mapNotNull { InputDevice.getDevice(it)?.name }
+        val names = InputDevice.getDeviceIds().toList().mapNotNull { id -> InputDevice.getDevice(id)?.name }
         return names.any { isJoyCon(it) && "Left" in it } && names.any { isJoyCon(it) && "Right" in it }
     }
 
