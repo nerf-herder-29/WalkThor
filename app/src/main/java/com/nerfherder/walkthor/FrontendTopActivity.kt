@@ -79,6 +79,12 @@ class FrontendTopActivity : ComponentActivity() {
     }
 
     /** Buttons pressed while the top screen has the controller work the games below. */
+    /** The right stick looks around the bubble cloud (when the top screen has the controller). */
+    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        com.nerfherder.walkthor.ui.CloudLook.onMotion(event)
+        return super.dispatchGenericMotionEvent(event)
+    }
+
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (Frontend.keyHandler?.invoke(event) == true) return true
         // Otherwise (Settings, say) the bottom screen's WalkThor takes them.

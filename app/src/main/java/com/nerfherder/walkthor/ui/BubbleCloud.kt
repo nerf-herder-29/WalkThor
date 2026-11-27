@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -139,8 +140,42 @@ fun BubbleCloud(
     var dragging by remember { mutableStateOf(false) }
     val latestSelected by rememberUpdatedState(selected)
     val latestCount by rememberUpdatedState(count)
+    // The right stick looks around the cloud without changing the highlighted bubble: the view
+    // drifts while it's held, and glides back to the highlighted one a moment after you let go.
+    val look by CloudLook.stick.collectAsState()
+    var looking by remember { mutableStateOf(false) }
+    val reach = remember(count) {
+        (0 until count).maxOfOrNull { BubbleLayout.position(it, count).let { p -> hypot(p.x, p.y) } }?.plus(1f) ?: 1f
+    }
+    LaunchedEffect(look == Offset.Zero) {
+        if (look != Offset.Zero) {
+            looking = true
+            var last = androidx.compose.runtime.withFrameNanos { it }
+            while (true) {
+                val now = androidx.compose.runtime.withFrameNanos { it }
+                val dt = (now - last) / 1e9f
+                last = now
+                val s = CloudLook.stick.value
+                if (s == Offset.Zero) break
+                // Up to about seven bubbles a second at full tilt, gentler near the middle of the stick.
+                val speed = 7f * dt
+                var next = camera.value + Offset(s.x * abs(s.x), s.y * abs(s.y)) * speed
+                val r = hypot(next.x, next.y)
+                if (r > reach) next = next * (reach / r)
+                camera.snapTo(next)
+            }
+        } else if (looking) {
+            kotlinx.coroutines.delay(1500)
+            looking = false
+            if (count > 0 && !dragging) camera.animateTo(
+                BubbleLayout.position(latestSelected.coerceIn(0, count - 1), count),
+                spring(dampingRatio = 0.85f, stiffness = 60f),
+            )
+        }
+    }
     LaunchedEffect(selected, count) {
         if (count == 0 || dragging) return@LaunchedEffect
+        looking = false
         camera.animateTo(
             BubbleLayout.position(selected.coerceIn(0, count - 1), count),
             // Floaty: a soft glide that settles gently.
@@ -311,5 +346,25 @@ fun BubbleCloud(
                 }
             }
         }
+    }
+}
+
+/** The right stick, for looking around the bubble cloud (x and y each -1 to 1; zero when centred). */
+object CloudLook {
+    val stick = kotlinx.coroutines.flow.MutableStateFlow(Offset.Zero)
+
+    /** Takes the right stick from a controller's movement; true if it was one. */
+    fun onMotion(e: android.view.MotionEvent): Boolean {
+        val joystick = e.isFromSource(android.view.InputDevice.SOURCE_JOYSTICK) || e.isFromSource(android.view.InputDevice.SOURCE_GAMEPAD)
+        if (!joystick || e.action != android.view.MotionEvent.ACTION_MOVE) return false
+        // Most controllers put the right stick on Z / RZ. Only one without those has it on RX / RY
+        // (on others RX / RY can be the triggers, which mustn't move the view).
+        val hasZ = e.device?.getMotionRange(android.view.MotionEvent.AXIS_RZ) != null
+        val v = if (hasZ) Offset(e.getAxisValue(android.view.MotionEvent.AXIS_Z), e.getAxisValue(android.view.MotionEvent.AXIS_RZ))
+        else Offset(e.getAxisValue(android.view.MotionEvent.AXIS_RX), e.getAxisValue(android.view.MotionEvent.AXIS_RY))
+        val dead = 0.18f
+        val out = if (v.getDistance() < dead) Offset.Zero else v
+        if (out != stick.value) stick.value = out
+        return out != Offset.Zero
     }
 }
