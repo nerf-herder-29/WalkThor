@@ -30,7 +30,8 @@ object PadBluetooth {
     /** The permissions Android asks for before WalkThor may look for and pair Bluetooth devices. */
     val permissions: Array<String> = if (Build.VERSION.SDK_INT >= 31)
         arrayOf(android.Manifest.permission.BLUETOOTH_SCAN, android.Manifest.permission.BLUETOOTH_CONNECT)
-    else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    // Before Android 12 none are asked for (WalkThor never asks for your location).
+    else emptyArray()
 
     fun allowed(c: Context) = permissions.all { c.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
 
