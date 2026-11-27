@@ -19,7 +19,11 @@ import java.nio.ByteOrder
  * "WalkThor Joy-Cons", through Linux's virtual-device file (/dev/uhid).
  *
  * Ends by itself when both Joy-Cons have gone, or when WalkThor stops it.
- * `JoyConJoinTool <left hidraw> <right hidraw>`.
+ * While joined, it holds the two Joy-Cons' own input files to itself, so apps don't also see
+ * them as separate controllers (a second player, or presses they read as something else).
+ *
+ * `JoyConJoinTool <left hidraw> <right hidraw> [stick range]`: the range is how far a stick moves
+ * from rest to count as all the way (bigger is gentler).
  */
 object JoyConJoinTool {
     // Linux input event types and codes.
@@ -50,6 +54,8 @@ object JoyConJoinTool {
         val left = args.getOrNull(0) ?: run { say("ERR usage"); System.exit(0); return }
         val right = args.getOrNull(1) ?: run { say("ERR usage"); System.exit(0); return }
         say("starting: left $left, right $right")
+        range = args.getOrNull(2)?.toFloatOrNull()?.coerceIn(900f, 2600f) ?: 1700f
+        holdJoyCons()
         var cleanup: (() -> Unit)? = null
         try {
             val thor = thorController()
@@ -76,6 +82,42 @@ object JoyConJoinTool {
     }
 
     private fun say(s: String) { println(s); System.out.flush() }
+
+    /** How far a stick moves from rest to count as all the way. */
+    @Volatile private var range = 1700f
+
+    /** The Joy-Cons' own input files, held so only this program reads them (let go when it ends). */
+    private val held = ArrayList<FileInputStream>()
+
+    /**
+     * Holds each Joy-Con's own input file (the ones Android reads, including the copy the Thor's
+     * controller software makes of the right one), so Android stops seeing them as controllers
+     * of their own.
+     */
+    private fun holdJoyCons() {
+        val blocks = runCatching { File("/proc/bus/input/devices").readText().split("\n\n") }.getOrDefault(emptyList())
+        val nodes = blocks.filter { "Nintendo Switch" in it && "Joy-Con" in it }
+            .mapNotNull { Regex("Handlers=[^\\n]*?(event\\d+)").find(it)?.groupValues?.get(1) }
+        val os = runCatching { Class.forName("libcore.io.Libcore").getField("os").get(null) }.getOrNull()
+        // EVIOCGRAB: _IOW('E', 0x90, int).
+        val grab = 0x40044590
+        for (node in nodes) {
+            runCatching {
+                val input = FileInputStream("/dev/input/$node")
+                val fd = input.fd
+                val two = os!!.javaClass.methods.firstOrNull { it.name == "ioctlInt" && it.parameterTypes.size == 2 }
+                if (two != null) two.invoke(os, fd, grab)
+                else {
+                    val three = os.javaClass.methods.first { it.name == "ioctlInt" && it.parameterTypes.size == 3 }
+                    val ref = Class.forName("android.system.Int32Ref").getConstructor(Int::class.javaPrimitiveType).newInstance(1)
+                    three.invoke(os, fd, grab, ref)
+                }
+                held += input
+                say("holding $node")
+            }.onFailure { say("couldn't hold $node: ${(it.cause ?: it).javaClass.simpleName} ${(it.cause ?: it).message}") }
+        }
+        if (nodes.isEmpty()) say("no Joy-Con input files to hold")
+    }
 
     // ---- the Thor's own controller ----
 
@@ -213,8 +255,6 @@ object JoyConJoinTool {
     private fun read(path: String, isLeft: Boolean, sink: Sink) {
         val buf = ByteArray(64)
         var cx = -1; var cy = -1
-        // How far the stick goes from where it rests (measured from the first report).
-        val range = 1350f
         FileInputStream(File(path)).use { input ->
             while (true) {
                 val n = input.read(buf)
@@ -228,8 +268,11 @@ object JoyConJoinTool {
                 val sy = ((buf[o + 1].toInt() and 0xFF) shr 4) or ((buf[o + 2].toInt() and 0xFF) shl 4)
                 if (cx < 0) { cx = sx; cy = sy; say("${if (isLeft) "left" else "right"} reading (stick rests at $sx, $sy)") }
                 fun axis(v: Int, c: Int, flip: Boolean): Float {
-                    var f = ((v - c) / range).coerceIn(-1f, 1f)
-                    if (kotlin.math.abs(f) < 0.08f) f = 0f
+                    val raw = ((v - c) / range).coerceIn(-1f, 1f)
+                    val a = kotlin.math.abs(raw)
+                    // A dead zone at rest, then gentle near the middle and full at the edge.
+                    val dead = 0.1f
+                    val f = if (a < dead) 0f else Math.copySign(Math.pow(((a - dead) / (1 - dead)).toDouble(), 1.6).toFloat(), raw)
                     return if (flip) -f else f
                 }
                 synchronized(lock) {

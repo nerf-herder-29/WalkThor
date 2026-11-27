@@ -91,6 +91,26 @@ fun ColumnScope.ControllersPanel() {
                 "Whenever a left and a right Joy-Con are both connected",
                 checked = auto,
             ) { auto = it; JoyCons.setAutoJoin(context, it) }
+            var sens by remember { mutableStateOf(JoyCons.sensitivity(context)) }
+            SettingRow(
+                "Stick sensitivity",
+                "How quickly the Joy-Con sticks reach all the way. Gentle suits small sticks best",
+                value = listOf("Gentle", "Normal", "Quick")[sens],
+                buttons = {
+                    listOf("Gentle", "Normal", "Quick").forEachIndexed { i, label ->
+                        PillButton(label, quiet = sens != i) {
+                            if (sens == i) return@PillButton
+                            sens = i
+                            JoyCons.setSensitivity(context, i)
+                            // Joined already: join again so the new setting takes hold.
+                            if (active) {
+                                joining = true
+                                scope.launch { withContext(Dispatchers.IO) { JoyCons.join(context) }; joining = false }
+                            }
+                        }
+                    }
+                },
+            )
             problem?.let { if (!active) SettingsNote("Last try didn’t work: $it") }
         }
         SettingsNote("A, B, X and Y are the Thor’s A, B, X and Y, the Nintendo layout. Capture, motion and rumble aren’t passed on yet.")

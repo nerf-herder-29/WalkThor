@@ -81,7 +81,7 @@ object AynSystem {
      * Starts joining the Joy-Cons whose raw files are [left] and [right] (/dev/hidrawN) into one
      * controller ([com.nerfherder.walkthor.controls.JoyConJoinTool]), in the background. Not on the main thread.
      */
-    fun joinJoyCons(context: Context, left: String, right: String): Boolean {
+    fun joinJoyCons(context: Context, left: String, right: String, range: Int = 1700): Boolean {
         val raw = Regex("^/dev/hidraw\\d+$")
         if (!raw.matches(left) || !raw.matches(right)) return false
         val apk = context.applicationInfo.sourceDir
@@ -94,7 +94,7 @@ object AynSystem {
             script.writeText(
                 "pkill -f '[J]oyConJoinTool'\n" +
                     "cd /\n" +
-                    "CLASSPATH='$apk' setsid app_process /system/bin ${com.nerfherder.walkthor.controls.JoyConJoinTool::class.java.name} $left $right </dev/null >$log 2>&1 &\n" +
+                    "CLASSPATH='$apk' setsid app_process /system/bin ${com.nerfherder.walkthor.controls.JoyConJoinTool::class.java.name} $left $right ${range.coerceIn(900, 2600)} </dev/null >$log 2>&1 &\n" +
                     "sleep 1\n" +
                     "chmod 644 $log\n",
             )

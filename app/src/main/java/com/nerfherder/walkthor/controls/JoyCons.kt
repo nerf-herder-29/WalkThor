@@ -127,7 +127,7 @@ object JoyCons {
             ?.substringBefore(' ')?.substringAfterLast('/')?.let { "/dev/$it" }
         val left = find("2006") ?: return fail("the left Joy-Con isn’t connected")
         val right = find("2007") ?: return fail("the right Joy-Con isn’t connected")
-        if (!com.nerfherder.walkthor.AynSystem.joinJoyCons(c, left, right)) return fail("the joining couldn’t start")
+        if (!com.nerfherder.walkthor.AynSystem.joinJoyCons(c, left, right, stickRange(c))) return fail("the joining couldn’t start")
         // Wait for it to say it's working.
         var log: String? = null
         repeat(12) {
@@ -155,6 +155,12 @@ object JoyCons {
 
     private fun prefs(c: Context) = c.getSharedPreferences("controllers", Context.MODE_PRIVATE)
     fun autoJoin(c: Context) = prefs(c).getBoolean("autoJoin", true)
+
+    /** Stick sensitivity: 0 gentle, 1 normal, 2 quick. */
+    fun sensitivity(c: Context) = prefs(c).getInt("sensitivity", 0)
+    fun setSensitivity(c: Context, v: Int) { prefs(c).edit().putInt("sensitivity", v).apply() }
+    /** How far a Joy-Con stick moves to count as all the way, for [sensitivity]. */
+    private fun stickRange(c: Context) = when (sensitivity(c)) { 2 -> 1400; 1 -> 1700; else -> 2000 }
     fun setAutoJoin(c: Context, on: Boolean) {
         prefs(c).edit().putBoolean("autoJoin", on).apply()
         if (on) maybeJoin(c)
