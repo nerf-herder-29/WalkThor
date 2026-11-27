@@ -717,7 +717,10 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
                 ) { blackRevealed = true },
-        )
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            androidx.compose.material3.Text("Tap to open WalkThor", color = BookColors.TextMuted.copy(alpha = 0.5f), fontSize = androidx.compose.ui.unit.TextUnit(14f, androidx.compose.ui.unit.TextUnitType.Sp))
+        }
     } else if ((gameOn || host !is MainActivity) && !libraryOpen) {
         // ---- a game is in front (or this is the drawer): Home and the other tabs, along the top ----
         // (Only Home dims while these are up.)

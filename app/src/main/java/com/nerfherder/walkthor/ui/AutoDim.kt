@@ -234,14 +234,6 @@ fun AutoDimOverlay() {
         else -> 0f
     }
     val alpha by animateFloatAsState(target, tween(if (previewing) 0 else if (dimmed) 400 else 150), label = "dim")
-    val reported by AutoDim.statusBounds.collectAsState()
-    // Where the readout is now (as the screen dims), rather than where it was last laid out.
-    val status = remember(target > 0f, reported) {
-        AutoDim.liveStatusBounds() ?: reported
-    }
-    // Home has its own clock and battery instead of the small readout: that stays bright.
-    val homeClock = remember(target > 0f, reported) { if (status == null) AutoDim.liveHomeClockBounds() else null }
-
     if (alpha <= 0.001f) return
     Box(
         Modifier
@@ -259,24 +251,6 @@ fun AutoDimOverlay() {
             }
     ) {
         Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.background(Color.Black))
-        // The time, play time and battery stay at full brightness, drawn exactly over the originals.
-        status?.let { b ->
-            StatusClock(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }, anchor = false)
-        }
-        homeClock?.let { b ->
-            val width = with(androidx.compose.ui.platform.LocalDensity.current) { b.width.toDp() }
-            Box(Modifier.offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }.width(width)) {
-                ClockRow(null, AutoDim.homeClockRoomy, report = false)
-            }
-        }
-        // During a game: the tabs stay, exactly where the tab bar has them (a tab opens on touch
-        // down, since that same touch also wakes the screen), and the time in the middle.
-        if (onGameScreens && !previewing) {
-            val tabs by GameTabs.state.collectAsState()
-            val shade = Modifier.graphicsLayer { this.alpha = (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f) }
-            tabs?.let { t -> GameTabPillInBarPosition(t.selected, t.onSelect, Modifier.align(Alignment.TopStart).then(shade)) }
-            if (status == null && homeClock == null) StatusClock(Modifier.align(Alignment.Center).then(shade), anchor = false)
-        }
         // Performance check readout (⋮ → Performance check).
         val perfOn by com.nerfherder.walkthor.PerfCheck.enabled.collectAsState()
         if (perfOn) {
@@ -307,11 +281,12 @@ fun AutoDimOverlay() {
                 )
             }
         }
-        Text(
-            "Tap to wake",
-            color = BookColors.TextMuted.copy(alpha = 0.35f * alpha),
-            fontSize = 12.sp,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp),
+        // Just black, and how to come back.
+        if (!previewing) Text(
+            "Tap to open WalkThor",
+            color = BookColors.TextMuted.copy(alpha = 0.5f * (alpha / level.coerceAtLeast(0.01f)).coerceIn(0f, 1f)),
+            fontSize = 14.sp,
+            modifier = Modifier.align(Alignment.Center),
         )
     }
 }
