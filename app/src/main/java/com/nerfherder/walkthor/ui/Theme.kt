@@ -23,6 +23,7 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onKeyEvent
 import kotlinx.coroutines.launch
+import androidx.compose.ui.node.invalidateDraw
 
 /**
  * Modern dark chrome with antique accents: true-black (OLED) backgrounds, a single brass accent,
@@ -197,7 +198,7 @@ object PadIndication : androidx.compose.foundation.IndicationNodeFactory {
                         is androidx.compose.foundation.interaction.PressInteraction.Release,
                         is androidx.compose.foundation.interaction.PressInteraction.Cancel -> pressed = false
                     }
-                    androidx.compose.ui.node.invalidateDraw(this@Node)
+                    invalidateDraw()
                 }
             }
         }
