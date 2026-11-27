@@ -450,6 +450,16 @@ class MainActivity : ComponentActivity(), WalkThorHost {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // Joined Joy-Cons: only the joined controller counts here, not each Joy-Con as well.
         if (com.nerfherder.walkthor.controls.JoyCons.ignore(event)) return true
+        if (!GameFocus.gameRunning.value && !KeyBus.readerActive) {
+            // A pop-up open on this screen takes the press (when it came from the top screen, it
+            // would otherwise go to the screen behind the pop-up).
+            com.nerfherder.walkthor.ui.PadWindows.top(window.decorView)?.let { popup ->
+                com.nerfherder.walkthor.ui.leaveTouchMode(popup)
+                return popup.dispatchKeyEvent(event)
+            }
+            // The controller can only land on rows and buttons once this screen is out of touch mode.
+            if (event.action == KeyEvent.ACTION_DOWN && event.keyCode in PAD_KEYS) com.nerfherder.walkthor.ui.leaveTouchMode(window.decorView)
+        }
         // L1 and R1 move along the tabs with no game running (the guide reader keeps its own).
         if (!KeyBus.readerActive && com.nerfherder.walkthor.ui.MainTabs.shoulder?.invoke(event) == true) {
             AutoDim.interact()
@@ -1100,3 +1110,9 @@ internal fun launchedRom(context: android.content.Context): com.nerfherder.walkt
     return com.nerfherder.walkthor.data.RomLibrary.get(context).roms.value.firstOrNull { it.id == id }
         ?: com.nerfherder.walkthor.data.PinnedShortcuts.asRoms(com.nerfherder.walkthor.data.PinnedShortcuts.all.value).firstOrNull { it.id == id }
 }
+
+/** Presses that move or pick with the controller. */
+private val PAD_KEYS = setOf(
+    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_ENTER,
+)

@@ -232,6 +232,43 @@ fun Modifier.pressWithA(enabled: Boolean = true, onClick: () -> Unit): Modifier 
     true
 }
 
+/**
+ * Pop-ups (dialogs and menus) that are open on the bottom screen. When the top screen has
+ * Android's focus, WalkThor hands controller presses down to the bottom screen, and they go to
+ * the newest pop-up here rather than to the screen behind it.
+ */
+object PadWindows {
+    private val open = java.util.LinkedHashMap<android.view.View, Int>()
+
+    @Synchronized fun add(root: android.view.View) { open[root] = (open[root] ?: 0) + 1 }
+    @Synchronized fun remove(root: android.view.View) {
+        val n = (open[root] ?: return) - 1
+        if (n <= 0) open.remove(root) else open[root] = n
+    }
+    /** The newest pop-up still showing, other than [except] (the screen's own window). */
+    @Synchronized fun top(except: android.view.View): android.view.View? =
+        open.keys.lastOrNull { it !== except && it.isAttachedToWindow && it.isShown }
+}
+
+/** Lets this pop-up take controller presses handed down from the top screen (see [PadWindows]). */
+@Composable
+fun TakePadPresses() {
+    val root = androidx.compose.ui.platform.LocalView.current.rootView
+    androidx.compose.runtime.DisposableEffect(root) {
+        PadWindows.add(root)
+        onDispose { PadWindows.remove(root) }
+    }
+}
+
+/**
+ * Takes [root]'s window out of touch mode so the controller can land on rows and buttons there
+ * (Android only lets them take focus once a key has been pressed in that window, and presses
+ * handed down from the other screen don't count).
+ */
+fun leaveTouchMode(root: android.view.View) {
+    if (root.isInTouchMode) runCatching { (root.findFocus() ?: root).requestFocusFromTouch() }
+}
+
 /** A text button (in dialogs and menus) whose ring shows when the controller is on it. */
 @Composable
 fun FocusTextButton(
@@ -241,6 +278,7 @@ fun FocusTextButton(
     content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
 ) {
     var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    TakePadPresses()
     androidx.compose.material3.TextButton(
         onClick = onClick,
         enabled = enabled,

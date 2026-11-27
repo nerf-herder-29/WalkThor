@@ -522,6 +522,7 @@ private fun AppMenu(
 
 @Composable
 private fun MenuRow(text: String, onClick: () -> Unit, muted: Boolean = false) {
+    TakePadPresses()
     Column(Modifier.fillMaxWidth().pressWithA(onClick = onClick).clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
         Text(
