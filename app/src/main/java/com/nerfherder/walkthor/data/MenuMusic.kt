@@ -84,20 +84,44 @@ object MenuMusic {
     /** Your games are on screen ([showing]) or not. */
     fun showing(c: Context, showing: Boolean) {
         load(c)
+        if (showing && !wanted) waits = 0
         wanted = showing
         if (showing) play(c) else fadeOut()
     }
 
     private fun play(c: Context) {
         if (!_on.value || player != null) return
-        val am = c.getSystemService(AudioManager::class.java)
-        // Something else is playing (a music app): leave it be.
-        if (am?.isMusicActive == true) return
+        // A music app is playing: leave it be. (Not WalkThor's own taps, which count as "music" to
+        // Android, nor a game's sound still trailing off.) Look again in a moment, a few times, so
+        // the music still starts once a game's sound has stopped.
+        // Never over a game, and not until WalkThor knows what's in front (just after Android
+        // closed and restarted it mid-game, it briefly doesn't).
+        if (com.nerfherder.walkthor.GameFocus.gameRunning.value || com.nerfherder.walkthor.EmulatorWatch.gameShowing.value) return
+        if (!com.nerfherder.walkthor.EmulatorWatch.frontKnown.value &&
+            android.os.SystemClock.uptimeMillis() - android.os.Process.getStartUptimeMillis() < 6_000
+        ) {
+            main.postDelayed({ if (wanted && player == null) play(c) }, 1500)
+            return
+        }
+        if (otherMusic(c)) {
+            if (waits++ < 6) main.postDelayed({ if (wanted && player == null) play(c) }, 1500)
+            return
+        }
         Background.dispatcher.executor.execute {
             if (tracks.isEmpty()) tracks = listTracks(c).ifEmpty { builtIn(c) }.shuffled()
             main.post { if (wanted && player == null) startTrack(c) }
         }
     }
+
+    /** How many times it's waited for other sound to stop since you came to the games. */
+    private var waits = 0
+
+    /** Another app is playing music or video (not game sounds, which WalkThor's taps are too). */
+    private fun otherMusic(c: Context): Boolean = runCatching {
+        c.getSystemService(AudioManager::class.java)?.activePlaybackConfigurations.orEmpty().any {
+            it.audioAttributes.usage == AudioAttributes.USAGE_MEDIA
+        }
+    }.getOrDefault(false)
 
     private fun startTrack(c: Context) {
         if (tracks.isEmpty()) return

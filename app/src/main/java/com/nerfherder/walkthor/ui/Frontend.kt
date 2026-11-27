@@ -159,6 +159,12 @@ object Frontend {
         if (!topOn(activity)) return
         if (top?.get()?.isFinishing == false) return
         val display = runCatching { DisplayHelper.topDisplay(activity) }.getOrNull() ?: return
+        // Never over a game. Just after Android has closed and restarted WalkThor mid-game, what's
+        // up there isn't known for a moment: wait for it (the watchdog asks again shortly).
+        if (com.nerfherder.walkthor.EmulatorWatch.gameInFront(activity, display.displayId) == true) return
+        if (!com.nerfherder.walkthor.EmulatorWatch.frontKnown.value &&
+            android.os.SystemClock.uptimeMillis() - android.os.Process.getStartUptimeMillis() < 6_000
+        ) return
         val intent = Intent(activity, com.nerfherder.walkthor.FrontendTopActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         val options = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(display.displayId).toBundle()
