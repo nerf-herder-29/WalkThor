@@ -86,18 +86,28 @@ object AynSystem {
         if (!raw.matches(left) || !raw.matches(right)) return false
         val apk = context.applicationInfo.sourceDir
         if ("'" in apk) return false
-        run("pkill -f JoyConJoinTool")
-        return run(
-            "(CLASSPATH='$apk' setsid app_process /system/bin ${com.nerfherder.walkthor.controls.JoyConJoinTool::class.java.name} $left $right " +
-                "</dev/null >$OUT_DIR/joycons.log 2>&1 &)",
-        ) != null
+        // The helper cuts off long commands, so the start-up goes in a little script in
+        // WalkThor's own files, and the helper is asked only to run that.
+        val log = "$OUT_DIR/joycons.log"
+        val script = java.io.File(context.filesDir, "joycons.sh")
+        runCatching {
+            script.writeText(
+                "pkill -f '[J]oyConJoinTool'\n" +
+                    "cd /\n" +
+                    "CLASSPATH='$apk' setsid app_process /system/bin ${com.nerfherder.walkthor.controls.JoyConJoinTool::class.java.name} $left $right </dev/null >$log 2>&1 &\n" +
+                    "sleep 1\n" +
+                    "chmod 644 $log\n",
+            )
+            script.setReadable(true, false)
+        }.onFailure { return false }
+        return run("sh $OUT_DIR/joycons.sh") != null
     }
 
     /** Stops joining the Joy-Cons (they go back to being two controllers). Not on the main thread. */
-    fun separateJoyCons() { run("pkill -f JoyConJoinTool") }
+    fun separateJoyCons() { run("pkill -f '[J]oyConJoinTool'") }
 
     /** What the joining program last said ("OK", or why it stopped), for the Controllers screen. */
-    fun joyConsLog(): String? = shellLines("cat $OUT_DIR/joycons.log; echo running: \$(pgrep -f JoyConJoinTool | head -1)")
+    fun joyConsLog(): String? = shellLines("cat $OUT_DIR/joycons.log; echo running: \$(pgrep -f '[J]oyConJoinTool' | head -1)")
         ?.joinToString(" / ")?.ifBlank { null }
 
     /** WalkThor's own files folder (the helper, as the system, can write there; WalkThor can read). */
