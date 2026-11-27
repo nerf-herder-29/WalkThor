@@ -43,7 +43,15 @@ fun ColumnScope.ControllersPanel() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var pads by remember { mutableStateOf(JoyCons.pads(context)) }
-    LaunchedEffect(Unit) { while (true) { delay(2000); pads = JoyCons.pads(context) } }
+    LaunchedEffect(Unit) {
+        var n = 0
+        while (true) {
+            // Whether they're joined, asked of the system now and then (WalkThor may have restarted since).
+            if (n++ % 5 == 0) withContext(Dispatchers.IO) { JoyCons.refresh() }
+            delay(2000)
+            pads = JoyCons.pads(context)
+        }
+    }
     val active by JoyCons.active.collectAsState()
     val problem by JoyCons.problem.collectAsState()
     var joining by remember { mutableStateOf(false) }

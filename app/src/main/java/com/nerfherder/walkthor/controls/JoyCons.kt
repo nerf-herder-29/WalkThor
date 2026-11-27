@@ -170,11 +170,18 @@ object JoyCons {
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     @Volatile private var watching = false
 
+    /**
+     * Asks the system whether the Joy-Cons are joined (the joining program keeps running even
+     * if Android closed and restarted WalkThor, which forgets). Not on the main thread.
+     */
+    fun refresh() { active.value = com.nerfherder.walkthor.AynSystem.joyConsRunning() }
+
     /** Joins the Joy-Cons by itself whenever both connect (if that's on), and notices them going. */
     fun watch(c: Context) {
         if (watching) return
         watching = true
         val app = c.applicationContext
+        worker.execute { refresh() }
         val im = app.getSystemService(InputManager::class.java) ?: return
         im.registerInputDeviceListener(object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(id: Int) { main.removeCallbacksAndMessages(this@JoyCons); main.postDelayed({ maybeJoin(app) }, 1500) }
@@ -188,8 +195,11 @@ object JoyCons {
     }
 
     private fun maybeJoin(c: Context) {
-        if (active.value || !autoJoin(c) || !pairConnected()) return
-        worker.execute { if (!active.value && pairConnected()) join(c) }
+        if (!autoJoin(c) || !pairConnected()) return
+        worker.execute {
+            refresh()
+            if (!active.value && pairConnected()) join(c)
+        }
     }
 
     /** Everything above as text, to read or share. */

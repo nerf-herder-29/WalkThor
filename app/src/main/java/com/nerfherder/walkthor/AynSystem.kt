@@ -107,8 +107,15 @@ object AynSystem {
     fun separateJoyCons() { run("pkill -f '[J]oyConJoinTool'") }
 
     /** What the joining program last said ("OK", or why it stopped), for the Controllers screen. */
-    fun joyConsLog(): String? = shellLines("cat $OUT_DIR/joycons.log; echo running: \$(pgrep -f '[J]oyConJoinTool' | head -1)")
-        ?.joinToString(" / ")?.ifBlank { null }
+    fun joyConsLog(): String? {
+        val log = shellLines("cat $OUT_DIR/joycons.log")
+            ?: return "(the Thor’s system helper couldn’t be reached: ${problem ?: "no answer"})"
+        val running = joyConsRunning()
+        return (log + "running: ${if (running) "yes" else "no"}").joinToString(" / ")
+    }
+
+    /** Whether the joining program is running now (asked of the system, not remembered). Not on the main thread. */
+    fun joyConsRunning(): Boolean = shellLines("pgrep -f '[J]oyConJoinTool'")?.any { it.trim().toIntOrNull() != null } == true
 
     /** WalkThor's own files folder (the helper, as the system, can write there; WalkThor can read). */
     private val OUT_DIR = "/data/data/${BuildConfig.APPLICATION_ID}/files"
