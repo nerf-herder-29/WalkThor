@@ -78,7 +78,7 @@ object MenuMusic {
     fun setVolume(c: Context, v: Float) {
         prefs(c).edit().putFloat("volume", v).apply()
         _volume.value = v
-        runCatching { player?.setVolume(v, v) }
+        runCatching { player?.setVolume(loud(v), loud(v)) }
     }
 
     /** Your games are on screen ([showing]) or not. */
@@ -113,6 +113,9 @@ object MenuMusic {
         }
     }
 
+    /** The volume you chose, played a quarter louder (capped at full). */
+    private fun loud(v: Float) = (v * 1.25f).coerceAtMost(1f)
+
     /** How many times it's waited for other sound to stop since you came to the games. */
     private var waits = 0
 
@@ -139,7 +142,7 @@ object MenuMusic {
             mp.setOnPreparedListener { ready ->
                 ready.setVolume(0f, 0f)
                 ready.start()
-                fadeTo(ready, 0f, _volume.value)
+                fadeTo(ready, 0f, loud(_volume.value))
             }
             mp.prepareAsync()
         }.onFailure {
@@ -162,7 +165,7 @@ object MenuMusic {
     private fun fadeOut() {
         val mp = player ?: return
         player = null
-        fadeTo(mp, _volume.value, 0f) { runCatching { mp.stop() }; runCatching { mp.release() } }
+        fadeTo(mp, loud(_volume.value), 0f) { runCatching { mp.stop() }; runCatching { mp.release() } }
     }
 
     private fun stopNow() {

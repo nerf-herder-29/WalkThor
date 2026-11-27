@@ -840,8 +840,11 @@ private fun TopSpotlightBody(spot: Spotlight?) {
             }
         }
         Row(
-            Modifier.align(Alignment.BottomEnd).padding(end = 55.dp, bottom = 56.dp),
+            Modifier.align(Alignment.BottomEnd).padding(end = 55.dp, bottom = 56.dp)
+                .clip(RoundedCornerShape(50)).background(Color(0xB3000000))
+                .padding(horizontal = 16.dp, vertical = 9.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Hint("A", "Play")
             Hint("Y", if (spot.guide != null) "Guide" else "Add a guide")
@@ -854,11 +857,11 @@ private fun TopSpotlightBody(spot: Spotlight?) {
 private fun Hint(key: String, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
-            Modifier.size(22.dp).border(1.5.dp, Color(0xFF4A4540), CircleShape),
+            Modifier.size(24.dp).border(1.5.dp, Color(0xE6FFFFFF), CircleShape),
             contentAlignment = Alignment.Center,
-        ) { Text(key, color = BookColors.Text, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-        Spacer(Modifier.width(7.dp))
-        Text(label, color = BookColors.TextMuted, fontSize = 13.sp)
+        ) { Text(key, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -877,13 +880,17 @@ internal fun ClockLine(modifier: Modifier) {
     val battery = remember(now / 60_000L) {
         context.getSystemService(android.os.BatteryManager::class.java)?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
     }
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    // On a dark pill so it reads over any picture.
+    Row(
+        modifier.clip(RoundedCornerShape(50)).background(Color(0xB3000000)).padding(horizontal = 14.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
         Text(
             android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(now)),
-            color = BookColors.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
         )
         if (battery != null && battery in 0..100) {
-            Text("$battery%", color = BookColors.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text("$battery%", color = Color(0xFFE6E0D6), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
