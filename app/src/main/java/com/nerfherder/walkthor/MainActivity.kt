@@ -34,6 +34,7 @@ import com.nerfherder.walkthor.ui.GuideIntro
 import com.nerfherder.walkthor.ui.BookColors
 import com.nerfherder.walkthor.ui.ControlsScreen
 import com.nerfherder.walkthor.ui.GameTab
+import com.nerfherder.walkthor.ui.asGame
 import com.nerfherder.walkthor.ui.GameTabBar
 import com.nerfherder.walkthor.ui.GameTabs
 import com.nerfherder.walkthor.ui.MirrorScreen
@@ -565,11 +566,15 @@ private fun WalkThorApp(initialBookId: String?, boot: Boolean, host: WalkThorHos
         libraryOpen = false
         fromAll = false
         val first = pinned ?: GameTab.HOME
-        if (first == GameTab.GUIDE && lastOpened != null && books.any { it.id == lastOpened }) {
-            openId = lastOpened
-        } else {
-            openId = null
-            gameTab = first
+        // On the Guide tab: the guide for the game WalkThor just started, if it has one.
+        val launched = if (first == GameTab.GUIDE) launchedRom(context) else null
+        val launchedGuide = launched?.let { com.nerfherder.walkthor.data.GameGuides.pick(context, books, it.asGame()) }
+        when {
+            launchedGuide != null -> openId = launchedGuide.id
+            // A game of yours with no guide yet: the guides to pick from, not another game's.
+            launched != null -> { openId = null; gameTab = first }
+            first == GameTab.GUIDE && lastOpened != null && books.any { it.id == lastOpened } -> openId = lastOpened
+            else -> { openId = null; gameTab = first }
         }
         // A game is starting and may need a lot of memory: let go of cached pages first.
         com.nerfherder.walkthor.data.PdfSource.trimAll()
@@ -1053,3 +1058,11 @@ internal object DrawerPlace {
  */
 internal fun gameInFront(): Boolean =
     if (EmulatorWatch.frontKnown.value) EmulatorWatch.emulatorShowing.value else EmulatorWatch.session.value != null
+
+/** The game WalkThor started that's playing now (in the app in front), or null. */
+internal fun launchedRom(context: android.content.Context): com.nerfherder.walkthor.data.Rom? {
+    val front = EmulatorWatch.topGame(context)?.pkg
+    val id = com.nerfherder.walkthor.data.GamePlays.current(context, front) ?: return null
+    return com.nerfherder.walkthor.data.RomLibrary.get(context).roms.value.firstOrNull { it.id == id }
+        ?: com.nerfherder.walkthor.data.PinnedShortcuts.asRoms(com.nerfherder.walkthor.data.PinnedShortcuts.all.value).firstOrNull { it.id == id }
+}

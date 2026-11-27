@@ -96,6 +96,9 @@ object PinnedShortcuts {
     }
 
     /** Starts the shortcut; returns null if it started, or what went wrong. */
+    /** The app [rom]'s shortcut opens. */
+    fun appOf(c: Context, rom: Rom): String? = find(c, rom)?.pkg
+
     fun start(c: Context, rom: Rom, options: Bundle?): String? {
         val p = find(c, rom) ?: return "That shortcut is gone"
         val la = c.getSystemService(LauncherApps::class.java) ?: return "Android's launcher service isn't there"

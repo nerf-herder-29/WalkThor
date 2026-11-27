@@ -33,7 +33,9 @@ object DisplayHelper {
     val alwaysBottom = MutableStateFlow(true)
 
     fun init(context: Context) {
-        alwaysBottom.value = prefs(context).getBoolean(KEY_ALWAYS_BOTTOM, true)
+        // WalkThor's own screens always open on the bottom (the top has the games' spotlight), so an
+        // old "off" from the setting that used to be here no longer counts.
+        alwaysBottom.value = true
     }
 
     fun setAlwaysBottom(context: Context, on: Boolean) {

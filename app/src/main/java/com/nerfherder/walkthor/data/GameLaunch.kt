@@ -77,7 +77,7 @@ object GameLaunch {
 
     /** The emulator WalkThor would start [rom] in ("Eden"), or null if there's none. */
     fun emulatorName(c: Context, rom: Rom): String? {
-        preferred(c, rom.system)?.let { id -> choices(c, rom.system).firstOrNull { it.id == id }?.let { return it.label } }
+        (preferredFor(c, rom) ?: preferred(c, rom.system))?.let { id -> choices(c, rom.system).firstOrNull { it.id == id }?.let { return it.label } }
         return choices(c, rom.system).firstOrNull()?.label
     }
 
@@ -125,6 +125,11 @@ object GameLaunch {
     }
 
     private fun prefs(c: Context) = c.getSharedPreferences("launch", Context.MODE_PRIVATE)
+    /** The emulator you chose for [rom] alone, or null to use its system's. */
+    fun preferredFor(c: Context, rom: Rom): String? = prefs(c).getString("game:${rom.id}", null)
+    fun setPreferredFor(c: Context, rom: Rom, id: String?) {
+        prefs(c).edit().apply { if (id == null) remove("game:${rom.id}") else putString("game:${rom.id}", id) }.apply()
+    }
     /** Your emulator for [system], or null to let WalkThor pick. */
     fun preferred(c: Context, system: String): String? = prefs(c).getString(system, null)
     fun setPreferred(c: Context, system: String, id: String?) {
@@ -141,7 +146,7 @@ object GameLaunch {
             val options = gameDisplay?.let { ActivityOptions.makeBasic().setLaunchDisplayId(it.displayId).toBundle() }
             val error = PinnedShortcuts.start(c, rom, options)
             log(c, "${rom.id}: " + (error ?: "started the shortcut"))
-            if (error == null) GamePlays.started(c, rom)
+            if (error == null) GamePlays.started(c, rom, PinnedShortcuts.appOf(c, rom))
             return error
         }
         val system = RomLibrary.system(rom.system)?.name ?: rom.system
@@ -179,8 +184,8 @@ object GameLaunch {
             tagged += Triple("pkg:$pkg", label(c, pkg), Intent(Intent.ACTION_VIEW).setPackage(pkg).setData(uri))
         }
         addEs(retroArch = true)
-        // The emulator you chose for this system (Settings → Emulators) goes first.
-        val chosen = preferred(c, rom.system)
+        // The emulator you chose for this game, or else for its system (Settings → Emulators), goes first.
+        val chosen = preferredFor(c, rom) ?: preferred(c, rom.system)
         val tries = tagged.sortedBy { if (it.first == chosen) 0 else 1 }.map { it.second to it.third }
         if (tries.isEmpty()) {
             log(c, "${rom.id}: no emulator. ${why.joinToString("; ")}")
@@ -203,7 +208,7 @@ object GameLaunch {
             val result = runCatching { c.startActivity(intent, options) }
             if (result.isSuccess) {
                 log(c, "${rom.id}: started with $name (${intent.action}, ${intent.component?.flattenToShortString() ?: intent.`package`})")
-                GamePlays.started(c, rom)
+                GamePlays.started(c, rom, target)
                 return null
             }
             val e = result.exceptionOrNull()

@@ -566,8 +566,7 @@ private fun SettingsScreen(
             }
             SettingsSection.SCREEN -> {
                 SettingsGroup("Bottom screen") {
-                    SettingSwitch("Always open on bottom screen", checked = alwaysBottom, divider = false) { actions.onToggleAlwaysBottom(it) }
-                    SettingLink("Auto-dim", "Home dims after this long while you play", value = AutoDim.label(dimDelay)) { pickDim = true }
+                    SettingLink("Auto-dim", "Home dims after this long while you play", value = AutoDim.label(dimDelay), divider = false) { pickDim = true }
                     var gameOff by remember { mutableStateOf(com.nerfherder.walkthor.BottomOff.gameEnabled(context)) }
                     SettingSwitch(
                         "Bottom screen off during games",
@@ -575,9 +574,6 @@ private fun SettingsScreen(
                         else "Needs accessibility access switched on",
                         checked = gameOff && swipeToOpen,
                     ) { if (swipeToOpen) { gameOff = it; com.nerfherder.walkthor.BottomOff.setGameEnabled(context, it) } }
-                    actions.onSwapScreen?.let { swap ->
-                        SettingLink("Move to the other screen") { onDismiss(); swap() }
-                    }
                 }
                 SettingsGroup("Performance overlay") {
                     var topFps by remember { mutableStateOf(com.nerfherder.walkthor.TopFps.enabled(context)) }
@@ -658,7 +654,7 @@ private fun SettingsScreen(
                     // Always here: which apps are emulators also decides when the drawer has its tabs.
                     SettingLink("Choose emulators", "The apps that count as games. Tick any WalkThor doesn't know") { showEmulators = true }
                 }
-                SettingsNote("While one of these is in front, the drawer has its tabs along the top and play time counts.")
+                SettingsNote("While one of these is in front, the drawer has its tabs along the top and play time counts. To start one game in a different emulator from the rest of its system, press X on it (or hold it) and choose Start it in.")
             }
             SettingsSection.GUIDES -> {
                 SettingsGroup("ROMs folder") {
@@ -683,22 +679,16 @@ private fun SettingsScreen(
                         )
                     }
                 }
-                SettingsNote("WalkThor only reads the names in that folder, never the games themselves. Add a guide to a game from your library.")
-                val artLib = remember { com.nerfherder.walkthor.data.GameArt.get(context) }
-                val artFolder by artLib.folder.collectAsState()
-                val artScanning by artLib.scanning.collectAsState()
-                val artVersion by artLib.version.collectAsState()
-                LaunchedEffect(Unit) { artLib.load() }
-                val frontOn by com.nerfherder.walkthor.ui.Frontend.enabled(context).collectAsState()
+                SettingsNote("WalkThor only reads the names in that folder, never the games themselves. To add a guide to a game, press X on it (or hold it) on your games.")
                 var topOn by remember { mutableStateOf(com.nerfherder.walkthor.ui.Frontend.topOn(context)) }
                 SettingsGroup("Games screen") {
-                    val hiddenIds = remember(artVersion, com.nerfherder.walkthor.data.GamePlays.changed.collectAsState().value) {
+                    val hiddenIds = remember(com.nerfherder.walkthor.data.GamePlays.changed.collectAsState().value) {
                         com.nerfherder.walkthor.data.GamePlays.hidden(context)
                     }
                     var showHidden by remember { mutableStateOf(false) }
                     SettingRow(
                         "Hidden games",
-                        if (hiddenIds.isEmpty()) "None. Press X on a game (or hold it) to hide it" else "${hiddenIds.size} hidden from your games",
+                        if (hiddenIds.isEmpty()) "None. To hide one, press X on it (or hold it) and choose Hide this game" else "${hiddenIds.size} hidden from your games",
                         divider = false,
                         buttons = if (hiddenIds.isEmpty()) null else ({ PillButton("Show…") { showHidden = true } }),
                     )
@@ -735,7 +725,7 @@ private fun SettingsScreen(
                     var uiSounds by remember { mutableStateOf(com.nerfherder.walkthor.data.UiSounds.enabled(context)) }
                     SettingSwitch(
                         "Sounds",
-                        "Soft taps as you move between games, a chime when you pick something, and a chord when a game starts",
+                        "Soft taps as you move between games, a soft note when you change tabs or pick something, and a gentle swell when a game starts",
                         checked = uiSounds,
                     ) { uiSounds = it; com.nerfherder.walkthor.data.UiSounds.setEnabled(context, it) }
                     // Background music on your games.

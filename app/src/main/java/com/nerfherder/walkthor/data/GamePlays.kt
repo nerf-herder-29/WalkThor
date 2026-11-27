@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 object GamePlays {
     private const val PREFS = "game_plays"
     private const val KEY_CURRENT = "current"
+    private const val KEY_CURRENT_PKG = "currentPkg"
     private const val KEY_FAVS = "favorites"
 
     private val _changed = MutableStateFlow(0)
@@ -23,10 +24,22 @@ object GamePlays {
 
     private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** [rom] was just started. */
-    fun started(c: Context, rom: Rom) {
-        prefs(c).edit().putString(KEY_CURRENT, rom.id).putLong("last:${rom.id}", System.currentTimeMillis()).apply()
+    /** [rom] was just started, in the app [pkg] (when known). */
+    fun started(c: Context, rom: Rom, pkg: String? = null) {
+        prefs(c).edit().putString(KEY_CURRENT, rom.id).putString(KEY_CURRENT_PKG, pkg.orEmpty())
+            .putLong("last:${rom.id}", System.currentTimeMillis()).apply()
         _changed.value++
+    }
+
+    /**
+     * The game WalkThor last started, if it's the one playing in [frontPkg] (the app in front):
+     * a game started from somewhere else isn't taken for it.
+     */
+    fun current(c: Context, frontPkg: String?): String? {
+        val p = prefs(c)
+        val id = p.getString(KEY_CURRENT, null) ?: return null
+        val pkg = p.getString(KEY_CURRENT_PKG, "").orEmpty()
+        return id.takeIf { pkg.isEmpty() || frontPkg == null || pkg == frontPkg }
     }
 
     /** Back on the games: the game started from here is over. */

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -380,6 +381,8 @@ fun FrontendScreen(
     LaunchedEffect(launchAnim.value) { Frontend.launching.value = launchAnim.value.takeIf { it > 0f } }
     /** The game whose options are open (X, or a long press). */
     var menuFor by remember { mutableStateOf<Rom?>(null) }
+    /** The game whose emulator you're choosing. */
+    var emulatorFor by remember { mutableStateOf<Rom?>(null) }
     // Choosing your own icon, hero picture or logo for a game.
     var picking by remember { mutableStateOf<Pair<Rom, GameArt.Kind>?>(null) }
     val pickPicture = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -471,7 +474,7 @@ fun FrontendScreen(
 
     /** A button press, from either screen. */
     fun onKey(k: KeyEvent): Boolean {
-        if (searching || choosingFor != null || launchError != null || menuFor != null) return false
+        if (searching || choosingFor != null || launchError != null || menuFor != null || emulatorFor != null) return false
         if (k.action != KeyEvent.ACTION_DOWN) return k.keyCode in HANDLED
         val rom = shown.getOrNull(selected)
         when (k.keyCode) {
@@ -645,6 +648,35 @@ fun FrontendScreen(
                     }
                     androidx.compose.material3.TextButton(onClick = { menuFor = null; choosingFor = rom }) {
                         Text(if (guideFor[rom.id] != null) "Change its guide" else "Add a guide")
+                    }
+                    if (rom.system != com.nerfherder.walkthor.data.PinnedShortcuts.SYSTEM) {
+                        val now = remember(rom.id) { com.nerfherder.walkthor.data.GameLaunch.emulatorName(context, rom) }
+                        androidx.compose.material3.TextButton(onClick = { menuFor = null; emulatorFor = rom }) {
+                            Text("Start it in…" + (now?.let { " ($it)" } ?: ""))
+                        }
+                    }
+                }
+            },
+        )
+    }
+    emulatorFor?.let { rom ->
+        val options = remember(rom.id) { com.nerfherder.walkthor.data.GameLaunch.choices(context, rom.system) }
+        val mine = remember(rom.id) { com.nerfherder.walkthor.data.GameLaunch.preferredFor(context, rom) }
+        val systemName = RomLibrary.system(rom.system)?.name ?: "this system’s"
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { emulatorFor = null },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { emulatorFor = null }) { Text("Cancel") } },
+            title = { Text("Start ${rom.title} in") },
+            text = {
+                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                    if (options.isEmpty()) Text("No emulator for it is installed.", fontSize = 13.sp)
+                    androidx.compose.material3.TextButton(onClick = {
+                        com.nerfherder.walkthor.data.GameLaunch.setPreferredFor(context, rom, null); emulatorFor = null
+                    }) { Text((if (mine == null) "✓ " else "") + "The same as other $systemName games") }
+                    options.forEach { o ->
+                        androidx.compose.material3.TextButton(onClick = {
+                            com.nerfherder.walkthor.data.GameLaunch.setPreferredFor(context, rom, o.id); emulatorFor = null
+                        }) { Text((if (mine == o.id) "✓ " else "") + o.label) }
                     }
                 }
             },
