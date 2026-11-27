@@ -35,6 +35,7 @@ object Shortcuts {
         LOCK_BOTTOM("Lock controller to bottom screen"),
         PERF_MODE("Next performance mode"),
         FAN_MODE("Next fan mode"),
+        SLEEP("Sleep (screens off)"),
     }
 
     enum class Trigger(val key: String, val label: String, val detail: String) {
@@ -50,6 +51,7 @@ object Shortcuts {
         BACK_R1("backR1", "Back + R1", "Hold Back and press R1"),
         BACK_L2("backL2", "Back + L2", "Hold Back and press L2"),
         BACK_R2("backR2", "Back + R2", "Hold Back and press R2"),
+        BACK_SELECT("backSelect", "Back + Select", "Hold Back and press Select"),
         ;
 
         /** One of the combinations with Back held. */
@@ -79,6 +81,7 @@ object Shortcuts {
             Trigger.AYN_DOUBLE -> Action.AYN_DRAWER
             Trigger.AYN_HOLD -> if (prefs(c).getBoolean("bottomOffHold", false)) Action.DIM else Action.NOTHING
             Trigger.BACK_DOUBLE -> if (prefs(c).getBoolean("tripleClose", false)) Action.CLOSE_ALL else Action.NOTHING
+            Trigger.BACK_SELECT -> Action.SLEEP
             else -> Action.NOTHING
         }
         cache[t] = action
@@ -116,6 +119,7 @@ object Shortcuts {
         android.view.KeyEvent.KEYCODE_BUTTON_R1 -> Trigger.BACK_R1
         android.view.KeyEvent.KEYCODE_BUTTON_L2 -> Trigger.BACK_L2
         android.view.KeyEvent.KEYCODE_BUTTON_R2 -> Trigger.BACK_R2
+        android.view.KeyEvent.KEYCODE_BUTTON_SELECT -> Trigger.BACK_SELECT
         else -> null
     }
 
@@ -254,6 +258,12 @@ object Shortcuts {
         val app = service.applicationContext
         when (a) {
             Action.NOTHING, Action.AYN_DRAWER -> Unit
+            // Like a short press of the power button: both screens off, the Thor asleep.
+            Action.SLEEP -> main.postDelayed({
+                val ok = runCatching { service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN) }.getOrDefault(false)
+                // Otherwise the power key itself, through the Thor's system helper.
+                if (!ok) worker.execute { AynSystem.shell("input keyevent 223") }
+            }, 250)
             Action.DRAWER -> {
                 val wasUp = Drawer.shown.value || AppState.resumedDisplayId != null
                 service.toggleDrawer()
