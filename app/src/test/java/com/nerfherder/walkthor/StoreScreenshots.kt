@@ -844,6 +844,8 @@ class StoreScreenshots {
     @Config(qualifiers = "w960dp-h540dp-land-xhdpi")
     fun frontendTop() {
         val rom = frontendRoms()[0]
+        // A still screenshot: the top screen's movement would never let the test go idle.
+        com.nerfherder.walkthor.ui.Frontend.setTopMotion(androidx.test.core.app.ApplicationProvider.getApplicationContext(), false)
         content {
             com.nerfherder.walkthor.ui.TopSpotlight(
                 com.nerfherder.walkthor.ui.Spotlight(
