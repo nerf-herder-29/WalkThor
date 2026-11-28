@@ -67,7 +67,9 @@ colour shows where you are, and A picks.
 - **A cloud of bubbles** on the bottom screen, spiralling out from the game you're on, each ringed in its system's
   colour and label. Flick through with a touch, or use the D-pad; it floats gently and ripples when a game starts.
 - **The top screen** shows the highlighted game: its hero picture with the logo in the middle, its system, when
-  you last played and for how long, and whether it has a guide. It fades smoothly as you move.
+  you last played and for how long, and whether it has a guide. Each game settles in as you move to it, then its
+  picture drifts slowly and its logo floats, and tilting the Thor shifts them like looking through a window (all
+  of it can be switched off).
 - **Starts games in 100+ emulators.** WalkThor's own tested launchers (Eden, Dolphin, ARMSX2, GameNative,
   PokeDaisy) come first, then every Android emulator [ES-DE](https://es-de.org) knows how to start, from its
   published launch rules: standalone emulators and RetroArch with each of its cores. Choose the emulator per
@@ -108,7 +110,8 @@ colour shows where you are, and A picks.
 - **Controllers:** pair controllers without leaving WalkThor, see which controller a press came from, and use a
   **pair of Joy-Cons as the Thor's own controls**. They join by themselves when both connect, so every emulator
   already set up for the Thor just works with them, with Home as the Thor's Back button and adjustable stick
-  sensitivity. This uses the system helper built into the Thor's firmware, so it needs the Thor's *Force SELinux*
+  sensitivity. **Any other Bluetooth or USB controller** can join the same way, with its face buttons by letter or
+  by position. This uses the system helper built into the Thor's firmware, so it needs the Thor's *Force SELinux*
   setting off.
 
 ### Guides
