@@ -934,15 +934,15 @@ private fun heroMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Fl
 /** The logo: glides in from the right as the game comes up, then floats gently. */
 private fun logoMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float) {
     val slide = 1f - easeOut(t / 0.8f)
-    g.translationX = slide * g.size.width * 1.4f - kotlin.math.sin(t * 0.9f) * 4.dp.toPx() * drift
-    g.translationY = kotlin.math.sin(t * 1.3f) * 5.dp.toPx() * drift
+    g.translationX = slide * g.size.width * 1.4f - kotlin.math.sin(t * 0.9f) * with(g) { 4.dp.toPx() } * drift
+    g.translationY = kotlin.math.sin(t * 1.3f) * with(g) { 5.dp.toPx() } * drift
     g.alpha = (t / 0.35f).coerceIn(0f, 1f)
 }
 
 /** The words: each rises into place a moment after the picture, one after another. */
 private fun riseIn(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, delay: Float) {
     val e = easeOut((t - delay) / 0.5f)
-    g.translationY = (1f - e) * 14.dp.toPx()
+    g.translationY = (1f - e) * with(g) { 14.dp.toPx() }
     g.alpha = e
 }
 
