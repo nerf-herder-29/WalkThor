@@ -746,6 +746,15 @@ private fun SettingsScreen(
                         "Its picture, title and play time, big, while you choose",
                         checked = topOn,
                     ) { com.nerfherder.walkthor.ui.Frontend.setTopOn(context, it); topOn = it }
+                    if (topOn) {
+                        LaunchedEffect(Unit) { com.nerfherder.walkthor.ui.Frontend.loadTopMotion(context) }
+                        val topMotion by com.nerfherder.walkthor.ui.Frontend.topMotion.collectAsState()
+                        SettingSwitch(
+                            "Movement on the top screen",
+                            "Each game settles in as you move to it, its picture drifts slowly and its logo floats. Off keeps it still",
+                            checked = topMotion,
+                        ) { com.nerfherder.walkthor.ui.Frontend.setTopMotion(context, it) }
+                    }
                     var uiSounds by remember { mutableStateOf(com.nerfherder.walkthor.data.UiSounds.enabled(context)) }
                     SettingSwitch(
                         "Sounds",

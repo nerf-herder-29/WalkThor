@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.KeyEvent
 import android.widget.Toast
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -129,6 +130,13 @@ object Frontend {
         prefs(c).edit().putBoolean("on", on).apply()
         _enabled.value = on
         if (!on) hideTop()
+    }
+    /** The top screen moves: each game settles in, its picture drifts, its logo floats. */
+    val topMotion = MutableStateFlow(true)
+    fun loadTopMotion(c: Context) { topMotion.value = prefs(c).getBoolean("motion", true) }
+    fun setTopMotion(c: Context, on: Boolean) {
+        prefs(c).edit().putBoolean("motion", on).apply()
+        topMotion.value = on
     }
     fun topOn(c: Context): Boolean = prefs(c).getBoolean("top", true)
     fun setTopOn(c: Context, on: Boolean) {
@@ -793,6 +801,32 @@ fun TopSpotlight(spot: Spotlight?) = Box(Modifier.fillMaxSize()) {
 
 @Composable
 private fun TopSpotlightBody(spot: Spotlight?) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { Frontend.loadTopMotion(context) }
+    val motionOn by Frontend.topMotion.collectAsState()
+    // Android's “Remove animations” turns it off too.
+    val systemAnims = remember {
+        android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+    }
+    val moving = motionOn && systemAnims && spot != null
+    // Seconds since this game came up. Read only while drawing (in graphicsLayer), so the
+    // moving top screen redraws each frame without recomposing. It stops while the top screen
+    // isn't showing (a game is in front of it).
+    val clock = remember { androidx.compose.runtime.mutableFloatStateOf(if (moving) 0f else 99f) }
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(moving) {
+        if (!moving) { clock.floatValue = 99f; return@LaunchedEffect }
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            var last = -1L
+            while (true) {
+                androidx.compose.runtime.withFrameNanos { now ->
+                    if (last >= 0) clock.floatValue += ((now - last) / 1e9f).coerceAtMost(0.1f)
+                    last = now
+                }
+            }
+        }
+    }
+    val drift = if (moving) 1f else 0f
     Box(Modifier.fillMaxSize().background(Color(0xFF0C0B0E))) {
         if (spot == null) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -810,10 +844,10 @@ private fun TopSpotlightBody(spot: Spotlight?) {
                 model = coil.request.ImageRequest.Builder(LocalContext.current).data(picture).crossfade(180).build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { heroMotion(this, clock.floatValue, drift) },
             )
         } else {
-            PlaceholderArt(spot.rom.title, Modifier.fillMaxSize(), showTitle = false, big = true)
+            PlaceholderArt(spot.rom.title, Modifier.fillMaxSize().graphicsLayer { heroMotion(this, clock.floatValue, drift) }, showTitle = false, big = true)
         }
         val logo = spot.logo
         if (logo == null) {
@@ -831,13 +865,17 @@ private fun TopSpotlightBody(spot: Spotlight?) {
                 model = coil.request.ImageRequest.Builder(LocalContext.current).data(logo).crossfade(180).build(),
                 contentDescription = spot.rom.title,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.5f).fillMaxHeight(0.38f),
+                modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.5f).fillMaxHeight(0.38f)
+                    .graphicsLayer { logoMotion(this, clock.floatValue, drift) },
             )
         }
         ClockLine(Modifier.align(Alignment.TopStart).padding(start = 55.dp, top = 40.dp))
         Column(Modifier.align(Alignment.BottomStart).padding(start = 55.dp, bottom = 56.dp).fillMaxWidth(0.55f)) {
             val eyebrow = listOfNotNull(spot.system, spot.lastPlayed?.let { "last played $it" }).joinToString(" · ").uppercase()
-            Text(eyebrow, color = frontAccent(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp)
+            Text(
+                eyebrow, color = frontAccent(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp,
+                modifier = Modifier.graphicsLayer { riseIn(this, clock.floatValue, 0.5f) },
+            )
             // With a logo in the middle, the title isn't written out again.
             if (logo == null) Text(
                 spot.rom.title,
@@ -845,15 +883,21 @@ private fun TopSpotlightBody(spot: Spotlight?) {
                 fontSize = if (spot.rom.title.length > 22) 44.sp else 64.sp,
                 lineHeight = if (spot.rom.title.length > 22) 46.sp else 62.sp,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+                modifier = Modifier.padding(top = 8.dp, bottom = 12.dp).graphicsLayer { riseIn(this, clock.floatValue, 0.3f) },
             )
             val facts = listOfNotNull(spot.playTime?.let { "$it played" }, spot.guide?.let { "Guide: $it" }).joinToString(" · ")
             if (logo != null) Spacer(Modifier.height(8.dp))
             spot.description?.takeIf { logo == null }?.let {
-                Text(it, color = Color(0xFFCFC8BC), fontSize = 15.sp, lineHeight = 21.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(
+                    it, color = Color(0xFFCFC8BC), fontSize = 15.sp, lineHeight = 21.sp, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.graphicsLayer { riseIn(this, clock.floatValue, 0.62f) },
+                )
             }
             if (facts.isNotEmpty()) {
-                Text(facts, color = Color(0xFFCFC8BC), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                Text(
+                    facts, color = Color(0xFFCFC8BC), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 6.dp).graphicsLayer { riseIn(this, clock.floatValue, 0.7f) },
+                )
             }
         }
         Row(
@@ -868,6 +912,38 @@ private fun TopSpotlightBody(spot: Spotlight?) {
             Hint("X", "Options")
         }
     }
+}
+
+private fun easeOut(x: Float): Float { val c = 1f - x.coerceIn(0f, 1f); return 1f - c * c * c }
+
+/**
+ * The picture: settles in from a slight zoom when the game comes up (1.3 s), then drifts slowly,
+ * zooming and panning back and forth, so it's never quite still. Always zoomed in enough that the
+ * pan never shows an edge.
+ */
+private fun heroMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float) {
+    val settle = 0.14f * (1f - easeOut(t / 1.3f))
+    val tau = 2f * Math.PI.toFloat()
+    val zoom = 0.04f * (0.5f - 0.5f * kotlin.math.cos(tau * t / 40f)) * drift
+    val s = 1.05f * drift + (1f - drift) + settle + zoom
+    g.scaleX = s; g.scaleY = s
+    g.translationX = kotlin.math.sin(tau * t / 50f) * g.size.width * 0.018f * drift
+    g.translationY = kotlin.math.sin(tau * t / 34f) * g.size.height * 0.012f * drift
+}
+
+/** The logo: glides in from the right as the game comes up, then floats gently. */
+private fun logoMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float) {
+    val slide = 1f - easeOut(t / 0.8f)
+    g.translationX = slide * g.size.width * 1.4f - kotlin.math.sin(t * 0.9f) * 4.dp.toPx() * drift
+    g.translationY = kotlin.math.sin(t * 1.3f) * 5.dp.toPx() * drift
+    g.alpha = (t / 0.35f).coerceIn(0f, 1f)
+}
+
+/** The words: each rises into place a moment after the picture, one after another. */
+private fun riseIn(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, delay: Float) {
+    val e = easeOut((t - delay) / 0.5f)
+    g.translationY = (1f - e) * 14.dp.toPx()
+    g.alpha = e
 }
 
 @Composable
