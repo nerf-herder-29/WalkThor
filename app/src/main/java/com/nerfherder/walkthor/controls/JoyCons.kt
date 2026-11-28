@@ -184,14 +184,15 @@ object JoyCons {
         worker.execute { refresh() }
         val im = app.getSystemService(InputManager::class.java) ?: return
         im.registerInputDeviceListener(object : InputManager.InputDeviceListener {
-            override fun onInputDeviceAdded(id: Int) { main.removeCallbacksAndMessages(this@JoyCons); main.postDelayed({ maybeJoin(app) }, 1500) }
+            override fun onInputDeviceAdded(id: Int) { main.postDelayed({ maybeJoin(app); PadJoin.maybeJoin(app) }, 1500) }
             override fun onInputDeviceRemoved(id: Int) {
+                PadJoin.removed()
                 // Both gone: the joining program ends by itself.
                 if (InputDevice.getDeviceIds().none { InputDevice.getDevice(it)?.name?.let(::isJoyCon) == true }) active.value = false
             }
             override fun onInputDeviceChanged(id: Int) {}
         }, main)
-        main.postDelayed({ maybeJoin(app) }, 3000)
+        main.postDelayed({ maybeJoin(app); PadJoin.maybeJoin(app) }, 3000)
     }
 
     private fun maybeJoin(c: Context) {

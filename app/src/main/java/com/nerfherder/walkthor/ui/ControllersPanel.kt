@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nerfherder.walkthor.controls.JoyCons
 import com.nerfherder.walkthor.controls.PadBluetooth
+import com.nerfherder.walkthor.controls.PadJoin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -47,7 +48,7 @@ fun ColumnScope.ControllersPanel() {
         var n = 0
         while (true) {
             // Whether they're joined, asked of the system now and then (WalkThor may have restarted since).
-            if (n++ % 5 == 0) withContext(Dispatchers.IO) { JoyCons.refresh() }
+            if (n++ % 5 == 0) withContext(Dispatchers.IO) { JoyCons.refresh(); PadJoin.refresh(context) }
             delay(2000)
             pads = JoyCons.pads(context)
         }
@@ -123,6 +124,8 @@ fun ColumnScope.ControllersPanel() {
         }
         SettingsNote("A, B, X and Y are the Thor’s A, B, X and Y, the Nintendo layout. Capture, motion and rumble aren’t passed on yet.")
 
+        OtherControllersGroup(pads)
+
         BluetoothGroup()
 
         SettingsGroup("Connected") {
@@ -143,6 +146,65 @@ fun ColumnScope.ControllersPanel() {
         SettingsNote(lastPress?.let { "Last press: $it" } ?: "Press a button on any controller to see which one it is.")
 
         CheckGroup()
+    }
+}
+
+/** Any other controller as the Thor's own, like the Joy-Cons. */
+@Composable
+private fun OtherControllersGroup(pads: List<JoyCons.Pad>) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val active by PadJoin.active.collectAsState()
+    val problem by PadJoin.problem.collectAsState()
+    var joining by remember { mutableStateOf(false) }
+    var auto by remember { mutableStateOf(PadJoin.autoJoin(context)) }
+    var byPosition by remember { mutableStateOf(PadJoin.byPosition(context)) }
+    // Refreshed with the list of controllers.
+    val candidate = remember(pads) { PadJoin.candidates().firstOrNull() }
+    fun rejoin() {
+        joining = true
+        scope.launch { withContext(Dispatchers.IO) { PadJoin.join(context) }; joining = false }
+    }
+    SettingsGroup("Other controllers") {
+        SettingRow(
+            active?.let { "$it is the Thor’s controller" } ?: "Use another controller as the Thor’s",
+            when {
+                active != null -> "Every emulator sees it as the Thor’s own controls, and its Home button is the Thor’s Back button"
+                joining -> "Joining…"
+                candidate != null -> "${candidate.name} is connected"
+                else -> "Connect a Bluetooth or USB controller (pair one below)"
+            },
+            divider = false,
+            value = if (active != null) "Joined" else "Not joined",
+            buttons = {
+                if (active != null) PillButton("Separate", quiet = true) {
+                    joining = true
+                    scope.launch { withContext(Dispatchers.IO) { PadJoin.separate(context) }; joining = false }
+                } else if (candidate != null && !joining) PillButton("Join") { rejoin() }
+            },
+        )
+        SettingSwitch(
+            "Join it by itself",
+            "Whenever a controller connects, unless one is joined already",
+            checked = auto,
+        ) { auto = it; PadJoin.setAutoJoin(context, it) }
+        SettingRow(
+            "Face buttons",
+            if (byPosition) "By where they sit: the bottom button is the Thor’s bottom button, B, whatever its letter"
+            else "By their letters: A is the Thor’s A, wherever it sits",
+            value = if (byPosition) "By position" else "By letter",
+            buttons = {
+                listOf(false to "By letter", true to "By position").forEach { (pos, label) ->
+                    PillButton(label, quiet = byPosition != pos) {
+                        if (byPosition == pos) return@PillButton
+                        byPosition = pos
+                        PadJoin.setByPosition(context, pos)
+                        if (active != null) rejoin()
+                    }
+                }
+            },
+        )
+        problem?.let { if (active == null) SettingsNote("Last try didn’t work: $it") }
     }
 }
 

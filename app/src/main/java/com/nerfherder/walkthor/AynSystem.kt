@@ -117,6 +117,39 @@ object AynSystem {
     /** Whether the joining program is running now (asked of the system, not remembered). Not on the main thread. */
     fun joyConsRunning(): Boolean = shellLines("pgrep -f '[J]oyConJoinTool'")?.any { it.trim().toIntOrNull() != null } == true
 
+    /**
+     * Starts joining another controller (maker [vendor], model [product], 4 hex digits each) to
+     * the Thor's own ([com.nerfherder.walkthor.controls.PadJoinTool]), in the background. Not on the main thread.
+     */
+    fun joinPad(context: Context, vendor: String, product: String, byPosition: Boolean): Boolean {
+        val hex = Regex("^[0-9a-f]{4}$")
+        if (!hex.matches(vendor) || !hex.matches(product)) return false
+        val apk = context.applicationInfo.sourceDir
+        if ("'" in apk) return false
+        val log = "$OUT_DIR/pad.log"
+        val script = java.io.File(context.filesDir, "pad.sh")
+        runCatching {
+            script.writeText(
+                "pkill -f '[P]adJoinTool'\n" +
+                    "cd /\n" +
+                    "CLASSPATH='$apk' setsid app_process /system/bin ${com.nerfherder.walkthor.controls.PadJoinTool::class.java.name} $vendor $product ${if (byPosition) "position" else "letter"} </dev/null >$log 2>&1 &\n" +
+                    "sleep 1\n" +
+                    "chmod 644 $log\n",
+            )
+            script.setReadable(true, false)
+        }.onFailure { return false }
+        return run("sh $OUT_DIR/pad.sh") != null
+    }
+
+    /** Stops joining the other controller (it goes back to being a controller of its own). Not on the main thread. */
+    fun separatePad() { run("pkill -f '[P]adJoinTool'") }
+
+    /** What the controller-joining program last said. Not on the main thread. */
+    fun padLog(): String? = shellLines("cat $OUT_DIR/pad.log")?.joinToString(" / ")
+
+    /** Whether the controller-joining program is running now. Not on the main thread. */
+    fun padRunning(): Boolean = shellLines("pgrep -f '[P]adJoinTool'")?.any { it.trim().toIntOrNull() != null } == true
+
     /** WalkThor's own files folder (the helper, as the system, can write there; WalkThor can read). */
     private val OUT_DIR = "/data/data/${BuildConfig.APPLICATION_ID}/files"
     private val outSeq = java.util.concurrent.atomic.AtomicInteger()

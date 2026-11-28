@@ -128,8 +128,14 @@ Everything else stays on your device.
   nearby (Android asks your permission to find nearby devices; WalkThor never asks for your
   location). With a pair of Joy-Cons joined, a small WalkThor program runs through the Thor's system
   helper: it reads the two Joy-Cons' button and stick reports and passes them on as the Thor's own
-  controller, and stops when either Joy-Con disconnects. Nothing is recorded, stored or sent; a
+  controller, and stops when either Joy-Con disconnects. Another controller can be joined the
+  same way (Other controllers): a WalkThor program reads its button and stick presses and passes
+  them on as the Thor's controller, and stops when it disconnects. Nothing is recorded, stored or sent; a
   short log of the joining (not of your presses) is kept in WalkThor's own storage for *Check*.
+
+- **The motion sensor, only while the top screen moves.** With *Movement on the top screen* on,
+  WalkThor reads the Thor's gravity sensor while its top screen is showing, to move the picture
+  as you tilt the device. Nothing is kept, and it stops when a game is in front or the setting is off.
 
 - **The trackpad, only while it's on.** With *Trackpad on / off* (a shortcut), WalkThor covers the
   bottom screen with its trackpad and, as you use it, touches the top screen for you where its

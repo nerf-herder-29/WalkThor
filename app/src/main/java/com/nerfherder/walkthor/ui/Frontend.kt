@@ -764,6 +764,7 @@ private fun Pill(text: String, onClick: () -> Unit) {
  */
 @Composable
 fun TopSpotlight(spot: Spotlight?) = Box(Modifier.fillMaxSize()) {
+    val tilt = rememberTilt()
     // Moving from game to game fades the top screen across, quickly.
     androidx.compose.animation.AnimatedContent(
         targetState = spot,
@@ -778,7 +779,7 @@ fun TopSpotlight(spot: Spotlight?) = Box(Modifier.fillMaxSize()) {
         },
         contentKey = { it?.rom?.id },
         label = "spotlight",
-    ) { s -> TopSpotlightBody(s) }
+    ) { s -> TopSpotlightBody(s, tilt) }
     // Launching: a band of light sweeps across, then the screen fades to black for the game.
     val launching by Frontend.launching.collectAsState()
     launching?.let { t ->
@@ -800,7 +801,7 @@ fun TopSpotlight(spot: Spotlight?) = Box(Modifier.fillMaxSize()) {
 }
 
 @Composable
-private fun TopSpotlightBody(spot: Spotlight?) {
+private fun TopSpotlightBody(spot: Spotlight?, tilt: Tilt) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { Frontend.loadTopMotion(context) }
     val motionOn by Frontend.topMotion.collectAsState()
@@ -844,10 +845,10 @@ private fun TopSpotlightBody(spot: Spotlight?) {
                 model = coil.request.ImageRequest.Builder(LocalContext.current).data(picture).crossfade(180).build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().graphicsLayer { heroMotion(this, clock.floatValue, drift) },
+                modifier = Modifier.fillMaxSize().graphicsLayer { heroMotion(this, clock.floatValue, drift, tilt) },
             )
         } else {
-            PlaceholderArt(spot.rom.title, Modifier.fillMaxSize().graphicsLayer { heroMotion(this, clock.floatValue, drift) }, showTitle = false, big = true)
+            PlaceholderArt(spot.rom.title, Modifier.fillMaxSize().graphicsLayer { heroMotion(this, clock.floatValue, drift, tilt) }, showTitle = false, big = true)
         }
         val logo = spot.logo
         if (logo == null) {
@@ -866,7 +867,7 @@ private fun TopSpotlightBody(spot: Spotlight?) {
                 contentDescription = spot.rom.title,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.5f).fillMaxHeight(0.38f)
-                    .graphicsLayer { logoMotion(this, clock.floatValue, drift) },
+                    .graphicsLayer { logoMotion(this, clock.floatValue, drift, tilt) },
             )
         }
         ClockLine(Modifier.align(Alignment.TopStart).padding(start = 55.dp, top = 40.dp))
@@ -914,6 +915,82 @@ private fun TopSpotlightBody(spot: Spotlight?) {
     }
 }
 
+/** How the Thor is tilted from the way it's usually held, -1 to 1 each way, for the top screen. */
+internal class Tilt {
+    val x = androidx.compose.runtime.mutableFloatStateOf(0f)
+    val y = androidx.compose.runtime.mutableFloatStateOf(0f)
+}
+
+/**
+ * Follows the Thor's tilt through its gravity sensor (or accelerometer) while the top screen is
+ * showing and moving. However you hold it is level: that slowly becomes the middle, so only
+ * tilting it moves things. Nothing is kept.
+ */
+@Composable
+private fun rememberTilt(): Tilt {
+    val tilt = remember { Tilt() }
+    val context = LocalContext.current
+    val motionOn by Frontend.topMotion.collectAsState()
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(motionOn, lifecycle) {
+        val sm = context.getSystemService(android.hardware.SensorManager::class.java)
+        val sensor = sm?.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY)
+            ?: sm?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+        val systemAnims = android.provider.Settings.Global.getFloat(
+            context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
+        ) > 0f
+        if (sm == null || sensor == null || !motionOn || !systemAnims) {
+            tilt.x.floatValue = 0f; tilt.y.floatValue = 0f
+            return@DisposableEffect onDispose { }
+        }
+        @Suppress("DEPRECATION")
+        val rotation = runCatching { (context as? Activity)?.windowManager?.defaultDisplay?.rotation }.getOrNull() ?: 0
+        var gx = Float.NaN; var gy = 0f // smoothed gravity, on the screen's own axes
+        var bx = 0f; var by = 0f // the usual hold
+        var lastNs = 0L
+        val listener = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(e: android.hardware.SensorEvent) {
+                val (ax, ay) = when (rotation) {
+                    android.view.Surface.ROTATION_90 -> -e.values[1] to e.values[0]
+                    android.view.Surface.ROTATION_180 -> -e.values[0] to -e.values[1]
+                    android.view.Surface.ROTATION_270 -> e.values[1] to -e.values[0]
+                    else -> e.values[0] to e.values[1]
+                }
+                val dt = if (lastNs == 0L) 0.02f else ((e.timestamp - lastNs) / 1e9f).coerceIn(0.001f, 0.2f)
+                lastNs = e.timestamp
+                if (gx.isNaN()) { gx = ax; gy = ay; bx = ax; by = ay }
+                // Smooth out the shake, then let the usual hold follow over a few seconds.
+                val k = (dt / 0.12f).coerceAtMost(1f)
+                gx += (ax - gx) * k; gy += (ay - gy) * k
+                val kb = (dt / 3.5f).coerceAtMost(1f)
+                bx += (gx - bx) * kb; by += (gy - by) * kb
+                // About 15° of tilt is all the way.
+                tilt.x.floatValue = ((gx - bx) / 2.5f).coerceIn(-1f, 1f)
+                tilt.y.floatValue = ((gy - by) / 2.5f).coerceIn(-1f, 1f)
+            }
+            override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
+        }
+        var registered = false
+        fun update() {
+            val want = lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+            if (want && !registered) { registered = sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_GAME) }
+            else if (!want && registered) {
+                sm.unregisterListener(listener); registered = false
+                gx = Float.NaN; lastNs = 0L
+                tilt.x.floatValue = 0f; tilt.y.floatValue = 0f
+            }
+        }
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, _ -> update() }
+        lifecycle.addObserver(observer)
+        update()
+        onDispose {
+            lifecycle.removeObserver(observer)
+            if (registered) sm.unregisterListener(listener)
+        }
+    }
+    return tilt
+}
+
 private fun easeOut(x: Float): Float { val c = 1f - x.coerceIn(0f, 1f); return 1f - c * c * c }
 
 /**
@@ -921,21 +998,25 @@ private fun easeOut(x: Float): Float { val c = 1f - x.coerceIn(0f, 1f); return 1
  * zooming and panning back and forth, so it's never quite still. Always zoomed in enough that the
  * pan never shows an edge.
  */
-private fun heroMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float) {
+private fun heroMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float, tilt: Tilt) {
     val settle = 0.14f * (1f - easeOut(t / 1.3f))
     val tau = 2f * Math.PI.toFloat()
     val zoom = 0.04f * (0.5f - 0.5f * kotlin.math.cos(tau * t / 40f)) * drift
-    val s = 1.05f * drift + (1f - drift) + settle + zoom
+    val s = 1.09f * drift + (1f - drift) + settle + zoom
     g.scaleX = s; g.scaleY = s
-    g.translationX = kotlin.math.sin(tau * t / 50f) * g.size.width * 0.018f * drift
-    g.translationY = kotlin.math.sin(tau * t / 34f) * g.size.height * 0.012f * drift
+    // Tilting the Thor moves the picture a little, the far layer of the window.
+    g.translationX = (kotlin.math.sin(tau * t / 50f) * 0.018f + tilt.x.floatValue * 0.022f) * g.size.width * drift
+    g.translationY = (kotlin.math.sin(tau * t / 34f) * 0.012f + tilt.y.floatValue * 0.022f) * g.size.height * drift
 }
 
 /** The logo: glides in from the right as the game comes up, then floats gently. */
-private fun logoMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float) {
+private fun logoMotion(g: androidx.compose.ui.graphics.GraphicsLayerScope, t: Float, drift: Float, tilt: Tilt) {
     val slide = 1f - easeOut(t / 0.8f)
-    g.translationX = slide * g.size.width * 1.4f - kotlin.math.sin(t * 0.9f) * with(g) { 4.dp.toPx() } * drift
-    g.translationY = kotlin.math.sin(t * 1.3f) * with(g) { 5.dp.toPx() } * drift
+    // The logo is the near layer: it moves the other way, further, so the picture looks deep.
+    val tiltPx = with(g) { 26.dp.toPx() }
+    g.translationX = slide * g.size.width * 1.4f +
+        (-kotlin.math.sin(t * 0.9f) * with(g) { 4.dp.toPx() } - tilt.x.floatValue * tiltPx) * drift
+    g.translationY = (kotlin.math.sin(t * 1.3f) * with(g) { 5.dp.toPx() } - tilt.y.floatValue * tiltPx * 0.7f) * drift
     g.alpha = (t / 0.35f).coerceIn(0f, 1f)
 }
 
